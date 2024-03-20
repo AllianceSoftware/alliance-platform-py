@@ -1,0 +1,85 @@
+<style>
+    #__dev-check-modal {
+        position: fixed;
+        width: 100vw;
+        height: 100vh;
+        background-color: rgba(0,0,0, 0.5);
+        top: 0;
+        left: 0;
+        display: flex;
+        visibility: hidden;
+        opacity: 0;
+        align-content: center;
+        justify-content: center;
+        flex-wrap: wrap;
+        transition: 200ms all;
+    }
+    #__dev-check-modal > div {
+        background-color: white;
+        width: 50vw;
+        height: 50vh;
+        border-radius: 2px;
+        color: black;
+        padding: 20px;
+    }
+    #__dev-check-modal.__dev-check-visible {
+        visibility: visible;
+        opacity: 1;
+    }
+    #__dev-check-modal code {
+        padding: 2px;
+        background: #cde8f7;
+    }
+    #__dev-check-icon {
+        border-radius: 50%;
+        position: fixed;
+        right: 50px;
+        bottom: 50px;
+        box-shadow: 0 0 26px 2px rgba(16, 24, 40, 0.2);
+        width: 50px;
+        height: 50px;
+        background-color:#f04438;
+        border: 0;
+        padding: 0;
+        margin: 0;
+        cursor: pointer;
+    }
+    #__dev-check-icon svg {
+        width: 50px;
+        height: 50px;
+        fill: white;
+    }
+</style>
+<div id="__dev-check-modal">
+  <div>
+    <h1>JS Dev Server Not Available</h1>
+    {% if check.is_wrong_server %}
+      <p>The dev server is running, but it's for another project at <code>{{ check.project_dir }}</code></p>
+      <p>Try running <code>yarn dev</code> in this project root.</p>
+    {% else %}
+      <p>The dev server is not running.</p>
+      <p>Run <code>yarn dev</code> to start it.</p>
+    {% endif %}
+    <p>Styles and javascript will not work until dev server is running.</p>
+    <button>Dismiss</button>
+  </div>
+</div>
+<button id="__dev-check-icon">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 8V12M12 16H12.01M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12Z" stroke="#f04438" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+</button>
+
+<script>
+    (function() {
+        function toggleModal(e) {
+            e.stopPropagation();
+            const modal = document.getElementById("__dev-check-modal")
+            modal.classList.toggle("__dev-check-visible")
+        }
+        for (const selector of ['#__dev-check-modal', '#__dev-check-icon', '#__dev-check-modal button']) {
+            document.querySelector(selector).addEventListener('click', toggleModal)
+        }
+        document.querySelector('#__dev-check-modal > div').addEventListener('click', e => e.stopPropagation())
+      })()
+</script>

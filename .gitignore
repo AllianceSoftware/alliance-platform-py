@@ -1,0 +1,25 @@
+*.pyc
+
+# mypy config
+.dmypy.json
+# mac Finder metadata
+.DS_Store
+# direnv config
+.envrc
+# jetbrains / pycharm project
+.idea
+# django's SECRET_KEY (persisted to disk so that sessions aren't destroyed on every server reload)
+SECRET_KEY
+# tox cached venv
+.tox
+
+**/.env
+**/env
+
+# dev files
+frontend/dev/*
+frontend/dist/report-analyze.html
+venv/
+
+# mproc config - likely differences based on user so don't commit
+mprocs.yaml
