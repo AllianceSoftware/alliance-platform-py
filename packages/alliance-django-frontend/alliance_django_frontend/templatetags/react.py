@@ -24,35 +24,35 @@ from django.utils.html import format_html
 from django.utils.module_loading import import_string
 from django.utils.safestring import mark_safe
 
-from common_frontend.bundler import get_bundler
-from common_frontend.bundler.base import BaseBundler
-from common_frontend.bundler.base import ResolveContext
-from common_frontend.bundler.context import BundlerAsset
-from common_frontend.bundler.context import BundlerAssetContext
-from common_frontend.bundler.ssr import ImportDefinition
-from common_frontend.bundler.ssr import SSRItem
-from common_frontend.bundler.ssr import SSRSerializable
-from common_frontend.bundler.ssr import SSRSerializerContext
-from common_frontend.bundler.vite import ViteBundler
-from common_frontend.codegen.printer import TypescriptSourceFileWriter
-from common_frontend.codegen.typescript import CallExpression
-from common_frontend.codegen.typescript import FunctionDeclaration
-from common_frontend.codegen.typescript import Identifier
-from common_frontend.codegen.typescript import ImportDefaultSpecifier
-from common_frontend.codegen.typescript import ImportSpecifier
-from common_frontend.codegen.typescript import Node
-from common_frontend.codegen.typescript import PropertyAccessExpression
-from common_frontend.codegen.typescript import ReturnStatement
-from common_frontend.codegen.typescript import StringLiteral
-from common_frontend.codegen.typescript import UnconvertibleValueException
-from common_frontend.forms.renderers import form_input_context_key
-from common_frontend.prop_handlers import CodeGeneratorNode
-from common_frontend.prop_handlers import ComponentProp
-from common_frontend.util import transform_attribute_names
-from common_lib.templatetags.common import build_html_attrs
-from common_lib.templatetags.common import is_static_expression
-from common_lib.templatetags.common import parse_tag_arguments
-from common_lib.templatetags.common import resolve
+from ..bundler import get_bundler
+from ..bundler.base import BaseBundler
+from ..bundler.base import ResolveContext
+from ..bundler.context import BundlerAsset
+from ..bundler.context import BundlerAssetContext
+from ..bundler.ssr import ImportDefinition
+from ..bundler.ssr import SSRItem
+from ..bundler.ssr import SSRSerializable
+from ..bundler.ssr import SSRSerializerContext
+from ..bundler.vite import ViteBundler
+from ..codegen.printer import TypescriptSourceFileWriter
+from ..codegen.typescript import CallExpression
+from ..codegen.typescript import FunctionDeclaration
+from ..codegen.typescript import Identifier
+from ..codegen.typescript import ImportDefaultSpecifier
+from ..codegen.typescript import ImportSpecifier
+from ..codegen.typescript import Node
+from ..codegen.typescript import PropertyAccessExpression
+from ..codegen.typescript import ReturnStatement
+from ..codegen.typescript import StringLiteral
+from ..codegen.typescript import UnconvertibleValueException
+from ..forms.renderers import form_input_context_key
+from ..prop_handlers import CodeGeneratorNode
+from ..prop_handlers import ComponentProp
+from ..util import transform_attribute_names
+from allianceutils.template import build_html_attrs
+from allianceutils.template import is_static_expression
+from allianceutils.template import parse_tag_arguments
+from allianceutils.template import resolve
 
 register = template.Library()
 
@@ -99,7 +99,7 @@ def component(parser: template.base.Parser, token: template.base.Token):
         {% component "h2" %}Heading{% endcomponent %}
 
     The other two are for using a component defined in an external file. These will be loaded via
-    the specified bundler class (currently :class:`~common_frontend.bundler.vite.ViteBundler`). With
+    the specified bundler class (currently :class:`~alliance_django_frontend.bundler.vite.ViteBundler`). With
     a single argument it specifies that the default export from the file is the component to use::
 
         {% component "components/Button" %}Click Me{% endcomponent %}
@@ -167,11 +167,11 @@ def component(parser: template.base.Parser, token: template.base.Token):
         {% component "icons" "Menu" as icon %}{% end_component %}
         {% component "components/Button" type="primary" icon=icon %}Open Menu{% end_component %}
 
-    All props must be JSON serializable. :class:`~common_frontend.prop_handlers.ComponentProp` can be used to define
+    All props must be JSON serializable. :class:`~alliance_django_frontend.prop_handlers.ComponentProp` can be used to define
     how to serialize data, with a matching implementation in ``propTransformers.tsx`` to de-serialize it.
 
-    For example :class:`~common_frontend.prop_handlers.DateProp` handles serializing a python ``datetime`` and
-    un-serializing it as a native JS ``Date`` on the frontend. See :class:`~common_frontend.prop_handlers.ComponentProp`
+    For example :class:`~alliance_django_frontend.prop_handlers.DateProp` handles serializing a python ``datetime`` and
+    un-serializing it as a native JS ``Date`` on the frontend. See :class:`~alliance_django_frontend.prop_handlers.ComponentProp`
     for documentation about adding your own complex props.
 
     Components are rendered using the ``renderComponent`` function in ``renderComponent.tsx``. This can be modified as needed,
@@ -295,7 +295,7 @@ class ComponentProps(SSRSerializable, CodeGeneratorNode):
     def serialize(self, ssr_context: SSRSerializerContext):
         """Serialize props to Dict that can then be JSON encoded
 
-        Handles conversion of :class:`~common_frontend.prop_handlers.ComponentProp` instances.
+        Handles conversion of :class:`~alliance_django_frontend.prop_handlers.ComponentProp` instances.
 
         Args:
             options: The options to use when serializing. In particular the options tell serialization how to handle
@@ -380,7 +380,7 @@ class ImportComponentSource(ImportDefinition, ComponentSourceBase):
     """
     Used to identify a Component that needs to be imported from a module
 
-    This differs from :class:`~common_frontend.templatetags.react.CommonComponentSource` which is just
+    This differs from :class:`~alliance_django_frontend.templatetags.react.CommonComponentSource` which is just
     a string (e.g. 'div' or 'button') and requires no import to work.
     """
 
@@ -803,7 +803,7 @@ def process_component_children(children: list[str | NestedComponentProp]) -> lis
 
 
 class ComponentNode(template.Node, BundlerAsset):
-    """A template node used by :func:`~common_frontend.templatetags.react.component`"""
+    """A template node used by :func:`~alliance_django_frontend.templatetags.react.component`"""
 
     #: Any extra dependencies for this component. This comes from props used that may require imports, for example
     #: DateProp may require the date library be included.
@@ -863,7 +863,7 @@ class ComponentNode(template.Node, BundlerAsset):
     def resolve_prop(self, value, context: Context):
         """Handles resolving values to a type that can be serialized
 
-        If you add new :class:`~common_frontend.prop_handlers.ComponentProp` there must a case here
+        If you add new :class:`~alliance_django_frontend.prop_handlers.ComponentProp` there must a case here
         to convert values to the new type.
         """
         if isinstance(value, DeferredProp):
@@ -920,7 +920,7 @@ class ComponentNode(template.Node, BundlerAsset):
     def resolve_props(self, context: Context) -> ComponentProps:
         """Resolve the props for this component to values that can be serialized
 
-        To add special handling override the :meth:`~common_frontend.templatetags.react.ComponentNode.resolve_prop`
+        To add special handling override the :meth:`~alliance_django_frontend.templatetags.react.ComponentNode.resolve_prop`
         method.
         """
         props = self.props.copy()
@@ -1054,9 +1054,9 @@ class ComponentNode(template.Node, BundlerAsset):
 def react_refresh_preamble():
     """Add `react-refresh <https://www.npmjs.com/package/react-refresh>`_ support
 
-    Currently only works with :class:`~common_frontend.bundler.vite.ViteBundler`.
+    Currently only works with :class:`~alliance_django_frontend.bundler.vite.ViteBundler`.
 
-    This must appear after :meth:`~common_frontend.templatetags.bundler.bundler_preamble`.
+    This must appear after :meth:`~alliance_django_frontend.templatetags.bundler.bundler_preamble`.
 
     See https://vitejs.dev/guide/backend-integration.html
 
@@ -1151,7 +1151,7 @@ class ComponentSSRItem(SSRItem):
 def html_attr_to_jsx(attrs: dict):
     """Convert html attributes to casing expected by JSX
 
-    Calls :meth:`~common_frontend.util.transform_attribute_names`
+    Calls :meth:`~alliance_django_frontend.util.transform_attribute_names`
     """
     return transform_attribute_names(attrs)
 

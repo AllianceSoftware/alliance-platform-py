@@ -10,14 +10,14 @@ from django.template.base import UNKNOWN_SOURCE
 from django.template.loader import get_template
 from django.utils.safestring import mark_safe
 
-from common_frontend.bundler import get_bundler
-from common_frontend.bundler.base import html_target_browser
-from common_frontend.bundler.base import ResolveContext
-from common_frontend.bundler.context import BundlerAsset
-from common_frontend.bundler.context import BundlerAssetContext
-from common_lib.templatetags.common import is_static_expression
-from common_lib.templatetags.common import parse_tag_arguments
-from common_lib.templatetags.common import resolve
+from ..bundler import get_bundler
+from ..bundler.base import html_target_browser
+from ..bundler.base import ResolveContext
+from ..bundler.context import BundlerAsset
+from ..bundler.context import BundlerAssetContext
+from allianceutils.template import is_static_expression
+from allianceutils.template import parse_tag_arguments
+from allianceutils.template import resolve
 
 register = template.Library()
 
@@ -89,7 +89,7 @@ def bundler_url(parser: template.base.Parser, token: template.base.Token):
     """
     Return the URL from the bundler to a specified asset.
 
-    NOTE: This tag only accepts static values as :class:`extract_frontend_assets <common_frontend.management.commands.extract_frontend_assets.Command>` needs to be able to statically generate
+    NOTE: This tag only accepts static values as :class:`extract_frontend_assets <alliance_django_frontend.management.commands.extract_frontend_assets.Command>` needs to be able to statically generate
     a list of paths that need to be built for production.
 
     Usage::
@@ -144,18 +144,18 @@ def bundler_embed(parser: template.base.Parser, token: template.base.Token):
     but it is ultimately based on the file extension (e.g. ``.png`` will be ``image/png``). Note that ``.css.ts`` is handled
     as ``text/css`` and ``.ts`` and ``.tsx`` are handled as ``text/javascript``.
 
-    By default, the tags are added to the HTML by the :meth:`~common_frontend.templatetags.bundler.bundler_embed_collected_assets`.
+    By default, the tags are added to the HTML by the :meth:`~alliance_django_frontend.templatetags.bundler.bundler_embed_collected_assets`.
     This allows assets to be embedded as needed in templates but all added in one place in the HTML (most likely the ``<head>``).
     You can force the tags to be outputted inline with ``inline=True``.
 
-    NOTE: This tag only accepts static values as :class:`extract_frontend_assets <common_frontend.management.commands.extract_frontend_assets.Command>`
+    NOTE: This tag only accepts static values as :class:`extract_frontend_assets <alliance_django_frontend.management.commands.extract_frontend_assets.Command>`
     needs to be able to statically generate a list of paths that need to be built for production.
 
     Args:
         content_type: (optional) If set to either 'css' or 'js' only assets of the matching type will be embedded. If omitted
             both types will be included (if available).
         inline: If ``True`` the tags will be embedded inline, otherwise they will be added using the
-            :meth:`~common_frontend.templatetags.bundler.bundler_embed_collected_assets` tag. Defaults to ``False``.
+            :meth:`~alliance_django_frontend.templatetags.bundler.bundler_embed_collected_assets` tag. Defaults to ``False``.
         html_*: any parameter with a ``html_`` prefix will have the ``html_`` stripped and passed through to the embed tag
             eg ``html_id="foo"`` would render ``<script id="foo" ...>`` for script tags
 
@@ -272,19 +272,19 @@ def bundler_embed(parser: template.base.Parser, token: template.base.Token):
 def bundler_embed_collected_assets():
     """Add tags to header for assets required in page
 
-    This works with :class:`~common_frontend.bundler.context.BundlerAssetContext` to collect all the assets used
-    within a template. See :class:`~common_frontend.bundler.middleware.BundlerAssetContextMiddleware` for how
+    This works with :class:`~alliance_django_frontend.bundler.context.BundlerAssetContext` to collect all the assets used
+    within a template. See :class:`~alliance_django_frontend.bundler.middleware.BundlerAssetContextMiddleware` for how
     this context is created for you in Django views.
 
     Because each asset must specify asset paths statically, this tag can retrieve assets from ``BundlerAssetContext``
     and embed the required tags before the rest of the template is rendered.
 
-    Some existing assets are those created by the :func:`~common_frontend.templatetags.vanilla_extract.stylesheet`,
-    :func:`~common_frontend.templatetags.react.component`, or :func:`~common_frontend.templatetags.bundler.bundler_embed`
+    Some existing assets are those created by the :func:`~alliance_django_frontend.templatetags.vanilla_extract.stylesheet`,
+    :func:`~alliance_django_frontend.templatetags.react.component`, or :func:`~alliance_django_frontend.templatetags.bundler.bundler_embed`
     tags. See the individual implementations for options that may influence how they are embedded (e.g. the ``inline``
     option provided by ``bundler_embed``).
 
-    :data:`~common_frontend.bundler.context.BundlerAssetContext.html_target` will control whether scripts are included
+    :data:`~alliance_django_frontend.bundler.context.BundlerAssetContext.html_target` will control whether scripts are included
     and whether CSS is outputted in line in ``style`` tags or linked externally.
 
     Generally, this tag should be used in the ``<head>`` of the HTML document. All script tags are non-blocking by default.

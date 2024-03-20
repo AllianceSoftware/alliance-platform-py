@@ -3,8 +3,8 @@ from __future__ import annotations
 from django import template
 from django.template import Library
 
-from common_frontend.alliance_ui.utils import get_module_import_source
-from common_frontend.templatetags.react import parse_component_tag
+from .utils import get_module_import_source
+from ..templatetags.react import parse_component_tag
 
 
 def table(parser: template.base.Parser, token: template.base.Token):

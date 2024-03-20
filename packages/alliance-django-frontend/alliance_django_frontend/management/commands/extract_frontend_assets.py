@@ -5,6 +5,9 @@ import json
 from pathlib import Path
 import re
 import sys
+from typing import cast
+from typing import Collection
+from typing import Any
 
 from django.conf import settings
 from django.core.management import BaseCommand
@@ -14,12 +17,12 @@ from django.template import TemplateSyntaxError
 from django.template.loader import get_template
 from django.template.utils import get_app_template_dirs
 
-from common_frontend.bundler.asset_registry import frontend_asset_registry
-from common_frontend.bundler.context import BundlerAssetContext
+from ...bundler.asset_registry import frontend_asset_registry
+from ...bundler.context import BundlerAssetContext
 
 
 @lru_cache
-def get_all_templates_files():
+def get_all_templates_files() -> list[Path]:
     """Scans all template dirs for template files
 
     Will exclude any templates the match an entry in :setting:`FRONTEND_EXTRACT_ASSETS_EXCLUDE_DIRS`.
@@ -44,7 +47,7 @@ def get_all_templates_files():
     return files
 
 
-def extract_asset_filenames():
+def extract_asset_filenames() -> tuple[list[Any], dict[str, Collection[str]], list[str], list[str]]:
     """Scans all template files for assets that need to be bundled
 
     Returns a 4-tuple: list of filenames, breakdown dict, errors and warnings
@@ -63,7 +66,7 @@ def extract_asset_filenames():
         for file in get_all_templates_files():
             # TODO: ability to opt out specific templates?
             try:
-                get_template(str(file))
+                get_template(cast(str, file))
                 template_assets = [p for p in asset_context.get_asset_paths() if p not in prev]
                 prev = asset_context.get_asset_paths()
                 if template_assets:
@@ -90,7 +93,7 @@ class Command(BaseCommand):
     """
     Extracts used frontend assets from templates used
 
-    This works with any template nodes that extend :class:`~common_frontend.bundler.context.BundlerAsset`. All templates
+    This works with any template nodes that extend :class:`~alliance_django_frontend.bundler.context.BundlerAsset`. All templates
     in the system are loaded to gather all used assets. You can exclude specific directories by setting
     :setting:`FRONTEND_EXTRACT_ASSETS_EXCLUDE_DIRS` to either a :class:`pathlib.Path` or ``re.Pattern``.
 

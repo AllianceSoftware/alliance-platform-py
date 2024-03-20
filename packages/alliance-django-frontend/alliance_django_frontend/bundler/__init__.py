@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.utils.module_loading import import_string
 
-from common_frontend.bundler.base import BaseBundler
+from .base import BaseBundler
 
 
 # Removed caching as it causes problems with tests is you don't force the cache clear (e.g. if one test

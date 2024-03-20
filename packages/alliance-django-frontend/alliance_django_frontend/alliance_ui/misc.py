@@ -4,12 +4,12 @@ from django import template
 from django.template import Context
 from django.template import Library
 
-from common_frontend.bundler import get_bundler
-from common_frontend.bundler.base import ResolveContext
-from common_frontend.templatetags.react import ComponentNode
-from common_frontend.templatetags.react import ImportComponentSource
-from common_frontend.templatetags.react import NestedComponentPropAccumulator
-from common_frontend.templatetags.react import parse_component_tag
+from ..bundler import get_bundler
+from ..bundler.base import ResolveContext
+from ..templatetags.react import ComponentNode
+from ..templatetags.react import ImportComponentSource
+from ..templatetags.react import NestedComponentPropAccumulator
+from ..templatetags.react import parse_component_tag
 
 
 def fragment_component(parser: template.base.Parser, token: template.base.Token):

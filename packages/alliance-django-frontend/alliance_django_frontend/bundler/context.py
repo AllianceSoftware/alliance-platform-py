@@ -11,20 +11,20 @@ from django.http import HttpRequest
 from django.template import Origin
 from django.utils.module_loading import import_string
 
-from common_frontend.bundler import get_bundler
-from common_frontend.bundler.asset_registry import frontend_asset_registry as default_frontend_asset_registry
-from common_frontend.bundler.asset_registry import FrontendAssetRegistry
-from common_frontend.bundler.base import AssetFileEmbed
-from common_frontend.bundler.base import BaseBundler
-from common_frontend.bundler.base import html_target_browser
-from common_frontend.bundler.base import HtmlGenerationTarget
-from common_frontend.bundler.ssr import SSRItem
+from . import get_bundler
+from .asset_registry import frontend_asset_registry as default_frontend_asset_registry
+from .asset_registry import FrontendAssetRegistry
+from .base import AssetFileEmbed
+from .base import BaseBundler
+from .base import html_target_browser
+from .base import HtmlGenerationTarget
+from .ssr import SSRItem
 
 GLOBAL_BUNDLER_ASSET_CONTEXT = threading.local()
 
 
 class NoActiveBundlerAssetContext(Exception):
-    """Thrown if :meth:`~common_frontend.bundler.context.BundlerAssetContext.get_current` is called when no context is active"""
+    """Thrown if :meth:`~alliance_django_frontend.bundler.context.BundlerAssetContext.get_current` is called when no context is active"""
 
     pass
 
@@ -52,11 +52,11 @@ class BundlerAsset:
     the bundler to know what files to compile based on usage in templates. For example a Template node must be able to
     resolve its argument when the node is constructed - it cannot depend on resolving it based on context.
 
-    On creation, each node is added to the current context with :meth:`~common_frontend.bundler.context.BundlerAssetContext.add_asset`.
+    On creation, each node is added to the current context with :meth:`~alliance_django_frontend.bundler.context.BundlerAssetContext.add_asset`.
 
-    The :class:`~common_frontend.bundler.context.BundlerAssetContext` can then be queried to see what assets have been used.
+    The :class:`~alliance_django_frontend.bundler.context.BundlerAssetContext` can then be queried to see what assets have been used.
 
-    :class:`extract_frontend_assets <common_frontend.management.commands.extract_frontend_assets.Command>` uses this to work out what assets are used anywhere in the app by loading all templates. Any
+    :class:`extract_frontend_assets <alliance_django_frontend.management.commands.extract_frontend_assets.Command>` uses this to work out what assets are used anywhere in the app by loading all templates. Any
     template nodes that extend ``BundlerAsset`` will be automatically added to the context.
     """
 
@@ -78,7 +78,7 @@ class BundlerAsset:
     def get_paths_for_bundling(self) -> list[Path]:
         """Return a list of paths to files this asset requires
 
-        These will be included in the build process - see :class:`extract_frontend_assets <common_frontend.management.commands.extract_frontend_assets.Command>`
+        These will be included in the build process - see :class:`extract_frontend_assets <alliance_django_frontend.management.commands.extract_frontend_assets.Command>`
         """
         raise NotImplementedError
 
@@ -130,8 +130,8 @@ class BundlerAssetContext:
     """
     Class that acts as container for global context data for React apps and a context manager
 
-    When called in a django request and :class:`~common_frontend.bundler.middleware.BundlerAssetContextMiddleware` is
-    used a context always available from :meth:`~common_frontend.bundler.context.BundlerAssetContext.get_current()`.
+    When called in a django request and :class:`~alliance_django_frontend.bundler.middleware.BundlerAssetContextMiddleware` is
+    used a context always available from :meth:`~alliance_django_frontend.bundler.context.BundlerAssetContext.get_current()`.
 
     Usage::
 
@@ -144,7 +144,7 @@ class BundlerAssetContext:
             # Retrieve the paths for all assets that were added to the context
             context.get_asset_paths()
 
-    Usage in a django view when :class:`~common_frontend.bundler.middleware.BundlerAssetContextMiddleware` is active::
+    Usage in a django view when :class:`~alliance_django_frontend.bundler.middleware.BundlerAssetContextMiddleware` is active::
 
         context = BundlerAssetContext.get_current()
         context.get_asset_paths()
@@ -187,7 +187,7 @@ class BundlerAssetContext:
         self.current_id = 0
         self.id_prefix = f"{threading.get_ident()}_{id(self)}_"
         self.is_middleware_registered = (
-            "common_frontend.bundler.middleware.BundlerAssetContextMiddleware" in settings.MIDDLEWARE
+            ".middleware.BundlerAssetContextMiddleware" in settings.MIDDLEWARE
         )
         self.embed_item_queue = AssetEmbedFileQueue()
         self.embed_collected_assets_tag_placeholder = None
@@ -200,9 +200,9 @@ class BundlerAssetContext:
     def queue_embed_file(self, item: AssetFileEmbed):
         """Queues an asset to be embedded in the final HTML
 
-        The actual embedding and insertion into the HTML happens in :meth:`~common_frontend.bundler.context.BundlerAssetContext.post_process`,
-        which is called by :class:`~common_frontend.bundler.middleware.BundlerAssetContextMiddleware` which
-        relies on :meth:`~common_frontend.templatetags.bundler.bundler_embed_collected_assets` being used in the template.
+        The actual embedding and insertion into the HTML happens in :meth:`~alliance_django_frontend.bundler.context.BundlerAssetContext.post_process`,
+        which is called by :class:`~alliance_django_frontend.bundler.middleware.BundlerAssetContextMiddleware` which
+        relies on :meth:`~alliance_django_frontend.templatetags.bundler.bundler_embed_collected_assets` being used in the template.
         Typically, this tag would exist in any base templates that are used for all pages.
 
         ``item`` is responsible for generating the actual HTML to embed which typically depends on the bundler.
@@ -231,9 +231,9 @@ class BundlerAssetContext:
 
     @classmethod
     def get_current(cls) -> BundlerAssetContext:
-        """Get the current BundlerAssetContext or raise :class:`~common_frontend.bundler.context.NoActiveBundlerAssetContext` if none
+        """Get the current BundlerAssetContext or raise :class:`~alliance_django_frontend.bundler.context.NoActiveBundlerAssetContext` if none
 
-        When called in a django request and :class:`~common_frontend.bundler.middleware.BundlerAssetContextMiddleware` is
+        When called in a django request and :class:`~alliance_django_frontend.bundler.middleware.BundlerAssetContextMiddleware` is
         used one will always be available.
         """
         if not hasattr(GLOBAL_BUNDLER_ASSET_CONTEXT, "contexts") or not GLOBAL_BUNDLER_ASSET_CONTEXT.contexts:
@@ -248,11 +248,11 @@ class BundlerAssetContext:
 
         Returns:
             A string which is the placeholder that should be outputted in the HTML. It will be replaced by
-            :class:`~common_frontend.bundler.middleware.BundlerAssetContextMiddleware`.
+            :class:`~alliance_django_frontend.bundler.middleware.BundlerAssetContextMiddleware`.
         """
         if not self.is_middleware_registered:
             raise ValueError(
-                "`queue_ssr` cannot be used without `BundlerAssetContextMiddleware`. Add 'common_frontend.bundler.middleware.BundlerAssetContextMiddleware' to `MIDDLEWARE`."
+                "`queue_ssr` cannot be used without `BundlerAssetContextMiddleware`. Add 'alliance_django_frontend.bundler.middleware.BundlerAssetContextMiddleware' to `MIDDLEWARE`."
             )
         placeholder = f"<!-- ___SSR_PLACEHOLDER_{len(self.ssr_queue)}___ -->"
         self.ssr_queue[placeholder] = item
@@ -283,7 +283,7 @@ class BundlerAssetContext:
         # Check all assets will be included in the production build
         unknown_assets = set()
 
-        from common_frontend.management.commands.extract_frontend_assets import get_all_templates_files
+        from ..management.commands.extract_frontend_assets import get_all_templates_files
 
         known_templates = get_all_templates_files()
 
@@ -336,17 +336,17 @@ class BundlerAssetContext:
     def post_process(self, content: str):
         """Given the HTML content, post process it to embed assets and render server side rendered components
 
-        This is typically called by :class:`~common_frontend.bundler.middleware.BundlerAssetContextMiddleware`, but can
+        This is typically called by :class:`~alliance_django_frontend.bundler.middleware.BundlerAssetContextMiddleware`, but can
         be called directly if rendering templates of other purposes such as emails of PDFs. ``content`` should be the
         full HTML content of the page, including the ``<head>`` and ``<body>`` tags. This function will handle embedding
-        any necessary assets based on calls to :meth:`~common_frontend.bundler.context.BundlerAssetContext.queue_embed_file`
-        as well as any server side rendered components queued with :meth:`~common_frontend.bundler.context.BundlerAssetContext.queue_ssr`.
+        any necessary assets based on calls to :meth:`~alliance_django_frontend.bundler.context.BundlerAssetContext.queue_embed_file`
+        as well as any server side rendered components queued with :meth:`~alliance_django_frontend.bundler.context.BundlerAssetContext.queue_ssr`.
 
         This should be the last step before the HTML is outputted to the client.
         """
         try:
             if self.ssr_queue:
-                from common_frontend.bundler.ssr import BundlerAssetServerSideRenderer
+                from .ssr import BundlerAssetServerSideRenderer
 
                 global_context = {}
                 if self.request:

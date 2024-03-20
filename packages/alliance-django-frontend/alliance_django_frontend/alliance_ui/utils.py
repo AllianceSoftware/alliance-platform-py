@@ -3,9 +3,9 @@ from __future__ import annotations
 from django.template import Origin
 from django.template.base import UNKNOWN_SOURCE
 
-from common_frontend.bundler import get_bundler
-from common_frontend.bundler.base import ResolveContext
-from common_frontend.templatetags.react import ImportComponentSource
+from ..bundler import get_bundler
+from ..bundler.base import ResolveContext
+from ..templatetags.react import ImportComponentSource
 
 
 def get_module_import_source(

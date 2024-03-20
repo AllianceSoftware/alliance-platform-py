@@ -6,12 +6,12 @@ from django.template import Context
 from django.template import Origin
 from django.template.base import UNKNOWN_SOURCE
 
-from common_frontend.bundler import get_bundler
-from common_frontend.bundler.base import ResolveContext
-from common_frontend.bundler.context import BundlerAsset
-from common_frontend.bundler.vanilla_extract import resolve_vanilla_extract_class_mapping
-from common_lib.templatetags.common import is_static_expression
-from common_lib.templatetags.common import parse_tag_arguments
+from ..bundler import get_bundler
+from ..bundler.base import ResolveContext
+from ..bundler.context import BundlerAsset
+from ..bundler.vanilla_extract import resolve_vanilla_extract_class_mapping
+from allianceutils.template import is_static_expression
+from allianceutils.template import parse_tag_arguments
 
 register = template.Library()
 
@@ -55,7 +55,7 @@ def stylesheet(parser: template.base.Parser, token: template.base.Token):
 
     For more information on how paths are resolved, refer to the documentation on :ref:`resolving_paths`.
 
-    The CSS file is not embedded inline where the tag is used, rather it is added by the :meth:`~common_frontend.templatetags.bundler.bundler_embed`
+    The CSS file is not embedded inline where the tag is used, rather it is added by the :meth:`~alliance_django_frontend.templatetags.bundler.bundler_embed`
     tag.
 
     Usage::
@@ -70,7 +70,7 @@ def stylesheet(parser: template.base.Parser, token: template.base.Token):
         </div>
 
 
-    .. note:: If you need to include a plain CSS file use the :meth:`~common_frontend.templatetags.bundler.bundler_embed`
+    .. note:: If you need to include a plain CSS file use the :meth:`~alliance_django_frontend.templatetags.bundler.bundler_embed`
             tag instead.
 
     """

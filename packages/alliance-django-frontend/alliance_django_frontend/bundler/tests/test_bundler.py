@@ -6,12 +6,12 @@ from django.conf import settings
 from django.test import override_settings
 from django.test import TestCase
 
-from common_frontend.bundler.base import html_target_browser
-from common_frontend.bundler.base import RegExAliasResolver
-from common_frontend.bundler.base import RelativePathResolver
-from common_frontend.bundler.base import ResolveContext
-from common_frontend.bundler.base import SourceDirResolver
-from common_frontend.bundler.vite import ViteBundler
+from ..base import html_target_browser
+from ..base import RegExAliasResolver
+from ..base import RelativePathResolver
+from ..base import ResolveContext
+from ..base import SourceDirResolver
+from ..vite import ViteBundler
 
 
 class TestBundler(TestCase):

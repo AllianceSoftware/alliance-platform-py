@@ -2,37 +2,58 @@ from contextlib import contextmanager
 from typing import cast
 
 from django.contrib.sessions.backends.base import SessionBase
+from django.contrib.auth.models import PermissionsMixin
 from django.http import HttpRequest
 from django.template import Context
 from django.template import Template
 from django.test import override_settings
 from django.test import TestCase
 from django.urls import reverse
+from factory import Faker
+from factory.django import DjangoModelFactory
 
-from common_frontend.bundler.context import BundlerAssetContext
-from common_frontend.templatetags.tests.test_bundler_templatetags import bundler_kwargs
-from common_frontend.templatetags.tests.test_bundler_templatetags import bypass_frontend_asset_registry
-from common_frontend.templatetags.tests.test_bundler_templatetags import TestViteBundler
-from common_lib.permission import AmbiguousGlobalPermissionWarning
-from common_lib.tests.util import warning_filter
-from xenopus_frog_app.models import User
-from xenopus_frog_app.tests.factory import UserFactory
+from ...bundler.context import BundlerAssetContext
+from .test_bundler_templatetags import bundler_kwargs
+from .test_bundler_templatetags import bypass_frontend_asset_registry
+from .test_bundler_templatetags import TestViteBundler
+from allianceutils.auth.permission import AmbiguousGlobalPermissionWarning
+
+from allianceutils.auth.models import GenericUserProfile
+from allianceutils.tests.util import warning_filter
+
+
+class TestUser(GenericUserProfile, PermissionsMixin):
+    pass
+
+    class Meta:
+        abstract = False
+
+
+class UserFactory(DjangoModelFactory):
+    first_name: Faker[str, str] = Faker("first_name")
+    last_name: Faker[str, str] = Faker("last_name")
+    email: Faker[str, str] = Faker(
+        "email", domain="example.com"
+    )  # reserved by IANA, sending email to these addresses wont hit
+    is_superuser = False
+
+    class Meta:
+        model = TestUser
 
 
 @override_settings(
     FRONTEND_DEBUG_COMPONENT_OUTPUT=False,
     AUTHENTICATION_BACKENDS=(
-        "xenopus_frog_auth.backends.ProfileModelBackend",
-        # This uses test_common_frontend/rules. This works with reverse_if_probably_allowed as it
+        # This uses alliance_django_frontend.test_utils.rules. This works with reverse_if_probably_allowed as it
         # will correctly infer object level permissions without us needing to setup a custom csv permissions
         # for the test cases
         "rules.permissions.ObjectPermissionBackend",
     ),
 )
-@override_settings(ROOT_URLCONF="common_frontend.test_common_frontend.urls")
+@override_settings(ROOT_URLCONF="alliance_django_frontend.test_utils.urls")
 @warning_filter("ignore", category=AmbiguousGlobalPermissionWarning)
 class UrlFilterPermTemplateTagsTestCase(TestCase):
-    PERM = "test_common_frontend.link_is_allowed"
+    PERM = "test_utils.link_is_allowed"
     GLOBAL_PERM_URL = "url_with_perm_global"
     OBJECT_PERM_URL = "url_with_perm_object"
     MULTIPLE_ARGS_URL = "url_with_multiple_args"
@@ -49,13 +70,13 @@ class UrlFilterPermTemplateTagsTestCase(TestCase):
         )
         self.dev_url = self.test_development_bundler.dev_server_url
 
-    def get_privileged_user(self) -> User:
-        user = cast(User, UserFactory(is_superuser=True))
+    def get_privileged_user(self) -> TestUser:
+        user = cast(TestUser, UserFactory(is_superuser=True))
         self.assertTrue(user.has_perm(self.PERM))
         return user
 
-    def get_unprivileged_user(self) -> User:
-        user = cast(User, UserFactory(is_superuser=False))
+    def get_unprivileged_user(self) -> TestUser:
+        user = cast(TestUser, UserFactory(is_superuser=False))
         self.assertFalse(user.has_perm(self.PERM))
         return user
 

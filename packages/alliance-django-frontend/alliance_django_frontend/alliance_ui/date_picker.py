@@ -6,10 +6,10 @@ from django.template import Library
 from django.utils.dateparse import parse_date
 from django.utils.dateparse import parse_datetime
 
-from common_frontend.alliance_ui.utils import get_module_import_source
-from common_frontend.templatetags.react import ComponentNode
-from common_frontend.templatetags.react import ComponentProps
-from common_frontend.templatetags.react import parse_component_tag
+from .utils import get_module_import_source
+from ..templatetags.react import ComponentNode
+from ..templatetags.react import ComponentProps
+from ..templatetags.react import parse_component_tag
 
 
 class DatePickerNode(ComponentNode):

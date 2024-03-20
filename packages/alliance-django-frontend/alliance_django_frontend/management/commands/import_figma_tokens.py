@@ -7,27 +7,27 @@ from typing import cast
 from django.conf import settings
 from django.core.management import BaseCommand
 
-from common_frontend.codegen.printer import TypescriptSourceFileWriter
-from common_frontend.codegen.typescript import AsExpression
-from common_frontend.codegen.typescript import construct_object_property_key
-from common_frontend.codegen.typescript import convert_to_node
-from common_frontend.codegen.typescript import create_accessor
-from common_frontend.codegen.typescript import ExportKeyword
-from common_frontend.codegen.typescript import Identifier
-from common_frontend.codegen.typescript import ImportDefaultSpecifier
-from common_frontend.codegen.typescript import ImportSpecifier
-from common_frontend.codegen.typescript import Node
-from common_frontend.codegen.typescript import NodeLike
-from common_frontend.codegen.typescript import ObjectLiteralExpression
-from common_frontend.codegen.typescript import ObjectProperty
-from common_frontend.codegen.typescript import PropertyAccessExpression
-from common_frontend.codegen.typescript import SingleLineComment
-from common_frontend.codegen.typescript import SpreadAssignment
-from common_frontend.codegen.typescript import StringLiteral
-from common_frontend.codegen.typescript import TemplateExpression
-from common_frontend.codegen.typescript import TypeReference
-from common_frontend.codegen.typescript import VariableDeclaration
-from common_frontend.codegen.typescript import VariableDeclarator
+from ...codegen.printer import TypescriptSourceFileWriter
+from ...codegen.typescript import AsExpression
+from ...codegen.typescript import construct_object_property_key
+from ...codegen.typescript import convert_to_node
+from ...codegen.typescript import create_accessor
+from ...codegen.typescript import ExportKeyword
+from ...codegen.typescript import Identifier
+from ...codegen.typescript import ImportDefaultSpecifier
+from ...codegen.typescript import ImportSpecifier
+from ...codegen.typescript import Node
+from ...codegen.typescript import NodeLike
+from ...codegen.typescript import ObjectLiteralExpression
+from ...codegen.typescript import ObjectProperty
+from ...codegen.typescript import PropertyAccessExpression
+from ...codegen.typescript import SingleLineComment
+from ...codegen.typescript import SpreadAssignment
+from ...codegen.typescript import StringLiteral
+from ...codegen.typescript import TemplateExpression
+from ...codegen.typescript import TypeReference
+from ...codegen.typescript import VariableDeclaration
+from ...codegen.typescript import VariableDeclarator
 
 
 def arg_json_path(value):
@@ -46,7 +46,7 @@ tokens_path = settings.PROJECT_DIR / "styles/tokens.css.ts"
 base_tokens_path = settings.PROJECT_DIR / "styles/baseTokens.css.ts"
 
 
-def generate_palette(main_colors):
+def generate_palette(main_colors) -> None:
     palette: dict[str, dict[str, str]] = {}
     for color in ["gray", "primary", "secondary", "error", "warning", "success", "base"]:
         palette[color] = {}
@@ -72,7 +72,7 @@ def generate_palette(main_colors):
         sfw.add_node(node)
 
 
-def resolve_import_url_no_ext(path: Path | str):
+def resolve_import_url_no_ext(path: Path | str) -> str:
     """Don't include typescript extensions for code generated for tokens.
 
     Without this will trigger lint warnings about unnecessary extensions.

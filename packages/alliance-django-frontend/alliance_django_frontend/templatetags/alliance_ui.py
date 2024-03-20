@@ -7,18 +7,18 @@ from django.db.models import Model
 from django.template import Context
 from django.urls import reverse
 
-from common_frontend.alliance_ui.button import register_button
-from common_frontend.alliance_ui.date_picker import register_date_picker
-from common_frontend.alliance_ui.icon import register_icon
-from common_frontend.alliance_ui.inline_alert import register_inline_alert
-from common_frontend.alliance_ui.menubar import register_menubar
-from common_frontend.alliance_ui.misc import register_misc
-from common_frontend.alliance_ui.pagination import register_pagination
-from common_frontend.alliance_ui.table import register_table
-from common_frontend.alliance_ui.time_input import register_time_input
-from common_frontend.templatetags.react import DeferredProp
-from common_frontend.templatetags.react import OmitComponentFromRendering
-from common_lib.permission import reverse_if_probably_allowed
+from ..alliance_ui.button import register_button
+from ..alliance_ui.date_picker import register_date_picker
+from ..alliance_ui.icon import register_icon
+from ..alliance_ui.inline_alert import register_inline_alert
+from ..alliance_ui.menubar import register_menubar
+from ..alliance_ui.misc import register_misc
+from ..alliance_ui.pagination import register_pagination
+from ..alliance_ui.table import register_table
+from ..alliance_ui.time_input import register_time_input
+from .react import DeferredProp
+from .react import OmitComponentFromRendering
+from allianceutils.auth.permission import reverse_if_probably_allowed
 
 register = template.Library()
 

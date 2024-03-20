@@ -10,11 +10,11 @@ from django.conf import settings
 from django.http import HttpRequest
 import requests
 
-from common_frontend.bundler import get_bundler
-from common_frontend.bundler.base import BaseBundler
-from common_lib.middleware import CurrentRequestMiddleware
+from .import get_bundler
+from .base import BaseBundler
+from allianceutils.middleware import CurrentRequestMiddleware
 
-logger = logging.getLogger("common_frontend")
+logger = logging.getLogger("alliance_django_frontend")
 
 
 def resolve_vanilla_extract_cache_names(bundler: BaseBundler, filename: Path | str):

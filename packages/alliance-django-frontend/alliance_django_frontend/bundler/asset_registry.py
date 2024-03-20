@@ -7,9 +7,9 @@ class FrontendAssetRegistry:
     """Stores any extra assets in addition to those found in templates that should be included in the frontend build
 
     This should be populated on startup such that the assets are available when
-    :class:`extract_frontend_assets <common_frontend.management.commands.extract_frontend_assets.Command>` runs.
+    :class:`extract_frontend_assets <alliance_django_frontend.management.commands.extract_frontend_assets.Command>` runs.
 
-    In most cases only a single registry is required. :data:`~common_frontend.bundler.asset_registry.frontend_asset_registry`
+    In most cases only a single registry is required. :data:`~alliance_django_frontend.bundler.asset_registry.frontend_asset_registry`
     is the default used throughout the site.
 
     .. warning::
@@ -21,7 +21,7 @@ class FrontendAssetRegistry:
 
     Usage::
 
-        from common_frontend.bundler.asset_registry import frontend_asset_registry
+        from alliance_django_frontend.bundler.asset_registry import frontend_asset_registry
 
         frontend_asset_registry.add_asset(
             settings.PROJECT_DIR / "frontend/src/file1.tsx",

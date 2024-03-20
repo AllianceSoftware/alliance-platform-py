@@ -18,14 +18,14 @@ from django.conf import settings
 from django.templatetags.static import static
 import requests
 
-from common_frontend.bundler.base import AssetFileEmbed
-from common_frontend.bundler.base import BaseBundler
-from common_frontend.bundler.base import DevServerCheck
-from common_frontend.bundler.base import HtmlGenerationTarget
-from common_frontend.bundler.base import PathResolver
-from common_frontend.bundler.vanilla_extract import resolve_vanilla_extract_class_mapping
+from .base import AssetFileEmbed
+from .base import BaseBundler
+from .base import DevServerCheck
+from .base import HtmlGenerationTarget
+from .base import PathResolver
+from .vanilla_extract import resolve_vanilla_extract_class_mapping
 
-logger = logging.getLogger("common_frontend")
+logger = logging.getLogger("alliance_django_frontend")
 
 
 def _create_html_tag(tag_name: str, attrs: dict[str, str]):
@@ -296,7 +296,7 @@ class ViteBundler(BaseBundler):
 
         Args:
             root_dir: The root path everything sits under; all other paths are resolved relative to this
-            path_resolvers: A list of :class:`~common_frontend.bundler.base.PathResolver` instances used to resolve paths
+            path_resolvers: A list of :class:`~alliance_django_frontend.bundler.base.PathResolver` instances used to resolve paths
             server_build_dir: The directory SSR files are outputted to (see ``yarn build:ssr``)
             build_dir: The directory client side files are outputted to (see ``yarn build:client``)
             server_host: The hostname used for the dev server (e.g. ``127.0.0.1``)
@@ -472,7 +472,7 @@ class ViteBundler(BaseBundler):
 
     @lru_cache()
     def resolve_ssr_import_path(self, path: Path | str) -> Path | str:
-        """See :meth:`~common_frontend.bundler.base.BaseBundler.resolve_ssr_import_path`"""
+        """See :meth:`~alliance_django_frontend.bundler.base.BaseBundler.resolve_ssr_import_path`"""
         if self.is_development():
             return path
         return self.server_build_dir / self.server_build_manifest.get_asset(path).file

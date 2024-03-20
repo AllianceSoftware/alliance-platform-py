@@ -10,9 +10,9 @@ from packaging.specifiers import SpecifierSet
 from packaging.version import InvalidVersion
 from packaging.version import Version
 
-from common_frontend.dom_possible_standard_names import possible_standard_names
+from .dom_possible_standard_names import possible_standard_names
 
-logger = logging.getLogger("common_frontend")
+logger = logging.getLogger("alliance_django_frontend")
 
 
 def get_node_ver(node_path: str) -> Version | None:

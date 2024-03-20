@@ -8,17 +8,15 @@ from django.http import JsonResponse
 from django.views.generic import DetailView
 from django.views.generic import TemplateView
 
-from common_crud.views import ObjectPermissionRequiredMixin
-from common_frontend.bundler.context import BundlerAssetContext
-from common_frontend.templatetags.react import CommonComponentSource
-from common_frontend.templatetags.react import ComponentProps
-from common_frontend.templatetags.react import ComponentSSRItem
+from ..bundler.context import BundlerAssetContext
+from ..templatetags.react import CommonComponentSource
+from ..templatetags.react import ComponentProps
+from ..templatetags.react import ComponentSSRItem
 
 UserModel = get_user_model()
 
-
 def bundler_asset_context_view(request: HttpRequest, **kwargs) -> HttpResponse:
-    """This view is used to test ID's generated are unique, particularly when generating in different threads"""
+    """This view is used to test IDs generated are unique, particularly when generating in different threads"""
     data = json.loads(request.body)
     return JsonResponse(
         {
@@ -50,10 +48,13 @@ def bundler_ssr_view(request: HttpRequest, **kwargs) -> HttpResponse:
 
 
 class TestUrlWithPermGlobalView(PermissionRequiredMixin, TemplateView):
-    permission_required = "test_common_frontend.link_is_allowed"
+    permission_required = "test_utils.link_is_allowed"
 
 
-class TestUrlWithPermObjectView(ObjectPermissionRequiredMixin, DetailView):
-    permission_required = "test_common_frontend.link_is_allowed"
+class TestUrlWithPermObjectView(DetailView):
+    permission_required = "test_utils.link_is_allowed"
 
     model = UserModel
+
+    def has_permission(self):
+        return self.request.user.has_perms(self.permission_required, self.get_object())

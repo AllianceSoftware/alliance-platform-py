@@ -10,8 +10,8 @@ from django.test import override_settings
 from django.test import TestCase
 from django.urls import reverse
 
-from common_frontend.bundler.context import BundlerAsset
-from common_frontend.bundler.context import BundlerAssetContext
+from ..context import BundlerAsset
+from ..context import BundlerAssetContext
 
 
 def execute_request(
@@ -61,12 +61,12 @@ def execute_request(
     return thread_responses
 
 
-@override_settings(ROOT_URLCONF="common_frontend.test_common_frontend.urls")
+@override_settings(ROOT_URLCONF="alliance_django_frontend.test_utils.urls")
 @modify_settings(
     MIDDLEWARE={
         "remove": ["stronghold.middleware.LoginRequiredMiddleware"],
         "append": [
-            "common_frontend.bundler.middleware.BundlerAssetContextMiddleware",
+            "alliance_django_frontend.bundler.middleware.BundlerAssetContextMiddleware",
         ],
     },
 )
@@ -93,7 +93,7 @@ class BundlerAssetContextTestCase(TestCase):
     def test_middleware_queue_ssr_json_response(self):
         # Can't SSR if response isn't text/html - check for this
         with mock.patch(
-            "common_frontend.bundler.ssr.BundlerAssetServerSideRenderer.process_ssr"
+            "alliance_django_frontend.bundler.ssr.BundlerAssetServerSideRenderer.process_ssr"
         ) as mock_method:
             with self.assertWarns(
                 UserWarning, msg="There are items to SSR but the response is application/json"
@@ -107,7 +107,7 @@ class BundlerAssetContextTestCase(TestCase):
 
     def test_middleware_queue_ssr(self):
         with mock.patch(
-            "common_frontend.bundler.ssr.BundlerAssetServerSideRenderer.process_ssr"
+            "alliance_django_frontend.bundler.ssr.BundlerAssetServerSideRenderer.process_ssr"
         ) as mock_method:
             # Mock server rendering to just return dummy html for each item
             mock_method.return_value = {

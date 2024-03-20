@@ -4,11 +4,11 @@ from django.template import Library
 from django.template import TemplateSyntaxError
 from django.template.base import Token
 
-from common_frontend.bundler import get_bundler
-from common_frontend.bundler.base import ResolveContext
-from common_frontend.templatetags.react import ImportComponentSource
-from common_frontend.templatetags.react import parse_component_tag
-from common_lib.templatetags.common import is_static_expression
+from ..bundler import get_bundler
+from ..bundler.base import ResolveContext
+from ..templatetags.react import ImportComponentSource
+from ..templatetags.react import parse_component_tag
+from allianceutils.template import is_static_expression
 
 
 def icon(parser: template.base.Parser, token: template.base.Token):

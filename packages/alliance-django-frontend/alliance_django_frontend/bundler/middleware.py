@@ -4,23 +4,23 @@ import warnings
 from django.http import HttpRequest
 from django.http import HttpResponse
 
-from common_frontend.bundler.context import BundlerAssetContext
+from .context import BundlerAssetContext
 
-logger = logging.getLogger("common_frontend")
+logger = logging.getLogger("alliance_django_frontend")
 
 
 class BundlerAssetContextMiddleware:
-    """Middleware that wraps requests in a :class:`~common_frontend.bundler.context.BundlerAssetContext` manager
+    """Middleware that wraps requests in a :class:`~alliance_django_frontend.bundler.context.BundlerAssetContext` manager
 
-    Within a Django request you can call :meth:`~common_frontend.bundler.context.BundlerAssetContext.get_current` and
-    it will return context instance for the current request. :class:`~common_frontend.bundler.context.BundlerAssetContext`
+    Within a Django request you can call :meth:`~alliance_django_frontend.bundler.context.BundlerAssetContext.get_current` and
+    it will return context instance for the current request. :class:`~alliance_django_frontend.bundler.context.BundlerAssetContext`
     does this on init.
 
     This is currently only used to facilitate :ref:`server side rendering <ssr>` by collecting all the items that need to
     be rendered. This works as follows:
 
-    - :class:`~common_frontend.bundler.context.SSRItem` can be queued for server side rendering using
-      :meth:`~common_frontend.bundler.context.BundlerAssetContext.queue_ssr`. The caller (e.g. a template node) must
+    - :class:`~alliance_django_frontend.bundler.context.SSRItem` can be queued for server side rendering using
+      :meth:`~alliance_django_frontend.bundler.context.BundlerAssetContext.queue_ssr`. The caller (e.g. a template node) must
       render a placeholder element in the page, e.g. ``<!-- ___SSR_PLACEHOLDER_0___ -->`` - this placeholder string is
       returned by ``queue_ssr``
     - The middleware processes the request like normal so all the HTML is generated, including all the necessary placeholders.

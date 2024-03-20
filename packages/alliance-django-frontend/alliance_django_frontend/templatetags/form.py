@@ -13,13 +13,13 @@ from django.template import TemplateSyntaxError
 from django.template.base import FilterExpression
 from django.template.base import UNKNOWN_SOURCE
 
-from common_frontend.alliance_ui.misc import RawHtmlNode
-from common_frontend.bundler import get_bundler
-from common_frontend.bundler.base import ResolveContext
-from common_frontend.forms.renderers import FormInputContextRenderer
-from common_frontend.templatetags.react import ImportComponentSource
-from common_lib.templatetags.common import parse_tag_arguments
-from common_lib.templatetags.common import resolve
+from ..alliance_ui.misc import RawHtmlNode
+from ..bundler import get_bundler
+from ..bundler.base import ResolveContext
+from ..forms.renderers import FormInputContextRenderer
+from .react import ImportComponentSource
+from allianceutils.template import parse_tag_arguments
+from allianceutils.template import resolve
 
 register = template.Library()
 

@@ -7,17 +7,17 @@ from typing import TYPE_CHECKING
 from django.template import Context
 from django.utils.timezone import is_aware
 
-from common_frontend.bundler.ssr import SSRCustomFormatSerializable
-from common_frontend.bundler.ssr import SSRSerializerContext
-from common_frontend.codegen.typescript import ArrayLiteralExpression
-from common_frontend.codegen.typescript import convert_to_node
-from common_frontend.codegen.typescript import Identifier
-from common_frontend.codegen.typescript import ImportSpecifier
-from common_frontend.codegen.typescript import NewExpression
+from .bundler.ssr import SSRCustomFormatSerializable
+from .bundler.ssr import SSRSerializerContext
+from .codegen.typescript import ArrayLiteralExpression
+from .codegen.typescript import convert_to_node
+from .codegen.typescript import Identifier
+from .codegen.typescript import ImportSpecifier
+from .codegen.typescript import NewExpression
 
 if TYPE_CHECKING:
-    from common_frontend.templatetags.react import ComponentNode
-    from common_frontend.templatetags.react import ComponentSourceCodeGenerator
+    from .templatetags.react import ComponentNode
+    from .templatetags.react import ComponentSourceCodeGenerator
 
 
 class CodeGeneratorNode:
@@ -151,6 +151,7 @@ class ZonedDateTimeProp(ComponentProp):
     """Convert a python datetime"""
 
     value: datetime.datetime
+    js_args: list[int | str]
 
     def __init__(self, value, *args, **kwargs):
         super().__init__(value, *args, **kwargs)
@@ -158,7 +159,7 @@ class ZonedDateTimeProp(ComponentProp):
         if offset is None:
             raise ValueError("ZonedDateTimeProp should only be used with aware datetimes")
         self.value = value
-        self.js_args: list[int | str] = [
+        self.js_args = [
             self.value.year,
             self.value.month,
             self.value.day,

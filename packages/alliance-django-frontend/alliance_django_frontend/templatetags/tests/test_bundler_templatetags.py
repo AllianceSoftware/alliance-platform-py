@@ -1,110 +1,35 @@
 import datetime
 import json
-from pathlib import Path
-import subprocess
 from typing import cast
 from unittest import mock
 
-from bs4 import BeautifulSoup
 from django.conf import settings
-from django.db import models
 from django.template import Context
 from django.template import Template
 from django.test import override_settings
 from django.test import SimpleTestCase
 from django.utils.timezone import make_aware
-from rest_framework import serializers
 
-from codegen.presto.decorator import view_model_codegen
-from common_frontend.bundler.asset_registry import FrontendAssetRegistry
-from common_frontend.bundler.base import HtmlGenerationTarget
-from common_frontend.bundler.context import BundlerAssetContext
-from common_frontend.bundler.ssr import SSRJsonEncoder
-from common_frontend.bundler.ssr import SSRSerializerContext
-from common_frontend.bundler.vanilla_extract import resolve_vanilla_extract_cache_names
-from common_frontend.bundler.vite import ViteBundler
-from common_frontend.templatetags.react import ComponentNode
-
-fixtures_dir = settings.BASE_DIR / "common_frontend/bundler/tests/fixtures"
-
-bundler_kwargs = dict(
-    root_dir=settings.PROJECT_DIR,
-    path_resolvers=[],
-    build_dir=fixtures_dir / "build_test",
-    server_build_dir=fixtures_dir / "server_build_test",
-    server_host="localhost",
-    server_port="5173",
-    server_protocol="http",
-)
-
+from ...bundler.base import HtmlGenerationTarget
+from ...bundler.context import BundlerAssetContext
+from ...bundler.ssr import SSRJsonEncoder
+from ...bundler.ssr import SSRSerializerContext
+from ...bundler.vanilla_extract import resolve_vanilla_extract_cache_names
+from ..react import ComponentNode
+from ...test_utils.bundler import fixtures_dir
+from ...test_utils.bundler import bundler_kwargs
+from ...test_utils.bundler import format_code
+from ...test_utils.bundler import TestViteBundler
+from ...test_utils.bundler import bypass_frontend_asset_registry
 
 inline_css_prod = {
     fixtures_dir / "build_test/assets/Button-abc123.css": ".prod_button { color: red; }",
 }
 
-
-def run_prettier(code):
-    p = subprocess.run(
-        [
-            str(settings.PROJECT_DIR / "node_modules/.bin/prettier"),
-            "--stdin-filepath",
-            "test.ts",
-        ],
-        input=code,
-        capture_output=True,
-        text=True,
-    )
-    if p.returncode != 0:
-        raise ValueError("Failed to format code")
-    return p.stdout
-
-
-def format_code(code: str):
-    # Format the contents of the script tag using the dev code formatter
-    soup = BeautifulSoup(code, "html.parser")
-    script_tag = soup.find("script")
-    # extract the contents of the script tag
-    script_contents = script_tag.string
-    new_script_tag = soup.new_tag("script")
-    new_script_tag.string = run_prettier(script_contents)
-
-    # replace the old script tag with the new one
-    script_tag.replace_with(new_script_tag)
-    return str(soup)
-
-
-class TestViteBundler(ViteBundler):
-    def validate_path(
-        self,
-        filename: str | Path,
-        suffix_whitelist: list[str] | None = None,
-        suffix_hint: str | None = None,
-        resolve_extensions: list[str] | None = None,
-    ) -> Path:
-        return Path(filename)
-
-    def format_code(self, code: str):
-        return code
-
-
 def mock_read_text(path):
     if path in inline_css_prod:
         return inline_css_prod[path]
     raise NotImplementedError(f"Mock read_text not implemented for {path}")
-
-
-class TestFrontendAssetRegistryByPass(FrontendAssetRegistry):
-    """Bypasses unknown checks by never returning any unknown paths"""
-
-    def get_unknown(self, *filenames: Path) -> list[Path]:
-        return []
-
-    def add_asset(self, *filenames: Path):
-        for filename in filenames:
-            self._assets.add(filename)
-
-
-bypass_frontend_asset_registry = TestFrontendAssetRegistryByPass()
 
 
 @override_settings(STATIC_URL="/static/")
@@ -453,7 +378,7 @@ class TestComponentTemplateTag(SimpleTestCase):
             ),
         ]:
             with mock.patch(
-                "common_frontend.bundler.middleware.BundlerAssetContext.generate_id"
+                "alliance_django_frontend.bundler.middleware.BundlerAssetContext.generate_id"
             ) as mock_method:
                 container_id = "C1"
                 mock_method.return_value = container_id
@@ -478,7 +403,7 @@ class TestComponentTemplateTag(SimpleTestCase):
             FRONTEND_BUNDLER=self.test_development_bundler,
         ):
             with mock.patch(
-                "common_frontend.bundler.middleware.BundlerAssetContext.generate_id"
+                "alliance_django_frontend.bundler.middleware.BundlerAssetContext.generate_id"
             ) as mock_method:
                 container_id = "C1"
                 mock_method.return_value = container_id
@@ -581,7 +506,7 @@ class TestComponentTemplateTag(SimpleTestCase):
                 frontend_asset_registry=bypass_frontend_asset_registry, skip_checks=True
             ):
                 with mock.patch(
-                    "common_frontend.bundler.middleware.BundlerAssetContext.generate_id"
+                    "alliance_django_frontend.bundler.middleware.BundlerAssetContext.generate_id"
                 ) as mock_method:
                     container_id = "C1"
                     mock_method.return_value = container_id
@@ -731,135 +656,10 @@ class TestComponentTemplateTag(SimpleTestCase):
                     },
                 )
 
-    def test_viewmodel_prop(self):
-        """
-        Required test setup:
-
-        - create serializer class
-        - register serializer in default registry
-        - create instance of serializer
-        - pass instance to templatetag
-        - ensure that the generated code includes all of the required actions
-          (import, cache add, cache retrieval, wrapper function)
-
-        """
-
-        class UserModel(models.Model):
-            activated_at = models.DateField()
-            email = models.EmailField()
-            first_name = models.CharField(max_length=255)
-            last_name = models.CharField(max_length=255)
-            is_active = models.BooleanField()
-
-        @view_model_codegen(name="User")
-        class UserSerializer(serializers.ModelSerializer):
-            class Meta:
-                model = UserModel
-                fields = [
-                    "activated_at",
-                    "email",
-                    "first_name",
-                    "last_name",
-                    "is_active",
-                ]
-
-        user_instance_1 = UserModel(
-            activated_at=datetime.date(2022, 12, 1),
-            email="test@example.com",
-            first_name="Test",
-            last_name="User",
-            is_active=True,
-        )
-        user_instance_2 = UserModel(
-            activated_at=datetime.date(2022, 12, 2),
-            email="test2@example.com",
-            first_name="Example",
-            last_name="User",
-            is_active=False,
-        )
-
-        user = UserSerializer(user_instance_1)
-        users = UserSerializer([user_instance_1, user_instance_2], many=True)
-
-        expected_boilerplate = {
-            # TODO: SSR shouldn't be failing but I don't yet know why it is
-            "test_development_bundler": f"""
-                <dj-component data-djid="C1"><!-- SSR_FAILED --></dj-component>
-                <script type="module">
-                import User, {{  }} from '{self.dev_url}frontend/src/models/User.ts';
-                import Button, {{  }} from '{self.dev_url}components/Button.tsx';
-                import {{ useViewModelCache }} from '{self.dev_url}frontend/src/re-exports.tsx';
-                import {{ createElementWithProps, renderComponent }} from '{self.dev_url}frontend/src/renderComponent.tsx';
-            """,
-            "test_production_bundler": """
-                <dj-component data-djid="C1"><!-- SSR_FAILED --></dj-component>
-                <script type="module">
-                import User, {  } from '/assets/assets/User-abc123.js';
-                import Button, {  } from '/assets/assets/Button-def456.js';
-                import { useViewModelCache } from '/assets/assets/re-exports-1e.js';
-                import { createElementWithProps, renderComponent } from '/assets/assets/renderComponent-e1.js';
-            """,
-        }
-
-        expected_code = {
-            "single": """
-                const user = User.cache.add({activatedAt: "2022-12-01", email: "test@example.com", firstName: "Test", lastName: "User", isActive: true})
-
-                function Wrapper() {
-                  return createElementWithProps(Button, {user: useViewModelCache(User, (cache) => cache.get(user))});
-                }
-
-
-                renderComponent(document.querySelector("[data-djid='C1']"), Wrapper, {}, "C1", true)
-                </script>
-            """,
-            "multiple": """
-                const user = User.cache.add([{activatedAt: "2022-12-01", email: "test@example.com", firstName: "Test", lastName: "User", isActive: true}, {activatedAt: "2022-12-02", email: "test2@example.com", firstName: "Example", lastName: "User", isActive: false}])
-
-                function Wrapper() {
-                  return createElementWithProps(Button, {user: useViewModelCache(User, (cache) => cache.getList(user))});
-                }
-
-
-                renderComponent(document.querySelector("[data-djid='C1']"), Wrapper, {}, "C1", true)
-                </script>
-                """,
-        }
-
-        for bundler_name in [
-            # Resolved from fixtures dir / development-css-mappings
-            "test_development_bundler",
-            # Resolved from fixtures dir / production-css-mappings
-            "test_production_bundler",
-        ]:
-            with BundlerAssetContext(
-                frontend_asset_registry=bypass_frontend_asset_registry,
-                skip_checks=True,
-            ) as asset_context:
-                with override_settings(
-                    FRONTEND_BUNDLER=getattr(self, bundler_name),
-                ):
-                    with mock.patch(
-                        "common_frontend.bundler.middleware.BundlerAssetContext.generate_id"
-                    ) as mock_method:
-                        container_id = "C1"
-                        mock_method.return_value = container_id
-                        for key, code in expected_code.items():
-                            _user = user if key == "single" else users
-                            expected = expected_boilerplate[bundler_name] + code
-                            viewmodel_templatetag = (
-                                "{% load react %}"
-                                "{% component 'components/Button.tsx' user=user %}{% endcomponent %}"
-                            )
-                            context = Context({"user": _user})
-                            tpl = Template(viewmodel_templatetag)
-                            actual = asset_context.post_process(tpl.render(context))
-                            self.assertCodeEqual(expected, actual)
-
     def test_whitespace_handling(self):
         with override_settings(FRONTEND_BUNDLER=self.test_development_bundler):
             with mock.patch(
-                "common_frontend.bundler.middleware.BundlerAssetContext.generate_id"
+                "alliance_django_frontend.bundler.middleware.BundlerAssetContext.generate_id"
             ) as mock_method:
                 container_id = "C1"
                 mock_method.return_value = container_id
