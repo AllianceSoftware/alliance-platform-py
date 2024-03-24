@@ -378,7 +378,7 @@ class TestComponentTemplateTag(SimpleTestCase):
             ),
         ]:
             with mock.patch(
-                "alliance_django_frontend.bundler.middleware.BundlerAssetContext.generate_id"
+                "alliance_platform_frontend.bundler.middleware.BundlerAssetContext.generate_id"
             ) as mock_method:
                 container_id = "C1"
                 mock_method.return_value = container_id
@@ -403,7 +403,7 @@ class TestComponentTemplateTag(SimpleTestCase):
             FRONTEND_BUNDLER=self.test_development_bundler,
         ):
             with mock.patch(
-                "alliance_django_frontend.bundler.middleware.BundlerAssetContext.generate_id"
+                "alliance_platform_frontend.bundler.middleware.BundlerAssetContext.generate_id"
             ) as mock_method:
                 container_id = "C1"
                 mock_method.return_value = container_id
@@ -506,7 +506,7 @@ class TestComponentTemplateTag(SimpleTestCase):
                 frontend_asset_registry=bypass_frontend_asset_registry, skip_checks=True
             ):
                 with mock.patch(
-                    "alliance_django_frontend.bundler.middleware.BundlerAssetContext.generate_id"
+                    "alliance_platform_frontend.bundler.middleware.BundlerAssetContext.generate_id"
                 ) as mock_method:
                     container_id = "C1"
                     mock_method.return_value = container_id
@@ -659,7 +659,7 @@ class TestComponentTemplateTag(SimpleTestCase):
     def test_whitespace_handling(self):
         with override_settings(FRONTEND_BUNDLER=self.test_development_bundler):
             with mock.patch(
-                "alliance_django_frontend.bundler.middleware.BundlerAssetContext.generate_id"
+                "alliance_platform_frontend.bundler.middleware.BundlerAssetContext.generate_id"
             ) as mock_method:
                 container_id = "C1"
                 mock_method.return_value = container_id

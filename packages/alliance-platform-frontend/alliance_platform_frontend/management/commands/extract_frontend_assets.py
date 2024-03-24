@@ -93,7 +93,7 @@ class Command(BaseCommand):
     """
     Extracts used frontend assets from templates used
 
-    This works with any template nodes that extend :class:`~alliance_django_frontend.bundler.context.BundlerAsset`. All templates
+    This works with any template nodes that extend :class:`~alliance_platform_frontend.bundler.context.BundlerAsset`. All templates
     in the system are loaded to gather all used assets. You can exclude specific directories by setting
     :setting:`FRONTEND_EXTRACT_ASSETS_EXCLUDE_DIRS` to either a :class:`pathlib.Path` or ``re.Pattern``.
 

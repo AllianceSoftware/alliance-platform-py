@@ -44,13 +44,13 @@ class UserFactory(DjangoModelFactory):
 @override_settings(
     FRONTEND_DEBUG_COMPONENT_OUTPUT=False,
     AUTHENTICATION_BACKENDS=(
-        # This uses alliance_django_frontend.test_utils.rules. This works with reverse_if_probably_allowed as it
+        # This uses alliance_platform_frontend.test_utils.rules. This works with reverse_if_probably_allowed as it
         # will correctly infer object level permissions without us needing to setup a custom csv permissions
         # for the test cases
         "rules.permissions.ObjectPermissionBackend",
     ),
 )
-@override_settings(ROOT_URLCONF="alliance_django_frontend.test_utils.urls")
+@override_settings(ROOT_URLCONF="alliance_platform_frontend.test_utils.urls")
 @warning_filter("ignore", category=AmbiguousGlobalPermissionWarning)
 class UrlFilterPermTemplateTagsTestCase(TestCase):
     PERM = "test_utils.link_is_allowed"

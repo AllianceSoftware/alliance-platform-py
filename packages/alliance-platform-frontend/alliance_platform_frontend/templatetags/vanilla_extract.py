@@ -55,7 +55,7 @@ def stylesheet(parser: template.base.Parser, token: template.base.Token):
 
     For more information on how paths are resolved, refer to the documentation on :ref:`resolving_paths`.
 
-    The CSS file is not embedded inline where the tag is used, rather it is added by the :meth:`~alliance_django_frontend.templatetags.bundler.bundler_embed`
+    The CSS file is not embedded inline where the tag is used, rather it is added by the :meth:`~alliance_platform_frontend.templatetags.bundler.bundler_embed`
     tag.
 
     Usage::
@@ -70,7 +70,7 @@ def stylesheet(parser: template.base.Parser, token: template.base.Token):
         </div>
 
 
-    .. note:: If you need to include a plain CSS file use the :meth:`~alliance_django_frontend.templatetags.bundler.bundler_embed`
+    .. note:: If you need to include a plain CSS file use the :meth:`~alliance_platform_frontend.templatetags.bundler.bundler_embed`
             tag instead.
 
     """

@@ -14,7 +14,7 @@ from .import get_bundler
 from .base import BaseBundler
 from allianceutils.middleware import CurrentRequestMiddleware
 
-logger = logging.getLogger("alliance_django_frontend")
+logger = logging.getLogger("alliance_platform_frontend")
 
 
 def resolve_vanilla_extract_cache_names(bundler: BaseBundler, filename: Path | str):

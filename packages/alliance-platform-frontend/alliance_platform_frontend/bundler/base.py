@@ -12,7 +12,7 @@ from django.utils.safestring import SafeString
 
 @dataclass
 class ResolveContext:
-    """Passed to :meth:`~alliance_django_frontend.bundler.base.PathResolver.resolve` to project context for resolving paths"""
+    """Passed to :meth:`~alliance_platform_frontend.bundler.base.PathResolver.resolve` to project context for resolving paths"""
 
     #: The root dir for the project. Paths should sit under this.
     root_dir: Path
@@ -97,7 +97,7 @@ class DevServerCheck:
 class BaseBundler:
     #: The root path everything sits under; all other paths are resolved relative to this
     root_dir: Path
-    #: A list of :class:`~alliance_django_frontend.bundler.base.PathResolver` instances used to resolve paths
+    #: A list of :class:`~alliance_platform_frontend.bundler.base.PathResolver` instances used to resolve paths
     path_resolvers: list[PathResolver]
 
     def __init__(self, root_dir: Path, path_resolvers: list[PathResolver]):
@@ -152,7 +152,7 @@ class BaseBundler:
 
         This allows things like relative paths or resolving relative to a custom directory.
 
-        Each resolver in :data:`~alliance_django_frontend.bundler.base.BaseBundler.path_resolvers` is called
+        Each resolver in :data:`~alliance_platform_frontend.bundler.base.BaseBundler.path_resolvers` is called
         in turn until one returns a :class:`~pathlib.Path` at which point it stops.
 
         Args:
@@ -266,7 +266,7 @@ class BaseBundler:
     def get_ssr_url(self):
         """Return the URL to use to perform server side rendering
 
-        :class:`~alliance_django_frontend.bundler.middleware.BundlerAssetContextMiddleware` will ``POST`` to this URL
+        :class:`~alliance_platform_frontend.bundler.middleware.BundlerAssetContextMiddleware` will ``POST`` to this URL
         in development to generate the HTML for any queued SSR items.
 
         Note that production SSR generation works with built files and so the bundler itself isn't responsible for
@@ -300,9 +300,9 @@ class BaseBundler:
 
 @dataclass
 class HtmlGenerationTarget:
-    """The generation target for HTML produced by templates rendered in :class:`~alliance_django_frontend.bundler.context.BundlerAssetContext`
+    """The generation target for HTML produced by templates rendered in :class:`~alliance_platform_frontend.bundler.context.BundlerAssetContext`
 
-    This is intended to be used in conjunction with things like :class:`~alliance_django_frontend.bundler.ssr.BundlerAssetServerSideRenderer`
+    This is intended to be used in conjunction with things like :class:`~alliance_platform_frontend.bundler.ssr.BundlerAssetServerSideRenderer`
     where the generated HTML may differ depending on how it will be used. For example while the browser may load
     CSS externally and run all scripts, using something like WeasyPrint to generate PDFs may not need to execute
     scripts at all and prefer to load CSS inline from <style> tags.
@@ -328,7 +328,7 @@ class AssetFileEmbed:
     Each ``AssetFileEmbed`` is responsible for generating the HTML to embed the file. This can contain logic
     for doing things differently in dev vs production, or for different targets (e.g. browser vs PDF).
 
-    These are created by the bundler when :meth:`~alliance_django_frontend.bundler.base.BaseBundler.get_embed_items` is called.
+    These are created by the bundler when :meth:`~alliance_platform_frontend.bundler.base.BaseBundler.get_embed_items` is called.
 
     If extra HTML attributes are required for the tag, they can be set on the ``html_attrs`` dict.
     """

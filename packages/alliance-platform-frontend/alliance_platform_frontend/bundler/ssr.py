@@ -16,7 +16,7 @@ from .import get_bundler
 from .base import BaseBundler
 from ..util import guess_node_path
 
-logger = logging.getLogger("alliance_django_frontend")
+logger = logging.getLogger("alliance_platform_frontend")
 
 node_path = guess_node_path()
 
@@ -166,11 +166,11 @@ class SSRItem:
     For example, a React component payload would encode the details of the component (its name and where to import it from)
     and the props used to render it.
 
-    Each concrete implementation of ``SSRItem`` needs to implement :meth:`~alliance_django_frontend.bundler.context.SSRItem.get_ssr_type`
-    and :meth:`~alliance_django_frontend.bundler.context.SSRItem.get_ssr_payload`.
+    Each concrete implementation of ``SSRItem`` needs to implement :meth:`~alliance_platform_frontend.bundler.context.SSRItem.get_ssr_type`
+    and :meth:`~alliance_platform_frontend.bundler.context.SSRItem.get_ssr_payload`.
 
-    ``SSRItems`` are queued for rendering using the :meth:`~alliance_django_frontend.bundler.context.BundlerAssetContext.queue_ssr`
-    method, and then rendered by :class:`~alliance_django_frontend.bundler.middleware.BundlerAssetContextMiddleware`.
+    ``SSRItems`` are queued for rendering using the :meth:`~alliance_platform_frontend.bundler.context.BundlerAssetContext.queue_ssr`
+    method, and then rendered by :class:`~alliance_platform_frontend.bundler.middleware.BundlerAssetContextMiddleware`.
     """
 
     def get_ssr_type(self):
@@ -210,7 +210,7 @@ class BundlerAssetServerSideRenderer:
     def process_ssr(self, payload: dict) -> dict | None:
         """Process an SSR request
 
-        This calls the endpoint specified by :meth:`~alliance_django_frontend.bundler.base.BaseBundler.get_ssr_url`.
+        This calls the endpoint specified by :meth:`~alliance_platform_frontend.bundler.base.BaseBundler.get_ssr_url`.
 
         For the Vite implementation this endpoint is defined in ``dev-server.ts`` for dev, or ``production-ssr-server.ts``
         in preview or production.

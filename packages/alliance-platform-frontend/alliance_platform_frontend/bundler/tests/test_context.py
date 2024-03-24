@@ -61,12 +61,12 @@ def execute_request(
     return thread_responses
 
 
-@override_settings(ROOT_URLCONF="alliance_django_frontend.test_utils.urls")
+@override_settings(ROOT_URLCONF="alliance_platform_frontend.test_utils.urls")
 @modify_settings(
     MIDDLEWARE={
         "remove": ["stronghold.middleware.LoginRequiredMiddleware"],
         "append": [
-            "alliance_django_frontend.bundler.middleware.BundlerAssetContextMiddleware",
+            "alliance_platform_frontend.bundler.middleware.BundlerAssetContextMiddleware",
         ],
     },
 )
@@ -93,7 +93,7 @@ class BundlerAssetContextTestCase(TestCase):
     def test_middleware_queue_ssr_json_response(self):
         # Can't SSR if response isn't text/html - check for this
         with mock.patch(
-            "alliance_django_frontend.bundler.ssr.BundlerAssetServerSideRenderer.process_ssr"
+            "alliance_platform_frontend.bundler.ssr.BundlerAssetServerSideRenderer.process_ssr"
         ) as mock_method:
             with self.assertWarns(
                 UserWarning, msg="There are items to SSR but the response is application/json"
@@ -107,7 +107,7 @@ class BundlerAssetContextTestCase(TestCase):
 
     def test_middleware_queue_ssr(self):
         with mock.patch(
-            "alliance_django_frontend.bundler.ssr.BundlerAssetServerSideRenderer.process_ssr"
+            "alliance_platform_frontend.bundler.ssr.BundlerAssetServerSideRenderer.process_ssr"
         ) as mock_method:
             # Mock server rendering to just return dummy html for each item
             mock_method.return_value = {

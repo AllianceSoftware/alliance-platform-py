@@ -12,7 +12,7 @@ from packaging.version import Version
 
 from .dom_possible_standard_names import possible_standard_names
 
-logger = logging.getLogger("alliance_django_frontend")
+logger = logging.getLogger("alliance_platform_frontend")
 
 
 def get_node_ver(node_path: str) -> Version | None:

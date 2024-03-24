@@ -183,4 +183,4 @@ module = "rules"
 ignore_missing_imports = true
 
 [tool.django-stubs]
-django_settings_module = "test_allianceutils.settings"
+django_settings_module = "test_alliance_platform_frontend.settings"
