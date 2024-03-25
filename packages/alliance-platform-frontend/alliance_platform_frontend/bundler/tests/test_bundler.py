@@ -85,7 +85,7 @@ class TestViteBundlerTestCase(TestCase):
             server_protocol="http",
         )
         bundler_kwargs.update(kwargs)
-        return TestViteBundler(**bundler_kwargs)
+        return TestViteBundler(**bundler_kwargs) # type: ignore [arg-type]
 
     def test_dev_url(self):
         with self.assertRaisesMessage(ValueError, "static_url cannot be a full URL in dev"):

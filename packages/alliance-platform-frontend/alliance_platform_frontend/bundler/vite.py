@@ -15,6 +15,7 @@ from urllib.parse import urljoin
 import warnings
 
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.templatetags.static import static
 import requests
 
@@ -324,6 +325,8 @@ class ViteBundler(BaseBundler):
         self.production_ssr_url = production_ssr_url
         if mode == "development":
             static_url = settings.STATIC_URL
+            if not static_url:
+                raise ImproperlyConfigured("Must set STATIC_URL if using Vite bundler in development mode")
             if not static_url.endswith("/"):
                 static_url += "/"
             # TODO: KB29

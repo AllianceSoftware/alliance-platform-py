@@ -121,9 +121,9 @@ def get_ssr_global_context_resolver():
     try:
         resolver = settings.FRONTEND_SSR_GLOBAL_CONTEXT_RESOLVER
     except AttributeError:
-        return None
+        resolver = None
     else:
-        return import_string(resolver)
+        return None if resolver is None else import_string(resolver)
 
 
 class BundlerAssetContext:

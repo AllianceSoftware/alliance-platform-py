@@ -3,6 +3,7 @@ from typing import cast
 
 from django.contrib.sessions.backends.base import SessionBase
 from django.contrib.auth.models import PermissionsMixin
+from django.contrib.auth.models import User
 from django.http import HttpRequest
 from django.template import Context
 from django.template import Template
@@ -13,9 +14,9 @@ from factory import Faker
 from factory.django import DjangoModelFactory
 
 from ...bundler.context import BundlerAssetContext
-from .test_bundler_templatetags import bundler_kwargs
-from .test_bundler_templatetags import bypass_frontend_asset_registry
-from .test_bundler_templatetags import TestViteBundler
+from ...test_utils.bundler import bundler_kwargs
+from ...test_utils.bundler import bypass_frontend_asset_registry
+from ...test_utils.bundler import TestViteBundler
 from allianceutils.auth.permission import AmbiguousGlobalPermissionWarning
 
 from allianceutils.auth.models import GenericUserProfile
@@ -70,13 +71,13 @@ class UrlFilterPermTemplateTagsTestCase(TestCase):
         )
         self.dev_url = self.test_development_bundler.dev_server_url
 
-    def get_privileged_user(self) -> TestUser:
-        user = cast(TestUser, UserFactory(is_superuser=True))
+    def get_privileged_user(self) -> User:
+        user = cast(User, UserFactory(is_superuser=True))
         self.assertTrue(user.has_perm(self.PERM))
         return user
 
-    def get_unprivileged_user(self) -> TestUser:
-        user = cast(TestUser, UserFactory(is_superuser=False))
+    def get_unprivileged_user(self) -> User:
+        user = cast(User, UserFactory(is_superuser=False))
         self.assertFalse(user.has_perm(self.PERM))
         return user
 

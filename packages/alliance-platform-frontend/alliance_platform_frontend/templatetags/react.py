@@ -61,13 +61,13 @@ register = template.Library()
 def get_prop_handlers() -> tuple[Type[ComponentProp]]:
     """Get the prop handlers to use for this project. Reads the ``FRONTEND_REACT_PROP_HANDLERS`` setting and caches result."""
     try:
-        prop_handlers = settings.FRONTEND_REACT_PROP_HANDLERS
+        prop_handlers_ref = settings.FRONTEND_REACT_PROP_HANDLERS
     except AttributeError:
         raise ImproperlyConfigured("settings.FRONTEND_REACT_PROP_HANDLERS must be defined. ")
     else:
-        if isinstance(prop_handlers, str):
-            prop_handlers = import_string(prop_handlers)
-        prop_handlers = tuple(prop_handlers)  # type: ignore[assignment]
+        if isinstance(prop_handlers_ref, str):
+            prop_handlers = import_string(prop_handlers_ref)
+        prop_handlers = tuple(prop_handlers)
     return cast(tuple[Type[ComponentProp]], prop_handlers)
 
 

@@ -62,13 +62,18 @@ isort = { version = ">=5", optional = true }
 logging_tree = { version = "*", optional = true }
 rules = { version = "*", optional = true }
 
+# optional databases
+psycopg2 = { version = "*", optional = true }
+
 [tool.poetry.extras]
 extras = [
     "isort",
     "rules",
 ]
-mysql = ["mysqlclient"]
 postgres = ["psycopg2"]
+
+[tool.poetry.group.databases.dependencies]
+psycopg2 = "*"
 
 [tool.poetry.group.dev]
 optional = true
@@ -85,6 +90,7 @@ djangorestframework-stubs = "*"
 types-beautifulsoup4 = "*"
 types-factory-boy = "*"
 types-requests = "*"
+types-psycopg2 = "*"
 types-Werkzeug = "*"
 
 # ===================================================================================================================
@@ -115,7 +121,7 @@ extra_standard_library=[
 # ===================================================================================================================
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.10"
 plugins = [
     "mypy_django_plugin.main",
     "mypy_drf_plugin.main",

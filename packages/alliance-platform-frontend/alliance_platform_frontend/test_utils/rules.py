@@ -1,4 +1,4 @@
-import rules # type: ignore[import-untyped]
+import rules
 
 from django.contrib.auth.models import PermissionsMixin
 
