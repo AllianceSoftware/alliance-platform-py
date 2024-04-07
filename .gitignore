@@ -17,9 +17,15 @@ SECRET_KEY
 **/env
 
 # dev files
-frontend/dev/*
-frontend/dist/report-analyze.html
 venv/
+dist/
+.venv/
 
 # mproc config - likely differences based on user so don't commit
 mprocs.yaml
+
+node_modules/
+
+.pdm-python
+
+*.egg-info/

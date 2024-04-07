@@ -1,0 +1,33 @@
+[tool.pdm]
+
+[project]
+name = "alliance-platform-core"
+dynamic = ["version"]
+description = "Alliance Platform Core"
+authors = [
+    {name = "Alliance Software", email = "support@alliancesoftware.com.au"},
+]
+dependencies = []
+requires-python = ">=3.11"
+readme = "README.md"
+license = {text = "BSD-2-Clause"}
+include = [
+    "alliance_platform/py.typed",
+]
+
+[tool.pdm.build]
+includes = ["alliance_platform"]
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm.version]
+source = "call"
+getter = "extract_version:get_version()"
+
+[tool.mypy]
+python_version = "3.11"
+plugins = []
+explicit_package_bases = true
+
