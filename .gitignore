@@ -29,3 +29,4 @@ node_modules/
 .pdm-python
 
 *.egg-info/
+build_artifacts/

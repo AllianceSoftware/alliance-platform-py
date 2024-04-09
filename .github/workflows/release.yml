@@ -43,6 +43,14 @@ jobs:
           ALLIANCE_PLATFORM_CORE_TOKEN: ${{ secrets.ALLIANCE_PLATFORM_CORE_TOKEN }}
           ALLIANCE_PLATFORM_CODEGEN_TOKEN: ${{ secrets.ALLIANCE_PLATFORM_CODEGEN_TOKEN }}
 
+      - name: Attach build artifacts to PR
+        if: steps.changesets.outputs.published == 'false'
+        run: pdm run scripts/version.py
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: build_artifacts/*
+
       - name: Generate notification payload
         id: notification
         if: steps.changesets.outputs.published == 'true'
