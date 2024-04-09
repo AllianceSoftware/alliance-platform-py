@@ -1,0 +1,84 @@
+{
+  "components/Button.css": {
+    "file": "assets/Button-abc123.css",
+    "src": "components/Button.css"
+  },
+  "components/TestComponent.css": {
+    "file": "assets/TestComponent-ab23ac31.css",
+    "src": "components/TestComponent.css"
+  },
+  "components/TestComponentTwo.css": {
+    "file": "assets/TestComponentTwo-b99abbde.css",
+    "src": "components/TestComponentTwo.css"
+  },
+  "components/Input.tsx": {
+    "file": "assets/Input-b2.js",
+    "src": "components/Input.tsx",
+    "isEntry": true,
+    "isDynamicEntry": true,
+    "imports": ["_jsx-runtime-a1.js"],
+    "css": ["assets/Input-c4.css"]
+  },
+  "components/TestComponent.tsx": {
+    "file": "assets/TestComponent-47f28fe1.js",
+    "src": "components/TestComponent.tsx",
+    "isEntry": true,
+    "imports": [
+      "_jsx-runtime-a1.js",
+      "components/TestComponentTwo.tsx",
+      "components/Button.tsx"
+    ],
+    "css": ["assets/TestComponent-ab23ac31.css"]
+  },
+  "components/TestComponentTwo.tsx": {
+    "file": "assets/TestComponentTwo-6347c19f.js",
+    "src": "components/TestComponentTwo.tsx",
+    "isEntry": true,
+    "imports": ["_jsx-runtime-a1.js", "components/Button.tsx"],
+    "dynamicImports": ["components/Input.tsx"],
+    "css": ["assets/TestComponentTwo-b99abbde.css"]
+  },
+  "_jsx-runtime-a1.js": {
+    "file": "assets/jsx-runtime-a1.js"
+  },
+  "components/Button.tsx": {
+    "file": "assets/Button-def456.js",
+    "src": "components/Button.tsx",
+    "isEntry": true,
+    "imports": ["_jsx-runtime-a1.js"],
+    "css": ["assets/Button-abc123.css"]
+  },
+  "components/Input.css": {
+    "file": "assets/Input-c4.css",
+    "src": "components/Input.css"
+  },
+  "styles/normalize.css": {
+    "file": "assets/normalize-x1.css",
+    "isEntry": true,
+    "src": "styles/normalize.css"
+  },
+  "login.css.ts": {
+    "css": ["assets/login.css-a9690449.css"],
+    "file": "assets/login.css-669fd56c.js",
+    "isEntry": true,
+    "src": "login.css.ts"
+  },
+  "frontend/src/renderComponent.tsx": {
+    "file": "assets/renderComponent-e1.js",
+    "imports": ["_jsx-runtime-a1.js"],
+    "isEntry": true,
+    "src": "frontend/src/renderComponent.tsx"
+  },
+  "frontend/src/re-exports.tsx": {
+    "file": "assets/re-exports-1e.js"
+  },
+  "django-root/common_frontend/bundler/vitePreload.ts": {
+    "file": "assets/vitePreload-9p4a8sJU.js",
+    "isEntry": true,
+    "src": "django-root/common_frontend/bundler/vitePreload.ts"
+  },
+  "frontend/src/models/User.ts": {
+    "file": "assets/User-abc123.js",
+    "src": "models/User.ts"
+  }
+}

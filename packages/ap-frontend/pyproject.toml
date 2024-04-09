@@ -1,0 +1,87 @@
+[project]
+authors = [
+    {name = "Alliance Software", email = "support@alliancesoftware.com.au"},
+]
+license = {text = "BSD-2-Clause"}
+requires-python = "<4.0,>=3.11"
+dependencies = [
+    "alliance-platform-codegen",
+    "alliance-platform-core",
+    "Django<5.0.0,>=4.2.11",
+    "djangorestframework",
+    "django-allianceutils<5.0,>=4.0",
+    "requests",
+    "typing-extensions<5.0.0,>=4.5.0",
+]
+name = "alliance-platform-frontend"
+dynamic = ["version"]
+description = "Django integration for Frontend Bundlers & React"
+readme = "README.md"
+keywords = [
+    "django",
+    "alliance",
+    "alliancesoftware",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Web Environment",
+    "Framework :: Django",
+    "Framework :: Django :: 4.2",
+    "Framework :: Django :: 5.0",
+    "Intended Audience :: Developers",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Typing :: Typed",
+]
+include = [
+    "alliance_platform/frontend/py.typed",
+]
+
+[tool.pdm.build]
+includes = ["alliance_platform"]
+
+[tool.pdm.version]
+source = "call"
+getter = "extract_version:get_version()"
+
+[project.urls]
+issues = "https://github.com/AllianceSoftware/alliance-platform-py/issues"
+homepage = "https://github.com/AllianceSoftware/alliance-platform-py/packages/ap-frontend"
+repository = "https://github.com/AllianceSoftware/alliance-platform-py"
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+# ===================================================================================================================
+
+
+[tool.mypy]
+python_version = "3.11"
+plugins = [
+    "mypy_django_plugin.main",
+    "mypy_drf_plugin.main",
+]
+explicit_package_bases = true
+
+
+[[tool.mypy.overrides]]
+module = "isort"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "isort.api"
+no_implicit_reexport = false
+
+[[tool.mypy.overrides]]
+module = "logging_tree"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "rules"
+ignore_missing_imports = true
+
+[tool.django-stubs]
+django_settings_module = "test_alliance_platform_frontend.settings"
