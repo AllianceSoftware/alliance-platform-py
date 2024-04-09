@@ -32,7 +32,7 @@ jobs:
         id: changesets
         uses: changesets/action@v1
         with:
-          publish: pdm run scripts/publish.py
+          publish: ./scripts/publish.sh
         env:
           PDM_VERBOSE: ${{ vars.PDM_VERBOSE }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
