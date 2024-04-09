@@ -4,6 +4,7 @@ import logging
 import os
 from pathlib import Path
 import subprocess
+import sys
 
 import requests
 
@@ -37,6 +38,7 @@ def get_packages(base_dir: Path):
 
 def publish(repository: str | None = None):
     root = Path(__file__).parent.parent
+    success = True
     for package in get_packages(root / "packages"):
         if not is_published(package):
             name_upper = package.name.replace("-", "_").upper()
@@ -60,6 +62,7 @@ def publish(repository: str | None = None):
                 args += ["--repository", repository]
             result = subprocess.run(args)
             if result.returncode != 0:
+                success = False
                 logger.error(f"Failed to build {package.name}@{package.version}")
                 continue
             version_str = f"{package.name}@{package.version}"
@@ -67,8 +70,10 @@ def publish(repository: str | None = None):
             # This output is needed by changesets to detect a new version was published:
             # https://github.com/changesets/action/blob/c62ef9792fd0502c89479ed856efe28575010472/src/run.ts#L139
             print(f"New tag: {version_str}")
+    return success
 
 
 if __name__ == "__main__":
     repository = os.environ.get("PYPI_PUBLISH_REPO")
-    publish(repository)
+    exit_code = 0 if publish(repository) else 1
+    sys.exit(exit_code)
