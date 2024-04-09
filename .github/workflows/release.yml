@@ -43,17 +43,17 @@ jobs:
           ALLIANCE_PLATFORM_CORE_TOKEN: ${{ secrets.ALLIANCE_PLATFORM_CORE_TOKEN }}
           ALLIANCE_PLATFORM_CODEGEN_TOKEN: ${{ secrets.ALLIANCE_PLATFORM_CODEGEN_TOKEN }}
 
-#      - name: Generate notification payload
-#        id: notification
-#        if: steps.changesets.outputs.published == 'true'
-#        run: payload=$(node scripts/release-notifications.mjs '${{ steps.changesets.outputs.publishedPackages }}') && echo ::set-output name=payload::${payload//$'\n'/'%0A'}
-#
-#      - name: Send a Slack notification if a publish happens
-#        if: steps.changesets.outputs.published == 'true'
-#        uses: slackapi/slack-github-action@v1.25.0
-#        with:
-#          # For posting a rich message using Block Kit
-#          payload: ${{ steps.notification.outputs.payload }}
-#        env:
-#          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-#          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+      - name: Generate notification payload
+        id: notification
+        if: steps.changesets.outputs.published == 'true'
+        run: payload=$(node scripts/release-notifications.mjs '${{ steps.changesets.outputs.publishedPackages }}') && echo ::set-output name=payload::${payload//$'\n'/'%0A'}
+
+      - name: Send a Slack notification if a publish happens
+        if: steps.changesets.outputs.published == 'true'
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          # For posting a rich message using Block Kit
+          payload: ${{ steps.notification.outputs.payload }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
