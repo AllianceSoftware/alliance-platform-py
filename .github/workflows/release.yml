@@ -13,8 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     environment: release
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      - name: Setup PDM
+        uses: pdm-project/setup-pdm@v4
+        with:
+          python-version: 3.11
+          cache: true
 
       - name: Setup Node.js 20.x
         uses: actions/setup-node@v3
@@ -23,13 +27,6 @@ jobs:
 
       - name: Install Dependencies
         run: yarn
-
-      - uses: actions/checkout@v4
-      - name: Setup PDM
-        uses: pdm-project/setup-pdm@v4
-        with:
-          python-version: 3.11
-          cache: true
 
       - name: Create Release Pull Request or Publish to pypi
         id: changesets
