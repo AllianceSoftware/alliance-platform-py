@@ -4,8 +4,8 @@ from pathlib import Path
 import subprocess
 import sys
 
-from .ap_scripts.utils import get_packages
-from .ap_scripts.utils import is_published
+from ap_scripts.utils import get_packages
+from ap_scripts.utils import is_published
 
 logger = logging.getLogger("alliance-platform-py")
 

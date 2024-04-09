@@ -32,7 +32,8 @@ jobs:
         id: changesets
         uses: changesets/action@v1
         with:
-          publish: ./scripts/publish.sh
+          version: ./scripts/run_script.sh scripts/version.py
+          publish: ./scripts/run_script.sh scripts/publish.py
         env:
           PDM_VERBOSE: ${{ vars.PDM_VERBOSE }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -45,7 +46,6 @@ jobs:
 
       - name: Attach build artifacts to PR
         if: steps.changesets.outputs.published == 'false'
-        run: pdm run scripts/version.py
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts
