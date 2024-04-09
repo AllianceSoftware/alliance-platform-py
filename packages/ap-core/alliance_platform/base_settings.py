@@ -89,6 +89,10 @@ class AlliancePlatformSettingsBase:
         self.__getattr__.cache_clear()
         self._load_user_settings()
 
+    def check_settings(self):
+        """Can be implemented to check settings are valid when app is ready"""
+        pass
+
 
 class LazySetting:
     def __init__(self, getter):
