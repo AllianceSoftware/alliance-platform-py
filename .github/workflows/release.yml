@@ -34,6 +34,7 @@ jobs:
         with:
           publish: pdm run scripts/publish.py
         env:
+          PDM_VERBOSE: ${{ vars.PDM_VERBOSE }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PYPI_PUBLISH_REPO: testpypi
           # Use individual tokens so each token only has the permissions it needs. There's no option

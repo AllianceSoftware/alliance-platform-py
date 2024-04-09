@@ -36,7 +36,7 @@ def get_packages(base_dir: Path):
                 logger.warning(f"{package_dir} does not have a package.json")
 
 
-def publish(repository: str | None = None):
+def publish(repository: str | None = None, verbose=False):
     root = Path(__file__).parent.parent
     success = True
     for package in get_packages(root / "packages"):
@@ -60,6 +60,8 @@ def publish(repository: str | None = None):
             ]
             if repository:
                 args += ["--repository", repository]
+            if verbose:
+                args.append("-vv")
             result = subprocess.run(args)
             if result.returncode != 0:
                 success = False
@@ -75,5 +77,5 @@ def publish(repository: str | None = None):
 
 if __name__ == "__main__":
     repository = os.environ.get("PYPI_PUBLISH_REPO")
-    exit_code = 0 if publish(repository) else 1
+    exit_code = 0 if publish(repository, os.environ.get("PDM_VERBOSE", 0) == "1") else 1
     sys.exit(exit_code)
