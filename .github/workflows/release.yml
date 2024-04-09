@@ -44,12 +44,19 @@ jobs:
           ALLIANCE_PLATFORM_CORE_TOKEN: ${{ secrets.ALLIANCE_PLATFORM_CORE_TOKEN }}
           ALLIANCE_PLATFORM_CODEGEN_TOKEN: ${{ secrets.ALLIANCE_PLATFORM_CODEGEN_TOKEN }}
 
-      - name: Attach build artifacts to PR
+      - name: Build packages
+        id: artifact-upload-step
         if: steps.changesets.outputs.published == 'false'
         uses: actions/upload-artifact@v4
         with:
-          name: build-artifacts
+          name: built-packages
           path: build_artifacts/*
+
+      - name: Update PR description
+        if: steps.changesets.outputs.published == 'false'
+        run: node scripts/update-pr.mjs ${{ steps.artifact-upload-step.outputs.artifact-url }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate notification payload
         id: notification
