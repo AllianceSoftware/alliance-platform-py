@@ -37,7 +37,8 @@ jobs:
         env:
           PDM_VERBOSE: ${{ vars.PDM_VERBOSE }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PYPI_PUBLISH_REPO: testpypi
+          # Can set this to test publish to test.pypi instead
+          # PYPI_PUBLISH_REPO: testpypi
           # Use individual tokens so each token only has the permissions it needs. There's no option
           # in pypy to say a token has access to multiple repos - it's either all or a single repo.
           ALLIANCE_PLATFORM_FRONTEND_TOKEN: ${{ secrets.ALLIANCE_PLATFORM_FRONTEND_TOKEN }}

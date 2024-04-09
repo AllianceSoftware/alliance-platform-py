@@ -2,4 +2,6 @@
 
 See CHANGELOG for relevant packages. 
 
-[django-alliance-frontend](packages/django-alliance-frontend/CHANGELOG.md)
+[alliance-platform-core](packages/ap-core/CHANGELOG.md)
+[alliance-platform-codegen](packages/ap-codegen/CHANGELOG.md)
+[alliance-platform-frontend](packages/ap-frontend/CHANGELOG.md)
