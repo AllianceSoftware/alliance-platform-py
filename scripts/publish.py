@@ -1,46 +1,20 @@
-from dataclasses import dataclass
-import json
 import logging
 import os
 from pathlib import Path
 import subprocess
 import sys
 
-import requests
+from .ap_scripts.utils import get_packages
+from .ap_scripts.utils import is_published
 
 logger = logging.getLogger("alliance-platform-py")
-
-
-@dataclass
-class Package:
-    path: Path
-    name: str
-    version: str
-
-
-def is_published(package: Package):
-    response = requests.get(f"https://pypi.org/pypi/{package.name}/{package.version}/json")
-    return response.status_code == 200
-
-
-def get_packages(base_dir: Path):
-    for package_dir in base_dir.iterdir():
-        if package_dir.is_dir():
-            package_json_path = package_dir / "package.json"
-            if package_json_path.exists():
-                package_data = json.loads(package_json_path.read_text())
-                package_name = package_data.get("name")
-                package_version = package_data.get("version")
-                yield Package(package_dir, package_name, package_version)
-            else:
-                logger.warning(f"{package_dir} does not have a package.json")
 
 
 def publish(repository: str | None = None, verbose=False):
     root = Path(__file__).parent.parent
     success = True
     for package in get_packages(root / "packages"):
-        if not is_published(package):
+        if not is_published(package, repository == "testpypi"):
             name_upper = package.name.replace("-", "_").upper()
             token = os.environ.get(f"{name_upper}_TOKEN")
             if not token:
