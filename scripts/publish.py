@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import json
 import logging
+import os
 from pathlib import Path
 import subprocess
 
@@ -34,11 +35,29 @@ def get_packages(base_dir: Path):
                 logger.warning(f"{package_dir} does not have a package.json")
 
 
-def publish():
+def publish(repository: str | None = None):
     root = Path(__file__).parent.parent
     for package in get_packages(root / "packages"):
         if not is_published(package):
-            args = ["pdm", "publish", "-p", str(package.path.relative_to(root))]
+            name_upper = package.name.replace("-", "_").upper()
+            token = os.environ.get(f"{name_upper}_TOKEN")
+            if not token:
+                logger.error(
+                    f"Missing token for {package.name}. Set the environment variable {name_upper}_TOKEN."
+                )
+                continue
+            args = [
+                "pdm",
+                "publish",
+                "-p",
+                str(package.path.relative_to(root)),
+                "--username",
+                "__token__",
+                "--password",
+                token,
+            ]
+            if repository:
+                args += ["--repository", repository]
             result = subprocess.run(args)
             if result.returncode != 0:
                 logger.error(f"Failed to build {package.name}@{package.version}")
@@ -51,4 +70,5 @@ def publish():
 
 
 if __name__ == "__main__":
-    publish()
+    repository = os.environ.get("PYPI_PUBLISH_REPO")
+    publish(repository)

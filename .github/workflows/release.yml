@@ -12,15 +12,7 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     environment: release
-    permissions:
-      # IMPORTANT: this permission is mandatory for trusted publishing
-      id-token: write
     steps:
-      - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
-
       - name: Checkout Repo
         uses: actions/checkout@v3
 
@@ -44,6 +36,13 @@ jobs:
         uses: changesets/action@v1
         with:
           publish: pdm run scripts/publish.py
+        env:
+          PYPI_PUBLISH_REPO: testpypi
+          # Use individual tokens so each token only has the permissions it needs. There's no option
+          # in pypy to say a token has access to multiple repos - it's either all or a single repo.
+          ALLIANCE_PLATFORM_FRONTEND_TOKEN: ${{ secrets.ALLIANCE_PLATFORM_FRONTEND_TOKEN }}
+          ALLIANCE_PLATFORM_CORE_TOKEN: ${{ secrets.ALLIANCE_PLATFORM_CORE_TOKEN }}
+          ALLIANCE_PLATFORM_CODEGEN_TOKEN: ${{ secrets.ALLIANCE_PLATFORM_CODEGEN_TOKEN }}
 
 #      - name: Generate notification payload
 #        id: notification
