@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import TypedDict
+from typing import Union
 from typing import cast
 
 from alliance_platform.base_settings import AlliancePlatformSettingsBase
@@ -15,7 +16,7 @@ class AlliancePlatformCodegenSettingsType(TypedDict, total=False):
     #: Root directory for frontend code. When imports are defined as a ``Path`` they will be resolved relative to this directory. Defaults to "CORE.PROJECT_DIR".
     JS_ROOT_DIR: Path | str | None
     TEMP_DIR: Path | str | None
-    POST_PROCESSORS: list[str]
+    POST_PROCESSORS: list[Union[str, "ArtifactPostProcessor"]]
 
 
 IMPORT_STRINGS = ["POST_PROCESSORS"]
