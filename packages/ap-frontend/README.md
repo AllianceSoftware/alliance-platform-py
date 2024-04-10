@@ -14,7 +14,7 @@ Uses [Vite](https://vitejs.dev/) to bundle Javascript and perform server-side re
 
 ## Installation
 
-`pip install alliance-django-frontend`
+`pip install alliance-platform-frontend`
 
 ## System Requirements
 
