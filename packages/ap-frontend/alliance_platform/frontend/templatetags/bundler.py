@@ -300,7 +300,7 @@ def bundler_dev_checks():
     Currently check if the dev server is running for this project, and if not displays an error.
 
     Error will be logged to Django dev console. In addition, an error icon and toggleable modal message will be shown
-    in the HTML unless :setting:`BUNDLER_DISABLE_DEV_CHECK_HTML` is set.
+    in the HTML unless :data:`~alliance_platform.frontend.settings.AlliancePlatformFrontendSettingsType.BUNDLER_DISABLE_DEV_CHECK_HTML` is set.
     """
     bundler = get_bundler()
     if not bundler.is_development():

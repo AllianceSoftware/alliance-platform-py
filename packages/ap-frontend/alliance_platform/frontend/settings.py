@@ -14,15 +14,55 @@ if TYPE_CHECKING:
 
 
 class AlliancePlatformFrontendSettingsType(TypedDict, total=False):
-    PRODUCTION_DIR: Path
-    REACT_PROP_HANDLERS: str | list[type["ComponentProp"]]
-    DEBUG_COMPONENT_OUTPUT: bool
+    """The type of the settings for the frontend of the Alliance Platform.
+
+    You can set these in your django settings like::
+
+        from pathlib import Path
+        from typing import TypedDict
+        from alliance_platform.codegen.settings import AlliancePlatformCodegenSettingsType
+        from alliance_platform.core.settings import AlliancePlatformCoreSettingsType
+
+        # What you define here depends on your setup
+        PROJECT_DIR = Path(__file___).parent.parent
+
+        # What you define here depends on which Alliance Platform modules you are using. At minimum, you need to include "CORE".
+        class AlliancePlatformSettings(TypedDict):
+            CORE: AlliancePlatformCoreSettingsType
+            CODEGEN: AlliancePlatformCodegenSettingsType
+
+        ALLIANCE_PLATFORM: AlliancePlatformSettings = {
+            "CORE": {
+                "PROJECT_DIR": PROJECT_DIR,
+            },
+            "FRONTEND": {
+                "PRODUCTION_DIR": PROJECT_DIR / "frontend/build",
+            }
+        }
+
+    Below are the valid keys for ``ALLIANCE_PLATFORM["FRONTEND"]``:
+    """
+
+    #: The bundler to use as either a string import path or the class instance itself
     BUNDLER: Union[str, "BaseBundler"]
+    #: If true, the React template tag will include a more readable debug output in the HTML in a comment
+    DEBUG_COMPONENT_OUTPUT: bool
+    #: A list of either ``re.Pattern`` or a :class:`~pathlib.Path`. If a template directory matches any entry it will be excluded from :class:`extract_frontend_assets <alliance_platform.frontend.management.commands.extract_frontend_assets.Command>`.
+    #:
+    #: If a :class:`~pathlib.Path` is used it will be checked if the directory starts with that path. Otherwise a ``re.Pattern`` will exclude a directory if it matches.
     EXTRACT_ASSETS_EXCLUDE_DIRS: tuple[Path | str, Pattern[str]]
+    #: If set to a truthy value :func:`~alliance_platform.frontend.templatetags.bundler.bundler_dev_checks` will not display any HTML error, the error will only be available in the Django dev console.
     BUNDLER_DISABLE_DEV_CHECK_HTML: bool | None
-    SSR_GLOBAL_CONTEXT_RESOLVER: str | None
+    #: The path to the node_modules directory. This is used by ViteBundler to resolve optimized deps, and extract_frontend_assets to determine when an import comes from node_modules directly.
     NODE_MODULES_DIR: Path | str
+    #: The directory production assets exists in. This directory should include the Vanilla Extract mappings.
+    PRODUCTION_DIR: Path
+    #: Any custom prop handlers to use for react components. This can be a string import path to a list of prop handlers, or the list directly.
+    REACT_PROP_HANDLERS: str | list[type["ComponentProp"]]
+    #: File that is used to render React components using the ``react`` tag. This file should export a function named ``renderComponent`` and a function ``createElementWithProps``.
     REACT_RENDER_COMPONENT_FILE: Path | str
+    #: Set to a dotted path to a function that will be called to resolve the global context for SSR. This function should return a dictionary of values to be passed to the SSR renderer under the `globalContext` key.
+    SSR_GLOBAL_CONTEXT_RESOLVER: str | None
 
 
 def maybe_import_string(val: Any | None):
@@ -59,7 +99,7 @@ class AlliancePlatformFrontendSettings(AlliancePlatformSettingsBase):
     REACT_PROP_HANDLERS: list[type["ComponentProp"]]
     #: If true, the React template tag will include a more readable debug output in the HTML in a comment
     DEBUG_COMPONENT_OUTPUT: bool
-    #: The bundler to use. Currntly
+    #: The bundler to use
     BUNDLER: "BaseBundler"
     #: Directories to exclude from asset extraction. By default, all directories returned by ``get_app_template_dirs("templates")`` will be inspected.
     EXTRACT_ASSETS_EXCLUDE_DIRS: tuple[Path | str, Pattern[str]]

@@ -261,6 +261,23 @@ class ViteManifest:
 
 
 class ViteBundler(BaseBundler):
+    """Bundler implementation for `Vite <https://vitejs.dev/>`_.
+
+    Args:
+        root_dir: The root path everything sits under; all other paths are resolved relative to this
+        path_resolvers: A list of :class:`~alliance_platform.frontend.bundler.base.PathResolver` instances used to resolve paths
+        server_build_dir: The directory SSR files are outputted to (see ``yarn build:ssr``)
+        build_dir: The directory client side files are outputted to (see ``yarn build:client``)
+        server_host: The hostname used for the dev server (e.g. ``127.0.0.1``)
+        server_port: The port used for the dev server (e.g. ``5173``)
+        server_protocol: The protocol used for the dev server (``http`` or ``https``)
+        mode: The mode the bundler is running in; one of ``development``, ``production`` or ``preview``
+        wait_for_server: Function that can be passed that will be called before requesting assets for server. This function
+            should handle waiting until the dev server is ready before returning (e.g. by polling the server status)
+        production_ssr_url: URL for SSR (only used in production mode)
+
+    """
+
     #: Directory server side rendering (SSR) files are compiled to
     server_build_dir: Path
     #: Directory client side files are compiled to
@@ -292,18 +309,6 @@ class ViteBundler(BaseBundler):
         production_ssr_url: str | None = None,
         wait_for_server: Callable[[], None] | None = None,
     ):
-        """Bundler implementation for `Vite <https://vitejs.dev/>`_.
-
-        Args:
-            root_dir: The root path everything sits under; all other paths are resolved relative to this
-            path_resolvers: A list of :class:`~alliance_platform.frontend.bundler.base.PathResolver` instances used to resolve paths
-            server_build_dir: The directory SSR files are outputted to (see ``yarn build:ssr``)
-            build_dir: The directory client side files are outputted to (see ``yarn build:client``)
-            server_host: The hostname used for the dev server (e.g. ``127.0.0.1``)
-            server_port: The port used for the dev server (e.g. ``5173``)
-            server_protocol: The protocol used for the dev server (``http`` or ``https``)
-            mode: The mode the bundler is running in; one of ``development``, ``production`` or ``preview``
-        """
         self.wait_for_server = wait_for_server
         valid_modes = ["development", "production", "preview"]
         if mode not in valid_modes:
@@ -470,19 +475,19 @@ class ViteBundler(BaseBundler):
     def get_development_ssr_url(self):
         """Returns the URL for SSR rendering used in dev
 
-        See ``dev-server.ts`` for where this is handled.
+        This assumes the Vite dev server has a 'ssr/' endpoint to handle requests.
         """
         return urljoin(self.dev_server_url_base, "ssr")
 
     def get_ssr_url(self):
         """Returns the URL for SSR rendering
 
-        For development see ``dev-server.ts`` for where this is handled.
+        In dev, this uses :meth:`~alliance_platform.frontend.bundler.vite.ViteBundler.get_development_ssr_url`.
 
-        For production see ``production-ssr-server.ts``
+        In production :data:`~alliance_platform.frontend.bundler.vite.ViteBundler.production_ssr_url` is used.
         """
         if self.is_development():
-            return urljoin(self.dev_server_url_base, "ssr")
+            return self.get_development_ssr_url()
         if self.mode == "preview":
             return urljoin(self.preview_url, "ssr")
         if self.production_ssr_url:

@@ -6,7 +6,10 @@ from .base import BaseBundler
 # Probably makes very little difference anyway - looks like `import_string` itself does some caching.
 # @lru_cache
 def get_bundler() -> BaseBundler:
+    """Get the current bundler instance
+
+    This comes from the  :data:`~alliance_platform.frontend.settings.AlliancePlatformFrontendSettingsType.BUNDLER` setting
+    """
     from ..settings import ap_frontend_settings
 
-    """Get the configured bundler from settings"""
     return ap_frontend_settings.BUNDLER

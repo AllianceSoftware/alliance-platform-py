@@ -26,7 +26,7 @@ from ...settings import ap_frontend_settings
 def get_all_templates_files() -> list[Path]:
     """Scans all template dirs for template files
 
-    Will exclude any templates the match an entry in :setting:`EXTRACT_ASSETS_EXCLUDE_DIRS`.
+    Will exclude any templates the match an entry in :data:`~alliance_platform.frontend.settings.AlliancePlatformFrontendSettingsType.EXTRACT_ASSETS_EXCLUDE_DIRS`
     """
     dirs = get_app_template_dirs("templates")
     for engine in engines.all():
@@ -96,7 +96,8 @@ class Command(BaseCommand):
 
     This works with any template nodes that extend :class:`~alliance_platform.frontend.bundler.context.BundlerAsset`. All templates
     in the system are loaded to gather all used assets. You can exclude specific directories by setting
-    :setting:`EXTRACT_ASSETS_EXCLUDE_DIRS` to either a :class:`pathlib.Path` or ``re.Pattern``.
+    :data:`~alliance_platform.frontend.settings.AlliancePlatformFrontendSettingsType.EXTRACT_ASSETS_EXCLUDE_DIRS`
+    to either a :class:`pathlib.Path` or ``re.Pattern``.
 
     Outputs a valid JSON dump as an array of string paths to files.
 
