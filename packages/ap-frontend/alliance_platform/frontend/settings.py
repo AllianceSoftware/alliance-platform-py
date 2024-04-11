@@ -118,12 +118,16 @@ class AlliancePlatformFrontendSettings(AlliancePlatformSettingsBase):
 
     def check_settings(self):
         # TODO: Implement checks on required settings
-        pass
+
+        # lock registry to make sure assets aren't added after startup that would be missed by
+        # extract_frontend_assets
+        self.FRONTEND_ASSET_REGISTRY.lock()
 
 
 IMPORT_STRINGS = [
     "REACT_PROP_HANDLERS",
     "BUNDLER",
+    "FRONTEND_ASSET_REGISTRY",
 ]
 
 DEFAULTS = {
