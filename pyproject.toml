@@ -30,6 +30,13 @@ dev = [
     "tox-pdm>=0.7.2",
     "ruff",
 ]
+docs = [
+    "sphinx>=7.2.6",
+    "sphinx-autobuild>=2024.2.4",
+    "sphinx-autodoc-typehints>=2.0.0",
+    "sphinx-rtd-theme>=2.0.0",
+    "sphinx-multiproject>=1.0.0rc1",
+]
 
 [tool.ruff]
 line-length = 110
