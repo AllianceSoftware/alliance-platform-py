@@ -9,6 +9,7 @@ from alliance_platform.base_settings import AlliancePlatformSettingsBase
 from django.utils.module_loading import import_string
 
 if TYPE_CHECKING:
+    from .bundler.asset_registry import FrontendAssetRegistry
     from .bundler.base import BaseBundler
     from .prop_handlers import ComponentProp
 
@@ -47,6 +48,9 @@ class AlliancePlatformFrontendSettingsType(TypedDict, total=False):
     BUNDLER: Union[str, "BaseBundler"]
     #: If true, the React template tag will include a more readable debug output in the HTML in a comment
     DEBUG_COMPONENT_OUTPUT: bool
+    #: The asset registry for the bundler. This is used to add additional assets to the bundler that are not automatically discovered.
+    #: This can be a string import path to the registry or the registry itself.
+    FRONTEND_ASSET_REGISTRY: Union[str, "FrontendAssetRegistry"]
     #: A list of either ``re.Pattern`` or a :class:`~pathlib.Path`. If a template directory matches any entry it will be excluded from :class:`extract_frontend_assets <alliance_platform.frontend.management.commands.extract_frontend_assets.Command>`.
     #:
     #: If a :class:`~pathlib.Path` is used it will be checked if the directory starts with that path. Otherwise a ``re.Pattern`` will exclude a directory if it matches.
@@ -99,6 +103,8 @@ class AlliancePlatformFrontendSettings(AlliancePlatformSettingsBase):
     REACT_PROP_HANDLERS: list[type["ComponentProp"]]
     #: If true, the React template tag will include a more readable debug output in the HTML in a comment
     DEBUG_COMPONENT_OUTPUT: bool
+    #: The asset registry for the bundler. This is used to add additional assets to the bundler that are not automatically discovered.
+    FRONTEND_ASSET_REGISTRY: "FrontendAssetRegistry"
     #: The bundler to use
     BUNDLER: "BaseBundler"
     #: Directories to exclude from asset extraction. By default, all directories returned by ``get_app_template_dirs("templates")`` will be inspected.

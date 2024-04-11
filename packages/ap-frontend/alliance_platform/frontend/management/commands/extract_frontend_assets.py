@@ -17,7 +17,6 @@ from django.template.loader import get_template
 from django.template.utils import get_app_template_dirs
 
 from ...bundler import get_bundler
-from ...bundler.asset_registry import frontend_asset_registry
 from ...bundler.context import BundlerAssetContext
 from ...settings import ap_frontend_settings
 
@@ -54,7 +53,7 @@ def extract_asset_filenames() -> tuple[list[Any], dict[str, Collection[str]], li
     Returns a 4-tuple: list of filenames, breakdown dict, errors and warnings
     """
 
-    all_files = {str(f) for f in frontend_asset_registry.get_asset_paths()}
+    all_files = {str(f) for f in ap_frontend_settings.FRONTEND_ASSET_REGISTRY.get_asset_paths()}
     breakdown_templates: dict[str, list[str]] = {}
     breakdown = {
         "registry": list(sorted(all_files)),

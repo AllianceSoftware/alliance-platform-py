@@ -14,7 +14,6 @@ from django.utils.module_loading import import_string
 from ..settings import ap_frontend_settings
 from . import get_bundler
 from .asset_registry import FrontendAssetRegistry
-from .asset_registry import frontend_asset_registry as default_frontend_asset_registry
 from .base import AssetFileEmbed
 from .base import BaseBundler
 from .base import HtmlGenerationTarget
@@ -31,13 +30,13 @@ class NoActiveBundlerAssetContext(Exception):
 
 
 class UndiscoverableAssetsError(Exception):
-    """Thrown if assets are used, but cannot be discovered automatically and aren't registered with ``frontend_asset_registry``"""
+    """Thrown if assets are used, but cannot be discovered automatically and aren't registered with the asset registry"""
 
     def __init__(self, paths: set[Path]):
         paths_str = "\n".join(map(str, paths))
         super().__init__(
             f"The following paths were used but cannot be auto-discovered by `extract_frontend_assets`:\n{paths_str}\n\n"
-            f"To resolve add these paths to `frontend_asset_registry.add_asset(...paths...)`."
+            f"To resolve add these paths to the asset registry, e.g. `frontend_asset_registry.add_asset(...paths...)`."
         )
         self.undiscoverable_assets = paths
 
@@ -174,7 +173,7 @@ class BundlerAssetContext:
     def __init__(
         self,
         *,
-        frontend_asset_registry: FrontendAssetRegistry = default_frontend_asset_registry,
+        frontend_asset_registry: FrontendAssetRegistry = ap_frontend_settings.FRONTEND_ASSET_REGISTRY,
         html_target=html_target_browser,
         skip_checks=False,
         request: HttpRequest | None = None,

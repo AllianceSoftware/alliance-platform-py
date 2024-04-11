@@ -7,8 +7,8 @@ class FrontendAssetRegistry:
     This should be populated on startup such that the assets are available when
     :class:`extract_frontend_assets <alliance_platform.frontend.management.commands.extract_frontend_assets.Command>` runs.
 
-    In most cases only a single registry is required. :data:`~alliance_platform.frontend.bundler.asset_registry.frontend_asset_registry`
-    is the default used throughout the site.
+    The registry to use is specified by the  :data:`~alliance_platform.frontend.settings.AlliancePlatformFrontendSettingsType.FRONTEND_ASSET_REGISTRY`
+    setting
 
     .. warning::
 
@@ -19,7 +19,7 @@ class FrontendAssetRegistry:
 
     Usage::
 
-        from alliance_platform.frontend.bundler.asset_registry import frontend_asset_registry
+        frontend_asset_registry = FrontendAssetRegistry()
 
         frontend_asset_registry.add_asset(
             settings.PROJECT_DIR / "frontend/src/file1.tsx",
@@ -66,19 +66,3 @@ class FrontendAssetRegistry:
 
     def lock(self):
         self._locked = True
-
-
-#: Registry to add files to be included in frontend build
-frontend_asset_registry = FrontendAssetRegistry()
-# frontend_asset_registry.add_asset(
-#     settings.PROJECT_DIR / "alliance_platform_frontend/bundler/vitePreload.ts",
-#     # Don't think we need this as should be discovered automatically
-#     # settings.PROJECT_DIR / "frontend/src/renderComponent.tsx",
-#     settings.PROJECT_DIR / "styles/normalize.css",
-#     # settings.PROJECT_DIR / "styles/theme.css.ts",
-#     settings.PROJECT_DIR / "frontend/src/re-exports.tsx",
-#     # needs to be explicitly included as is used by alliance_platform.frontend.templatetags.form.FormInputNode
-#     settings.PROJECT_DIR / "frontend/src/components/RawHtmlWrapper.tsx",
-#     # Include all models so can be used by ViewModelProp
-#     *list(settings.PROJECT_DIR.glob("frontend/src/models/*.ts")),
-# )
