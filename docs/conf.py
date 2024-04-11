@@ -13,7 +13,13 @@ author = "Alliance Software"
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ["multiproject", "sphinx.ext.autodoc", "sphinx.ext.napoleon", "sphinx_rtd_theme"]
+extensions = [
+    "sphinx.ext.intersphinx",
+    "multiproject",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",
+    "sphinx_rtd_theme",
+]
 
 templates_path = ["_templates"]
 exclude_patterns: list[str] = []
@@ -32,6 +38,23 @@ multiproject_projects = {
         "path": "../packages/ap-codegen/docs",
     },
 }
+
+# -- Options for Intersphinx extension ---------------------------------------
+intersphinx_mapping = {
+    "alliance-platform-frontend": ("https://alliance-platform.readthedocs.io/projects/frontend/", None),
+    "alliance-platform-codegen": ("https://alliance-platform.readthedocs.io/projects/codegen/", None),
+    "django": (
+        "https://docs.djangoproject.com/en/stable/",
+        ("https://docs.djangoproject.com/en/stable/_objects/"),
+    ),
+    "python": ("https://docs.python.org/3", "https://docs.python.org/3/objects.inv"),
+}
+# Sphinx defaults to automatically resolve *unresolved* labels using all your Intersphinx mappings.
+# This behavior has unintended side-effects, namely that documentations local references can
+# suddenly resolve to an external location.
+# See also:
+# https://www.sphinx-doc.org/en/master/usage/extensions/intersphinx.html#confval-intersphinx_disabled_reftypes
+intersphinx_disabled_reftypes = ["*"]
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
