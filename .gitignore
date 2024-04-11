@@ -20,6 +20,7 @@ SECRET_KEY
 venv/
 dist/
 .venv/
+_docs-build/
 
 # mproc config - likely differences based on user so don't commit
 mprocs.yaml

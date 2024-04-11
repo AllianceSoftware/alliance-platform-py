@@ -67,3 +67,5 @@ core-mypy.working_dir = "packages/ap-core"
 test = {composite = ["frontend-test", "codegen-test"], keep_going = true}
 
 mypy = {composite = ["codegen-mypy", "frontend-mypy", "core-mypy"], keep_going = true}
+
+build-docs-watch.cmd = "./scripts/build-docs.sh"

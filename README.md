@@ -50,6 +50,10 @@ You can run `pdm test` to run the tests for all packages.
 
 You can run `pdm mypy` to run the type checking for all packages.
 
+#### Documentation
+
+You can run `pdm build-docs-watch` to build the documentation for all packages, serve it locally, and watch for changes.
+
 ### Release process
 
 When a change is made that requires a release the following workflow applies:
