@@ -12,6 +12,8 @@ from django.conf import settings
 from django.test import TestCase
 from django.test import override_settings
 
+from tests.test_utils import override_ap_frontend_settings
+
 
 class TestBundler(TestCase):
     def test_relative_path_resolver(self):
@@ -56,6 +58,15 @@ class TestBundler(TestCase):
             None,
             resolver.resolve("/project/test.ts", ResolveContext(Path("/root"))),
         )
+
+
+class MockRequestResponse:
+    def __init__(self, json_data, status_code):
+        self.json_data = json_data
+        self.status_code = status_code
+
+    def json(self):
+        return self.json_data
 
 
 class TestViteBundler(ViteBundler):
@@ -273,3 +284,31 @@ class TestViteBundlerTestCase(TestCase):
             bundler.server_build_dir / "Button.mjs",
             bundler.resolve_ssr_import_path("components/Button.tsx"),
         )
+
+    def test_format_code_size_limit(self):
+        bundler = self.create_bundler(mode="development")
+
+        def mocked_post(*args, **kwargs):
+            return MockRequestResponse({"code": "formatted"}, 200)
+
+        with mock.patch("requests.post", side_effect=mocked_post):
+            self.assertEqual(bundler.format_code("a short string"), "formatted")
+            long_string = "." * 1024 * 1024
+            self.assertEqual(bundler.format_code(long_string), long_string)
+            with override_ap_frontend_settings(DEV_CODE_FORMAT_LIMIT=0):
+                self.assertEqual(bundler.format_code(long_string), "formatted")
+
+    def test_format_code_timeout(self):
+        bundler = self.create_bundler(mode="development")
+
+        def mocked_post(*args, **kwargs):
+            return MockRequestResponse({"code": "formatted"}, 200)
+
+        with mock.patch("requests.post", side_effect=mocked_post) as mock_send:
+            bundler.format_code("code")
+            self.assertEqual(mock_send.call_args.kwargs.get("timeout"), 1)
+
+        with mock.patch("requests.post", side_effect=mocked_post) as mock_send:
+            with override_ap_frontend_settings(DEV_CODE_FORMAT_TIMEOUT=10):
+                bundler.format_code("code")
+                self.assertEqual(mock_send.call_args.kwargs.get("timeout"), 10)
