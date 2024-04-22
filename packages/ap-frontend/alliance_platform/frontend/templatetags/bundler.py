@@ -313,6 +313,10 @@ def bundler_dev_checks():
             warnings.warn(
                 f"Bundler dev server was found but it's for project {check.project_dir}. You likely need to run `yarn dev` under {bundler.root_dir}"
             )
+        elif check.read_timeout:
+            warnings.warn(
+                "Received ReadTimeout from dev server check; dev server is likely running but no response was received within timeout to verify"
+            )
         if ap_frontend_settings.BUNDLER_DISABLE_DEV_CHECK_HTML:
             return ""
         return get_template("bundler_dev_check.html").render({"check": check})
