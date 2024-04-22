@@ -520,7 +520,10 @@ class ViteBundler(BaseBundler):
 
         In production this is a no-op for performance reasons.
         """
-        if self.is_development():
+        if self.is_development() and (
+            len(code) < ap_frontend_settings.DEV_CODE_FORMAT_LIMIT
+            or ap_frontend_settings.DEV_CODE_FORMAT_LIMIT == 0
+        ):
             if self.wait_for_server:
                 self.wait_for_server()
             payload = {"code": code}
@@ -529,7 +532,7 @@ class ViteBundler(BaseBundler):
                     urljoin(self.dev_server_url_base, "format-code"),
                     data=json.dumps(payload),
                     headers={"Content-Type": "application/json"},
-                    timeout=1,
+                    timeout=ap_frontend_settings.DEV_CODE_FORMAT_TIMEOUT,
                 )
                 if response.status_code != 200:
                     logger.error(
