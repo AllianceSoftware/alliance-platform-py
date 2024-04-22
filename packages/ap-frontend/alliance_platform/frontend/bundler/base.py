@@ -81,6 +81,8 @@ class DevServerCheck:
 
     #: True if dev server is running at the expected location (depends on the bundler)
     is_running: bool
+    #: Read timeout
+    read_timeout: bool = False
     #: The project dir the frontend dev server is running at. This is used to determine if it's for the same project as Django.
     project_dir: Path | None = None
 

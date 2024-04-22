@@ -509,8 +509,10 @@ class ViteBundler(BaseBundler):
             if r.status_code != 200:
                 return DevServerCheck(is_running=False)
             return DevServerCheck(is_running=True, project_dir=Path(r.json()["projectDir"]))
-        except requests.ConnectionError:
+        except (requests.ConnectionError, requests.ConnectTimeout):
             return DevServerCheck(is_running=False)
+        except requests.ReadTimeout:
+            return DevServerCheck(is_running=True, read_timeout=True)
 
     def format_code(self, code: str):
         """In dev format code using /format-code endpoint defined in dev-server.ts
