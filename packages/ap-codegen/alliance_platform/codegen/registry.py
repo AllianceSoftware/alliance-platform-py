@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 import tempfile
 import time
+import traceback
 from typing import Callable
 from typing import TypedDict
 
@@ -36,6 +37,16 @@ class CodegenRegistration:
         be re-triggered if any of these files change.
 
         If the code generation should always run, return ``None``.
+
+        Note that caching is local to your machine.
+
+        .. warning::
+
+            Use this sparingly, as it can lead to cases where code generation does not run when it should. In particular,
+            if details used in the code generation depend on state not captured in the ``cache`` key the cache won't
+            be invalidated when it should be. For example, if you generated code for a specific class that was part
+            of the cache key, but used details from a base class in a different file and that file changed then the
+            cache would not be invalidated.
         """
         return None
 
@@ -97,6 +108,22 @@ class CodegenRegistry:
     def register(self, registration: CodegenRegistration):
         self.registrations.append(registration)
 
+    def invalidate_cache(self, registration: CodegenRegistration):
+        cache_key = registration.get_cache_key()
+        if not cache_key:
+            return True
+        registration_id = self._get_cache_registration_id(registration)
+        if registration_id in self.cache["entries"]:
+            del self.cache["entries"][registration_id]
+            self.cache_path.write_text(json.dumps(self.cache, indent=2))
+
+    def _get_cache_registration_id(self, registration: CodegenRegistration) -> str:
+        cache_key = registration.get_cache_key()
+        if not cache_key:
+            raise ValueError("Registration has no cache key")
+        class_id = f"{registration.__class__.__module__}.{registration.__class__.__qualname__}"
+        return f'{class_id}.{cache_key["registration_id"]}'
+
     def has_dependencies_changed(self, registration: CodegenRegistration, stats: CodegenStats) -> bool:
         cache_key = registration.get_cache_key()
         if not cache_key:
@@ -106,8 +133,7 @@ class CodegenRegistry:
                 f"Codegen registration {registration} `get_cache_key` lists no files; will always run"
             )
             return True
-        class_id = f"{registration.__class__.__module__}.{registration.__class__.__qualname__}"
-        registration_id = f'{class_id}.{cache_key["registration_id"]}'
+        registration_id = self._get_cache_registration_id(registration)
         entry = self.cache["entries"].get(registration_id, {})
         timestamps = {}
         for dependency in cache_key["dependency_files"]:
@@ -135,20 +161,26 @@ class CodegenRegistry:
         for registration in self.registrations:
             if not self.has_dependencies_changed(registration, stats):
                 continue
-            artifacts = registration.generate_artifacts()
-            if not isinstance(artifacts, list):
-                artifacts = [artifacts]
-            for artifact in artifacts:
-                suffix = Path(artifact.path).suffix
-                temp = tempfile.NamedTemporaryFile(
-                    "w",
-                    suffix=suffix,
-                    delete=False,
-                    dir=ap_codegen_settings.TEMP_DIR,
-                )
-                temp.write(artifact.contents)
-                temp.close()
-                files_to_write.append(IntermediateArtifact(Path(temp.name), artifact.path))
+            try:
+                artifacts = registration.generate_artifacts()
+            except Exception:
+                stats.add_warning(f"Error generating artifacts for {registration}: {traceback.format_exc()}")
+                self.invalidate_cache(registration)
+                continue
+            else:
+                if not isinstance(artifacts, list):
+                    artifacts = [artifacts]
+                for artifact in artifacts:
+                    suffix = Path(artifact.path).suffix
+                    temp = tempfile.NamedTemporaryFile(
+                        "w",
+                        suffix=suffix,
+                        delete=False,
+                        dir=ap_codegen_settings.TEMP_DIR,
+                    )
+                    temp.write(artifact.contents)
+                    temp.close()
+                    files_to_write.append(IntermediateArtifact(Path(temp.name), artifact.path))
 
         def cleanup():
             for intermediate_file in files_to_write:
