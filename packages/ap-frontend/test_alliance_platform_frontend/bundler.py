@@ -49,5 +49,6 @@ vite_bundler = ViteBundler(
     server_host="localhost",
     server_port="5273",
     server_protocol="http",
+    server_resolve_package_url="redirect-package-url",
     production_ssr_url="http://localhost:4273",
 )

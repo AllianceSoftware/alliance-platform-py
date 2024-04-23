@@ -17,6 +17,7 @@ bundler_kwargs = dict(
     server_host="localhost",
     server_port="5273",
     server_protocol="http",
+    server_resolve_package_url="redirect-package-url",
 )
 
 
