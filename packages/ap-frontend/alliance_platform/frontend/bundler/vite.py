@@ -271,6 +271,22 @@ class ViteBundler(BaseBundler):
         server_host: The hostname used for the dev server (e.g. ``127.0.0.1``)
         server_port: The port used for the dev server (e.g. ``5173``)
         server_protocol: The protocol used for the dev server (``http`` or ``https``)
+        server_resolve_package_url: The URL, handled by the dev server, to use to resolve package requests in dev mode. This is
+            only used for packages in /node_modules/ so that we can use the optimized versions of packages that Vite generates.
+            Without this, you encounter errors like "Outdated Optimized Deps". The dev server should handle requests to this
+            URL and redirect to the final package file. Example implementation for fastify, where ``server_resolve_package_url="redirect-package-url"``.
+
+            .. code-block:: javascript
+
+                server.get('/redirect-package-url/*', async (req, res) => {
+                    const packagePath = (req.params as Record<string, string>)['*'];
+                    const [, resolvedId] = await vite.moduleGraph.resolveUrl(packagePath);
+                    // `resolveId` is an absolute path with query string. Resolve it relative to the project root
+                    const relativePath = normalizePath(path.relative(projectDir, resolvedId));
+                    // Convert the filesystem path to a web-accessible path
+                    const url = path.join(vite.config.base, relativePath);
+                    res.redirect(302, url);
+                });
         mode: The mode the bundler is running in; one of ``development``, ``production`` or ``preview``
         wait_for_server: Function that can be passed that will be called before requesting assets for server. This function
             should handle waiting until the dev server is ready before returning (e.g. by polling the server status)
@@ -305,6 +321,7 @@ class ViteBundler(BaseBundler):
         server_host: str,
         server_port: str,
         server_protocol: str,
+        server_resolve_package_url: str,
         mode: str,
         production_ssr_url: str | None = None,
         wait_for_server: Callable[[], None] | None = None,
@@ -318,9 +335,7 @@ class ViteBundler(BaseBundler):
         self.server_build_dir = server_build_dir
         self.build_dir = build_dir
         self.node_modules_dir = ap_frontend_settings.NODE_MODULES_DIR
-        if self.mode == "development":
-            self.vite_metadata_path = self.node_modules_dir / ".vite/deps/_metadata.json"
-        else:
+        if self.mode != "development":
             self.server_build_manifest = ViteManifest(self.root_dir, server_build_dir / "manifest.json")
             self.build_manifest = ViteManifest(self.root_dir, build_dir / "manifest.json")
         self.dev_server_url_base = ""
@@ -340,6 +355,11 @@ class ViteBundler(BaseBundler):
             self.dev_server_url_base = f"{server_protocol}://{server_host}:{server_port}"
             # this is what should be used anywhere assets need to be referred to
             self.dev_server_url = urljoin(self.dev_server_url_base, static_url)
+            self.dev_server_resolve_package_url = urljoin(
+                self.dev_server_url_base, server_resolve_package_url
+            )
+            if not self.dev_server_resolve_package_url.endswith("/"):
+                self.dev_server_resolve_package_url += "/"
         elif mode == "preview":
             self.preview_url = f"{server_protocol}://{server_host}:{server_port}"
 
@@ -362,19 +382,6 @@ class ViteBundler(BaseBundler):
     _vite_dev_metadata: dict | None = None
     _vite_dev_last_modified: float | None = None
 
-    def get_vite_dev_metadata(self) -> dict | None:
-        if (
-            self.vite_metadata_path.exists()
-            and (last_modified := self.vite_metadata_path.stat().st_mtime) != self._vite_dev_last_modified
-        ):
-            self._vite_dev_last_modified = last_modified
-            _vite_dev_metadata = json.loads(self.vite_metadata_path.read_text())
-            if not isinstance(_vite_dev_metadata, dict) or "optimized" not in _vite_dev_metadata:
-                warnings.warn("Invalid vite metadata file")
-            else:
-                self._vite_dev_metadata = _vite_dev_metadata
-        return self._vite_dev_metadata
-
     def get_url(self, path: Path | str):
         """Get the URL to load asset as ``path``
 
@@ -385,17 +392,9 @@ class ViteBundler(BaseBundler):
             # load from the specified file. This resolved the need to explicitly include a bunch
             # of dependencies in vite.config.ts under optimizeDeps.include
             if str(path).startswith(str(self.node_modules_dir)):
-                filename = str(path).replace(str(self.node_modules_dir) + "/", "")
-                metadata = self.get_vite_dev_metadata()
-                if metadata and (entry := metadata["optimized"].get(filename)):
-                    return self.resolve_url(
-                        # Appending the hash seems to be what would happen if we used a default vite
-                        # setup where it transforms the .html... but this sometimes results in a 504
-                        # error and also seems to make no difference that I could determine. I also
-                        # don't really understand how it's used so could be missing the point. Leaving
-                        # it here for now in case it's needed in future.
-                        f"node_modules/.vite/deps/{entry['file']}"  # "?v={metadata['browserHash']}"
-                    )
+                return urljoin(
+                    self.dev_server_resolve_package_url, str(path.relative_to(self.node_modules_dir))
+                )
             return self.resolve_url(path)
         # production & preview both need to use the file from the manifest
         return self.resolve_url(self.build_manifest.get_asset(path).file)
