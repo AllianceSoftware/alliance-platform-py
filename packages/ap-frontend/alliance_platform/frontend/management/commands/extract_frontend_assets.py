@@ -7,7 +7,6 @@ import re
 import sys
 from typing import Any
 from typing import Collection
-from typing import cast
 
 from django.core.management import BaseCommand
 from django.core.management.base import OutputWrapper
@@ -66,7 +65,7 @@ def extract_asset_filenames() -> tuple[list[Any], dict[str, Collection[str]], li
         for file in get_all_templates_files():
             # TODO: ability to opt out specific templates?
             try:
-                get_template(cast(str, file))
+                get_template(str(file))
                 template_assets = [p for p in asset_context.get_asset_paths() if p not in prev]
                 prev = asset_context.get_asset_paths()
                 if template_assets:
