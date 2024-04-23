@@ -393,7 +393,7 @@ class ViteBundler(BaseBundler):
             # of dependencies in vite.config.ts under optimizeDeps.include
             if str(path).startswith(str(self.node_modules_dir)):
                 return urljoin(
-                    self.dev_server_resolve_package_url, str(path.relative_to(self.node_modules_dir))
+                    self.dev_server_resolve_package_url, str(Path(path).relative_to(self.node_modules_dir))
                 )
             return self.resolve_url(path)
         # production & preview both need to use the file from the manifest
