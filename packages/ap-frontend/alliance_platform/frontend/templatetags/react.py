@@ -5,20 +5,21 @@ from dataclasses import dataclass
 import math
 from pathlib import Path
 from typing import Any
-from typing import cast
 import warnings
 
+from alliance_platform.codegen.printer import TypescriptPrinter
 from alliance_platform.codegen.printer import TypescriptSourceFileWriter
 from alliance_platform.codegen.typescript import CallExpression
 from alliance_platform.codegen.typescript import FunctionDeclaration
 from alliance_platform.codegen.typescript import Identifier
 from alliance_platform.codegen.typescript import ImportDefaultSpecifier
 from alliance_platform.codegen.typescript import ImportSpecifier
-from alliance_platform.codegen.typescript import Node
+from alliance_platform.codegen.typescript import JsxAttribute
+from alliance_platform.codegen.typescript import JsxElement
 from alliance_platform.codegen.typescript import PropertyAccessExpression
 from alliance_platform.codegen.typescript import ReturnStatement
 from alliance_platform.codegen.typescript import StringLiteral
-from alliance_platform.codegen.typescript import UnconvertibleValueException
+from alliance_platform.codegen.typescript import convert_to_node
 from allianceutils.template import build_html_attrs
 from allianceutils.template import is_static_expression
 from allianceutils.template import parse_tag_arguments
@@ -36,6 +37,8 @@ from django.template.base import FilterExpression
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
+from ...codegen.typescript import MultiLineComment
+from ...codegen.typescript import UnconvertibleValueException
 from ..bundler import get_bundler
 from ..bundler.base import BaseBundler
 from ..bundler.base import ResolveContext
@@ -188,7 +191,7 @@ def component(parser: template.base.Parser, token: template.base.Token):
     - ``container:tag`` - the HTML tag to use for the container. Defaults to the custom element ``dj-component``.
     - ``container:<any other prop>`` - any other props will be passed to the container element. For example, to add
       an id to the container you can use ``container:id="my-id"``. Note that while you can pass a style string, it's
-      likely to be of little use with the default container style ``display: contents``. Most the the time you can just
+      likely to be of little use with the default container style ``display: contents``. Most the time you can just
       do the styling on the component itself.
 
     For example::
@@ -232,28 +235,14 @@ class NestedComponentProp(ComponentProp):
         }
 
     def generate_code(self, generator: ComponentSourceCodeGenerator):
-        component = generator.resolve_component_import(self.component)
-        create_element = generator.resolve_prop_import(
-            ap_frontend_settings.REACT_RENDER_COMPONENT_FILE,
-            ImportSpecifier("createElementWithProps"),
-            import_order_priority=HIGHEST_PRIORITY_IMPORT,
-        )
-        return CallExpression(create_element, [component, self.props.generate_code(generator)])
-
-    def as_debug_string(self):
-        """Returns a string representation of this prop for debugging purposes
-
-        This is only used if you pass a component as a prop to another component. It's not used when
-        just nesting components - that's handled by `print_debug_tree` itself.
-        """
-        return self.component.print_debug_tree(self.props, suppress_origin=True)
+        return generator.create_jsx_element_node(self.component, self.props)
 
 
 PropType = str | float | int | list["PropType"] | tuple["PropType"] | dict[str, "PropType"] | ComponentProp
 PropsType = dict[str, PropType]
 
 
-class ComponentProps(SSRSerializable, CodeGeneratorNode):
+class ComponentProps(SSRSerializable):
     """Stores the props for a given component and handles serialization"""
 
     props: PropsType
@@ -293,35 +282,6 @@ class ComponentProps(SSRSerializable, CodeGeneratorNode):
                 resolving imports when dealing with nested components.
         """
         return self._serialize_prop(self.props, ssr_context)
-
-    def _codegen_prop(self, value: PropType, generator: ComponentSourceCodeGenerator):
-        if isinstance(value, dict):
-            return {underscore_to_camel(k): self._codegen_prop(v, generator) for k, v in value.items()}
-        if isinstance(value, (list, tuple)):
-            return [self._codegen_prop(v, generator) for v in value]
-        if isinstance(value, CodeGeneratorNode):
-            return value.generate_code(generator)
-        if isinstance(value, ImportComponentSource):
-            # This lets us pass through imports as props, for example to pass a component class itself as a prop to
-            # another component
-            return generator.resolve_prop_import(
-                value.path,
-                (
-                    ImportDefaultSpecifier(value.import_name)
-                    if value.is_default_import
-                    else ImportSpecifier(value.import_name)
-                ),
-            )
-        return value
-
-    def generate_code(self, generator: ComponentSourceCodeGenerator):
-        try:
-            return self.convert_to_node(self._codegen_prop(self.props, generator), generator)
-        except UnconvertibleValueException as e:
-            raise ValueError(
-                f"Do not know how to handle prop of type {type(e.value)}: {e.value}\n\n "
-                "Either add a handler to ALLIANCE_PLATEFORM['FRONTEND']['REACT_PROP_HANDLERS'] or check the correct value is being passed in."
-            )
 
     def has_prop(self, prop_name: str):
         return prop_name in self.props
@@ -561,12 +521,12 @@ class ComponentSourceCodeGenerator:
 
         import { TestComponent } from "http://localhost:5173/assets/frontend/src/components/TestComponent.tsx";
         import {
-          createElementWithProps,
+          createElement,
           renderComponent,
         } from "http://localhost:5173/assets/frontend/src/renderComponent.tsx";
 
         function Wrapper() {
-          return createElementWithProps(TestComponent, {});
+          return createElement(TestComponent, {});
         }
 
         renderComponent(
@@ -583,17 +543,32 @@ class ComponentSourceCodeGenerator:
     bundler: BaseBundler
     node: ComponentNode
 
+    #: If a wrapper component is required. This is set by ``requires_wrapper_component``.
     _requires_wrapper_component: bool
+    #: Tracks the name of all identifiers generated so far. This is used to ensure uniqueness.
     _used_identifiers: list[str]
-    _leading_nodes: list[Node]
+    #: Used by ``create_jsx_element`` to detect when the template name changes so it can output a comment.
+    _last_template_origin_name: str | None
+    #: Used by ``create_jsx_element`` to track the specified value for the ``include_template_origin`` kwarg in the root node
+    _last_include_template_origin: bool
 
     def __init__(self, node: ComponentNode):
         self.node = node
         self.bundler = node.bundler
-        self._writer = TypescriptSourceFileWriter(resolve_import_url=self._resolve_import_url)
+        self._writer = TypescriptSourceFileWriter(
+            resolve_import_url=self._resolve_import_url,
+        )
         self._requires_wrapper_component = False
         self._used_identifiers = []
-        self._leading_nodes = []
+        self._last_template_origin_name = None
+        self._last_include_template_origin = False
+
+        # Resolve the import for createElement and use the returned Identifier for the jsx_transform
+        self._writer.jsx_transform = self._writer.resolve_import(
+            ap_frontend_settings.REACT_RENDER_COMPONENT_FILE,
+            ImportSpecifier("createElement"),
+            import_order_priority=HIGHEST_PRIORITY_IMPORT,
+        )
 
     def _resolve_import_url(self, path: Path | str):
         path = self.bundler.validate_path(path, resolve_extensions=[".ts", ".tsx"])
@@ -637,39 +612,118 @@ class ComponentSourceCodeGenerator:
         return self._writer.resolve_import(path, specifier, import_order_priority=import_order_priority)
 
     def requires_wrapper_component(self):
-        """Indicate that a wrapper component is required to render this component. This is required when using hooks."""
+        """Indicate that a wrapper component is required to render this component. This is required when using hooks.
+
+        ``ComponentProp`` instances can call this method to indicate that a wrapper component is required.
+        """
         self._requires_wrapper_component = True
 
+    def _codegen_prop(self, value: PropType):
+        if isinstance(value, dict):
+            return {underscore_to_camel(k): self._codegen_prop(v) for k, v in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [self._codegen_prop(v) for v in value]
+        if isinstance(value, CodeGeneratorNode):
+            return value.generate_code(self)
+        if isinstance(value, ImportComponentSource):
+            # This lets us pass through imports as props, for example to pass a component class itself as a prop to
+            # another component
+            return self.resolve_prop_import(
+                value.path,
+                (
+                    ImportDefaultSpecifier(value.import_name)
+                    if value.is_default_import
+                    else ImportSpecifier(value.import_name)
+                ),
+            )
+        return convert_to_node(value)
+
+    def create_jsx_element_node(
+        self, component: ComponentNode, resolved_props: ComponentProps, include_template_origin=None
+    ):
+        """
+        Create a JSX element node for the specified component and props
+
+        Note that this creates the representation of the component as a JSX element. The TypescriptPrinter will
+        then convert it to code, either as JSX directly for debugging, or as React.createElement calls for code
+        outputted to the browser (JSX can't be interpreted directly in the browser, but is very useful for debugging
+        or test cases).
+
+        Args:
+            component: The component node to create the JSX element for
+            resolved_props: The fully resolved props for the component
+            include_template_origin: Whether to include a comment for each component indicating the template it was
+                created from. Useful for debugging.
+
+        Returns:
+            A ``JsxElement`` that can be printed to code.
+        """
+
+        # If not specified, use the last value. This is useful for nested elements to use the value specified on the
+        # root node.
+        if include_template_origin is None:
+            include_template_origin = self._last_include_template_origin
+        last_include_template_origin = self._last_include_template_origin
+        self._last_include_template_origin = include_template_origin
+
+        # Track the template name so we know when it changes. This way we only output the template name when it changes.
+        last_template_name = self._last_template_origin_name
+        template_name = (
+            component.origin.template_name.decode()
+            if isinstance(component.origin.template_name, bytes)
+            else component.origin.template_name
+        )
+        self._last_template_origin_name = template_name
+
+        try:
+            children = resolved_props.props.get("children", [])
+            attributes = [
+                JsxAttribute(
+                    StringLiteral(key) if "-" in key else Identifier(underscore_to_camel(key)),
+                    self._codegen_prop(prop),
+                )
+                for key, prop in resolved_props.props.items()
+                if key != "children"
+            ]
+            jsx_children = [
+                self._codegen_prop(child)
+                for child in ([children] if not isinstance(children, list) else children)
+            ]
+            leading_comments = None
+            if include_template_origin and template_name and template_name != last_template_name:
+                leading_comments = [MultiLineComment(template_name)]
+            return JsxElement(
+                self.resolve_component_import(component),
+                attributes,
+                jsx_children,
+                leading_comments=leading_comments,
+            )
+        except UnconvertibleValueException as e:
+            raise ValueError(
+                f"Do not know how to handle prop of type {type(e.value)}: {e.value}\n\n "
+                "Either add a handler to ALLIANCE_PLATEFORM['FRONTEND']['REACT_PROP_HANDLERS'] or check the correct value is being passed in."
+            )
+        finally:
+            self._last_template_origin_name = last_template_name
+            self._include_template_origin = last_include_template_origin
+
     def generate_code(self, props: ComponentProps, container_id: str):
-        props_node = props.generate_code(self)
-        component_id = self.resolve_component_import(self.node)
-        for node in self._leading_nodes:
-            self._writer.add_node(node)
+        jsx_element = self.create_jsx_element_node(self.node, props)
+
+        # In some cases a wrapper component is needed, e.g. when using props that require hooks. This just wraps
+        # the element in a wrapper function and returns the element. The props themselves may be a hook call, so we
+        # don't have to specifically check for hooks here.
         if self._requires_wrapper_component:
             wrapper_id = Identifier("Wrapper")
             self._writer.add_node(
                 FunctionDeclaration(
                     wrapper_id,
                     [],
-                    [
-                        ReturnStatement(
-                            CallExpression(
-                                self._writer.resolve_import(
-                                    ap_frontend_settings.REACT_RENDER_COMPONENT_FILE,
-                                    ImportSpecifier("createElementWithProps"),
-                                    import_order_priority=HIGHEST_PRIORITY_IMPORT,
-                                ),
-                                [
-                                    component_id,
-                                    props_node,
-                                ],
-                            )
-                        )
-                    ],
+                    [ReturnStatement(jsx_element)],
                 )
             )
             component_id = wrapper_id
-            props_node = {}
+            jsx_element = (JsxElement(component_id, [], []),)
         self._writer.add_node(
             CallExpression(
                 self._writer.resolve_import(
@@ -685,8 +739,7 @@ class ComponentSourceCodeGenerator:
                         ),
                         [f"[data-djid='{container_id}']"],
                     ),
-                    component_id,
-                    props_node,
+                    jsx_element,
                     container_id,
                     not self.node.ssr_disabled,
                 ],
@@ -703,10 +756,6 @@ class ComponentSourceCodeGenerator:
             counter += 1
         self._used_identifiers.append(name)
         return Identifier(name)
-
-    def add_leading_node(self, node: Node):
-        """Add a node that should be added to the top of the generated code."""
-        self._leading_nodes.append(node)
 
 
 class OmitComponentFromRendering(Exception):
@@ -894,14 +943,14 @@ class ComponentNode(template.Node, BundlerAsset):
                 raise OmitComponentFromRendering()
 
             # Many things only expect a single child so handle that as a default. This isn't necessary as we handle
-            # it in createElementWithProps but makes for slightly more readable code so leaving it in.
+            # it in our calls to createElement, but makes for slightly more readable code so leaving it in.
             if len(children) == 1:
                 return children[0]
 
             # NOTE: I removed this as we can handle it on the frontend by passing `children` through as a spread to
-            # `React.createElement` which tells it the children are static. See `createElementWithProps` for where this
-            # occurs. Adding keys here did cause some problems - namely with the `Cell` component in `Table`; navigation
-            # with keyboard across rows broke.
+            # `React.createElement` which tells it the children are static. See ``ComponentSourceCodeGenerator.create_jsx_element_node``
+            # for where this occurs. Adding keys here did cause some problems - namely with the `Cell` component in
+            # `Table`; navigation with keyboard across rows broke.
             # for i, child in enumerate(children):
             #     if isinstance(child, required_imports) and not child.props.has_prop("key"):
             #         child.props.add_prop("key", i)
@@ -986,9 +1035,7 @@ class ComponentNode(template.Node, BundlerAsset):
         except OmitComponentFromRendering:
             return ""
 
-    def print_debug_tree(
-        self, props: ComponentProps, level=0, last_template_name=None, suppress_origin=False
-    ):
+    def print_debug_tree(self, props: ComponentProps, include_template_origin=True):
         """Print a debug tree of the component and its children.
 
         This renders to look like JSX with comments indicating which templates are used to render the component::
@@ -1003,51 +1050,11 @@ class ComponentNode(template.Node, BundlerAsset):
               </Select>
             </DjangoWidgetWrapper>
         """
-        attrs = {}
-        children = []
-        for name, value in props.props.items():
-            if name == "children":
-                _raw_prop = value
-                raw_prop: list[PropType]
-                if not isinstance(_raw_prop, (list, tuple)):
-                    raw_prop = [cast(PropType, _raw_prop)]
-                else:
-                    raw_prop = cast(list[PropType], _raw_prop)
-                for i, child in enumerate(raw_prop):
-                    if isinstance(child, NestedComponentProp):
-                        children.append(
-                            child.component.print_debug_tree(
-                                child.props, level + 1, self.origin.template_name, suppress_origin=i > 0
-                            )
-                        )
-                    else:
-                        if isinstance(child, str):
-                            child = child.strip()
-                        if child:
-                            children.append(child)
-            else:
-                if isinstance(value, ComponentProp):
-                    value = f"{{{value.as_debug_string()}}}"
-                elif isinstance(value, str):
-                    value = f'"{value}"'
-                else:
-                    value = f"{{{value}}}"
-                attrs[name] = value
-        indent = "  " * level
-        child_indent = "  " * (level + 1)
-        children_str = child_indent + f"\n{child_indent}".join(children)
-        attr_str = " ".join(f"{name}={value}" for name, value in attrs.items())
-        template_name = self.origin.template_name
-        if isinstance(template_name, bytes):
-            template_name = template_name.decode("utf8")
-        if not suppress_origin and template_name and template_name != last_template_name:
-            origin = f"{{/* {template_name} */ }}\n{indent}"
-        else:
-            origin = ""
-        open_tag = f"{origin}<{self.source.as_tag()} {attr_str}>"
-        if not children:
-            return f"{open_tag[:-1]} />"
-        return f"""{open_tag}\n{children_str}\n{indent}</{self.source.as_tag()}>"""
+        # Disable jsx_transform so raw JSX is outputted rather than React.createElement calls
+        printer = TypescriptPrinter(jsx_transform=None)
+        generator = ComponentSourceCodeGenerator(self)
+        jsx_element = generator.create_jsx_element_node(self, props, include_template_origin)
+        return printer.print(jsx_element)
 
 
 @register.simple_tag()

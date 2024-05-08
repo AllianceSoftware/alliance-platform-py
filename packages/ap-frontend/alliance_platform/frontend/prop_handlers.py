@@ -60,13 +60,6 @@ class ComponentProp(SSRCustomFormatSerializable, CodeGeneratorNode):
     defined in ``ssrJsonRevivers.tsx``.
     """
 
-    def as_debug_string(self):
-        """Return prop as a string for debugging purposes.
-
-        This is outputted in the template in dev to better illustrate how the component and props are constructed.
-        """
-        raise NotImplementedError(f"as_debug_string not implemented for {self.__class__.__name__}")
-
     @classmethod
     def should_apply(cls, value: Any, node: ComponentNode, context: Context):
         """Return ``True`` if this prop handler should be used for the given value."""
@@ -98,9 +91,6 @@ class DateProp(ComponentProp):
             "frontend/src/re-exports.tsx", ImportSpecifier("CalendarDate")
         )
         return NewExpression(calendar_date, self.js_args)
-
-    def as_debug_string(self):
-        return f'new CalendarDate({", ".join(map(str, self.js_args))})'
 
     @classmethod
     def should_apply(cls, value: Any, node: ComponentNode, context: Context):
@@ -139,9 +129,6 @@ class DateTimeProp(ComponentProp):
             calendar_date,
             self.js_args,
         )
-
-    def as_debug_string(self):
-        return f'new CalendarDateTime({", ".join(map(str, self.js_args))})'
 
     @classmethod
     def should_apply(cls, value: Any, node: ComponentNode, context: Context):
@@ -188,9 +175,6 @@ class ZonedDateTimeProp(ComponentProp):
             self.js_args,
         )
 
-    def as_debug_string(self):
-        return f"new ZonedDateTime({', '.join(map(str, self.js_args))})"
-
     @classmethod
     def should_apply(cls, value: Any, node: ComponentNode, context: Context):
         return isinstance(value, datetime.datetime) and is_aware(value)
@@ -216,9 +200,6 @@ class TimeProp(ComponentProp):
         calendar_date = generator.resolve_prop_import("frontend/src/re-exports.tsx", ImportSpecifier("Time"))
         return NewExpression(calendar_date, self.js_args)
 
-    def as_debug_string(self):
-        return f'new Time({", ".join(map(str, self.js_args))})'
-
     @classmethod
     def should_apply(cls, value: Any, node: ComponentNode, context: Context):
         return isinstance(value, datetime.time)
@@ -240,9 +221,6 @@ class SetProp(ComponentProp):
             Identifier("Set"),
             [ArrayLiteralExpression([self.convert_to_node(value, generator) for value in self.value])],
         )
-
-    def as_debug_string(self):
-        return f"new Set({list(self.value)})"
 
     @classmethod
     def should_apply(cls, value: Any, node: ComponentNode, context: Context):
@@ -274,11 +252,6 @@ class SpecialNumeric(ComponentProp):
         return Identifier("NaN")
 
     def get_representation(self, context: SSRSerializerContext) -> dict | str | list:
-        if math.isinf(self.value):
-            return "Infinity" if self.value > 0 else "-Infinity"
-        return "NaN"
-
-    def as_debug_string(self):
         if math.isinf(self.value):
             return "Infinity" if self.value > 0 else "-Infinity"
         return "NaN"

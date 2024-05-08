@@ -63,7 +63,7 @@ class AlliancePlatformFrontendSettingsType(TypedDict, total=False):
     PRODUCTION_DIR: Path
     #: Any custom prop handlers to use for react components. This can be a string import path to a list of prop handlers, or the list directly.
     REACT_PROP_HANDLERS: str | list[type["ComponentProp"]]
-    #: File that is used to render React components using the ``react`` tag. This file should export a function named ``renderComponent`` and a function ``createElementWithProps``.
+    #: File that is used to render React components using the ``react`` tag. This file should export a function named ``renderComponent`` and a function ``createElement`` (this can just be re-exported from React).
     REACT_RENDER_COMPONENT_FILE: Path | str
     #: Set to a dotted path to a function that will be called to resolve the global context for SSR. This function should return a dictionary of values to be passed to the SSR renderer under the `globalContext` key.
     SSR_GLOBAL_CONTEXT_RESOLVER: str | None
@@ -119,7 +119,7 @@ class AlliancePlatformFrontendSettings(AlliancePlatformSettingsBase):
     BUNDLER_DISABLE_DEV_CHECK_HTML: bool
     #: Set to a dotted path to a function that will be called to resolve the global context for SSR. This function should return a dictionary of values to be passed to the SSR renderer under the `globalContext` key.
     SSR_GLOBAL_CONTEXT_RESOLVER: str | None
-    #: File that is used to render React components using the ``react`` tag. This file should export a function named ``renderComponent`` and a function ``createElementWithProps``.
+    #: File that is used to render React components using the ``react`` tag. This file should export a function named ``renderComponent`` and a function ``createElement`` (this can just be re-exported from React).
     REACT_RENDER_COMPONENT_FILE: Path
     #: The limit to apply for code format requests in development mode. This is limited to 1mb by default; anything above that will not be formatted. This is only
     #: applicable to dev mode where code is formatted to make debugging easier when viewing the source.
