@@ -15,6 +15,8 @@ from django.template import Context
 from django.template import Template
 from django.test import SimpleTestCase
 from django.test import override_settings
+from django.utils.functional import SimpleLazyObject
+from django.utils.functional import lazy
 from django.utils.timezone import make_aware
 
 from .test_utils import override_ap_frontend_settings
@@ -756,6 +758,32 @@ class TestComponentTemplateTagOutput(SimpleTestCase):
         self.assertEqual(
             run_prettier(self._get_debug_tree(template_code, **kwargs)),
             run_prettier(expected_output),
+        )
+
+    def test_django_lazy_object_as_prop(self):
+        def get_token():
+            return "abc123"
+
+        token = lazy(get_token, str)
+        self.assertComponentEqual(
+            """{% component "CustomForm" csrf_token=csrf_token %}{% endcomponent %}""",
+            """
+            <CustomForm csrfToken="abc123" />
+            """,
+            csrf_token=token,
+        )
+
+    def test_django_simple_lazy_object_as_prop(self):
+        def get_token():
+            return "abc123"
+
+        token = SimpleLazyObject(get_token)
+        self.assertComponentEqual(
+            """{% component "CustomForm" csrf_token=csrf_token %}{% endcomponent %}""",
+            """
+            <CustomForm csrfToken="abc123" />
+            """,
+            csrf_token=token,
         )
 
     def test_variable_string_concat(self):
