@@ -1,9 +1,11 @@
+from functools import wraps
 import json
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Callable
 
 from django.conf import settings
+from django.utils.html import escape
 
 from .settings import ap_codegen_settings
 
@@ -23,7 +25,11 @@ from .typescript import Identifier
 from .typescript import ImportDeclaration
 from .typescript import ImportDefaultSpecifier
 from .typescript import ImportSpecifier
+from .typescript import JsxElement
+from .typescript import JsxExpression
+from .typescript import JsxText
 from .typescript import Modifier
+from .typescript import MultiLineComment
 from .typescript import NewExpression
 from .typescript import Node
 from .typescript import NodeLike
@@ -49,6 +55,57 @@ from .typescript import convert_to_node
 # TODO: Should add a base Printer and TypescriptSourceFileWriter class
 
 
+def push_node_stack(method):
+    """Pushes a node onto the node stack before calling the method and pops it after.
+
+    This is done as a decorator to avoid needing to wrap and indent the entire ``print`` method which is already
+    very large.
+    """
+
+    @wraps(method)
+    def wrapper(self, node, *args, **kwargs):
+        self.node_stack.append(node)
+        try:
+            result = method(self, node, *args, **kwargs)
+        finally:
+            self.node_stack.pop()
+        return result
+
+    return wrapper
+
+
+def print_comments(method):
+    """For any node that has leading or trailing comments print them out before or after the node code.
+
+    Intended to decorate the ``print`` method on ``TypescriptPrinter``. This is a decorator to avoid needing to
+    concatenate strings within ``print`` which is already very large. Comments are a special case in that they
+    apply generically to many nodes.
+    """
+
+    @wraps(method)
+    def wrapper(self, node, *args, **kwargs):
+        result = method(self, node, *args, **kwargs)
+        if isinstance(node, Node):
+            if node.leading_comments and (not isinstance(node, JsxElement) or not self.jsx_transform):
+                result = self._print_comments(node.leading_comments) + "\n" + result
+                if self.parent_node():
+                    result = "\n" + result
+            if node.trailing_comments and (not isinstance(node, JsxElement) or not self.jsx_transform):
+                result = result + "\n" + self._print_comments(node.trailing_comments)
+                if len(self.node_stack) > 1:
+                    # Only do this if not the root node
+                    result += "\n"
+        return result
+
+    return wrapper
+
+
+default_jsx_transform = PropertyAccessExpression(
+    Identifier("React"),
+    Identifier("createElement"),
+)
+
+
 class TypescriptPrinter:
     """Print out code for the specified node
 
@@ -59,19 +116,131 @@ class TypescriptPrinter:
     relative_to_path: Path
     #: Function used to resolve the URL to use for an import. This can be used to do things like resolve it to a dev server URL or to a built file. If not provided import source is used as is.
     resolve_import_url: Callable[[Path | str], str] | None
+    #: How to treat JSX elements. If specified, JSX elements will be transformed to the equivalent of ``React.createElement`` calls.
+    #: The specific function called is identified by ``jsx_transform``, but the relevant import must be added manually.
+    jsx_transform: Node | None
+    #: Current node stack for printing. As each node is printed it is pushed onto this stack. This can be used to determine the parent node of the current node.
+    node_stack: list[Node]
 
     def __init__(
         self,
         relative_to_path: Path | None = None,
         resolve_import_url: Callable[[Path | str], str] | None = None,
+        jsx_transform: Identifier | None = default_jsx_transform,
     ):
         if relative_to_path is None:
             relative_to_path = ap_codegen_settings.JS_ROOT_DIR
         self.relative_to_path = relative_to_path.parent if relative_to_path.is_file() else relative_to_path
         self.resolve_import_url = resolve_import_url
+        self.jsx_transform = jsx_transform
+        self.node_stack = []
 
-    def print(self, node: NodeLike):  # noqa: T202
+    def _format_literal(self, value: str | int | float | bool):
+        """Format a literal for printing
+
+        For strings, this will escape them and wrap them in quotes. For booleans, this will convert them to 'true' or 'false'.
+        Numeric values will be converted to strings.
+        """
+        if isinstance(value, str):
+            # use json.dumps to escape strings & quote them
+            return json.dumps(
+                value,
+                # don't escape non-ascii. I added this specifically for generating code for React, e.g. '“I'm in a lquo;“' should
+                # not end up as \u201cI'm in a lquo;\u201c
+                ensure_ascii=False,
+            )
+        if isinstance(value, bool):
+            return "true" if value else "false"
+        return str(value)
+
+    def _print_comments(self, comments: list[SingleLineComment | MultiLineComment]):
+        """Print comments according to the current context
+
+        If within a JSX element, comments will be wrapped in curly braces and SingleLineComment cannot be used.
+        """
+        within_jsx = self.is_within_jsx()
+        comment_strs: list[str] = []
+        for comment in comments:
+            if within_jsx and isinstance(comment, SingleLineComment):
+                comment = MultiLineComment(comment.comment_text)
+            comment_str = self.print(comment)
+            if within_jsx:
+                comment_str = f"{{{comment_str}}}"
+            comment_strs.append(comment_str)
+        return "\n".join(comment_strs)
+
+    def parent_node(self):
+        """Return the parent node of the current node being processed by ``print``. This only makes sense when called from within ``print``.
+
+        This can be used to determine what to do with a node conditionally based on its parent.
+        """
+        if len(self.node_stack) >= 2:
+            return self.node_stack[-2]
+        return None
+
+    @push_node_stack
+    @print_comments
+    def print(self, node: NodeLike) -> str:  # noqa: T202
         """Recursively print the code for the specified ``node``"""
+        if isinstance(node, JsxText) or isinstance(node, StringLiteral) and self.is_within_jsx():
+            if self.jsx_transform:
+                return self._format_literal(node.value)
+            if node.value != escape(node.value):
+                # If escaping is needed, use a JSX expression. For example, if the string is "Hello <World>" then
+                # this will be printed as {"Hello <World>"}
+                return f"{{{self._format_literal(node.value)}}}"
+            return node.value
+        if isinstance(node, JsxExpression):
+            value = ""
+            if node.expression is not None:
+                value = self.print(node.expression)
+            prefix = ""
+            suffix = ""
+            if node.leading_comments:
+                prefix = self.print(node.leading_comments)
+            if node.trailing_comments:
+                suffix = self.print(node.trailing_comments)
+            if self.jsx_transform:
+                return f"{prefix}{value}{suffix}"
+            return f"{{{prefix}{value}{suffix}}}"
+        if isinstance(node, JsxElement):
+            if self.jsx_transform:
+                args = [
+                    node.tag_name,
+                    ObjectLiteralExpression(
+                        [ObjectProperty(attr.name, attr.initializer) for attr in node.attributes]
+                    ),
+                    *node.children,
+                ]
+                if node.leading_comments:
+                    node.tag_name.leading_comments = node.leading_comments
+                if node.trailing_comments:
+                    node.tag_name.trailing_comments = node.trailing_comments
+                return self.print(
+                    CallExpression(
+                        self.jsx_transform,
+                        args,
+                    )
+                )
+            attrs = []
+            for attr in node.attributes:
+                # if attr is e.g. "aria-label" use that as is. Otherwise will be an Identifier.
+                name = attr.name.value if isinstance(attr.name, StringLiteral) else self.print(attr.name)
+                # if string use form 'name="value"', otherwise use form 'name={value}'
+                if isinstance(attr.initializer, StringLiteral):
+                    attrs.append(f"{name}={self._format_literal(attr.initializer.value)}")
+                else:
+                    attrs.append(f"{name}={{{self.print(attr.initializer)}}}")
+            attrs_str = ""
+            if attrs:
+                attrs_str = " " + "".join(attrs)
+            tag_name = (
+                node.tag_name.value if isinstance(node.tag_name, StringLiteral) else self.print(node.tag_name)
+            )
+            if node.children:
+                return f"<{tag_name}{attrs_str}>{''.join(self.print(child) for child in node.children)}</{tag_name}>"
+            return f"<{tag_name}{attrs_str} />"
+
         if isinstance(node, VariableDeclaration):
             return self.apply_modifiers(
                 " ".join(
@@ -87,8 +256,7 @@ class TypescriptPrinter:
         if isinstance(node, Identifier):
             return node.name
         if isinstance(node, (NumericLiteral, BooleanLiteral, StringLiteral)):
-            # use json.dumps to escape strings & quote them
-            return json.dumps(node.value)
+            return self._format_literal(node.value)
         if isinstance(node, ImportSpecifier):
             if node.imported == node.local:
                 return self.print(node.imported)
@@ -146,8 +314,15 @@ class TypescriptPrinter:
             return f"return {self.print(node.expression)}"
 
         if isinstance(node, CallExpression):
-            args = ", ".join(self.print(arg) for arg in node.arguments)
-            return f"{self.print(node.expression)}({args})"
+            args: list[str] = []
+            for arg in node.arguments:
+                code = self.print(arg)
+                if isinstance(arg, SingleLineComment):
+                    args.append(f"\n{code}\n")
+                else:
+                    args.append(code)
+            args_str = ", ".join(args)
+            return f"{self.print(node.expression)}({args_str})"
 
         if isinstance(node, AsExpression):
             return f"{self.print(node.expression)} as {self.print(node.type_annotation)}"
@@ -177,6 +352,9 @@ class TypescriptPrinter:
         if isinstance(node, SingleLineComment):
             lines = "\n// ".join(node.comment_text.split("\n"))
             return f"// {lines}"
+
+        if isinstance(node, MultiLineComment):
+            return f"/* {node.comment_text} */"
 
         if isinstance(node, NullKeyword):
             return "null"
@@ -224,6 +402,13 @@ class TypescriptPrinter:
                 raise NotImplementedError(f"Do not know how to handle {modifier}")
 
         return prefix + code
+
+    def is_within_jsx(self):
+        """Return True if the current node is within a JSX element. This can be used to determine how to print certain nodes.
+
+        For example, a ``StringLiteral`` within a JSX element would be ``<Element>Text</Element>``, but outside would be ``"Text"``.
+        """
+        return isinstance(self.parent_node(), JsxElement)
 
 
 class TypescriptSourceFileWriter:
@@ -281,11 +466,16 @@ class TypescriptSourceFileWriter:
 
     used_identifiers: list[str]
 
+    #: How to treat JSX elements. If specified, JSX elements will be transformed to the equivalent of ``React.createElement`` calls.
+    #: The specific function called is identified by ``jsx_transform``, but the relevant import must be added manually.
+    jsx_transform: Node | None
+
     def __init__(
         self,
         path: Path | None = None,
         path_base: Path | None = None,
         resolve_import_url: Callable[[Path | str], str] | None = None,
+        jsx_transform: Identifier | None = default_jsx_transform,
     ):
         """
 
@@ -302,6 +492,7 @@ class TypescriptSourceFileWriter:
         self.leading_nodes = []
         self.required_imports = []
         self.used_identifiers = []
+        self.jsx_transform = jsx_transform
 
     def resolve_import(
         self, source: str | Path, specifier: ImportSpecifier | ImportDefaultSpecifier, import_order_priority=0
@@ -350,7 +541,7 @@ class TypescriptSourceFileWriter:
 
     def get_code(self) -> str:
         """Returns the printed code"""
-        printer = TypescriptPrinter(self.path_base, self.resolve_import_url)
+        printer = TypescriptPrinter(self.path_base, self.resolve_import_url, jsx_transform=self.jsx_transform)
         code = [printer.print(node) for node in self.leading_nodes]
         for imp in self.required_imports:
             code.append(printer.print(imp))
