@@ -2,6 +2,7 @@ import datetime
 import json
 from typing import cast
 from unittest import mock
+from unittest import skip
 
 from alliance_platform.frontend.bundler.base import HtmlGenerationTarget
 from alliance_platform.frontend.bundler.context import BundlerAssetContext
@@ -22,6 +23,7 @@ from .test_utils.bundler import bundler_kwargs
 from .test_utils.bundler import bypass_frontend_asset_registry
 from .test_utils.bundler import fixtures_dir
 from .test_utils.bundler import format_code
+from .test_utils.bundler import run_prettier
 
 inline_css_prod = {
     fixtures_dir / "build_test/assets/Button-abc123.css": ".prod_button { color: red; }",
@@ -714,3 +716,140 @@ Some               space
                             ]
                         },
                     )
+
+
+test_development_bundler = TestViteBundler(
+    **bundler_kwargs,  # type: ignore[arg-type]
+    mode="development",
+)
+
+
+@override_ap_frontend_settings(
+    BUNDLER=test_development_bundler,
+)
+class TestComponentTemplateTagOutput(SimpleTestCase):
+    """For ease of testing, these tests just use the pretty debug output for comparing code
+
+    For testing the actual codegen itself, see the above tests
+    """
+
+    def setUp(self):
+        self.bundler_context = BundlerAssetContext(
+            frontend_asset_registry=bypass_frontend_asset_registry, skip_checks=True
+        )
+        self.bundler_context.__enter__()
+
+    def tearDown(self):
+        self.bundler_context.__exit__(None, None, None)
+
+    def _get_debug_tree(self, template_contents: str, **kwargs: dict):
+        template = Template("{% load react %}" + template_contents)
+        output: list[str] = []
+        context = Context(kwargs)
+        context.template = template
+        for node in cast(list[ComponentNode], template.nodelist.get_nodes_by_type(ComponentNode)):
+            props = node.resolve_props(context)
+            output.append(node.print_debug_tree(props, include_template_origin=False))
+        return "\n".join(output)
+
+    def assertComponentEqual(self, template_code, expected_output, **kwargs):
+        self.assertEqual(
+            run_prettier(self._get_debug_tree(template_code, **kwargs)),
+            run_prettier(expected_output),
+        )
+
+    def test_variable_string_concat(self):
+        self.assertComponentEqual(
+            """{% component "Button" %}Hello {{ name }}{% endcomponent %}""",
+            """
+            <Button>
+              Hello Sam
+            </Button>
+            """,
+            name="Sam",
+        )
+
+    def test_boolean_attribute(self):
+        self.assertComponentEqual(
+            """{% component "Button" is_disabled=True %}Disabled{% endcomponent %}""",
+            """<Button isDisabled={true}>Disabled</Button>""",
+        )
+
+    def test_string_attribute(self):
+        self.assertComponentEqual(
+            """{% component "Button" variant="primary" %}Click Me{% endcomponent %}""",
+            """<Button variant="primary">Click Me</Button>""",
+        )
+
+    def test_numeric_attribute(self):
+        self.assertComponentEqual(
+            """{% component "Range" min_value=5  %}{% endcomponent %}""",
+            """<Range minValue={5} />""",
+        )
+
+    def test_variable_attribute(self):
+        self.assertComponentEqual(
+            """{% component "Button" variant=variant %}Click Me{% endcomponent %}""",
+            """<Button variant="secondary">Click Me</Button>""",
+            variant="secondary",
+        )
+
+    def test_special_attribute(self):
+        self.assertComponentEqual(
+            """{% component "Button" aria-label="Disable" %}X{% endcomponent %}""",
+            """<Button aria-label="Disable">X</Button>""",
+        )
+
+    @skip("Restore where add bs4 parsing")
+    def test_html_entities(self):
+        self.assertComponentEqual(
+            """{% component "Button" %}&ldquo;Testing and Stuff&rdquo;{% endcomponent %}""",
+            """<Button>“Testing and Stuff”</Button>""",
+        )
+
+    def test_nested_component(self):
+        self.assertComponentEqual(
+            """{% component "Button" %}Welcome {% component "strong" %}{{ name }}{% endcomponent %}{% endcomponent %}""",
+            """<Button>Welcome <strong>Sam</strong></Button>""",
+            name="Sam",
+        )
+
+    @skip("Restore where add bs4 parsing")
+    def test_nested_component_raw_html(self):
+        self.assertComponentEqual(
+            """{% component "Button" %}Welcome <strong>{{ name }}</strong>{% endcomponent %}""",
+            """
+            <Button>Welcome <strong>Sam</strong></Button>
+            """,
+            name="Sam",
+        )
+
+    @skip("Restore where add bs4 parsing")
+    def test_nested_component_raw_html_from_include(self):
+        self.assertComponentEqual(
+            """{% component "Button" %}Welcome {% include "react_test_templates/nested_raw_tag.html" with name=name %}{% endcomponent %}""",
+            """
+            <Button>Welcome <strong>Sam</strong></Button>
+            """,
+            name="Sam",
+        )
+
+    def test_nested_component_from_include(self):
+        self.assertComponentEqual(
+            """{% component "Button" %}Welcome {% include "react_test_templates/nested_tag.html" with name=name %}{% endcomponent %}""",
+            """
+            <Button>Welcome <strong>Sam</strong></Button>
+            """,
+            name="Sam",
+        )
+
+    def test_template_include(self):
+        self.assertComponentEqual(
+            """{% component "Button" %}Hello {% include "react_test_templates/simple_include.html" %}{% endcomponent %}""",
+            """
+            <Button>
+              Hello Inner Content
+            </Button>
+            """,
+            name="Sam",
+        )
