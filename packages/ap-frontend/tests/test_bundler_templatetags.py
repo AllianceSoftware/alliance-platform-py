@@ -336,7 +336,7 @@ class TestVanillaExtractTemplateTag(SimpleTestCase):
 
 
 @override_ap_frontend_settings(DEBUG_COMPONENT_OUTPUT=False)
-class TestComponentTemplateTag(SimpleTestCase):
+class TestComponentTemplateTagCodeGen(SimpleTestCase):
     def setUp(self) -> None:
         self.test_production_bundler = TestViteBundler(
             **bundler_kwargs,  # type: ignore[arg-type]
@@ -368,12 +368,11 @@ class TestComponentTemplateTag(SimpleTestCase):
                 f"""
                     <dj-component data-djid="C1"><!-- ___SSR_PLACEHOLDER_0___ --></dj-component>
                     <script type="module">
-                        import {{ renderComponent }} from '{self.dev_url}frontend/src/renderComponent.tsx';
+                        import {{ createElement, renderComponent }} from '{self.dev_url}frontend/src/renderComponent.tsx';
                         import Button, {{  }} from '{self.dev_url}components/Button.tsx';
                         renderComponent(
                           document.querySelector("[data-djid='C1']"),
-                          Button,
-                          {{ children: "Click Me" }},
+                          createElement(Button, {{}}, "Click Me"),
                           "C1",
                           true
                         );
@@ -386,9 +385,11 @@ class TestComponentTemplateTag(SimpleTestCase):
                 """
                     <dj-component data-djid="C1"><!-- ___SSR_PLACEHOLDER_0___ --></dj-component>
                     <script type="module">
-                        import { renderComponent } from '/static/assets/renderComponent-e1.js';
+                        import { createElement, renderComponent } from '/static/assets/renderComponent-e1.js';
                         import Button, {  } from '/static/assets/Button-def456.js';
-                        renderComponent(document.querySelector("[data-djid='C1']"), Button, {children: "Click Me"}, "C1", true)
+                        renderComponent(
+                            document.querySelector("[data-djid='C1']"),
+                            createElement(Button, {}, "Click Me"), "C1", true)
                     </script>
                 """,
             ),
@@ -437,13 +438,12 @@ class TestComponentTemplateTag(SimpleTestCase):
                         """
                         <dj-component data-djid="C1"><!-- ___SSR_PLACEHOLDER_0___ --></dj-component>
                         <script type="module">
-                            import { createElementWithProps, renderComponent } from "%sfrontend/src/renderComponent.tsx";
+                            import { createElement, renderComponent } from "%sfrontend/src/renderComponent.tsx";
                             import Button from "%scomponents/Button.tsx";
 
                             renderComponent(
                               document.querySelector("[data-djid='C1']"),
-                              Button,
-                              { children: ["Click ", createElementWithProps("strong", {children: "Me"})] },
+                              createElement(Button, {}, "Click ", createElement("strong", {}, "Me")),
                               "C1",
                               true
                             );
@@ -540,7 +540,7 @@ class TestComponentTemplateTag(SimpleTestCase):
                     )
                     actual = tpl.render(context)
                     self.assertIn(
-                        """renderComponent(document.querySelector("[data-djid='C1']"), "button", {disabled: true, children: "Click", "aria-label": "Click Me", date: new CalendarDate(2022, 12, 1)}, "C1", true)""",
+                        """renderComponent(document.querySelector("[data-djid='C1']"), createElement("button", {disabled: true, "aria-label": "Click Me", date: new CalendarDate(2022, 12, 1)}, "Click"), "C1", true)""",
                         actual,
                     )
 
