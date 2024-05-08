@@ -4,6 +4,7 @@ from pathlib import Path
 import re
 from typing import Callable
 from typing import Sequence
+from typing import Union
 
 from django.utils.functional import Promise
 
@@ -11,10 +12,12 @@ from django.utils.functional import Promise
 # We don't need to be strict so exclude things where it makes it easier to use
 
 
+@dataclass(kw_only=True)
 class Node:
     """Root node everything else should extend from"""
 
-    pass
+    leading_comments: list[Union["SingleLineComment", "MultiLineComment"]] | None = None
+    trailing_comments: list[Union["SingleLineComment", "MultiLineComment"]] | None = None
 
 
 class Modifier:
@@ -587,6 +590,11 @@ class SingleLineComment(Node):
 
 
 @dataclass
+class MultiLineComment(Node):
+    comment_text: str
+
+
+@dataclass
 class NewExpression(Node):
     expression: Node
     arguments: Sequence[NodeLike] = field(default_factory=list)
@@ -605,6 +613,34 @@ class ArrowFunction(Node):
     parameters: list[Parameter]
     #: The body as either a single expression valid for Arrow functions or a ``Block`` node
     body: Node
+
+
+@dataclass
+class JsxAttribute(Node):
+    name: Identifier | StringLiteral
+    initializer: Node
+
+
+@dataclass
+class JsxSpreadAttribute(Node):
+    expression: Identifier
+
+
+@dataclass
+class JsxText(Node):
+    value: str
+
+
+@dataclass
+class JsxExpression(Node):
+    expression: Node | None
+
+
+@dataclass
+class JsxElement(Node):
+    tag_name: Identifier | StringLiteral
+    attributes: Sequence[JsxAttribute | JsxSpreadAttribute]
+    children: list[Union[JsxText, JsxExpression, "JsxElement"]]
 
 
 def construct_object_property_key(

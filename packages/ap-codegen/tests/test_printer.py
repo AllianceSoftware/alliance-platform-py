@@ -14,6 +14,10 @@ from alliance_platform.codegen.typescript import Identifier
 from alliance_platform.codegen.typescript import ImportDeclaration
 from alliance_platform.codegen.typescript import ImportDefaultSpecifier
 from alliance_platform.codegen.typescript import ImportSpecifier
+from alliance_platform.codegen.typescript import JsxAttribute
+from alliance_platform.codegen.typescript import JsxElement
+from alliance_platform.codegen.typescript import JsxText
+from alliance_platform.codegen.typescript import MultiLineComment
 from alliance_platform.codegen.typescript import NewExpression
 from alliance_platform.codegen.typescript import NumericLiteral
 from alliance_platform.codegen.typescript import ObjectLiteralExpression
@@ -21,6 +25,7 @@ from alliance_platform.codegen.typescript import ObjectProperty
 from alliance_platform.codegen.typescript import Parameter
 from alliance_platform.codegen.typescript import PropertyAccessExpression
 from alliance_platform.codegen.typescript import ReturnStatement
+from alliance_platform.codegen.typescript import SingleLineComment
 from alliance_platform.codegen.typescript import SpreadAssignment
 from alliance_platform.codegen.typescript import StringLiteral
 from alliance_platform.codegen.typescript import TemplateExpression
@@ -369,6 +374,139 @@ class TypescriptPrinterTestCase(SimpleTestCase):
             ),
             "palette.primary.border.sm",
         )
+
+    def test_jsx_simple(self):
+        tests = [
+            (None, "<Button isDisabled={true}>Click Me</Button>"),
+            (Identifier("createElement"), 'createElement(Button, {isDisabled: true}, "Click Me")'),
+        ]
+        for jsx_transform, expected in tests:
+            with self.subTest(jsx_transform=jsx_transform):
+                p = TypescriptPrinter(jsx_transform=jsx_transform)
+                self.assertEqual(
+                    p.print(
+                        JsxElement(
+                            Identifier("Button"),
+                            [JsxAttribute(Identifier("isDisabled"), BooleanLiteral(True))],
+                            [JsxText("Click Me")],
+                        )
+                    ),
+                    expected,
+                )
+
+    def test_jsx_unicode(self):
+        tests = [
+            (None, "<Button>“Testing and Stuff” 🥰</Button>"),
+            (
+                Identifier("createElement"),
+                'createElement(Button, {}, "“Testing and Stuff” 🥰")',
+            ),
+        ]
+        for jsx_transform, expected in tests:
+            with self.subTest(jsx_transform=jsx_transform):
+                p = TypescriptPrinter(jsx_transform=jsx_transform)
+                self.assertEqual(
+                    p.print(
+                        JsxElement(
+                            Identifier("Button"),
+                            [],
+                            [JsxText("“Testing and Stuff” 🥰")],
+                        )
+                    ),
+                    expected,
+                )
+
+    def test_jsx_html_entities(self):
+        tests = [
+            # Rather than escaping in printer we output the string in a JSX expression.
+            (None, '<Button>{"This & that"}</Button>'),
+            (
+                Identifier("createElement"),
+                'createElement(Button, {}, "This & that")',
+            ),
+        ]
+        for jsx_transform, expected in tests:
+            with self.subTest(jsx_transform=jsx_transform):
+                p = TypescriptPrinter(jsx_transform=jsx_transform)
+                self.assertEqual(
+                    p.print(
+                        JsxElement(
+                            Identifier("Button"),
+                            [],
+                            [JsxText("This & that")],
+                        )
+                    ),
+                    expected,
+                )
+
+    def test_jsx_dashed_attribute_keys(self):
+        tests = [
+            (None, '<Button aria-label="Click Me">X</Button>'),
+            (Identifier("createElement"), 'createElement(Button, {"aria-label": "Click Me"}, "X")'),
+        ]
+        for jsx_transform, expected in tests:
+            with self.subTest(jsx_transform=jsx_transform):
+                p = TypescriptPrinter(jsx_transform=jsx_transform)
+                self.assertEqual(
+                    p.print(
+                        JsxElement(
+                            Identifier("Button"),
+                            [JsxAttribute(StringLiteral("aria-label"), StringLiteral("Click Me"))],
+                            [JsxText("X")],
+                        )
+                    ),
+                    expected,
+                )
+
+    def test_jsx_comments(self):
+        tests = [
+            (
+                None,
+                "// Leading comment\n"
+                "<Button>Click Me\n"
+                "{/* Inner leading comment */}\n"
+                "<strong>Nested</strong>\n"
+                "{/* Inner trailing comment */}\n"
+                "</Button>\n"
+                "// Trailing comment",
+            ),
+            (
+                Identifier("createElement"),
+                "createElement(\n"
+                "// Leading comment\n"
+                "Button\n"
+                "// Trailing comment\n"
+                ', {}, "Click Me", createElement(\n'
+                "/* Inner leading comment */\n"
+                '"strong"\n'
+                "/* Inner trailing comment */\n"
+                ', {}, "Nested"))',
+            ),
+        ]
+        for jsx_transform, expected in tests:
+            with self.subTest(jsx_transform=jsx_transform):
+                p = TypescriptPrinter(jsx_transform=jsx_transform)
+                self.assertEqual(
+                    p.print(
+                        JsxElement(
+                            Identifier("Button"),
+                            [],
+                            [
+                                JsxText("Click Me"),
+                                JsxElement(
+                                    StringLiteral("strong"),
+                                    [],
+                                    [JsxText("Nested")],
+                                    leading_comments=[MultiLineComment("Inner leading comment")],
+                                    trailing_comments=[MultiLineComment("Inner trailing comment")],
+                                ),
+                            ],
+                            leading_comments=[SingleLineComment("Leading comment")],
+                            trailing_comments=[SingleLineComment("Trailing comment")],
+                        )
+                    ),
+                    expected,
+                )
 
 
 fixtures_dir = settings.BASE_DIR / "alliance_platform_frontend/bundler/tests/fixtures"
