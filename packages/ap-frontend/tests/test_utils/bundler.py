@@ -26,14 +26,14 @@ def run_prettier(code):
         [
             str(ap_frontend_settings.NODE_MODULES_DIR / ".bin/prettier"),
             "--stdin-filepath",
-            "test.ts",
+            "test.tsx",
         ],
         input=code,
         capture_output=True,
         text=True,
     )
     if p.returncode != 0:
-        raise ValueError("Failed to format code")
+        raise ValueError(f"Failed to format code: {p.stderr}")
     return p.stdout
 
 
