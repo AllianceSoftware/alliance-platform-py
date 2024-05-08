@@ -34,6 +34,7 @@ from django.template import Origin
 from django.template import TemplateSyntaxError
 from django.template.base import UNKNOWN_SOURCE
 from django.template.base import FilterExpression
+from django.utils.functional import LazyObject
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
@@ -73,6 +74,9 @@ def resolve_prop(value: Any, node: ComponentNode, context: Context) -> Component
         return list(resolve_prop(v, node, context) for v in value)
     if isinstance(value, ModelChoiceIteratorValue):
         return resolve_prop(value.value, node, context)  # type: ignore[attr-defined] # It has this value but no type info
+    if isinstance(value, LazyObject):
+        # unwrap lazy objects
+        return value.__reduce__()[1][0]
     for handler in ap_frontend_settings.REACT_PROP_HANDLERS:
         if handler.should_apply(value, node, context):
             return handler(value, node, context)
