@@ -25,6 +25,7 @@ from .typescript import Identifier
 from .typescript import ImportDeclaration
 from .typescript import ImportDefaultSpecifier
 from .typescript import ImportSpecifier
+from .typescript import JsxAttribute
 from .typescript import JsxElement
 from .typescript import JsxExpression
 from .typescript import JsxText
@@ -126,7 +127,7 @@ class TypescriptPrinter:
         self,
         relative_to_path: Path | None = None,
         resolve_import_url: Callable[[Path | str], str] | None = None,
-        jsx_transform: Identifier | None = default_jsx_transform,
+        jsx_transform: Node | None = default_jsx_transform,
     ):
         if relative_to_path is None:
             relative_to_path = ap_codegen_settings.JS_ROOT_DIR
@@ -208,7 +209,12 @@ class TypescriptPrinter:
                 args = [
                     node.tag_name,
                     ObjectLiteralExpression(
-                        [ObjectProperty(attr.name, attr.initializer) for attr in node.attributes]
+                        [
+                            ObjectProperty(attr.name, attr.initializer)
+                            if isinstance(attr, JsxAttribute)
+                            else SpreadAssignment(attr.expression)
+                            for attr in node.attributes
+                        ]
                     ),
                     *node.children,
                 ]
@@ -224,16 +230,19 @@ class TypescriptPrinter:
                 )
             attrs = []
             for attr in node.attributes:
-                # if attr is e.g. "aria-label" use that as is. Otherwise will be an Identifier.
-                name = attr.name.value if isinstance(attr.name, StringLiteral) else self.print(attr.name)
-                # if string use form 'name="value"', otherwise use form 'name={value}'
-                if isinstance(attr.initializer, StringLiteral):
-                    attrs.append(f"{name}={self._format_literal(attr.initializer.value)}")
+                if isinstance(attr, JsxAttribute):
+                    # if attr is e.g. "aria-label" use that as is. Otherwise will be an Identifier.
+                    name = attr.name.value if isinstance(attr.name, StringLiteral) else self.print(attr.name)
+                    # if string use form 'name="value"', otherwise use form 'name={value}'
+                    if isinstance(attr.initializer, StringLiteral):
+                        attrs.append(f"{name}={self._format_literal(attr.initializer.value)}")
+                    else:
+                        attrs.append(f"{name}={{{self.print(attr.initializer)}}}")
                 else:
-                    attrs.append(f"{name}={{{self.print(attr.initializer)}}}")
+                    attrs.append(f"{{...{self.print(attr.expression)}}}")
             attrs_str = ""
             if attrs:
-                attrs_str = " " + "".join(attrs)
+                attrs_str = " " + " ".join(attrs)
             tag_name = (
                 node.tag_name.value if isinstance(node.tag_name, StringLiteral) else self.print(node.tag_name)
             )
@@ -475,7 +484,7 @@ class TypescriptSourceFileWriter:
         path: Path | None = None,
         path_base: Path | None = None,
         resolve_import_url: Callable[[Path | str], str] | None = None,
-        jsx_transform: Identifier | None = default_jsx_transform,
+        jsx_transform: Node | None = default_jsx_transform,
     ):
         """
 
