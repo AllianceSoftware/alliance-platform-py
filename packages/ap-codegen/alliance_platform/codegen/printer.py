@@ -206,7 +206,7 @@ class TypescriptPrinter:
             return f"{{{prefix}{value}{suffix}}}"
         if isinstance(node, JsxElement):
             if self.jsx_transform:
-                args = [
+                element_args: list[NodeLike] = [
                     node.tag_name,
                     ObjectLiteralExpression(
                         [
@@ -225,7 +225,7 @@ class TypescriptPrinter:
                 return self.print(
                     CallExpression(
                         self.jsx_transform,
-                        args,
+                        element_args,
                     )
                 )
             attrs = []
