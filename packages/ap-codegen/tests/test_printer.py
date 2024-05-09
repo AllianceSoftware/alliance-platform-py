@@ -16,6 +16,7 @@ from alliance_platform.codegen.typescript import ImportDefaultSpecifier
 from alliance_platform.codegen.typescript import ImportSpecifier
 from alliance_platform.codegen.typescript import JsxAttribute
 from alliance_platform.codegen.typescript import JsxElement
+from alliance_platform.codegen.typescript import JsxSpreadAttribute
 from alliance_platform.codegen.typescript import JsxText
 from alliance_platform.codegen.typescript import MultiLineComment
 from alliance_platform.codegen.typescript import NewExpression
@@ -434,6 +435,31 @@ class TypescriptPrinterTestCase(SimpleTestCase):
                             Identifier("Button"),
                             [],
                             [JsxText("This & that")],
+                        )
+                    ),
+                    expected,
+                )
+
+    def test_jsx_spread_attribute(self):
+        tests = [
+            (None, "<Button isDisabled={true} {...props}>Click Me</Button>"),
+            (
+                Identifier("createElement"),
+                'createElement(Button, {isDisabled: true, ...props}, "Click Me")',
+            ),
+        ]
+        for jsx_transform, expected in tests:
+            with self.subTest(jsx_transform=jsx_transform):
+                p = TypescriptPrinter(jsx_transform=jsx_transform)
+                self.assertEqual(
+                    p.print(
+                        JsxElement(
+                            Identifier("Button"),
+                            [
+                                JsxAttribute(Identifier("isDisabled"), BooleanLiteral(True)),
+                                JsxSpreadAttribute(Identifier("props")),
+                            ],
+                            [JsxText("Click Me")],
                         )
                     ),
                     expected,
