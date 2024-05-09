@@ -16,8 +16,8 @@ from django.utils.functional import Promise
 class Node:
     """Root node everything else should extend from"""
 
-    leading_comments: list[Union["SingleLineComment", "MultiLineComment"]] | None = None
-    trailing_comments: list[Union["SingleLineComment", "MultiLineComment"]] | None = None
+    leading_comments: Sequence[Union["SingleLineComment", "MultiLineComment"]] | None = None
+    trailing_comments: Sequence[Union["SingleLineComment", "MultiLineComment"]] | None = None
 
 
 class Modifier:

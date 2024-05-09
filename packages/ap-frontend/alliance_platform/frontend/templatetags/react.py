@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 from typing import Callable
 from typing import Union
+from typing import cast
 import warnings
 
 from alliance_platform.codegen.printer import TypescriptPrinter
@@ -702,7 +703,10 @@ class ComponentSourceCodeGenerator:
         self._last_template_origin_name = template_name
 
         try:
-            children = resolved_props.props.get("children", [])
+            children = cast(
+                list[NestedComponentProp | str] | str | NestedComponentProp,
+                resolved_props.props.get("children", []),
+            )
             attributes = [
                 JsxAttribute(
                     StringLiteral(key) if "-" in key else Identifier(underscore_to_camel(key)),
