@@ -2,9 +2,13 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
+from dataclasses import field
+from html.parser import HTMLParser
 import math
 from pathlib import Path
 from typing import Any
+from typing import Callable
+from typing import Union
 import warnings
 
 from alliance_platform.codegen.printer import TypescriptPrinter
@@ -29,13 +33,16 @@ from django import template
 from django.core.exceptions import ImproperlyConfigured
 from django.forms.models import ModelChoiceIteratorValue
 from django.template import Context
+from django.template import Node
 from django.template import NodeList
 from django.template import Origin
 from django.template import TemplateSyntaxError
 from django.template.base import UNKNOWN_SOURCE
 from django.template.base import FilterExpression
+from django.template.base import TextNode
 from django.utils.functional import LazyObject
 from django.utils.html import format_html
+from django.utils.safestring import SafeString
 from django.utils.safestring import mark_safe
 
 from ...codegen.typescript import MultiLineComment
@@ -417,6 +424,8 @@ class NestedComponentPropAccumulator:
     context_key = "__NestedComponentPropAccumulator"
     #: The stored props as a mapping from the rendered placeholder string, to the ``NestedComponentProp``.
     props: dict[str, NestedComponentProp]
+    #: The origin component node
+    origin_node: ComponentNode
 
     @classmethod
     def get_current(cls, context: Context) -> NestedComponentPropAccumulator | None:
@@ -427,7 +436,8 @@ class NestedComponentPropAccumulator:
         """
         return context.get(cls.context_key, None)
 
-    def __init__(self, context: Context):
+    def __init__(self, context: Context, origin_node: ComponentNode):
+        self.origin_node = origin_node
         self.context = context
         self.props = {}
 
@@ -491,14 +501,22 @@ class NestedComponentPropAccumulator:
                         children.append(part)
                 children.append(prop)
                 prev_index = index + len(placeholder)
-            sub_value = value[prev_index:]
-            if sub_value:
-                children.append(sub_value)
-        elif value:
-            children.append(value)
+            value = value[prev_index:]
+        if value:
+            children += self.transform_string(value)
         self.props = {}
 
         return children
+
+    def transform_string(self, child: str | NestedComponentProp):
+        """Given a string, handle any necessary HTML conversions for React compatibility."""
+        if isinstance(child, SafeString):
+            return convert_html_string(
+                child,
+                self.origin_node.origin,
+                wrap_new_node=lambda node: NestedComponentProp(node, self.origin_node, self.context),
+            )
+        return [child]
 
 
 class ComponentSourceCodeGenerator:
@@ -555,6 +573,9 @@ class ComponentSourceCodeGenerator:
     _last_template_origin_name: str | None
     #: Used by ``create_jsx_element`` to track the specified value for the ``include_template_origin`` kwarg in the root node
     _last_include_template_origin: bool
+    #: Any nodes that should be added to the start of the generated content. This can be used by ``ComponentProp`` handlers to add code outside the component.
+    #: For example, populating a cache should be done once and not on every render.
+    _leading_nodes: list[Node]
 
     def __init__(self, node: ComponentNode):
         self.node = node
@@ -566,6 +587,7 @@ class ComponentSourceCodeGenerator:
         self._used_identifiers = []
         self._last_template_origin_name = None
         self._last_include_template_origin = False
+        self._leading_nodes = []
 
         # Resolve the import for createElement and use the returned Identifier for the jsx_transform
         self._writer.jsx_transform = self._writer.resolve_import(
@@ -714,6 +736,11 @@ class ComponentSourceCodeGenerator:
     def generate_code(self, props: ComponentProps, container_id: str):
         jsx_element = self.create_jsx_element_node(self.node, props)
 
+        # This needs to happen after the jsx_element is created, as that is where props are processed that may trigger
+        # leading nodes to be added
+        for node in self._leading_nodes:
+            self._writer.add_node(node)
+
         # In some cases a wrapper component is needed, e.g. when using props that require hooks. This just wraps
         # the element in a wrapper function and returns the element. The props themselves may be a hook call, so we
         # don't have to specifically check for hooks here.
@@ -760,6 +787,10 @@ class ComponentSourceCodeGenerator:
             counter += 1
         self._used_identifiers.append(name)
         return Identifier(name)
+
+    def add_leading_node(self, node: Node):
+        """Add a node that should be added to the top of the generated code."""
+        self._leading_nodes.append(node)
 
 
 class OmitComponentFromRendering(Exception):
@@ -851,6 +882,11 @@ def process_component_children(children: list[str | NestedComponentProp]) -> lis
     return processed_children
 
 
+# Used to identify children when processing them in resolve_props
+class ChildrenList(list):
+    pass
+
+
 class ComponentNode(template.Node, BundlerAsset):
     """A template node used by :func:`~alliance_platform.frontend.templatetags.react.component`"""
 
@@ -876,6 +912,8 @@ class ComponentNode(template.Node, BundlerAsset):
             raise ImproperlyConfigured(
                 "When using the `react` tag you must have `REACT_RENDER_COMPONENT_FILE` set in ALLIANCE_PLATFORM['FRONTEND'] settings"
             )
+        if "children" in props:
+            props["children"] = ChildrenList(props["children"])
         self.container_tag = container_tag
         self.container_props = container_props or {}
         self.ssr_disabled = ssr_disabled
@@ -921,8 +959,7 @@ class ComponentNode(template.Node, BundlerAsset):
         """
         if isinstance(value, DeferredProp):
             value = value.resolve(context)
-        if isinstance(value, NodeList):
-            # If it's a NodeList it must be tag children
+        if isinstance(value, (ChildrenList, NodeList)):
             children: list[str | NestedComponentProp] = []
             for child in value:
                 if isinstance(child, ComponentNode):
@@ -933,11 +970,11 @@ class ComponentNode(template.Node, BundlerAsset):
                     except OmitComponentFromRendering:
                         pass
                 else:
-                    with NestedComponentPropAccumulator(context) as accumulator:
+                    with NestedComponentPropAccumulator(context, self) as accumulator:
                         # This will be a string but there may have been components that render (e.g. within
                         # other django tags like {% if %}, or from template inheritance and rendering into a
                         # block contained within a component).
-                        child_value: str = child.render(context)
+                        child_value: str = child if isinstance(child, str) else child.render(context)
                         if child_value:
                             children += accumulator.apply(child_value)
 
@@ -1058,7 +1095,8 @@ class ComponentNode(template.Node, BundlerAsset):
         printer = TypescriptPrinter(jsx_transform=None)
         generator = ComponentSourceCodeGenerator(self)
         jsx_element = generator.create_jsx_element_node(self, props, include_template_origin)
-        return printer.print(jsx_element)
+
+        return self.bundler.format_code(printer.print(jsx_element))
 
 
 @register.simple_tag()
@@ -1340,9 +1378,24 @@ def parse_component_tag(
     container_tag = container_props.pop("tag", container_tag)
     props = props.copy() if props else {}
     props.update({key: value for key, value in kwargs.items() if key not in exclude_keys})
-    if nodelist:
-        props["children"] = nodelist
     origin = parser.origin or Origin(UNKNOWN_SOURCE)
+    if nodelist:
+        # Convert the nodelist to a string with placeholders for the template nodes. This is then processed for HTML
+        # contained within ``TextNode``s, before converting back to a list of nodes with any placeholders replaced with
+        # the original template nodes. This allows us to handle HTML being passed to component children directly without
+        # having to use __dangerouslySetInnerHTML.
+        i = 0
+        html = ""
+        replacements: dict[str, Node] = {}
+        for node in nodelist:
+            if isinstance(node, TextNode):
+                html += node.s
+            else:
+                placeholder = _html_replacement_placeholder_template.format(i)
+                html += placeholder
+                replacements[str(i)] = node
+                i += 1
+        props["children"] = convert_html_string(html, origin, replacements=replacements)
     if asset_source is None:
         asset_source = get_component_source_from_tag_args(args, tag_name, origin)
 
@@ -1356,3 +1409,128 @@ def parse_component_tag(
         ssr_disabled=ssr_options.get("disabled", ssr_disabled),
         omit_if_empty=component_options.get("omit_if_empty", omit_if_empty),
     )
+
+
+# These are used to replace template Nodes in a string with placeholders. The resulting string can them be parsed as HTML,
+# and then the placeholders replaced with the original template nodes.
+_html_replacement_placeholder_prefix = "_______PLACEHOLDER_____$"
+_html_replacement_placeholder_suffix = "$_"
+_html_replacement_placeholder_template = (
+    _html_replacement_placeholder_prefix + "{0}" + _html_replacement_placeholder_suffix
+)
+
+
+@dataclass
+class Element:
+    name: str
+    attrs: dict
+
+
+@dataclass
+class HTMLElement:
+    tag: str
+    attributes: dict[str, str] = field(default_factory=dict)
+    children: list[Union["HTMLElement", str]] = field(default_factory=list)
+
+
+class HtmlTreeParser(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        # The root of the parsed tree. The tag is nonsense, but not used - it's just to make implementation easier. We
+        # just use it for ``children``
+        self.root = HTMLElement("Root")
+        # Stack to maintain hierarchy of elements
+        self.stack = [self.root]
+
+    def handle_starttag(self, tag, attrs):
+        element = HTMLElement(tag, {attr[0]: attr[1] for attr in attrs})
+        if self.stack:
+            self.stack[-1].children.append(element)
+        else:
+            self.root = element
+        self.stack.append(element)
+
+    def handle_endtag(self, tag):
+        if self.stack and self.stack[-1].tag == tag:
+            self.stack.pop()
+
+    def handle_data(self, data):
+        if data and self.stack:
+            self.stack[-1].children.append(data)
+
+
+def convert_html_string(
+    html: str,
+    origin: Origin,
+    *,
+    replacements: dict[str, Node] | None = None,
+    wrap_new_node: Callable[[ComponentNode], ComponentNode | ComponentProp] = lambda x: x,
+):
+    """
+    Given a string that may contain HTML, convert it to a tree of ``ComponentNode``s
+
+    Args:
+        html: The html string to convert
+        origin: The template origin
+        replacements: Any replacements to make in the HTML after conversion. The way this works is that a template NodeList
+            is processed into a string, with any template nodes replaced with placeholders. The string is converted to
+            a component tree, then any placeholders are replaced with the original template nodes.
+        wrap_new_node:
+            Function to call to wrap any created ``ComponentNode``. This is used to wrap nodes in ``NestedComponentProp``
+            when they are children of another component. This isn't necessary for top-level nodes as they are handled
+            when ``parse_component_tag`` is first called.
+    Returns:
+
+    """
+    # NOTE: I tried lxml initially (with & without BeautifulSoup), and it was slower for our specific use case.
+    # In general, it's considered very fast, but we don't need most of its features and this simple parser was
+    # faster.
+    parser = HtmlTreeParser()
+    # Parse the HTML
+    parser.feed(html)
+
+    tags = parser.root.children
+
+    def handle_placeholders(content: str):
+        if not replacements:
+            return [content]
+        parts = content.split(_html_replacement_placeholder_prefix)
+        first = parts.pop(0)
+        if not parts:
+            return [first]
+        children: list[str | Node] = []
+        if first:
+            children.append(first)
+        for part in parts:
+            placeholder_id, extra = part.split(_html_replacement_placeholder_suffix)
+            children.append(replacements[placeholder_id])
+            if extra:
+                children.append(extra)
+        return children
+
+    def convert_attributes(attrs: dict[str, str | Any]):
+        transformed = {}
+        for key, value in attrs.items():
+            parts = handle_placeholders(value)
+            transformed[key] = parts[0] if len(parts) == 1 else NodeList(parts)
+        return transformed
+
+    def convert_tree(tree):
+        children = []
+        for el in tree:
+            if isinstance(el, str):
+                parts = handle_placeholders(el)
+                children += parts
+            else:
+                children.append(
+                    wrap_new_node(
+                        ComponentNode(
+                            origin,
+                            CommonComponentSource(el.tag),
+                            {**convert_attributes(el.attributes), "children": convert_tree(el.children)},
+                        )
+                    )
+                )
+        return children
+
+    return convert_tree(tags)

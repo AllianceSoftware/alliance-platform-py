@@ -2,14 +2,16 @@ import datetime
 import json
 from typing import cast
 from unittest import mock
-from unittest import skip
 
+from alliance_platform.codegen.printer import TypescriptPrinter
 from alliance_platform.frontend.bundler.base import HtmlGenerationTarget
 from alliance_platform.frontend.bundler.context import BundlerAssetContext
 from alliance_platform.frontend.bundler.ssr import SSRJsonEncoder
 from alliance_platform.frontend.bundler.ssr import SSRSerializerContext
 from alliance_platform.frontend.bundler.vanilla_extract import resolve_vanilla_extract_cache_names
 from alliance_platform.frontend.templatetags.react import ComponentNode
+from alliance_platform.frontend.templatetags.react import ComponentProps
+from alliance_platform.frontend.templatetags.react import ComponentSourceCodeGenerator
 from django.conf import settings
 from django.template import Context
 from django.template import Template
@@ -393,7 +395,10 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
                         import Button, {  } from '/static/assets/Button-def456.js';
                         renderComponent(
                             document.querySelector("[data-djid='C1']"),
-                            createElement(Button, {}, "Click Me"), "C1", true)
+                            createElement(Button, {}, "Click Me"),
+                            "C1",
+                            true
+                        );
                     </script>
                 """,
             ),
@@ -727,6 +732,8 @@ test_development_bundler = TestViteBundler(
 
 
 @override_ap_frontend_settings(
+    # We rely on this in _get_debug_tree
+    DEBUG_COMPONENT_OUTPUT=True,
     BUNDLER=test_development_bundler,
 )
 class TestComponentTemplateTagOutput(SimpleTestCase):
@@ -745,14 +752,22 @@ class TestComponentTemplateTagOutput(SimpleTestCase):
         self.bundler_context.__exit__(None, None, None)
 
     def _get_debug_tree(self, template_contents: str, **kwargs: dict):
-        template = Template("{% load react %}" + template_contents)
-        output: list[str] = []
-        context = Context(kwargs)
-        context.template = template
-        for node in cast(list[ComponentNode], template.nodelist.get_nodes_by_type(ComponentNode)):
-            props = node.resolve_props(context)
-            output.append(node.print_debug_tree(props, include_template_origin=False))
-        return "\n".join(output)
+        def patch_debug_tree(self, props: ComponentProps, include_template_origin=True):
+            # Like the default implementation except we never include template origin string
+            printer = TypescriptPrinter(jsx_transform=None)
+            generator = ComponentSourceCodeGenerator(self)
+            jsx_element = generator.create_jsx_element_node(self, props, False)
+            return printer.print(jsx_element)
+
+        with mock.patch(
+            "alliance_platform.frontend.templatetags.react.ComponentNode.print_debug_tree", patch_debug_tree
+        ):
+            template = Template("{% load react %}" + template_contents)
+            context = Context(kwargs)
+            context.template = template
+            contents = template.render(context)
+            code = contents.split("<!--").pop().split("-->").pop(0)
+            return code.strip()
 
     def assertComponentEqual(self, template_code, expected_output, **kwargs):
         self.assertEqual(
@@ -822,13 +837,19 @@ class TestComponentTemplateTagOutput(SimpleTestCase):
             variant="secondary",
         )
 
+    def test_variable_attribute_raw_html(self):
+        self.assertComponentEqual(
+            """{% component "Button" %}Click <strong id="test-{{id}}">Me</strong>{% endcomponent %}""",
+            """<Button>Click <strong id="test-secondary">Me</strong></Button>""",
+            id="secondary",
+        )
+
     def test_special_attribute(self):
         self.assertComponentEqual(
             """{% component "Button" aria-label="Disable" %}X{% endcomponent %}""",
             """<Button aria-label="Disable">X</Button>""",
         )
 
-    @skip("Restore where add bs4 parsing")
     def test_html_entities(self):
         self.assertComponentEqual(
             """{% component "Button" %}&ldquo;Testing and Stuff&rdquo;{% endcomponent %}""",
@@ -842,7 +863,6 @@ class TestComponentTemplateTagOutput(SimpleTestCase):
             name="Sam",
         )
 
-    @skip("Restore where add bs4 parsing")
     def test_nested_component_raw_html(self):
         self.assertComponentEqual(
             """{% component "Button" %}Welcome <strong>{{ name }}</strong>{% endcomponent %}""",
@@ -852,7 +872,6 @@ class TestComponentTemplateTagOutput(SimpleTestCase):
             name="Sam",
         )
 
-    @skip("Restore where add bs4 parsing")
     def test_nested_component_raw_html_from_include(self):
         self.assertComponentEqual(
             """{% component "Button" %}Welcome {% include "react_test_templates/nested_raw_tag.html" with name=name %}{% endcomponent %}""",
@@ -879,5 +898,14 @@ class TestComponentTemplateTagOutput(SimpleTestCase):
               Hello Inner Content
             </Button>
             """,
+            name="Sam",
+        )
+
+    def test_pass_component_as_prop(self):
+        self.assertComponentEqual(
+            """
+            {% component "Icon" as icon %}{% endcomponent %}
+            {% component "Button" icon=icon %}Click{% endcomponent %}""",
+            """<Button icon={<Icon />}>Click</Button>""",
             name="Sam",
         )
