@@ -19,6 +19,7 @@ from django.test import SimpleTestCase
 from django.test import override_settings
 from django.utils.functional import SimpleLazyObject
 from django.utils.functional import lazy
+from django.utils.safestring import mark_safe
 from django.utils.timezone import make_aware
 
 from .test_utils import override_ap_frontend_settings
@@ -908,4 +909,19 @@ class TestComponentTemplateTagOutput(SimpleTestCase):
             {% component "Button" icon=icon %}Click{% endcomponent %}""",
             """<Button icon={<Icon />}>Click</Button>""",
             name="Sam",
+        )
+
+    def test_html_in_var(self):
+        self.assertComponentEqual(
+            """
+            {% component "div" %}{{ text }}{% endcomponent %}""",
+            """<div><strong>Should not be escaped</strong></div>""",
+            text=mark_safe("<strong>Should not be escaped</strong>"),
+        )
+
+        self.assertComponentEqual(
+            """
+            {% component "div" %}{{ text }}{% endcomponent %}""",
+            """<div>{'<strong>Should be escaped</strong>'}</div>""",
+            text="<strong>Should be escaped</strong>",
         )
