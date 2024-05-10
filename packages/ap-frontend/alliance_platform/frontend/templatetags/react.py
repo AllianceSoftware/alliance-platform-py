@@ -758,7 +758,7 @@ class ComponentSourceCodeGenerator:
                 )
             )
             component_id = wrapper_id
-            jsx_element = (JsxElement(component_id, [], []),)
+            jsx_element = JsxElement(component_id, [], [])
         self._writer.add_node(
             CallExpression(
                 self._writer.resolve_import(
