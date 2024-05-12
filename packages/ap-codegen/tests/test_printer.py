@@ -3,6 +3,7 @@ import textwrap
 from alliance_platform.codegen.printer import TypescriptPrinter
 from alliance_platform.codegen.printer import TypescriptSourceFileWriter
 from alliance_platform.codegen.typescript import ArrayLiteralExpression
+from alliance_platform.codegen.typescript import ArrowFunction
 from alliance_platform.codegen.typescript import AsExpression
 from alliance_platform.codegen.typescript import AsyncKeyword
 from alliance_platform.codegen.typescript import BooleanLiteral
@@ -16,6 +17,7 @@ from alliance_platform.codegen.typescript import ImportDefaultSpecifier
 from alliance_platform.codegen.typescript import ImportSpecifier
 from alliance_platform.codegen.typescript import JsxAttribute
 from alliance_platform.codegen.typescript import JsxElement
+from alliance_platform.codegen.typescript import JsxExpression
 from alliance_platform.codegen.typescript import JsxSpreadAttribute
 from alliance_platform.codegen.typescript import JsxText
 from alliance_platform.codegen.typescript import MultiLineComment
@@ -529,6 +531,34 @@ class TypescriptPrinterTestCase(SimpleTestCase):
                             ],
                             leading_comments=[SingleLineComment("Leading comment")],
                             trailing_comments=[SingleLineComment("Trailing comment")],
+                        )
+                    ),
+                    expected,
+                )
+
+    def test_jsx_function_children(self):
+        tests = [
+            (None, "<Provider>{() => <span>child</span>}</Provider>"),
+            (
+                Identifier("createElement"),
+                'createElement(Provider, {}, () => createElement("span", {}, "child"))',
+            ),
+        ]
+        for jsx_transform, expected in tests:
+            with self.subTest(jsx_transform=jsx_transform):
+                p = TypescriptPrinter(jsx_transform=jsx_transform)
+                self.assertEqual(
+                    p.print(
+                        JsxElement(
+                            Identifier("Provider"),
+                            [],
+                            [
+                                JsxExpression(
+                                    ArrowFunction(
+                                        [], JsxElement(StringLiteral("span"), [], [JsxText("child")])
+                                    )
+                                )
+                            ],
                         )
                     ),
                     expected,
