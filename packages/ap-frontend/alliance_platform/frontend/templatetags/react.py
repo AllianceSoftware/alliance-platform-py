@@ -21,9 +21,11 @@ from alliance_platform.codegen.typescript import ImportDefaultSpecifier
 from alliance_platform.codegen.typescript import ImportSpecifier
 from alliance_platform.codegen.typescript import JsxAttribute
 from alliance_platform.codegen.typescript import JsxElement
+from alliance_platform.codegen.typescript import MultiLineComment
 from alliance_platform.codegen.typescript import PropertyAccessExpression
 from alliance_platform.codegen.typescript import ReturnStatement
 from alliance_platform.codegen.typescript import StringLiteral
+from alliance_platform.codegen.typescript import UnconvertibleValueException
 from alliance_platform.codegen.typescript import convert_to_node
 from allianceutils.template import build_html_attrs
 from allianceutils.template import is_static_expression
@@ -46,8 +48,6 @@ from django.utils.html import format_html
 from django.utils.safestring import SafeString
 from django.utils.safestring import mark_safe
 
-from ...codegen.typescript import MultiLineComment
-from ...codegen.typescript import UnconvertibleValueException
 from ..bundler import get_bundler
 from ..bundler.base import BaseBundler
 from ..bundler.base import ResolveContext
@@ -203,7 +203,7 @@ def component(parser: template.base.Parser, token: template.base.Token):
     - ``container:tag`` - the HTML tag to use for the container. Defaults to the custom element ``dj-component``.
     - ``container:<any other prop>`` - any other props will be passed to the container element. For example, to add
       an id to the container you can use ``container:id="my-id"``. Note that while you can pass a style string, it's
-      likely to be of little use with the default container style ``display: contents``. Most the time you can just
+      likely to be of little use with the default container style ``display: contents``. Most of the time you can just
       do the styling on the component itself.
 
     For example::
@@ -709,7 +709,7 @@ class ComponentSourceCodeGenerator:
             )
             attributes = [
                 JsxAttribute(
-                    StringLiteral(key) if "-" in key else Identifier(underscore_to_camel(key)),
+                    StringLiteral(key.lower()) if "-" in key else Identifier(underscore_to_camel(key)),
                     self._codegen_prop(prop),
                 )
                 for key, prop in resolved_props.props.items()
