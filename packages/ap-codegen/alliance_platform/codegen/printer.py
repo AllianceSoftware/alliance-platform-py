@@ -1,3 +1,4 @@
+import dataclasses
 from functools import wraps
 import json
 from pathlib import Path
@@ -204,8 +205,14 @@ class TypescriptPrinter:
             return f"{{{prefix}{value}{suffix}}}"
         if isinstance(node, JsxElement):
             if self.jsx_transform:
-                element_args: list[NodeLike] = [
+                # Copy comments from the node to the tag name when using JSX transform
+                tag_name = dataclasses.replace(
                     node.tag_name,
+                    leading_comments=node.leading_comments,
+                    trailing_comments=node.trailing_comments,
+                )
+                element_args: list[NodeLike] = [
+                    tag_name,
                     ObjectLiteralExpression(
                         [
                             ObjectProperty(attr.name, attr.initializer)
@@ -216,10 +223,6 @@ class TypescriptPrinter:
                     ),
                     *node.children,
                 ]
-                if node.leading_comments:
-                    node.tag_name.leading_comments = node.leading_comments
-                if node.trailing_comments:
-                    node.tag_name.trailing_comments = node.trailing_comments
                 return self.print(
                     CallExpression(
                         self.jsx_transform,
@@ -241,12 +244,12 @@ class TypescriptPrinter:
             attrs_str = ""
             if attrs:
                 attrs_str = " " + " ".join(attrs)
-            tag_name = (
+            tag_name_str = (
                 node.tag_name.value if isinstance(node.tag_name, StringLiteral) else self.print(node.tag_name)
             )
             if node.children:
-                return f"<{tag_name}{attrs_str}>{''.join(self.print(child) for child in node.children)}</{tag_name}>"
-            return f"<{tag_name}{attrs_str} />"
+                return f"<{tag_name_str}{attrs_str}>{''.join(self.print(child) for child in node.children)}</{tag_name_str}>"
+            return f"<{tag_name_str}{attrs_str} />"
 
         if isinstance(node, VariableDeclaration):
             return self.apply_modifiers(
