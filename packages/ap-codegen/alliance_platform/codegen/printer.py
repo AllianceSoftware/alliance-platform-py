@@ -3,14 +3,12 @@ import json
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Callable
+from typing import Sequence
 
 from django.conf import settings
 from django.utils.html import escape
 
 from .settings import ap_codegen_settings
-
-# from codegen.presto.config import CodeGenFile
-# from codegen.presto.get_config import get_codegen_config
 from .typescript import ArrayLiteralExpression
 from .typescript import ArrowFunction
 from .typescript import AsExpression
@@ -64,7 +62,7 @@ def push_node_stack(method):
     """
 
     @wraps(method)
-    def wrapper(self, node, *args, **kwargs):
+    def wrapper(self: "TypescriptPrinter", node: NodeLike, *args, **kwargs):
         self.node_stack.append(node)
         try:
             result = method(self, node, *args, **kwargs)
@@ -84,14 +82,14 @@ def print_comments(method):
     """
 
     @wraps(method)
-    def wrapper(self, node, *args, **kwargs):
+    def wrapper(self: "TypescriptPrinter", node: NodeLike, *args, **kwargs):
         result = method(self, node, *args, **kwargs)
-        if isinstance(node, Node):
-            if node.leading_comments and (not isinstance(node, JsxElement) or not self.jsx_transform):
+        if isinstance(node, Node) and (not isinstance(node, JsxElement) or not self.jsx_transform):
+            if node.leading_comments:
                 result = self._print_comments(node.leading_comments) + "\n" + result
                 if self.parent_node():
                     result = "\n" + result
-            if node.trailing_comments and (not isinstance(node, JsxElement) or not self.jsx_transform):
+            if node.trailing_comments:
                 result = result + "\n" + self._print_comments(node.trailing_comments)
                 if len(self.node_stack) > 1:
                     # Only do this if not the root node
@@ -121,7 +119,7 @@ class TypescriptPrinter:
     #: The specific function called is identified by ``jsx_transform``, but the relevant import must be added manually.
     jsx_transform: Node | None
     #: Current node stack for printing. As each node is printed it is pushed onto this stack. This can be used to determine the parent node of the current node.
-    node_stack: list[Node]
+    node_stack: list[NodeLike]
 
     def __init__(
         self,
@@ -154,7 +152,7 @@ class TypescriptPrinter:
             return "true" if value else "false"
         return str(value)
 
-    def _print_comments(self, comments: list[SingleLineComment | MultiLineComment]):
+    def _print_comments(self, comments: Sequence[SingleLineComment | MultiLineComment]):
         """Print comments according to the current context
 
         If within a JSX element, comments will be wrapped in curly braces and SingleLineComment cannot be used.
