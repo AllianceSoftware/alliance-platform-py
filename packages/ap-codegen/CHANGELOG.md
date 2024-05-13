@@ -1,5 +1,11 @@
 # alliance-platform-codegen
 
+## 0.0.5
+
+### Patch Changes
+
+- 2763b74: Properly handle comments within JSX attributes like `<Input description={/* comment here */<Inner />} />`
+
 ## 0.0.4
 
 ### Patch Changes

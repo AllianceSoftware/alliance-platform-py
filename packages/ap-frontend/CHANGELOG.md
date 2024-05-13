@@ -1,5 +1,11 @@
 # alliance-platform-frontend
 
+## 0.0.6
+
+### Patch Changes
+
+- e5725b6: Fix typing for `ComponentSourceCodeGenerator.add_leading_node`
+
 ## 0.0.5
 
 ### Patch Changes
