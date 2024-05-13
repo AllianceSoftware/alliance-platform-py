@@ -564,6 +564,42 @@ class TypescriptPrinterTestCase(SimpleTestCase):
                     expected,
                 )
 
+    def test_jsx_comments_attribute(self):
+        tests = [
+            (None, "<Wrapper element={\n/* Leading comment */\n<Inner />} />"),
+            (
+                Identifier("createElement"),
+                'createElement(Wrapper, {"element": createElement(\n'
+                "/* Leading comment */\n"
+                "Inner, {})})",
+            ),
+        ]
+        for jsx_transform, expected in tests:
+            with self.subTest(jsx_transform=jsx_transform):
+                p = TypescriptPrinter(jsx_transform=jsx_transform)
+                self.assertEqual(
+                    p.print(
+                        JsxElement(
+                            Identifier("Wrapper"),
+                            [
+                                JsxAttribute(
+                                    StringLiteral(
+                                        "element",
+                                    ),
+                                    JsxElement(
+                                        Identifier("Inner"),
+                                        [],
+                                        [],
+                                        leading_comments=[MultiLineComment("Leading comment")],
+                                    ),
+                                )
+                            ],
+                            [],
+                        )
+                    ),
+                    expected,
+                )
+
 
 fixtures_dir = settings.BASE_DIR / "alliance_platform_frontend/bundler/tests/fixtures"
 
