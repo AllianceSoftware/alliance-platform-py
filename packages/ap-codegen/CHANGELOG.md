@@ -1,5 +1,11 @@
 # alliance-platform-codegen
 
+## 0.0.4
+
+### Patch Changes
+
+- 2947a19: Support for JSX in `TypescriptPrinter`, comments on nodes, and better handling of strings to avoid unnecessary conversion to ASCII.
+
 ## 0.0.3
 
 ### Patch Changes

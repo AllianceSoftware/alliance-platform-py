@@ -1,5 +1,16 @@
 # alliance-platform-frontend
 
+## 0.0.5
+
+### Patch Changes
+
+- 2d8885b: Support LazyObject as a prop. This will unwrap the lazy object; the underlying value must be a valid prop type otherwise an error will be thrown. This allows things like the default `csrf_token` context variable to be passed.
+- e2ee80d: Better handling for bundler dev server checks; avoid crashing on timeout, and handle false positive on dev server check on a read timeout.
+- 8bf18f2: Support HTML directly within React components
+- 00c8588: Add `DEV_CODE_FORMAT_LIMIT` to limit the size of code the dev server will attempt to format (default 1mb).
+  Add `DEV_CODE_FORMAT_TIMEOUT` to control the timeout applied to requests to the Vite dev server for formatting; defaults to 1 second.
+- e228296: React component tag codegen implementation has changed. To support latest changes, `REACT_RENDER_COMPONENT_FILE` should now export `createElement` from React directly; `createElementWithProps` is no longer used. `renderComponent` should accept an element to render rather than a component & props as separate arguments. SSR code should manually call `createElement` by extracting `children` from `props` and spreading them in the `createElement` call. Any custom `ComponentProp` classes can remove the `as_debug_string` method; it's no longer used.
+
 ## 0.0.4
 
 ### Patch Changes
