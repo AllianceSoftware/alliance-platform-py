@@ -20,4 +20,3 @@ Template Tags
 .. autofunction:: alliance_platform.frontend.templatetags.form.form
 
 .. autofunction:: alliance_platform.frontend.templatetags.form.form_input
-

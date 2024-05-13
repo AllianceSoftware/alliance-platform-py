@@ -211,6 +211,10 @@ def component(parser: template.base.Parser, token: template.base.Token):
         {% component 'core-ui' 'Button' ssr:disabled=True variant="Outlined"%}
             ...
         {% endcomponent %}
+
+    Alliance UI
+    -----------
+    Alliance Core UI components have pre-made tags for more convenient implementation.
     """
     return parse_component_tag(parser, token)
 

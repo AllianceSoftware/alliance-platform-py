@@ -28,6 +28,7 @@ class InlineAlertNode(ComponentNode):
 
 
 def inline_alert(parser: template.base.Parser, token: template.base.Token):
+    """Render an `InlineAlert` component from the Alliance UI React library with the specified props."""
     return parse_component_tag(
         parser,
         token,

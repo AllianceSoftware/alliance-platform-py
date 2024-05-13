@@ -8,6 +8,7 @@ from .utils import get_module_import_source
 
 
 def menubar(parser: template.base.Parser, token: template.base.Token):
+    """Render a `Menubar` component from the Alliance UI library. with the specified props"""
     return parse_component_tag(
         parser,
         token,
@@ -16,6 +17,7 @@ def menubar(parser: template.base.Parser, token: template.base.Token):
 
 
 def submenu(parser: template.base.Parser, token: template.base.Token):
+    """Render a `Menubar.SubMenu` component from the Alliance UI library. with the specified props"""
     return parse_component_tag(
         parser,
         token,
@@ -26,6 +28,13 @@ def submenu(parser: template.base.Parser, token: template.base.Token):
 
 
 def menubar_item(parser: template.base.Parser, token: template.base.Token):
+    """
+    Render a `Menubar.Item` component from the Alliance UI library. with the specified props
+
+    If used for a link, the :function:`~alliance_platform.templatetags.alliance_ui.url_with_perms_filter``
+    or :function:`~alliance_platform.templatetags.alliance_ui.url_filter`` can be used to handle
+    url args, or hide if the link is not available.
+    """
     return parse_component_tag(
         parser,
         token,
@@ -34,6 +43,7 @@ def menubar_item(parser: template.base.Parser, token: template.base.Token):
 
 
 def menubar_section(parser: template.base.Parser, token: template.base.Token):
+    """Render a `Menubar.Section` component from the Alliance UI library. with the specified props"""
     return parse_component_tag(
         parser,
         token,
