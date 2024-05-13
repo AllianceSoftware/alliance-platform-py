@@ -32,6 +32,7 @@ class PaginationNode(ComponentNode):
 
 
 def pagination(parser: template.base.Parser, token: template.base.Token):
+    """Render a `Pagination` component from the Alliance UI library. with the specified props"""
     return parse_component_tag(
         parser,
         token,

@@ -6,8 +6,7 @@ Alliance Platform Frontend
    :caption: Contents:
 
    templatetags
+   alliance_ui
    bundler
    vite
    settings
-
-

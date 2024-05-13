@@ -10,6 +10,7 @@ from ..templatetags.react import parse_component_tag
 
 
 def fragment_component(parser: template.base.Parser, token: template.base.Token):
+    """Render a React Fragment component."""
     bundler = get_bundler()
     resolver_context = ResolveContext(bundler.root_dir, parser.origin.name if parser.origin else None)
     source_path = get_bundler().resolve_path(
