@@ -173,7 +173,7 @@ class BundlerAssetContext:
     def __init__(
         self,
         *,
-        frontend_asset_registry: FrontendAssetRegistry = None,
+        frontend_asset_registry: FrontendAssetRegistry | None = None,
         html_target=html_target_browser,
         skip_checks=False,
         request: HttpRequest | None = None,
