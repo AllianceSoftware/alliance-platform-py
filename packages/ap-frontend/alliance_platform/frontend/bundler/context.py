@@ -173,11 +173,13 @@ class BundlerAssetContext:
     def __init__(
         self,
         *,
-        frontend_asset_registry: FrontendAssetRegistry = ap_frontend_settings.FRONTEND_ASSET_REGISTRY,
+        frontend_asset_registry: FrontendAssetRegistry | None = None,
         html_target=html_target_browser,
         skip_checks=False,
         request: HttpRequest | None = None,
     ):
+        if frontend_asset_registry is None:
+            frontend_asset_registry = ap_frontend_settings.FRONTEND_ASSET_REGISTRY
         self.request = request
         self.skip_checks = skip_checks
         self.html_target = html_target
