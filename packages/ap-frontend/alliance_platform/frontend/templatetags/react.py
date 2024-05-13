@@ -22,6 +22,7 @@ from alliance_platform.codegen.typescript import ImportSpecifier
 from alliance_platform.codegen.typescript import JsxAttribute
 from alliance_platform.codegen.typescript import JsxElement
 from alliance_platform.codegen.typescript import MultiLineComment
+from alliance_platform.codegen.typescript import Node as TypescriptNode
 from alliance_platform.codegen.typescript import PropertyAccessExpression
 from alliance_platform.codegen.typescript import ReturnStatement
 from alliance_platform.codegen.typescript import StringLiteral
@@ -574,9 +575,6 @@ class ComponentSourceCodeGenerator:
     _last_template_origin_name: str | None
     #: Used by ``create_jsx_element`` to track the specified value for the ``include_template_origin`` kwarg in the root node
     _last_include_template_origin: bool
-    #: Any nodes that should be added to the start of the generated content. This can be used by ``ComponentProp`` handlers to add code outside the component.
-    #: For example, populating a cache should be done once and not on every render.
-    _leading_nodes: list[Node]
 
     def __init__(self, node: ComponentNode):
         self.node = node
@@ -588,7 +586,6 @@ class ComponentSourceCodeGenerator:
         self._used_identifiers = []
         self._last_template_origin_name = None
         self._last_include_template_origin = False
-        self._leading_nodes = []
 
         # Resolve the import for createElement and use the returned Identifier for the jsx_transform
         self._writer.jsx_transform = self._writer.resolve_import(
@@ -740,11 +737,6 @@ class ComponentSourceCodeGenerator:
     def generate_code(self, props: ComponentProps, container_id: str):
         jsx_element = self.create_jsx_element_node(self.node, props)
 
-        # This needs to happen after the jsx_element is created, as that is where props are processed that may trigger
-        # leading nodes to be added
-        for node in self._leading_nodes:
-            self._writer.add_node(node)
-
         # In some cases a wrapper component is needed, e.g. when using props that require hooks. This just wraps
         # the element in a wrapper function and returns the element. The props themselves may be a hook call, so we
         # don't have to specifically check for hooks here.
@@ -792,9 +784,9 @@ class ComponentSourceCodeGenerator:
         self._used_identifiers.append(name)
         return Identifier(name)
 
-    def add_leading_node(self, node: Node):
+    def add_leading_node(self, node: TypescriptNode):
         """Add a node that should be added to the top of the generated code."""
-        self._leading_nodes.append(node)
+        self._writer.add_leading_node(node)
 
 
 class OmitComponentFromRendering(Exception):
