@@ -554,11 +554,11 @@ class TypescriptSourceFileWriter:
         self.used_identifiers.append(specifier.local.name)
         return specifier.local
 
-    def add_node(self, node):
+    def add_node(self, node: Node):
         """Add a node to be included in the code"""
         self.nodes.append(node)
 
-    def add_leading_node(self, node):
+    def add_leading_node(self, node: Node):
         self.leading_nodes.append(node)
 
     def __enter__(self):
