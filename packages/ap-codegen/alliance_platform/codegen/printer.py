@@ -1,3 +1,4 @@
+import contextlib
 import dataclasses
 from functools import wraps
 import json
@@ -178,6 +179,17 @@ class TypescriptPrinter:
             return self.node_stack[-2]
         return None
 
+    @contextlib.contextmanager
+    def _push_node(self, node: NodeLike):
+        """Like ``push_node_stack``, but as a context manager.
+
+        This is useful when a node is being unwrapped within ``print``, as is the case with ``JSXAttribute``"""
+        self.node_stack.append(node)
+        try:
+            yield
+        finally:
+            self.node_stack.pop()
+
     @push_node_stack
     @print_comments
     def print(self, node: NodeLike) -> str:  # noqa: T202
@@ -231,16 +243,19 @@ class TypescriptPrinter:
                 )
             attrs = []
             for attr in node.attributes:
-                if isinstance(attr, JsxAttribute):
-                    # if attr is e.g. "aria-label" use that as is. Otherwise will be an Identifier.
-                    name = attr.name.value if isinstance(attr.name, StringLiteral) else self.print(attr.name)
-                    # if string use form 'name="value"', otherwise use form 'name={value}'
-                    if isinstance(attr.initializer, StringLiteral):
-                        attrs.append(f"{name}={self._format_literal(attr.initializer.value)}")
+                with self._push_node(attr):
+                    if isinstance(attr, JsxAttribute):
+                        # if attr is e.g. "aria-label" use that as is. Otherwise will be an Identifier.
+                        name = (
+                            attr.name.value if isinstance(attr.name, StringLiteral) else self.print(attr.name)
+                        )
+                        # if string use form 'name="value"', otherwise use form 'name={value}'
+                        if isinstance(attr.initializer, StringLiteral):
+                            attrs.append(f"{name}={self._format_literal(attr.initializer.value)}")
+                        else:
+                            attrs.append(f"{name}={{{self.print(attr.initializer)}}}")
                     else:
-                        attrs.append(f"{name}={{{self.print(attr.initializer)}}}")
-                else:
-                    attrs.append(f"{{...{self.print(attr.expression)}}}")
+                        attrs.append(f"{{...{self.print(attr.expression)}}}")
             attrs_str = ""
             if attrs:
                 attrs_str = " " + " ".join(attrs)
