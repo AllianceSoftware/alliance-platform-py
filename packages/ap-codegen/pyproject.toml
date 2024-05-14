@@ -7,7 +7,7 @@ description = "Alliance Platform Codegen"
 authors = [
     {name = "Alliance Software", email = "support@alliancesoftware.com.au"},
 ]
-dependencies = ["alliance-platform-core"]
+dependencies = ["alliance-platform-core", "Django>=4.2.11", "django-allianceutils>=4.0"]
 requires-python = ">=3.11"
 readme = "README.md"
 license = {text = "BSD-2-Clause"}
@@ -36,4 +36,11 @@ plugins = [
     "mypy_drf_plugin.main",
 ]
 explicit_package_bases = true
+
+[tool.pdm.dev-dependencies]
+dev = [
+    "-e alliance-platform-core @ file:///${PROJECT_ROOT}/../ap-core",
+    "psycopg2",
+    "rules"
+]
 
