@@ -7,11 +7,11 @@ requires-python = "<4.0,>=3.11"
 dependencies = [
     "alliance-platform-codegen",
     "alliance-platform-core",
-    "Django<5.0.0,>=4.2.11",
+    "Django>=4.2.11",
     "djangorestframework",
-    "django-allianceutils<5.0,>=4.0",
+    "django-allianceutils>=4.0.1",
     "requests",
-    "typing-extensions<5.0.0,>=4.5.0",
+    "typing-extensions>=4.5.0"
 ]
 name = "alliance-platform-frontend"
 dynamic = ["version"]
@@ -39,13 +39,6 @@ classifiers = [
 include = [
     "alliance_platform/frontend/py.typed",
 ]
-
-[tool.pdm.build]
-includes = ["alliance_platform"]
-
-[tool.pdm.version]
-source = "call"
-getter = "extract_version:get_version()"
 
 [project.urls]
 issues = "https://github.com/AllianceSoftware/alliance-platform-py/issues"
@@ -85,3 +78,20 @@ ignore_missing_imports = true
 
 [tool.django-stubs]
 django_settings_module = "test_alliance_platform_frontend.settings"
+
+[tool.pdm.build]
+includes = ["alliance_platform"]
+
+[tool.pdm.version]
+source = "call"
+getter = "extract_version:get_version()"
+
+[tool.pdm.dev-dependencies]
+dev = [
+    "rules",
+    "-e alliance-platform-codegen @ file:///${PROJECT_ROOT}/../ap-codegen",
+    "psycopg2",
+    "types-factory-boy",
+    "pytest-django>=4.8.0",
+    "pytest-benchmark>=4.0.0",
+]
