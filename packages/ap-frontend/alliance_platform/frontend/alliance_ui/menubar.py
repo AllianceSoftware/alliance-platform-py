@@ -31,7 +31,7 @@ def menubar_item(parser: template.base.Parser, token: template.base.Token):
     """
     Render a `Menubar.Item` component from the Alliance UI library. with the specified props
 
-    If used for a link, the :function:`~alliance_platform.templatetags.alliance_ui.url_with_perms_filter``
+    If used for a link, the :function:`~alliance_platform.frontend.templatetags.alliance_ui.url_with_perms_filter``
     or :function:`~alliance_platform.templatetags.alliance_ui.url_filter`` can be used to handle
     url args, or hide if the link is not available.
     """
