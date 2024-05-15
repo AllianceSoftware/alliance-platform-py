@@ -19,7 +19,7 @@ Filters
 Template Tags
 -------------
 
-The Alliance UI template tags serve as an easy alternative to the :function:`~alliance_platform.templatetags.react.component`
+The Alliance UI template tags serve as an easy alternative to the :function:`~alliance_platform.frontend.templatetags.react.component`
 template tag, for easily embedding components from the Alliance UI library into Django templates. See the documentation for
 the component tag for instructions on passing arguments and filters.
 
