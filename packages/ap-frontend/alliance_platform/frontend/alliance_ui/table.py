@@ -8,7 +8,7 @@ from .utils import get_module_import_source
 
 
 def table(parser: template.base.Parser, token: template.base.Token):
-    """Render a `Table` component from the Alliance UI library. with the specified props"""
+    """Render a ``Table`` component from the Alliance UI library. with the specified props"""
     return parse_component_tag(
         parser,
         token,
@@ -17,7 +17,7 @@ def table(parser: template.base.Parser, token: template.base.Token):
 
 
 def table_header(parser: template.base.Parser, token: template.base.Token):
-    """Render a `TableHeader` component from the Alliance UI library. with the specified props"""
+    """Render a ``TableHeader`` component from the Alliance UI library. with the specified props"""
     return parse_component_tag(
         parser,
         token,
@@ -26,7 +26,7 @@ def table_header(parser: template.base.Parser, token: template.base.Token):
 
 
 def table_body(parser: template.base.Parser, token: template.base.Token):
-    """Render a `TableBody` component from the Alliance UI library. with the specified props"""
+    """Render a ``TableBody`` component from the Alliance UI library. with the specified props"""
     return parse_component_tag(
         parser,
         token,
@@ -36,9 +36,9 @@ def table_body(parser: template.base.Parser, token: template.base.Token):
 
 def column_header_link(parser: template.base.Parser, token: template.base.Token):
     """
-    Render a `ColumnHeaderLink` component from the Alliance UI library. with the specified props
+    Render a ``ColumnHeaderLink`` component from the Alliance UI library. with the specified props
 
-    This should be used instead of a `ColumnHeader` when rendering static components in Django
+    This should be used instead of a ``ColumnHeader`` when rendering static components in Django
     templates.
     """
     return parse_component_tag(
@@ -51,7 +51,7 @@ def column_header_link(parser: template.base.Parser, token: template.base.Token)
 
 
 def row(parser: template.base.Parser, token: template.base.Token):
-    """Render a `Row` component from the Alliance UI library. with the specified props"""
+    """Render a ``Row`` component from the Alliance UI library. with the specified props"""
     return parse_component_tag(
         parser,
         token,
@@ -60,7 +60,7 @@ def row(parser: template.base.Parser, token: template.base.Token):
 
 
 def column(parser: template.base.Parser, token: template.base.Token):
-    """Render a `Column` component from the Alliance UI library. with the specified props"""
+    """Render a ``Column`` component from the Alliance UI library. with the specified props"""
     return parse_component_tag(
         parser,
         token,
@@ -69,7 +69,7 @@ def column(parser: template.base.Parser, token: template.base.Token):
 
 
 def cell(parser: template.base.Parser, token: template.base.Token):
-    """Render a `Cell` component from the Alliance UI library. with the specified props"""
+    """Render a ``Cell`` component from the Alliance UI library. with the specified props"""
     return parse_component_tag(
         parser,
         token,

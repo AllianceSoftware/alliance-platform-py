@@ -37,7 +37,7 @@ class DatePickerNode(ComponentNode):
 
 
 def date_picker(parser: template.base.Parser, token: template.base.Token):
-    """Render a `DatePicker` component from the Alliance UI React library with the specified props."""
+    """Render a ``DatePicker`` component from the Alliance UI React library with the specified props."""
     return parse_component_tag(
         parser,
         token,

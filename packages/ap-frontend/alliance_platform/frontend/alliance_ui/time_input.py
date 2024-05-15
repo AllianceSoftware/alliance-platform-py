@@ -20,7 +20,7 @@ class TimeInputNode(ComponentNode):
 
 
 def time_input(parser: template.base.Parser, token: template.base.Token):
-    """Render a `TimeInput` component from the Alliance UI library. with the specified props"""
+    """Render a ``TimeInput`` component from the Alliance UI library. with the specified props"""
     return parse_component_tag(
         parser,
         token,
