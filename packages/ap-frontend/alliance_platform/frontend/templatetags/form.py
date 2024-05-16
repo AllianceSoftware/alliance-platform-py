@@ -15,11 +15,8 @@ from django.template import TemplateSyntaxError
 from django.template.base import UNKNOWN_SOURCE
 from django.template.base import FilterExpression
 
-from ..alliance_ui.misc import RawHtmlNode
-from ..bundler import get_bundler
-from ..bundler.base import ResolveContext
 from ..forms.renderers import FormInputContextRenderer
-from .react import ImportComponentSource
+from .react import convert_html_string
 
 register = template.Library()
 
@@ -65,19 +62,8 @@ class FormInputNode(template.Node):
                 resolve(self.help_text, context) if self.help_text is not _NOT_PROVIDED else field.help_text
             )
             if help_text:
-                # Help text can be HTML and django docs make it clear this value is not HTML-escaped - so we
-                # can safely embed it here as HTML using the RawHtmlNode
-                bundler = get_bundler()
-                resolver_context = ResolveContext(bundler.root_dir, self.origin.name)
-                source_path = bundler.resolve_path(
-                    "components/RawHtmlWrapper", resolver_context, resolve_extensions=[".ts", ".tsx", ".js"]
-                )
-                asset_source = ImportComponentSource(source_path, "RawHtmlWrapper", True)
-                help_text = RawHtmlNode(
-                    self.origin,
-                    asset_source,
-                    {"children": help_text},
-                )
+                # Help text can be HTML and django docs make it clear this value is not HTML-escaped.
+                help_text = convert_html_string(help_text, self.origin)[0]
             extra_attrs[field.form.renderer.form_input_context_key] = {
                 "raw_value": field.value(),
                 "extra_widget_props": {
