@@ -933,3 +933,12 @@ class TestComponentTemplateTagOutput(SimpleTestCase):
             """<div><strong>Should not be <i>escaped</i></strong></div>""",
             text=mark_safe("<strong>Should not be <i>escaped</i></strong>"),
         )
+
+    def test_html_template_node_props(self):
+        """Tests that a template node is resolved when used as a prop to raw HTML"""
+        self.assertComponentEqual(
+            """
+            {% component "div" %}<a href="{{ url }}">Test</a>{% endcomponent %}""",
+            """<div><a href="/test/">Test</a></div>""",
+            url="/test/",
+        )

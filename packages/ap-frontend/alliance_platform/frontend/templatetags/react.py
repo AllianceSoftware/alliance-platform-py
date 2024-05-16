@@ -959,6 +959,11 @@ class ComponentNode(template.Node, BundlerAsset):
         If you add new :class:`~alliance_platform.frontend.prop_handlers.ComponentProp` there must a case here
         to convert values to the new type.
         """
+
+        # In the case of raw HTML that is transformed with the ``convert_html_string`` function we need to handle
+        # the case of a template node being used as a prop, e.g. ``<a href="{% url 'some-url' %}">``.
+        if isinstance(value, Node):
+            value = value.render(context)
         if isinstance(value, DeferredProp):
             value = value.resolve(context)
         if isinstance(value, (ChildrenList, NodeList)):
