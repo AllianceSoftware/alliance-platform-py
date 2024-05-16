@@ -1,5 +1,13 @@
 # alliance-platform-frontend
 
+## 0.0.7
+
+### Patch Changes
+
+- cb83130: Properly handle nested HTML in template vars used with a {% component %} tag
+- 401f503: Remove unneeded `raw_html` templatetag, and replace the use of the underlying `RawHtmlNode` in `form_input` templatetags
+- e36d171: Adding stub documentation for Alliance UI templatetags
+
 ## 0.0.6
 
 ### Patch Changes
