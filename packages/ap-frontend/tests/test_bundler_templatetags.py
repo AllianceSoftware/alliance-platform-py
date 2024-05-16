@@ -925,3 +925,11 @@ class TestComponentTemplateTagOutput(SimpleTestCase):
             """<div>{'<strong>Should be escaped</strong>'}</div>""",
             text="<strong>Should be escaped</strong>",
         )
+
+    def test_html_in_var_nested(self):
+        self.assertComponentEqual(
+            """
+            {% component "div" %}{{ text }}{% endcomponent %}""",
+            """<div><strong>Should not be <i>escaped</i></strong></div>""",
+            text=mark_safe("<strong>Should not be <i>escaped</i></strong>"),
+        )

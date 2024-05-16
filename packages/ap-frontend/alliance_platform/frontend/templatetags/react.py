@@ -7,7 +7,6 @@ from html.parser import HTMLParser
 import math
 from pathlib import Path
 from typing import Any
-from typing import Callable
 from typing import Union
 from typing import cast
 import warnings
@@ -513,11 +512,14 @@ class NestedComponentPropAccumulator:
     def transform_string(self, child: str | NestedComponentProp):
         """Given a string, handle any necessary HTML conversions for React compatibility."""
         if isinstance(child, SafeString):
-            return convert_html_string(
+            nodes = convert_html_string(
                 child,
                 self.origin_node.origin,
-                wrap_new_node=lambda node: NestedComponentProp(node, self.origin_node, self.context),
             )
+            processed = []
+            for node in nodes:
+                processed += self.apply(node.render(self.context) if isinstance(node, Node) else node)
+            return processed
         return [child]
 
 
@@ -1456,12 +1458,8 @@ class HtmlTreeParser(HTMLParser):
 
 
 def convert_html_string(
-    html: str,
-    origin: Origin,
-    *,
-    replacements: dict[str, Node] | None = None,
-    wrap_new_node: Callable[[ComponentNode], ComponentNode | ComponentProp] = lambda x: x,
-):
+    html: str, origin: Origin, *, replacements: dict[str, Node] | None = None
+) -> list[ComponentNode | str]:
     """
     Given a string that may contain HTML, convert it to a tree of ``ComponentNode``s
 
@@ -1471,10 +1469,6 @@ def convert_html_string(
         replacements: Any replacements to make in the HTML after conversion. The way this works is that a template NodeList
             is processed into a string, with any template nodes replaced with placeholders. The string is converted to
             a component tree, then any placeholders are replaced with the original template nodes.
-        wrap_new_node:
-            Function to call to wrap any created ``ComponentNode``. This is used to wrap nodes in ``NestedComponentProp``
-            when they are children of another component. This isn't necessary for top-level nodes as they are handled
-            when ``parse_component_tag`` is first called.
     Returns:
 
     """
@@ -1519,12 +1513,10 @@ def convert_html_string(
                 children += parts
             else:
                 children.append(
-                    wrap_new_node(
-                        ComponentNode(
-                            origin,
-                            CommonComponentSource(el.tag),
-                            {**convert_attributes(el.attributes), "children": convert_tree(el.children)},
-                        )
+                    ComponentNode(
+                        origin,
+                        CommonComponentSource(el.tag),
+                        {**convert_attributes(el.attributes), "children": convert_tree(el.children)},
                     )
                 )
         return children
