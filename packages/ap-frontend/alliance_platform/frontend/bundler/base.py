@@ -107,6 +107,10 @@ class BaseBundler:
         self.root_dir = root_dir
         self.path_resolvers = path_resolvers
 
+    def is_ssr_enabled(self) -> bool:
+        """Should return true if server side rendering is enabled and supported by this bundler"""
+        return False
+
     def is_development(self) -> bool:
         """Should return true if running in development mode"""
         raise NotImplementedError

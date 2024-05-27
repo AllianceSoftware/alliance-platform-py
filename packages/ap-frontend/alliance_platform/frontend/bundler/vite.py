@@ -266,7 +266,6 @@ class ViteBundler(BaseBundler):
     Args:
         root_dir: The root path everything sits under; all other paths are resolved relative to this
         path_resolvers: A list of :class:`~alliance_platform.frontend.bundler.base.PathResolver` instances used to resolve paths
-        server_build_dir: The directory SSR files are outputted to (see ``yarn build:ssr``)
         build_dir: The directory client side files are outputted to (see ``yarn build:client``)
         server_host: The hostname used for the dev server (e.g. ``127.0.0.1``)
         server_port: The port used for the dev server (e.g. ``5173``)
@@ -290,12 +289,14 @@ class ViteBundler(BaseBundler):
         mode: The mode the bundler is running in; one of ``development``, ``production`` or ``preview``
         wait_for_server: Function that can be passed that will be called before requesting assets for server. This function
             should handle waiting until the dev server is ready before returning (e.g. by polling the server status)
-        production_ssr_url: URL for SSR (only used in production mode)
+        disable_ssr: Set to ``True`` to disable SSR entirely. Defaults to ``False``.
+        server_build_dir: The directory SSR files are outputted to (see ``yarn build:ssr``). Required unless ``disable_ssr`` is ``True``.
+        production_ssr_url: URL for SSR (only used in production mode). Required unless ``disable_ssr`` is ``True``.
 
     """
 
-    #: Directory server side rendering (SSR) files are compiled to
-    server_build_dir: Path
+    #: Directory server side rendering (SSR) files are compiled to. May be ``None`` if ``disable_ssr`` is ``True``.
+    server_build_dir: Path | None
     #: Directory client side files are compiled to
     build_dir: Path
     #: Manifest for SSR (only available when in production mode)
@@ -310,33 +311,42 @@ class ViteBundler(BaseBundler):
     wait_for_server: Callable[[], None] | None = None
     #: Path to the vite metdata JSON file that we use in dev to resolve optimised deps
     vite_metadata_path: Path
+    #: Can be set to disable SSR entirely
+    disable_ssr: bool = False
 
     def __init__(
         self,
         *,
         root_dir: Path,
         path_resolvers: list[PathResolver],
-        server_build_dir: Path,
         build_dir: Path,
         server_host: str,
         server_port: str,
         server_protocol: str,
         server_resolve_package_url: str,
         mode: str,
-        production_ssr_url: str | None = None,
         wait_for_server: Callable[[], None] | None = None,
+        disable_ssr: bool = False,
+        # These options are not required if ``disable_ssr`` is ``True``
+        server_build_dir: Path | None = None,
+        production_ssr_url: str | None = None,
     ):
-        self.wait_for_server = wait_for_server
         valid_modes = ["development", "production", "preview"]
         if mode not in valid_modes:
             raise ValueError(f"'mode' must be one of {', '.join(valid_modes)}, received: '{mode}'")
+        if not server_build_dir and not disable_ssr:
+            raise ValueError("server_build_dir must be set if SSR is enabled")
         super().__init__(root_dir, path_resolvers)
+
+        self.disable_ssr = disable_ssr
+        self.wait_for_server = wait_for_server
         self.mode = mode
         self.server_build_dir = server_build_dir
         self.build_dir = build_dir
         self.node_modules_dir = ap_frontend_settings.NODE_MODULES_DIR
         if self.mode != "development":
-            self.server_build_manifest = ViteManifest(self.root_dir, server_build_dir / "manifest.json")
+            if server_build_dir:
+                self.server_build_manifest = ViteManifest(self.root_dir, server_build_dir / "manifest.json")
             self.build_manifest = ViteManifest(self.root_dir, build_dir / "manifest.json")
         self.dev_server_url_base = ""
         self.dev_server_url = ""
@@ -362,6 +372,9 @@ class ViteBundler(BaseBundler):
                 self.dev_server_resolve_package_url += "/"
         elif mode == "preview":
             self.preview_url = f"{server_protocol}://{server_host}:{server_port}"
+
+    def is_ssr_enabled(self) -> bool:
+        return not self.disable_ssr
 
     def resolve_url(self, path: Path | str):
         """Resolve a URL to use to serve the specified ``path``

@@ -217,7 +217,7 @@ class BundlerAssetServerSideRenderer:
         bundler = get_bundler()
         ssr_url = bundler.get_ssr_url()
         if not ssr_url:
-            logger.error("Can not perform SSR, no SSR URL defined. Set PRODUCTION_SSR_URL env var.")
+            logger.error("Can not perform SSR, no SSR URL defined. Set `production_ssr_url` on the bundler.")
             return None
         try:
             json_payload = json.dumps(payload, cls=DjangoJSONEncoder)
@@ -250,9 +250,9 @@ class BundlerAssetServerSideRenderer:
         except TypeError:
             logger.exception(f"Failed to encode JSON for server rendering. Payload was: {payload}")
         except requests.exceptions.Timeout:
-            logger.error("Timed out connecting to vite server for rendering")
+            logger.error("Timed out connecting to SSR server for rendering")
         except requests.exceptions.ConnectionError:
-            logger.error("Failed to connect to vite server for rendering - is it running?")
+            logger.error("Failed to connect to SSR server for rendering - is it running?")
         return None
 
     def process(self, content: str | bytes, global_context: dict):

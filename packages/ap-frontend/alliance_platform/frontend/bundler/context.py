@@ -246,6 +246,9 @@ class BundlerAssetContext:
     def queue_ssr(self, item: SSRItem) -> str:
         """Queue an item for server side rendering
 
+        Note that if the current bundler does not support SSR, this will have no effect. You can safely call it still
+        and output the placeholder HTML comment, it just will not be replaced with anything.
+
         Args:
             item: The item to render
 
@@ -253,6 +256,9 @@ class BundlerAssetContext:
             A string which is the placeholder that should be outputted in the HTML. It will be replaced by
             :class:`~alliance_platform.frontend.bundler.middleware.BundlerAssetContextMiddleware`.
         """
+        if not get_bundler().is_ssr_enabled():
+            # Include a comment to make it clear SSR is not enabled to assist debugging
+            return "<!-- SSR NOT ENABLED -->"
         if not self.is_middleware_registered:
             raise ValueError(
                 "`queue_ssr` cannot be used without `BundlerAssetContextMiddleware`. Add 'alliance_platform.frontend.bundler.middleware.BundlerAssetContextMiddleware' to `MIDDLEWARE`."
