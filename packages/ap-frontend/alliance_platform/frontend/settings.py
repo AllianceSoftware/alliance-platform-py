@@ -57,7 +57,8 @@ class AlliancePlatformFrontendSettingsType(TypedDict, total=False):
     EXTRACT_ASSETS_EXCLUDE_DIRS: tuple[Path | str, Pattern[str]]
     #: If set to a truthy value :func:`~alliance_platform.frontend.templatetags.bundler.bundler_dev_checks` will not display any HTML error, the error will only be available in the Django dev console.
     BUNDLER_DISABLE_DEV_CHECK_HTML: bool | None
-    #: The path to the node_modules directory. This is used by ViteBundler to resolve optimized deps, and extract_frontend_assets to determine when an import comes from node_modules directly.
+    #: The path to the node_modules directory. This is used by ViteBundler to resolve optimized deps, and extract_frontend_assets to determine when an import comes from node_modules directly. It is used
+    #: by some codegen post processors to run node scripts (e.g. prettier or eslint). It is not used in production, so the directory does not need to exist in production.
     NODE_MODULES_DIR: Path | str
     #: The directory production assets exists in. This directory should include the Vanilla Extract mappings.
     PRODUCTION_DIR: Path
