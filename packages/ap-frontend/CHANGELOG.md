@@ -1,5 +1,12 @@
 # alliance-platform-frontend
 
+## 0.0.8
+
+### Patch Changes
+
+- 90317e4: Handle resolving template nodes used as props to raw html like `<a href="{% url "url-name" %}">...</a>`
+- 46bbf31: Add `disable_ssr` option to `ViteBundler` to completely opt out of SSR
+
 ## 0.0.7
 
 ### Patch Changes
