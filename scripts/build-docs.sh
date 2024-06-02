@@ -10,7 +10,7 @@ cleanup() {
 trap cleanup SIGINT SIGTERM
 
 # Start your processes in the background and capture their PIDs
-sphinx-autobuild --port=0 --open-browser docs _docs-build/core&
+sphinx-autobuild --port=0 --open-browser -a --watch packages/ap-core/ docs _docs-build/core& 
 pid1=$!
 PROJECT=frontend sphinx-autobuild --port=0 --open-browser -a --watch packages/ap-frontend/ docs _docs-build/frontend&
 pid2=$!

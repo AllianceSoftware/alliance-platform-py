@@ -1,3 +1,7 @@
+from pathlib import Path
+
+from multiproject.utils import get_project
+
 # Configuration file for the Sphinx documentation builder.
 #
 # For the full list of built-in configuration values, see the documentation:
@@ -41,8 +45,11 @@ multiproject_projects = {
 
 # -- Options for Intersphinx extension ---------------------------------------
 intersphinx_mapping = {
-    "alliance-platform-frontend": ("https://alliance-platform.readthedocs.io/projects/frontend/", None),
-    "alliance-platform-codegen": ("https://alliance-platform.readthedocs.io/projects/codegen/", None),
+    "alliance-platform-frontend": (
+        "https://alliance-platform.readthedocs.io/projects/frontend/latest/",
+        None,
+    ),
+    "alliance-platform-codegen": ("https://alliance-platform.readthedocs.io/projects/codegen/latest/", None),
     "django": (
         "https://docs.djangoproject.com/en/stable/",
         ("https://docs.djangoproject.com/en/stable/_objects/"),
@@ -59,4 +66,31 @@ intersphinx_disabled_reftypes = ["*"]
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
+current_dir = Path(__file__).parent
+docset = get_project(multiproject_projects)
+docset_path = (current_dir / multiproject_projects[docset]["path"]).relative_to(current_dir.parent)
+
 html_theme = "sphinx_rtd_theme"
+
+html_context = {
+    "display_github": True,
+    "github_user": "AllianceSoftware",
+    "github_repo": "alliance-platform-py",
+    "github_version": "main",
+    # Path in the checkout to the docs root, handle multiple-project setup
+    "conf_py_path": f"/{docset_path}/",
+}
+
+
+def setup(app):
+    # Allows using `:ttag:` and `:tfilter:` roles in the documentation to link to template tags and filters.
+    app.add_crossref_type(
+        directivename="templatetag",
+        rolename="ttag",
+        indextemplate="pair: %s; template tag",
+    )
+    app.add_crossref_type(
+        directivename="templatefilter",
+        rolename="tfilter",
+        indextemplate="pair: %s; template filter",
+    )

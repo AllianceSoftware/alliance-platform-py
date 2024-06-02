@@ -212,9 +212,21 @@ def component(parser: template.base.Parser, token: template.base.Token):
             ...
         {% endcomponent %}
 
+    Limitations
+    -----------
+
+    Currently, attempting to render a django form widget that is itself a React component within another component will
+    not work. This is due to how django widgets have their own templates that are rendered in an isolated context. For
+    example, this will not work if ``form.field`` also uses the ``{% component %}`` tag:
+
+            {% component 'MyComponent' %}
+                {{ form.field }}
+            {% endcomponent %}
+
     Alliance UI
     -----------
     Alliance Core UI components have pre-made tags for more convenient implementation.
+
     """
     return parse_component_tag(parser, token)
 
@@ -1116,7 +1128,9 @@ def react_refresh_preamble():
 
     See https://vitejs.dev/guide/backend-integration.html
 
-    Usage::
+    Usage:
+
+    .. code-block:: html+django
 
         {% bundler_preamble %}
         {% react_refresh_preamble %}

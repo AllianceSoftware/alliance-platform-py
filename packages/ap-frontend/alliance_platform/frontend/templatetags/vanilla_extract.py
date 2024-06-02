@@ -58,7 +58,9 @@ def stylesheet(parser: template.base.Parser, token: template.base.Token):
     The CSS file is not embedded inline where the tag is used, rather it is added by the :meth:`~alliance_platform.frontend.templatetags.bundler.bundler_embed`
     tag.
 
-    Usage::
+    Usage:
+
+    .. code-block:: html+django
 
         {% load vanilla_extract %}
 

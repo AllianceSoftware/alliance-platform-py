@@ -43,8 +43,6 @@ the component tag for instructions on passing arguments and filters.
 
 .. autofunction:: alliance_platform.frontend.alliance_ui.misc.fragment_component
 
-.. autofunction:: alliance_platform.frontend.alliance_ui.misc.raw_html
-
 .. autofunction:: alliance_platform.frontend.alliance_ui.pagination.pagination
 
 .. autofunction:: alliance_platform.frontend.alliance_ui.table.table

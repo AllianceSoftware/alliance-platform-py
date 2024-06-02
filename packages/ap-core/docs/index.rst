@@ -1,4 +1,6 @@
 Alliance Platform
 =============================================
 
-TODO
+
+- :doc:`Frontend <alliance-platform-frontend:index>`
+- :doc:`Codegen <alliance-platform-codegen:index>`
