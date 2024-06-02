@@ -31,3 +31,6 @@ node_modules/
 
 *.egg-info/
 build_artifacts/
+
+# needs to be generated in each env
+_sidebar.rst.inc

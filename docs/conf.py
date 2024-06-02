@@ -1,6 +1,13 @@
+import os
 from pathlib import Path
+import sys
 
 from multiproject.utils import get_project
+
+current_dir = Path(__file__).parent
+sys.path.append(str(current_dir / "_doc_utils"))
+
+from ap_doc_utils import generate_sidebar  # noqa
 
 # Configuration file for the Sphinx documentation builder.
 #
@@ -13,6 +20,7 @@ from multiproject.utils import get_project
 project = "Alliance Platform"
 copyright = "2024, Alliance Software"
 author = "Alliance Software"
+
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -33,29 +41,57 @@ autodoc_typehints = "description"
 # -- Options for Multiproject extension --------------------------------------
 multiproject_projects = {
     "core": {
+        "name": "Core",
         "path": "../packages/ap-core/docs",
     },
     "frontend": {
+        "name": "Frontend",
         "path": "../packages/ap-frontend/docs",
     },
     "codegen": {
+        "name": "Codegen",
         "path": "../packages/ap-codegen/docs",
     },
 }
 
 # -- Options for Intersphinx extension ---------------------------------------
+
+# This is used for linking and such so we link to the thing we're building
+is_on_rtd = os.environ.get("READTHEDOCS", None) == "True"
+rtd_version = os.environ.get("READTHEDOCS_VERSION", "latest")
+if rtd_version not in ["stable", "latest"]:
+    rtd_version = "stable"
+
+dev_port_map = {
+    "core": 56675,
+    "frontend": 56676,
+    "codegen": 56677,
+}
+
+
+def get_project_mapping(project_name: str):
+    if is_on_rtd:
+        if project_name == "core":
+            return (f"https://alliance-platform.readthedocs.io/en/{rtd_version}/", None)
+        return (f"https://alliance-platform.readthedocs.io/projects/{project_name}/{rtd_version}/", None)
+    port = dev_port_map[project_name]
+    # In dev load from the local dev server started by pdm build-docs-watch. Load the objects.inv from the filesystem;
+    # this only works after the first build. We can't load from the dev server because it's not running yet (sphinx
+    # reads it immediately on startup)
+    return (f"http://127.0.0.1:{port}/", str(current_dir / f"../_docs-build/{project_name}/objects.inv"))
+
+
 intersphinx_mapping = {
-    "alliance-platform-frontend": (
-        "https://alliance-platform.readthedocs.io/projects/frontend/latest/",
-        None,
-    ),
-    "alliance-platform-codegen": ("https://alliance-platform.readthedocs.io/projects/codegen/latest/", None),
+    "alliance-platform-core": get_project_mapping("core"),
+    "alliance-platform-frontend": get_project_mapping("frontend"),
+    "alliance-platform-codegen": get_project_mapping("codegen"),
     "django": (
         "https://docs.djangoproject.com/en/stable/",
         ("https://docs.djangoproject.com/en/stable/_objects/"),
     ),
     "python": ("https://docs.python.org/3", "https://docs.python.org/3/objects.inv"),
 }
+
 # Sphinx defaults to automatically resolve *unresolved* labels using all your Intersphinx mappings.
 # This behavior has unintended side-effects, namely that documentations local references can
 # suddenly resolve to an external location.
@@ -66,7 +102,6 @@ intersphinx_disabled_reftypes = ["*"]
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-current_dir = Path(__file__).parent
 docset = get_project(multiproject_projects)
 docset_path = (current_dir / multiproject_projects[docset]["path"]).relative_to(current_dir.parent)
 
@@ -94,3 +129,6 @@ def setup(app):
         rolename="tfilter",
         indextemplate="pair: %s; template filter",
     )
+
+
+generate_sidebar(current_dir, globals())

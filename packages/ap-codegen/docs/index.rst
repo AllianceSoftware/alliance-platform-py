@@ -6,5 +6,6 @@ Alliance Platform Codegen
    :caption: Contents:
 
    typescript
+   settings
 
 
