@@ -16,9 +16,12 @@ logger = logging.getLogger("alliance_platform.frontend")
 
 def get_node_ver(node_path: str) -> Version | None:
     """
-    Get the node verson from a given path
+    Get the node version from a given path
 
     if raise_errors is not True then exceptions will be swallowed and None will be returned on error
+
+    Args:
+        node_path: The path to the node executable
     """
     try:
         proc = subprocess.Popen(
@@ -36,6 +39,12 @@ def get_node_ver(node_path: str) -> Version | None:
 
 
 def guess_node_path(nvmrc_path: Path) -> str | None:
+    """Attempt to guess the node path based on the .nvmrc file
+
+    Args:
+        nvmrc_path: Path to the .nvmrc file
+    """
+
     # nvm's version strings aren't quite the same as those
     # used by python but the overlap makes it good enough
 

@@ -64,3 +64,22 @@ See the :doc:`settings` documentation for details about each of the available se
             "PRODUCTION_DIR": PROJECT_DIR / "frontend/build",
         },
     }
+
+In the ``MIDDLEWARE`` setting, add the ``BundlerAssetContextMiddleware`` middleware. This is used by tags like
+:ttag:`component` and :ttag:`bundler_embed`.
+
+.. code-block:: python
+
+    MIDDLEWARE = [
+        ...
+        "alliance_platform.frontend.bundler.middleware.BundlerAssetContextMiddleware",
+        ...
+    ]
+
+Finally, ``FORM_RENDERER`` should be set as follows:
+
+.. code-block:: python
+
+    FORM_RENDERER = "alliance_platform.frontend.forms.renderers.FormInputContextRenderer"
+
+This is used by the :ttag:`form` and :ttag:`form_input` tags.

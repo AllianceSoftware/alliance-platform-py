@@ -25,10 +25,10 @@ embedded in the template with the :ttag:`component` tag.
    :caption: Contents:
 
    installation
+   overview
    templatetags
    alliance_ui
-   bundler
-   vite
    settings
+   api
 
 .. include:: ../../ap-core/docs/_sidebar.rst.inc
