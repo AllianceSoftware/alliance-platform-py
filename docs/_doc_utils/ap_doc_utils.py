@@ -9,6 +9,8 @@ def generate_sidebar(doc_dir: Path, conf):
     links = []
     for name, proj_conf in conf["multiproject_projects"].items():
         url = conf["intersphinx_mapping"][f"alliance-platform-{name}"][0]
+        if name == "core":
+            url += "core.html"
         links.append(f"{proj_conf['name']} <{url}>")
     contents = dedent("""
     .. toctree::
