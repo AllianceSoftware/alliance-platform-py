@@ -5,6 +5,7 @@ from typing import Any
 from allianceutils.auth.permission import reverse_if_probably_allowed
 from django import template
 from django.db.models import Model
+from django.http import HttpRequest
 from django.template import Context
 from django.urls import reverse
 
@@ -77,38 +78,6 @@ def url_with_perm_filter(value, arg1=None):
     """Resolve a URL and check if the current user has permission to access it.
 
     If permission check fails, the component that uses the value will be omitted from rendering.
-
-    Usage::
-
-        {% component "a" href="my_url_name"|url_with_perm:2 %}
-
-    The above example will resolve the URL "my_url_name" with the argument ``2``.
-
-    If you need multiple arguments you can use the ``with_arg`` filter::
-
-
-        {% component "a" href="my_url_name"|url_with_perm:2|with_arg:"another arg" %}
-
-    To pass kwargs you can use the ``with_kwargs`` filter::
-
-        {% component "a" href="my_url_name"|url_with_perm|with_kwargs:my_kwargs %}
-
-    Note that as there's no way to define a dictionary in the standard Django template language, you'll need to
-    pass it in context.
-
-    To do object level permission checks use the ``with_perm_obj`` filter to pass through the object::
-
-        {% component "a" href="my_url_name"|url_with_perm:obj.pk|with_obj:obj %}
-
-    Note that you still have to pass through the pk to resolve the URL with. Passing the object just allows the permission
-    checks to work without having to manually look up the object. Due to how the ``DetailView.get_object`` method works,
-    if you are not going to pass the object you must use ``with_kwargs`` to pass through the ID rather than a positional
-    argument::
-
-        {% component "a" href="my_url_name"|url_with_perm|with_kwargs:kwargs %}
-
-    Note that the above would do a query to retrieve the object, so it's better to pass the object if you have already
-    retrieved it.
     """
     pfv = NamedUrlDeferredProp(value, True)
     if arg1 is not None:
@@ -159,3 +128,29 @@ def unwrap_list(value):
             raise ValueError(f"Expected list of length 1, received length {len(value)}: {value}")
         return value[0]
     return value
+
+
+@register.filter
+def table_sort_order(request: HttpRequest, ordering_param: str = "ordering"):
+    """Extract the current sort ordering from the request GET parameters and return it as a list of dicts
+
+    Each ordering entry is a dict with keys "column" and "direction".
+
+    For example, the URL /foo?ordering=-bar,email would return::
+
+        [
+          {'column': 'email', 'direction': 'ascending'},
+          {'column': 'name', 'direction': 'descending'}
+        ]
+    """
+    query = request.GET.copy()
+    current_sorting_str = query.get(ordering_param)
+    if current_sorting_str:
+        return [
+            {
+                "column": x[1:] if x.startswith("-") else x,
+                "direction": "descending" if x.startswith("-") else "ascending",
+            }
+            for x in current_sorting_str.split(",")
+        ]
+    return []
