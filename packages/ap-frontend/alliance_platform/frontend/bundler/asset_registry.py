@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from django.conf import settings
+
 
 class FrontendAssetRegistry:
     """Stores any extra assets in addition to those found in templates that should be included in the frontend build
@@ -47,12 +49,6 @@ class FrontendAssetRegistry:
                 "Cannot add assets to registry after it's locked. Make sure all assets are added at startup."
             )
         for filename in filenames:
-            if not filename.is_absolute():
-                raise ValueError(
-                    f'Filenames should be absolute - e.g. Try `settings.PROJECT_DIR / "{filename}"`'
-                )
-            if not filename.exists():
-                raise ValueError(f"{filename} was added to frontend asset registry but does not exist")
             self._assets.add(filename)
 
     def get_asset_paths(self) -> set[Path]:
@@ -69,3 +65,11 @@ class FrontendAssetRegistry:
 
     def lock(self):
         self._locked = True
+        if settings.DEBUG:
+            for filename in self._assets:
+                if not filename.is_absolute():
+                    raise ValueError(
+                        f'Filenames should be absolute - e.g. Try `settings.PROJECT_DIR / "{filename}"`'
+                    )
+                if not filename.exists():
+                    raise ValueError(f"{filename} was added to frontend asset registry but does not exist")
