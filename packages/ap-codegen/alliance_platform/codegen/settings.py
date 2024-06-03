@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import TypedDict
-from typing import Union
 from typing import cast
 
 from alliance_platform.base_settings import AlliancePlatformSettingsBase
@@ -15,8 +14,10 @@ if TYPE_CHECKING:
 class AlliancePlatformCodegenSettingsType(TypedDict, total=False):
     #: Root directory for frontend code. When imports are defined as a ``Path`` they will be resolved relative to this directory. Defaults to "CORE.PROJECT_DIR".
     JS_ROOT_DIR: Path | str | None
+    #: The directory to use for temporary files. If not set, the default provided by ``NamedTemporaryFile``.
     TEMP_DIR: Path | str | None
-    POST_PROCESSORS: list[Union[str, "ArtifactPostProcessor"]]
+    #: List of post processors to run on generated artifacts. Alternatively, this can be a string import path to a list of processors.
+    POST_PROCESSORS: str | list["ArtifactPostProcessor"] | None
 
 
 IMPORT_STRINGS = ["POST_PROCESSORS"]
