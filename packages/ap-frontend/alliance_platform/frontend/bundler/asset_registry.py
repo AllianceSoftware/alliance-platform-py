@@ -8,7 +8,10 @@ class FrontendAssetRegistry:
     :class:`extract_frontend_assets <alliance_platform.frontend.management.commands.extract_frontend_assets.Command>` runs.
 
     The registry to use is specified by the  :data:`~alliance_platform.frontend.settings.AlliancePlatformFrontendSettingsType.FRONTEND_ASSET_REGISTRY`
-    setting
+    setting.
+
+    These assets are only used when building the frontend in dev. In production, the underlying assets do not need to exist -
+    for example if your deployment process excludes the source files.
 
     .. warning::
 

@@ -18,17 +18,42 @@ logger = logging.getLogger("alliance_platform.codegen")
 
 @dataclass
 class CodegenArtifact:
+    """A data class representing a code generation artifact."""
+
+    #: The output path for the artifact
     path: Path
+    #: The contents of the artifact to be written to ``path``
     contents: str
 
 
 class CodegenRegistrationCacheKey(TypedDict):
+    """A TypedDict representing a cache key for a code generation registration."""
+
+    #: The ID of the registration.
     registration_id: str
+    #: A list of file paths that the code generation depends on.
     dependency_files: list[Path | str]
 
 
 class CodegenRegistration:
+    """
+    A base class for code generation registrations.
+
+    Subclasses should implement the `generate_artifacts` method.
+
+    Optionally, ``get_cache_key`` can be used
+    """
+
     def generate_artifacts(self) -> CodegenArtifact | list[CodegenArtifact]:
+        """
+        Generate the artifacts for this registration.
+
+        Returns:
+            CodegenArtifact | list[CodegenArtifact]: The generated artifacts.
+
+        Raises:
+            NotImplementedError: This method must be implemented by subclasses.
+        """
         raise NotImplementedError
 
     def get_cache_key(self) -> None | CodegenRegistrationCacheKey:
@@ -53,26 +78,77 @@ class CodegenRegistration:
 
 @dataclass
 class IntermediateArtifact:
+    """
+    A data class representing an intermediate artifact during code generation.
+
+    Used internally.
+    """
+
+    #: The temporary file path of the artifact.
     temp_file_path: Path
+    #: The final output path of the artifact.
     target_path: Path
 
 
 class ArtifactPostProcessor:
+    """
+    A base class for post processors of code generation artifacts.
+
+    Subclasses should implement the `post_process` method and provide a list of file extensions for the `file_extensions` attribute.
+    """
+
     #: File extensions that this post processor should run on
     file_extensions: list[str]
 
     @lru_cache()
     def _validated_file_extensions(self):
+        """
+        Get the validated file extensions for this post processor.
+
+        Returns:
+            list[str]: The validated file extensions.
+        """
         return [f".{ext}" if not ext.startswith(".") else ext for ext in self.file_extensions]
 
     def does_apply(self, path: Path):
+        """
+        Check if this post processor applies to a given path.
+
+        Args:
+            path (Path): The path to check.
+
+        Returns:
+            bool: True if this post processor applies to the path, False otherwise.
+        """
         return path.suffix in self._validated_file_extensions()
 
     def post_process(self, paths: list[Path]):
+        """
+        Post process a list of paths.
+
+        You can assume any path passed to this method will have already been filtered by the `does_apply` method.
+
+        This method has no return value - all changes should be made in place.
+
+        Args:
+            paths (list[Path]): The paths to post process.
+
+        Raises:
+            NotImplementedError: This method must be implemented by subclasses.
+        """
         raise NotImplementedError
 
 
 def post_process_artifacts(paths: list[Path]):
+    """
+    Post process a list of artifact paths.
+
+    .. warning::
+       This process happens in place and modifies the files on disk.
+
+    Args:
+        paths (list[Path]): The paths to post process.
+    """
     for post_processor in ap_codegen_settings.POST_PROCESSORS:
         try:
             post_processor.post_process([p for p in paths if post_processor.does_apply(p)])

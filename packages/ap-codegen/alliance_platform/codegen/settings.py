@@ -31,7 +31,9 @@ DEFAULTS = {
 class AlliancePlatformCodegenSettings(AlliancePlatformSettingsBase):
     #: Root directory for frontend code. When imports are defined as a ``Path`` they will be resolved relative to this directory.
     JS_ROOT_DIR: Path
+    #: The directory to use for temporary files. If not set, the default provided by ``NamedTemporaryFile``.
     TEMP_DIR: Path | None
+    #: List of post processors to run on generated artifacts. Can be a string import path to a list of processors.
     POST_PROCESSORS: list["ArtifactPostProcessor"]
 
 

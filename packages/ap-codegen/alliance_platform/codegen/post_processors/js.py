@@ -9,7 +9,16 @@ logger = logging.getLogger("alliance_platform.frontend")
 
 
 class JsPostProcessor(ArtifactPostProcessor):
+    """Base class for post processors that run on JS files.
+
+    Args:
+       node_path: Path to node executable
+       node_modules_dir: Path to the node modules directory
+    """
+
+    #: Path to the node executable
     node_path: Path
+    #: Path to the node_modules directory
     node_modules_dir: Path
 
     def __init__(self, node_path: Path | str, node_modules_dir: Path | str):
@@ -18,6 +27,14 @@ class JsPostProcessor(ArtifactPostProcessor):
 
 
 class PrettierPostProcessor(JsPostProcessor):
+    """Post processor that runs prettier on typescript, JS and JSON files.
+
+    Args:
+       node_path: Path to node executable
+       node_modules_dir: Path to the node modules directory
+       prettier_config: The path to a prettier config file
+    """
+
     file_extensions = [".js", ".ts", ".tsx", ".jsx", ".json"]
 
     def __init__(
@@ -65,8 +82,20 @@ class PrettierPostProcessor(JsPostProcessor):
 
 
 class EslintFixPostProcessor(JsPostProcessor):
+    """Post processor that runs eslint --fix on typescript, JS, TSX and JSX files.
+
+    Args:
+        node_path: Path to node executable
+        node_modules_dir: Path to the node modules directory
+        plugins: Any eslint plugins to use
+        rules: Any eslint rules to apply
+    """
+
     file_extensions = [".js", ".ts", ".tsx", ".jsx"]
+
+    #: List of eslint plugins to use
     plugins: list[str]
+    #: Any eslint rules to apply
     rules: dict | None
 
     def __init__(
