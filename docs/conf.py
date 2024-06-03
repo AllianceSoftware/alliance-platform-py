@@ -89,7 +89,7 @@ intersphinx_mapping = {
         "https://docs.djangoproject.com/en/stable/",
         ("https://docs.djangoproject.com/en/stable/_objects/"),
     ),
-    "python": ("https://docs.python.org/3", "https://docs.python.org/3/objects.inv"),
+    "python": ("https://docs.python.org/3", None),
 }
 
 # Sphinx defaults to automatically resolve *unresolved* labels using all your Intersphinx mappings.
@@ -128,6 +128,12 @@ def setup(app):
         directivename="templatefilter",
         rolename="tfilter",
         indextemplate="pair: %s; template filter",
+    )
+    # Allows usage of setting role, e.g. :setting:`FORM_RENDERER <django:FORM_RENDERER>`
+    app.add_crossref_type(
+        directivename="setting",
+        rolename="setting",
+        indextemplate="pair: %s; setting",
     )
 
 
