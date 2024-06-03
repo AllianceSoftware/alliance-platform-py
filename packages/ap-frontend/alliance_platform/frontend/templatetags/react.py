@@ -930,7 +930,7 @@ class ComponentNode(template.Node, BundlerAsset):
             props["children"] = ChildrenList(props["children"])
         self.container_tag = container_tag
         self.container_props = container_props or {}
-        self.ssr_disabled = ssr_disabled
+        self.ssr_disabled = ssr_disabled or not get_bundler().is_ssr_enabled()
         self.source = source
         self.props = props
         self.target_var = target_var
