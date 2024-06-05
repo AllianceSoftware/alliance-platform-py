@@ -76,7 +76,7 @@ to the ``node_modules`` directory. This allows you to use ``{% component "@allia
 .. note::
 
     While we work with ``Path`` objects here, in production the bundler will handle these even if the source code
-    doesn't exist in the filesystem. For example, the ViteBundler will use the resolved paths to index into it's generated
+    doesn't exist in the filesystem. For example, the ViteBundler will use the resolved paths to index into its generated
     manifest file. In the example above, the resolved path might be ``/node_modules/@alliancesoftware/ui/Table.tsx``,
     which would have an entry in the manifest file mapping it to the generate file ``Table.hash123.js``.
 
@@ -130,7 +130,7 @@ SSR is enabled by default and works as follows:
     - In production it is handled by ``production-ssr-server.ts`` which works with the production built files.
 
 Currently, the only thing that gets rendered on the server is React components. :class:`~alliance_platform.frontend.templatetags.react.ComponentSSRItem`
-is used to describe the component that needs to be rendered. See it's documentation for details on how each component
+is used to describe the component that needs to be rendered. See its documentation for details on how each component
 is serialized.
 
 .. admonition:: Disabling SSR
@@ -159,8 +159,8 @@ Quick Reference
     {% endcomponent %}
     <!-- Named export -->
     {% component "components/Table" "Column" %}Header{% endcomponent %}
-    <!-- Pass a comopnent as a prop to another component -->
-    {% component "components/Icons" "Menu" as menu_icon %}
+    <!-- Pass a component as a prop to another component -->
+    {% component "components/Icons" "Menu" as menu_icon %}{% endcomponent %}
     {% component "components/Button" icon=menu_icon %}{% endcomponent %}
 
 * To include a Vanilla Extract stylesheet in a template use the :ttag:`stylesheet` tag:
