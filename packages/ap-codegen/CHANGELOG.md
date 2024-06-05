@@ -1,5 +1,11 @@
 # alliance-platform-codegen
 
+## 0.0.6
+
+### Patch Changes
+
+- 8ce1fa5: Fix type on `AlliancePlatformCodegenSettingsType.POST_PROCESSORS`; it should be either a string (the module import path) or a list of `ArtifactPostProcessor` instances.
+
 ## 0.0.5
 
 ### Patch Changes

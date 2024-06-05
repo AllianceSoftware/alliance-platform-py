@@ -1,5 +1,12 @@
 # alliance-platform-frontend
 
+## 0.0.9
+
+### Patch Changes
+
+- e694c07: Fix so `renderComponent` on frontend doesn't try to hydrate SSR when SSR is explicitly disabled.
+- 212737c: Perform asset registry checks in `lock`, and only when `DEBUG` is `True`. These checks do not need to happen in production, and could break things if you remove the frontend source code from the deployed files.
+
 ## 0.0.8
 
 ### Patch Changes
