@@ -201,7 +201,7 @@ Usage:
 
 Performs dev specific checks and may render some HTML to communicate messages to user
 
-Currently check if the dev server is running for this project, and if not displays an error.
+Currently checks if the dev server is running for this project, and if not displays an error.
 
 Error will be logged to Django dev console. In addition, an error icon and toggleable modal message will be shown
 in the HTML unless :data:`~alliance_platform.frontend.settings.AlliancePlatformFrontendSettingsType.BUNDLER_DISABLE_DEV_CHECK_HTML` is set.
@@ -415,6 +415,9 @@ To opt out of SSR pass ``ssr:disabled=True`` to the component after the componen
     {% component 'components/Button.tsx' ssr:disabled=True %}...{% endcomponent %}
 
 Alternatively, you can disable SSR entirely by passing ``disable_ssr=True`` to :class:`~alliance_platform.frontend.bundler.vite.ViteBundler`.
+
+Note that when SSR is disabled, nothing will be rendered on the initial page load, so there will be a flash of
+content as the component is rendered on the client side.
 
 Options
 ~~~~~~~
