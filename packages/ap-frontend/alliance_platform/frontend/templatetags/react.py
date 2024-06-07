@@ -2,12 +2,9 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from dataclasses import field
-from html.parser import HTMLParser
 import math
 from pathlib import Path
 from typing import Any
-from typing import Union
 from typing import cast
 import warnings
 
@@ -18,6 +15,7 @@ from alliance_platform.codegen.typescript import FunctionDeclaration
 from alliance_platform.codegen.typescript import Identifier
 from alliance_platform.codegen.typescript import ImportDefaultSpecifier
 from alliance_platform.codegen.typescript import ImportSpecifier
+from alliance_platform.codegen.typescript import InvalidIdentifier
 from alliance_platform.codegen.typescript import JsxAttribute
 from alliance_platform.codegen.typescript import JsxElement
 from alliance_platform.codegen.typescript import MultiLineComment
@@ -59,6 +57,9 @@ from ..bundler.ssr import SSRSerializable
 from ..bundler.ssr import SSRSerializerContext
 from ..bundler.vite import ViteBundler
 from ..forms.renderers import form_input_context_key
+from ..html_parser import HtmlAttributeTemplateNodeList
+from ..html_parser import convert_html_string
+from ..html_parser import html_replacement_placeholder_template
 from ..prop_handlers import CodeGeneratorNode
 from ..prop_handlers import ComponentProp
 from ..settings import ap_frontend_settings
@@ -549,6 +550,17 @@ class ComponentSourceCodeGenerator:
             )
         return convert_to_node(value)
 
+    def _create_jsx_key(self, key: str):
+        """Not strictly accurate, but for our purposes it's better to not crash than generate strictly accurate JSX
+
+        JSX is never used directly; it's always converted to React.createElement calls, so we can be a bit more
+        flexible here as anything can technically be passed to `createElement`.
+        """
+        try:
+            return StringLiteral(key.lower()) if "-" in key else Identifier(underscore_to_camel(key))
+        except InvalidIdentifier:
+            return StringLiteral(key)
+
     def create_jsx_element_node(
         self, component: ComponentNode, resolved_props: ComponentProps, include_template_origin=None
     ):
@@ -593,7 +605,7 @@ class ComponentSourceCodeGenerator:
             )
             attributes = [
                 JsxAttribute(
-                    StringLiteral(key.lower()) if "-" in key else Identifier(underscore_to_camel(key)),
+                    self._create_jsx_key(key),
                     self._codegen_prop(prop),
                 )
                 for key, prop in resolved_props.props.items()
@@ -779,6 +791,9 @@ class ComponentNode(template.Node, BundlerAsset):
 
     container_tag: str | FilterExpression
     container_props: dict[str, Any]
+    #: For tags that are parsed from raw HTML we can have instances where the attributes can't be resolved until
+    #: the component is rendered. This is used to store those nodes and resolve them to props later.
+    html_attribute_template_nodes: HtmlAttributeTemplateNodeList | None
 
     def __init__(
         self,
@@ -790,6 +805,7 @@ class ComponentNode(template.Node, BundlerAsset):
         omit_if_empty: bool | FilterExpression = False,
         container_tag: str | FilterExpression = "dj-component",
         container_props: dict[str, Any] | None = None,
+        html_attribute_template_nodes: HtmlAttributeTemplateNodeList | None = None,
     ):
         if not ap_frontend_settings.REACT_RENDER_COMPONENT_FILE:
             raise ImproperlyConfigured(
@@ -797,6 +813,7 @@ class ComponentNode(template.Node, BundlerAsset):
             )
         if "children" in props:
             props["children"] = ChildrenList(props["children"])
+        self.html_attribute_template_nodes = html_attribute_template_nodes
         self.container_tag = container_tag
         self.container_props = container_props or {}
         self.ssr_disabled = ssr_disabled or not get_bundler().is_ssr_enabled()
@@ -903,7 +920,11 @@ class ComponentNode(template.Node, BundlerAsset):
         """
         props = self.props.copy()
         if self.extra_props:
-            props.update(self.extra_props.resolve(context))
+            extra_props = self.extra_props.resolve(context)
+            if extra_props:
+                props.update(extra_props)
+        if self.html_attribute_template_nodes:
+            props.update(self.html_attribute_template_nodes.resolve(context))
         return ComponentProps({key: self.resolve_prop(value, context) for key, value in props.items()})
 
     def render_component(self, context: Context):
@@ -1281,7 +1302,7 @@ def parse_component_tag(
             if isinstance(node, TextNode):
                 html += node.s
             else:
-                placeholder = _html_replacement_placeholder_template.format(i)
+                placeholder = html_replacement_placeholder_template.format(i)
                 html += placeholder
                 replacements[str(i)] = node
                 i += 1
@@ -1299,139 +1320,3 @@ def parse_component_tag(
         ssr_disabled=ssr_options.get("disabled", ssr_disabled),
         omit_if_empty=component_options.get("omit_if_empty", omit_if_empty),
     )
-
-
-# These are used to replace template Nodes in a string with placeholders. The resulting string can them be parsed as HTML,
-# and then the placeholders replaced with the original template nodes.
-_html_replacement_placeholder_prefix = "_______PLACEHOLDER_____$"
-_html_replacement_placeholder_suffix = "$_"
-_html_replacement_placeholder_template = (
-    _html_replacement_placeholder_prefix + "{0}" + _html_replacement_placeholder_suffix
-)
-
-
-@dataclass
-class Element:
-    name: str
-    attrs: dict
-
-
-@dataclass
-class HTMLElement:
-    tag: str
-    attributes: dict[str, str] = field(default_factory=dict)
-    children: list[Union["HTMLElement", str]] = field(default_factory=list)
-
-
-void_elements = [
-    "area",
-    "base",
-    "br",
-    "col",
-    "embed",
-    "hr",
-    "img",
-    "input",
-    "link",
-    "meta",
-    "param",
-    "source",
-    "track",
-    "wbr",
-]
-
-
-class HtmlTreeParser(HTMLParser):
-    def __init__(self):
-        super().__init__(convert_charrefs=True)
-        # The root of the parsed tree. The tag is nonsense, but not used - it's just to make implementation easier. We
-        # just use it for ``children``
-        self.root = HTMLElement("Root")
-        # Stack to maintain hierarchy of elements
-        self.stack = [self.root]
-
-    def handle_starttag(self, tag, attrs):
-        element = HTMLElement(tag, {attr[0]: attr[1] for attr in attrs})
-        if self.stack:
-            self.stack[-1].children.append(element)
-        else:
-            self.root = element
-        self.stack.append(element)
-        # for void elements close them immediately
-        if tag in void_elements:
-            self.handle_endtag(tag)
-
-    def handle_endtag(self, tag):
-        if self.stack and self.stack[-1].tag == tag:
-            self.stack.pop()
-
-    def handle_data(self, data):
-        if data and self.stack:
-            self.stack[-1].children.append(data)
-
-
-def convert_html_string(
-    html: str, origin: Origin, *, replacements: dict[str, Node] | None = None
-) -> list[ComponentNode | str]:
-    """
-    Given a string that may contain HTML, convert it to a tree of ``ComponentNode``s
-
-    Args:
-        html: The html string to convert
-        origin: The template origin
-        replacements: Any replacements to make in the HTML after conversion. The way this works is that a template NodeList
-            is processed into a string, with any template nodes replaced with placeholders. The string is converted to
-            a component tree, then any placeholders are replaced with the original template nodes.
-    Returns:
-
-    """
-    # NOTE: I tried lxml initially (with & without BeautifulSoup), and it was slower for our specific use case.
-    # In general, it's considered very fast, but we don't need most of its features and this simple parser was
-    # faster.
-    parser = HtmlTreeParser()
-    # Parse the HTML
-    parser.feed(html)
-
-    tags = parser.root.children
-
-    def handle_placeholders(content: str):
-        if not replacements:
-            return [content]
-        parts = content.split(_html_replacement_placeholder_prefix)
-        first = parts.pop(0)
-        if not parts:
-            return [first]
-        children: list[str | Node] = []
-        if first:
-            children.append(first)
-        for part in parts:
-            placeholder_id, extra = part.split(_html_replacement_placeholder_suffix)
-            children.append(replacements[placeholder_id])
-            if extra:
-                children.append(extra)
-        return children
-
-    def convert_attributes(attrs: dict[str, str | Any]):
-        transformed = {}
-        for key, value in attrs.items():
-            parts = handle_placeholders(value)
-            transformed[key] = parts[0] if len(parts) == 1 else NodeList(parts)
-        return transformed
-
-    def convert_tree(tree):
-        children = []
-        for el in tree:
-            if isinstance(el, str):
-                parts = handle_placeholders(el)
-                children += parts
-            else:
-                children.append(
-                    ComponentNode(
-                        origin,
-                        CommonComponentSource(el.tag),
-                        {**convert_attributes(el.attributes), "children": convert_tree(el.children)},
-                    )
-                )
-        return children
-
-    return convert_tree(tags)
