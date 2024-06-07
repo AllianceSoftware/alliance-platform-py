@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import sys
+from urllib.parse import urlparse
 
 from multiproject.utils import get_project
 
@@ -59,8 +60,11 @@ multiproject_projects = {
 # This is used for linking and such so we link to the thing we're building
 is_on_rtd = os.environ.get("READTHEDOCS", None) == "True"
 rtd_version = os.environ.get("READTHEDOCS_VERSION", "latest")
-if rtd_version not in ["stable", "latest"]:
-    rtd_version = "stable"
+rtd_url = os.environ.get(
+    "READTHEDOCS_CANONICAL_URL", f"https://alliance-platform.readthedocs.io/en/{rtd_version}/"
+)
+parts = urlparse(rtd_url)
+base_url = f"{parts.scheme}://{parts.hostname}"
 
 dev_port_map = {
     "core": 56675,
@@ -72,8 +76,8 @@ dev_port_map = {
 def get_project_mapping(project_name: str):
     if is_on_rtd:
         if project_name == "core":
-            return (f"https://alliance-platform.readthedocs.io/en/{rtd_version}/", None)
-        return (f"https://alliance-platform.readthedocs.io/projects/{project_name}/{rtd_version}/", None)
+            return (f"{base_url}/en/{rtd_version}/", None)
+        return (f"{base_url}/projects/{project_name}/{rtd_version}/", None)
     port = dev_port_map[project_name]
     # In dev load from the local dev server started by pdm build-docs-watch. Load the objects.inv from the filesystem;
     # this only works after the first build. We can't load from the dev server because it's not running yet (sphinx
@@ -89,7 +93,7 @@ intersphinx_mapping = {
         "https://docs.djangoproject.com/en/stable/",
         ("https://docs.djangoproject.com/en/stable/_objects/"),
     ),
-    "python": ("https://docs.python.org/3", "https://docs.python.org/3/objects.inv"),
+    "python": ("https://docs.python.org/3", None),
 }
 
 # Sphinx defaults to automatically resolve *unresolved* labels using all your Intersphinx mappings.
@@ -128,6 +132,12 @@ def setup(app):
         directivename="templatefilter",
         rolename="tfilter",
         indextemplate="pair: %s; template filter",
+    )
+    # Allows usage of setting role, e.g. :setting:`FORM_RENDERER <django:FORM_RENDERER>`
+    app.add_crossref_type(
+        directivename="setting",
+        rolename="setting",
+        indextemplate="pair: %s; setting",
     )
 
 
