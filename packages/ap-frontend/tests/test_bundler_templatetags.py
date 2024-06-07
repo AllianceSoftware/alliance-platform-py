@@ -942,3 +942,17 @@ class TestComponentTemplateTagOutput(SimpleTestCase):
             """<div><a href="/test/">Test</a></div>""",
             url="/test/",
         )
+
+    def test_void_tags(self):
+        """void tags like 'input' should be handled with or without self closing"""
+        self.assertComponentEqual(
+            """
+            {% component "div" %}<input id="input"> middle <span>end</span>{% endcomponent %}""",
+            """<div><input id="input"/> middle <span>end</span></div>""",
+        )
+
+        self.assertComponentEqual(
+            """
+            {% component "div" %}<input id="input" /> middle <span>end</span>{% endcomponent %}""",
+            """<div><input id="input"/> middle <span>end</span></div>""",
+        )

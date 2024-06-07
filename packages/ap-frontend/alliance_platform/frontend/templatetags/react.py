@@ -1323,6 +1323,24 @@ class HTMLElement:
     children: list[Union["HTMLElement", str]] = field(default_factory=list)
 
 
+void_elements = [
+    "area",
+    "base",
+    "br",
+    "col",
+    "embed",
+    "hr",
+    "img",
+    "input",
+    "link",
+    "meta",
+    "param",
+    "source",
+    "track",
+    "wbr",
+]
+
+
 class HtmlTreeParser(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
@@ -1339,6 +1357,9 @@ class HtmlTreeParser(HTMLParser):
         else:
             self.root = element
         self.stack.append(element)
+        # for void elements close them immediately
+        if tag in void_elements:
+            self.handle_endtag(tag)
 
     def handle_endtag(self, tag):
         if self.stack and self.stack[-1].tag == tag:
