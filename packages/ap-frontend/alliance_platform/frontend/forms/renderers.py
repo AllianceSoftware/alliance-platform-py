@@ -38,7 +38,7 @@ class FormInputContextRenderer(TemplatesSetting):
                 extra_context[NestedComponentPropAccumulator.context_key] = accumulator
             # setting a default means templates can assume the value always exists - makes
             # usage with merge_props etc easier
-            if "core_ui_props" not in extra_context:
-                extra_context["core_ui_props"] = {}
+            if "extra_widget_props" not in extra_context:
+                extra_context["extra_widget_props"] = {}
             context.update(extra_context)
         return super().render(template_name, context, request)
