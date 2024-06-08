@@ -348,6 +348,11 @@ class NestedComponentPropAccumulator:
         This returns a string that should be rendered in the components place. It will then be
         handled in ``apply``.
         """
+        if not isinstance(prop, NestedComponentProp):
+            raise ValueError(
+                "must be a NestedComponentProp; if you are passing ComponentNode wrap it in ComponentProp first"
+            )
+
         key = f"{self.context_key}__prop__{len(self.props)}"
         self.props[key] = prop
         return key
