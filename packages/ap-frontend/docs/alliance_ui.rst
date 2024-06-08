@@ -273,6 +273,47 @@ from the Alliance UI React library with the specified props.
 
     {% InlineAlert intent="success" %}Changes saved successfully{% endInlineAlert %}
 
+
+.. templatetag:: LabeledInput
+
+``LabeledInput``
+----------------
+
+Render an `LabeledInput <https://main--64894ae38875dcf46367336f.chromatic.com/?path=/docs/ui-labeledinput--docs>`_ component
+from the Alliance UI React library with the specified props.
+
+This can be useful with custom widgets that get rendered with :ttag:`form_input` where you want standard rendering
+of label, help text, validation, required indicator etc.
+
+.. code-block:: html+django
+
+    {% load alliance_ui %}
+
+    {# this is in your widget template. extra_widget_props come from `form_input` #}
+    {% LabeledInput props=extra_widget_props %}
+       {# render your widget here. validation, help text and label will be handled for you. %}
+       <input />
+    {% endLabeledInput %}
+
+Alternatively, you can extend the ``alliance_platform/ui/labeled_input_base.html`` template
+as a base and fill in the ``input`` block with the relevant HTML:
+
+.. code-block:: html+django
+
+    {% extends "alliance_platform/ui/labeled_input_base.html" %}
+
+    {% block input %}
+      <input type="{{ widget.type }}" name="{{ widget.name }}"{% if widget.value != None %} value="{{ widget.value|stringformat:'s' }}"{% endif %}>
+    {% endblock %}
+
+Finally, if you want to wrap a single instance of a widget without changing the template you can use
+the ``non_standard_widget=True`` option to :ttag:`form_input`. This will render the widget as normal,
+but wrap it in a ``LabeledInput`` component.
+
+    .. code-block:: html+django
+
+    {% form_input field non_standard_widget=True %}
+
 .. templatetag:: Menubar
 
 ``Menubar``

@@ -13,6 +13,7 @@ from ..alliance_ui.button import register_button
 from ..alliance_ui.date_picker import register_date_picker
 from ..alliance_ui.icon import register_icon
 from ..alliance_ui.inline_alert import register_inline_alert
+from ..alliance_ui.labeled_input import register_labeled_input
 from ..alliance_ui.menubar import register_menubar
 from ..alliance_ui.misc import register_misc
 from ..alliance_ui.pagination import register_pagination
@@ -32,6 +33,7 @@ register_inline_alert(register)
 register_icon(register)
 register_date_picker(register)
 register_time_input(register)
+register_labeled_input(register)
 
 
 class NamedUrlDeferredProp(DeferredProp):
