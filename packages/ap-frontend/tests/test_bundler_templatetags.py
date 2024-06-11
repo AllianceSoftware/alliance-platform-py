@@ -9,6 +9,7 @@ from alliance_platform.frontend.bundler.context import BundlerAssetContext
 from alliance_platform.frontend.bundler.ssr import SSRJsonEncoder
 from alliance_platform.frontend.bundler.ssr import SSRSerializerContext
 from alliance_platform.frontend.bundler.vanilla_extract import resolve_vanilla_extract_cache_names
+from alliance_platform.frontend.bundler.vite import ViteCssEmbed
 from alliance_platform.frontend.templatetags.react import ComponentNode
 from alliance_platform.frontend.templatetags.react import ComponentProps
 from alliance_platform.frontend.templatetags.react import ComponentSourceCodeGenerator
@@ -424,6 +425,40 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
                         actual = tpl.render(context)
                         self.assertCodeEqual(expected, actual)
                         self.assertEqual(len(asset_context.ssr_queue), 1)
+
+    def test_collected_assets(self):
+        """Test rendering a component with CSS results in the CSS being collected"""
+        with override_ap_frontend_settings(BUNDLER=self.test_production_bundler):
+            with BundlerAssetContext(
+                frontend_asset_registry=bypass_frontend_asset_registry,
+                skip_checks=True,
+            ) as asset_context:
+                tpl = Template(
+                    "{% load react bundler %}"
+                    "{% component 'components/Button.tsx' %}Click Me{% endcomponent %}"
+                )
+                context = Context()
+                tpl.render(context)
+                self.assertEqual(len(asset_context.embed_item_queue.items), 1)
+                self.assertIsInstance(asset_context.embed_item_queue.items[0], ViteCssEmbed)
+                self.assertEqual(asset_context.embed_item_queue.items[0].path, "assets/Button-abc123.css")
+
+            with BundlerAssetContext(
+                frontend_asset_registry=bypass_frontend_asset_registry,
+                skip_checks=True,
+            ) as asset_context:
+                # Test CSS is queued when the component is nested within another
+                tpl = Template("""
+                    {% load react bundler %}
+                    {% component "div" %}
+                        <strong>{% component 'components/Button.tsx' %}Click Me{% endcomponent %}</strong>
+                    {% endcomponent %}
+                    """)
+                context = Context()
+                tpl.render(context)
+                self.assertEqual(len(asset_context.embed_item_queue.items), 1)
+                self.assertIsInstance(asset_context.embed_item_queue.items[0], ViteCssEmbed)
+                self.assertEqual(asset_context.embed_item_queue.items[0].path, "assets/Button-abc123.css")
 
     def test_component_children(self):
         with override_ap_frontend_settings(

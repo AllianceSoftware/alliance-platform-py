@@ -875,6 +875,9 @@ class ComponentNode(template.Node, BundlerAsset):
                 if isinstance(child, ComponentNode):
                     # We could remove this branch - it's an optimisation of the below. We know the node type here
                     # directly so can avoid the extra work + string replacement that happens below.
+
+                    # css has to be queued here as we won't be rendering the component directly
+                    child._queue_css()
                     try:
                         children.append(NestedComponentProp(child, self, context))
                     except OmitComponentFromRendering:
@@ -932,11 +935,13 @@ class ComponentNode(template.Node, BundlerAsset):
             props.update(self.html_attribute_template_nodes.resolve(context))
         return ComponentProps({key: self.resolve_prop(value, context) for key, value in props.items()})
 
-    def render_component(self, context: Context):
+    def _queue_css(self):
         css_items = self.bundler.get_embed_items(self.get_paths_for_bundling(), "text/css")
         for item in css_items:
             self.bundler_asset_context.queue_embed_file(item)
 
+    def render_component(self, context: Context):
+        self._queue_css()
         # This means this component is nested under another and needs to be handled by the parent
         # Add to the accumulator and return a string that will be handled by NestedComponentPropAccumulator.apply()
         accumulator = NestedComponentPropAccumulator.get_current(context)
