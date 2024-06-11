@@ -245,6 +245,16 @@ class ViteManifest:
             # will resolve to components/table/index.tsx
             if key.stem == "index":
                 entries[key.parent] = entries[key]
+
+            # This "unresolvedPath" is an extension we provide with a custom plugin. This stores the unresolved path
+            # (i.e. the path you might use in a template, e.g. "@internationalized/date") so that we can map it to
+            # the resolved path (e.g. "node_modules/@internationalized/date/dist/import.mjs"). The resolved path is
+            # what the key is in the manifest.json, which most of the time matches, but sometimes doesn't. We handle
+            # the most common case above - which is the resolved path is /package-name/index.js - but this is customisable
+            # by setting `module` or `exports` in the package.json.
+            if value.get("unresolvedPath") and value.get("unresolvedPath") != str(key):
+                unresolved_path = Path(value.get("unresolvedPath"))
+                entries[unresolved_path] = entries[key]
         self.entries = entries
         for entry in self.entries.values():
             entry.collect_dependencies()
