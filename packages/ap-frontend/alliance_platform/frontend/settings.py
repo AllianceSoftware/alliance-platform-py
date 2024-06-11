@@ -134,6 +134,8 @@ class AlliancePlatformFrontendSettings(AlliancePlatformSettingsBase):
 
         # lock registry to make sure assets aren't added after startup that would be missed by
         # extract_frontend_assets
+        for prop_handler in self.REACT_PROP_HANDLERS:
+            self.FRONTEND_ASSET_REGISTRY.add_asset(*prop_handler.get_paths_for_bundling())
         self.FRONTEND_ASSET_REGISTRY.lock()
 
 

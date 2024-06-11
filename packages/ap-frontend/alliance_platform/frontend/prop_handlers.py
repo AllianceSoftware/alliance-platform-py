@@ -62,12 +62,33 @@ class ComponentProp(SSRCustomFormatSerializable, CodeGeneratorNode):
 
     @classmethod
     def should_apply(cls, value: Any, node: ComponentNode, context: Context):
-        """Return ``True`` if this prop handler should be used for the given value."""
+        """Return ``True`` if this prop handler should be used for the given value.
+
+        Args:
+            value: The value in question
+            node: The :class:`~alliance_platform.frontend.templatetags.react.ComponentNode` this is being used in
+            context: The current template context
+
+        Returns:
+            ``True`` if this prop handler should be used for the given value.
+        """
         raise NotImplementedError(f"should_apply not implemented for {cls.__name__}")
 
     def __init__(self, value: Any, node: ComponentNode, context: Context):
         """Intentionally blank; each implementation can handle this differently."""
         pass
+
+    @classmethod
+    def get_paths_for_bundling(cls):
+        """Return any paths that need to be included in bundling to make use of this prop
+
+        Note that if this is specified, the paths will _always_ be included in the bundler even if the props
+        is not used.
+
+        Returns:
+            A list of :class:`~pathlib.Path` instances that need to be included in the bundling process.
+        """
+        return []
 
 
 class DateProp(ComponentProp):
