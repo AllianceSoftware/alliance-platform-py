@@ -15,6 +15,7 @@ from django.utils.timezone import is_aware
 
 from .bundler.ssr import SSRCustomFormatSerializable
 from .bundler.ssr import SSRSerializerContext
+from .settings import ap_frontend_settings
 
 if TYPE_CHECKING:
     from .templatetags.react import ComponentNode
@@ -109,13 +110,17 @@ class DateProp(ComponentProp):
 
     def generate_code(self, generator: ComponentSourceCodeGenerator):
         calendar_date = generator.resolve_prop_import(
-            "frontend/src/re-exports.tsx", ImportSpecifier("CalendarDate")
+            "node_modules/@internationalized/date", ImportSpecifier("CalendarDate")
         )
         return NewExpression(calendar_date, self.js_args)
 
     @classmethod
     def should_apply(cls, value: Any, node: ComponentNode, context: Context):
         return isinstance(value, datetime.date) and not isinstance(value, datetime.datetime)
+
+    @classmethod
+    def get_paths_for_bundling(cls):
+        return [ap_frontend_settings.NODE_MODULES_DIR / "@internationalized/date"]
 
 
 class DateTimeProp(ComponentProp):
@@ -144,7 +149,7 @@ class DateTimeProp(ComponentProp):
 
     def generate_code(self, generator: ComponentSourceCodeGenerator):
         calendar_date = generator.resolve_prop_import(
-            "frontend/src/re-exports.tsx", ImportSpecifier("CalendarDateTime")
+            "node_modules/@internationalized/date", ImportSpecifier("CalendarDateTime")
         )
         return NewExpression(
             calendar_date,
@@ -154,6 +159,10 @@ class DateTimeProp(ComponentProp):
     @classmethod
     def should_apply(cls, value: Any, node: ComponentNode, context: Context):
         return isinstance(value, datetime.datetime) and not is_aware(value)
+
+    @classmethod
+    def get_paths_for_bundling(cls):
+        return [ap_frontend_settings.NODE_MODULES_DIR / "@internationalized/date"]
 
 
 class ZonedDateTimeProp(ComponentProp):
@@ -189,7 +198,7 @@ class ZonedDateTimeProp(ComponentProp):
 
     def generate_code(self, generator: ComponentSourceCodeGenerator):
         calendar_date = generator.resolve_prop_import(
-            "frontend/src/re-exports.tsx", ImportSpecifier("ZonedDateTime")
+            "node_modules/@internationalized/date", ImportSpecifier("ZonedDateTime")
         )
         return NewExpression(
             calendar_date,
@@ -199,6 +208,10 @@ class ZonedDateTimeProp(ComponentProp):
     @classmethod
     def should_apply(cls, value: Any, node: ComponentNode, context: Context):
         return isinstance(value, datetime.datetime) and is_aware(value)
+
+    @classmethod
+    def get_paths_for_bundling(cls):
+        return [ap_frontend_settings.NODE_MODULES_DIR / "@internationalized/date"]
 
 
 class TimeProp(ComponentProp):
@@ -218,12 +231,18 @@ class TimeProp(ComponentProp):
         return self.js_args
 
     def generate_code(self, generator: ComponentSourceCodeGenerator):
-        calendar_date = generator.resolve_prop_import("frontend/src/re-exports.tsx", ImportSpecifier("Time"))
+        calendar_date = generator.resolve_prop_import(
+            "node_modules/@internationalized/date", ImportSpecifier("Time")
+        )
         return NewExpression(calendar_date, self.js_args)
 
     @classmethod
     def should_apply(cls, value: Any, node: ComponentNode, context: Context):
         return isinstance(value, datetime.time)
+
+    @classmethod
+    def get_paths_for_bundling(cls):
+        return [ap_frontend_settings.NODE_MODULES_DIR / "@internationalized/date"]
 
 
 class SetProp(ComponentProp):
