@@ -439,22 +439,9 @@ For example:
 
 .. code-block:: html+django
 
-    {% component 'core-ui' 'Button' ssr:disabled=True variant="Outlined"%}
+    {% component "components/Button" variant="Outlined" ssr:disabled=True %}
         ...
     {% endcomponent %}
-
-Limitations
-~~~~~~~~~~~
-
-Currently, attempting to render a django form widget that is itself a React component within another component will
-not work. This is due to how django widgets have their own templates that are rendered in an isolated context. For
-example, this will not work if ``form.field`` also uses the ``{% component %}`` tag:
-
-.. code-block:: html+django
-
-        {% component 'MyComponent' %}
-            {{ form.field }}
-        {% endcomponent %}
 
 
 .. templatetag:: react_refresh_preamble
@@ -540,9 +527,9 @@ Forms
 ``form``
 --------
 
-Tag to setup a form context for form_input tags
+Tag to setup a form context for :ttag:`form_input` tags
 
-This tag doesn't render anything itself, it just sets up context for ``form_input`` tags. This is to support
+This tag doesn't render anything itself, it just sets up context for :ttag:`form_input` tags. This is to support
 the ``auto_focus`` behaviour. This works by adding an ``auto_focus`` prop to the first field with errors, or the
 first rendered field if no errors are present.
 
@@ -572,18 +559,36 @@ Usage:
 ``form_input``
 --------------
 
-Renders a form input with additional props supported by ``alliance_ui``.
+Renders a form input with additional props supported by widgets from ``alliance_ui``.
 
-This sets ``label``, ``errorMessage``, ``validationState``, ``description`` and ``isRequired``. In addition, it may
-set ``autoFocus`` based on the ``auto_focus`` setting on the parent ``form`` tag.
+.. note::
+
+    Usage of this tag requires the following :setting:`FORM_RENDERER <django:FORM_RENDERER>` setting to be set to::
+
+        FORM_RENDERER = "alliance_platform.frontend.forms.renderers.FormInputContextRenderer"
+
+This tag set's two extra template variables to be used by the widget template:
+
+- ``raw_value`` - the raw value of the field. This is useful for components that need to access the raw value, not the
+  value that has been transformed by a widget class. In many cases, a widget will transform the value to a string which
+  works fine for plain HTML inputs, but for React components you often want the value in it's original type.
+- ``extra_widget_props`` - a dict with the entries described below
+
+- ``label`` - the label for the field. This will be the ``label`` value passed to the tag if any, otherwise ``field.label``.
+- ``errorMessage`` - the error message for the field when in an invalid state. This is a comma separated list of errors
+  as defined on ``field.errors``.
+- ``validationState`` - ``"invalid"`` where there is an error, otherwise ``"valid"`` depending on the value of ``show_valid_state`` option
+- ``is_required`` - whether the field is required. This is based on the ``required`` attribute on the form field unless overridden with the ``is_required`` option to this tag.
+- ``description`` - the help text for the field. You can explicitly specify this with the ``help_text`` option, otherwise the ``field.help_text`` value will be used.
+- ``autoFocus`` - whether the field should be focused on page load. This is set based on the ``auto_focus`` option to the parent ``form`` tag.
 
 The following options can be passed to the tag to override defaults:
 
 - ``label`` - set the label for the input. If not specified will use ``field.label``.
 - ``help_text`` - help text to show below the input. If not specified will use ``field.help_text``.
-- ``show_valid_state`` - if true, will show the 'valid' (i.e. success) state of the input. If not specified will use
-  ``False``. For most components in alliance-ui this results in it showing a tick icon and/or rendering green. If
-  this is ``False`` only error states will be shown.
+- ``show_valid_state`` - if true, ``validationState`` will be set to `"valid"` when there is no error . If not specified
+  will default to ``False``. For most components in @alliancesoftware/ui this results in it showing a tick icon and/or
+  rendering green, but may have no effect. If this is ``False`` only error states will be shown.
 - ``is_required`` - if true, will show the input as required. If not specified will use the model field ``required``
   setting.
 
@@ -610,15 +615,33 @@ this for the props to be passed through:
     {% component "@alliancesoftware/ui" "TextInput" props=widget.attrs|merge_props:extra_widget_props|html_attr_to_jsx type=widget.type name=widget.name default_value=widget.value %}
     {% endcomponent %}
 
-If you want the widget template to work even if ``extra_widget_props`` isn't available (e.g. for usage without ``form_input``),
-then you can do the following:
+.. admonition:: Usage with other widgets
 
-.. code-block:: html+django
+    This tag only provides the extra template variables described above - it does not change the rendering itself. The
+    tag will render :meth:`~django:django.forms.BoundField.as_widget`, it is then up to the selected widget to make
+    use of the provided values as shown above.
 
-    {% with extra_widget_props=extra_widget_props|default:None %}
-      {% component "@alliancesoftware/ui" "TextInput" props=widget.attrs|merge_props:extra_widget_props|html_attr_to_jsx type=widget.type name=widget.name default_value=widget.value %}
-      {% endcomponent %}
-    {% endwith %}
+    In the ``template-django`` project this is handled in the overridden widget templates in ``xenopus_frog_app/templates/django/forms/widgets``.
+    Note that this may be incomplete; for any widgets not overridden the default Django widget template will be used
+    which won't make use of the extra template variables. If you have a widget template that you wish to convert to
+    the same pattern as @alliancesoftware/ui components, you can use the ``alliance_platform/ui/labeled_input_base.html`` template
+    as a base and fill in the ``input`` block with the relevant HTML:
+
+    .. code-block:: html+django
+
+        {% extends "alliance_platform/ui/labeled_input_base.html" %}
+
+        {% block input %}
+          <input type="{{ widget.type }}" name="{{ widget.name }}"{% if widget.value != None %} value="{{ widget.value|stringformat:'s' }}"{% endif %}>
+        {% endblock %}
+
+    Alternatively, you can use the ``non_standard_widget=True`` option to force the tag to wrap the widget in a
+    :ttag:`LabeledInput`. This is the equivalent of using the ``labeled_input_base.html`` template but is more
+    convenient for one-off cases or where you do not want to override the template.
+
+    .. code-block:: html+django
+
+        {% form_input field non_standard_widget=True %}
 
 Filters
 -------

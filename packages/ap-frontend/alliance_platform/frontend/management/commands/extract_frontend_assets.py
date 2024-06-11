@@ -19,6 +19,8 @@ from ...bundler import get_bundler
 from ...bundler.context import BundlerAssetContext
 from ...settings import ap_frontend_settings
 
+frontend_templates_dir = Path(__file__).parent.parent.parent / "templates"
+
 
 @lru_cache
 def get_all_templates_files() -> list[Path]:
@@ -40,7 +42,9 @@ def get_all_templates_files() -> list[Path]:
             elif str(dir).startswith(str(excl)):
                 should_exclude = True
 
-        if should_exclude:
+        # always include the frontend templates dir even if would otherwise
+        # be excluded
+        if should_exclude and dir != frontend_templates_dir:
             continue
         files.extend(x for x in Path(dir).glob("**/*.html") if x)
     return files

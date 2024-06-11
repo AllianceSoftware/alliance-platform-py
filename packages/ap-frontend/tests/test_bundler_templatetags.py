@@ -942,3 +942,74 @@ class TestComponentTemplateTagOutput(SimpleTestCase):
             """<div><a href="/test/">Test</a></div>""",
             url="/test/",
         )
+
+    def test_void_tags(self):
+        """void tags like 'input' should be handled with or without self closing"""
+        self.assertComponentEqual(
+            """
+            {% component "div" %}<input id="input"> middle <span>end</span>{% endcomponent %}""",
+            """<div><input id="input"/> middle <span>end</span></div>""",
+        )
+
+        self.assertComponentEqual(
+            """
+            {% component "div" %}<input id="input" /> middle <span>end</span>{% endcomponent %}""",
+            """<div><input id="input"/> middle <span>end</span></div>""",
+        )
+
+    def test_html_attribute_if_condition(self):
+        self.assertComponentEqual(
+            """
+            {% component "div" %}<input id="input" {% if value %}value={{value}}{% endif %}>{% endcomponent %}""",
+            """<div><input id="input" /></div>""",
+        )
+
+        self.assertComponentEqual(
+            """
+            {% component "div" %}<input id="input" {% if value %}value={{value}}{% endif %}>{% endcomponent %}""",
+            """<div><input id="input" value="yes" /></div>""",
+            value="yes",
+        )
+
+    def test_html_attribute_include(self):
+        """void tags like 'input' should be handled with or without self closing"""
+        self.assertComponentEqual(
+            """
+            {% component "div" %}<input {% include "react_test_templates/attrs.html" %}>{% endcomponent %}""",
+            """<div><input id="input" className="input" /></div>""",
+        )
+
+        self.assertComponentEqual(
+            """
+            {% component "div" %}<input {% include "react_test_templates/attrs.html" %}>{% endcomponent %}""",
+            """<div><input id="input" value="yes" className="input" /></div>""",
+            value="yes",
+        )
+
+    def test_html_attribute_no_value(self):
+        self.assertComponentEqual(
+            """
+            {% component "div" %}<input download>{% endcomponent %}""",
+            """<div><input download=""/></div>""",
+        )
+
+        self.assertComponentEqual(
+            """
+            {% component "div" %}<input disabled>{% endcomponent %}""",
+            """<div><input disabled={true} /></div>""",
+        )
+
+    def test_html_bad_attributes(self):
+        with self.assertWarnsRegex(Warning, "contained invalid HTML"):
+            self.assertComponentEqual(
+                """
+                {% component "div" %}<input ">{% endcomponent %}""",
+                """<div><input /></div>""",
+            )
+
+        with self.assertWarnsRegex(Warning, "contained invalid HTML"):
+            self.assertComponentEqual(
+                """
+                {% component "div" %}<input "=5 id="test">{% endcomponent %}""",
+                """<div><input id="test" /></div>""",
+            )

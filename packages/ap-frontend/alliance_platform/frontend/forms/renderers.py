@@ -25,11 +25,20 @@ class FormInputContextRenderer(TemplatesSetting):
     form_input_context_key = form_input_context_key
 
     def render(self, template_name, context, request=None):
+        from alliance_platform.frontend.templatetags.react import NestedComponentPropAccumulator
+
         if "widget" in context and "attrs" in context["widget"]:
+            # in order to support nested components, ``form_input`` will set the accumulator (which indicates
+            # that the widget is a nested component) in the widget.attrs. This renderer will pop it out and
+            # pass it through in the root ``context`` that is used by the widget template. This allows the
+            # ``component`` to detect that it is a nested component and handle accordingly.
+            accumulator = context["widget"]["attrs"].pop(NestedComponentPropAccumulator.context_key, None)
             extra_context = context["widget"]["attrs"].pop(form_input_context_key, {})
+            if accumulator:
+                extra_context[NestedComponentPropAccumulator.context_key] = accumulator
             # setting a default means templates can assume the value always exists - makes
             # usage with merge_props etc easier
-            if "core_ui_props" not in extra_context:
-                extra_context["core_ui_props"] = {}
+            if "extra_widget_props" not in extra_context:
+                extra_context["extra_widget_props"] = {}
             context.update(extra_context)
         return super().render(template_name, context, request)
