@@ -14,9 +14,9 @@ def fragment_component(parser: template.base.Parser, token: template.base.Token)
     bundler = get_bundler()
     resolver_context = ResolveContext(bundler.root_dir, parser.origin.name if parser.origin else None)
     source_path = get_bundler().resolve_path(
-        "re-exports", resolver_context, resolve_extensions=[".ts", ".tsx", ".js"]
+        "/node_modules/react", resolver_context, resolve_extensions=[".ts", ".tsx", ".js"]
     )
-    asset_source = ImportComponentSource(source_path, "Fragment", False)
+    asset_source = ImportComponentSource(source_path, "React", True, "Fragment")
     return parse_component_tag(parser, token, asset_source=asset_source)
 
 
