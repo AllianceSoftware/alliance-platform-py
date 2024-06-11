@@ -4,6 +4,7 @@ from html.parser import HTMLParser
 import re
 from typing import TYPE_CHECKING
 from typing import Any
+from typing import Union
 import warnings
 
 from alliance_platform.frontend.util import transform_attribute_names
@@ -34,7 +35,7 @@ class Element:
 class HTMLElement:
     tag: str
     attributes: dict[str, str] = field(default_factory=dict)
-    children: list["HTMLElement" | str] = field(default_factory=list)
+    children: list[Union["HTMLElement", str]] = field(default_factory=list)
 
 
 # Extracted from https://developer.mozilla.org/en-US/docs/Glossary/Void_element
@@ -153,7 +154,7 @@ class HtmlAttributeTemplateNodeList:
 
 def convert_html_string(
     html: str, origin: Origin, *, replacements: dict[str, Node] | None = None
-) -> list["ComponentNode" | str]:
+) -> list[Union["ComponentNode", str]]:
     """
     Given a string that may contain HTML, convert it to a tree of ``ComponentNode``s
 
