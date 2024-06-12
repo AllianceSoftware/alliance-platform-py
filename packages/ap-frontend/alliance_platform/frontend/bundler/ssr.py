@@ -23,8 +23,9 @@ SSR_FAILURE_PLACEHOLDER = "<!-- SSR_FAILED -->"
 class SSRJsonEncoder(DjangoJSONEncoder):
     """Custom encoder that handles ``SSRSerializable`` objects
 
-    Any ``SSRSerializable`` object will be serialized using the ``serialize`` method, and will
-    have access to the ``SSRSerializerContext`` object.
+    Any :class:`~alliance_platform.frontend.bundler.ssr.SSRSerializable` object will be serialized using
+    :meth:`~alliance_platform.frontend.bundler.ssr.SSRSerializable.serialize`, and will
+    have access to the :class:`~alliance_platform.frontend.bundler.ssr.SSRSerializerContext`` object.
     """
 
     ssr_context: SSRSerializerContext
@@ -40,7 +41,7 @@ class SSRJsonEncoder(DjangoJSONEncoder):
 
 
 class SSRSerializerContext:
-    """Context available to ``SSRSerializable`` objects during serialization"""
+    """Context available to :class:`~alliance_platform.frontend.bundler.ssr.SSRSerializable` objects during serialization"""
 
     required_imports: dict[ImportDefinition, tuple[str, dict]]
     bundler: BaseBundler
@@ -92,17 +93,13 @@ class SSRSerializerContext:
 class SSRSerializable:
     """Mixin for classes which can be serialized for SSR
 
-    ``SSRJsonEncoder`` will handle converting the object to JSON in the form::
+    :class:`~alliance_platform.frontend.bundler.ssr.SSRJsonEncoder` can be used to serialize objects that implement this
 
-        ["@@CUSTOM", <tag name>, <serialized representation>]
-
-    For example, a date object might look like:
-
-        ["@@CUSTOM", "date", "2023-01-01"]
-
-    If ``get_tag`` returns `"json"` then the value will be serialized as is and not in the above format. This
-    is useful to provide serialization logic for standard JSON serializable objects that require no special
-    handling on the frontend.
+    The frontend handler, currently ``processSSRRequest`` in ``ssr.ts``, will use ``JSON.parse`` with a custom reviver
+    to convert the serialized objects back into their original form. If it encounters an object with the tag ``@@CUSTOM``,
+    it will trigger custom conversions that allow non-standard JSON objects (e.g. a ``Date`` or ``Set``, or any arbitrary
+    object you may define). See :class:`~alliance_platform.frontend.bundler.ssr.SSRCustomFormatSerializable` for a base
+    class to implement custom serialization.
     """
 
     def serialize(self, context: SSRSerializerContext) -> dict | str | list:
@@ -115,6 +112,21 @@ class SSRSerializable:
 
 
 class SSRCustomFormatSerializable(SSRSerializable):
+    """Mixin for classes which can be serialized for SSR using a custom format
+
+    ``serializer`` converting the object to the form::
+
+        ["@@CUSTOM", <tag name>, <serialized representation>]
+
+    For example, a date object might look like:
+
+        ["@@CUSTOM", "date", "2023-01-01"]
+
+    The frontend will then have a matching reviver to convert this into a date object.
+
+    See :class:`~alliance_platform.frontend.bundler.ssr.SSRJsonEncoder` for how this is handled.
+    """
+
     def get_tag(self):
         """Get the tag to identify the type of serializable. This is matched in nodejs for de-serialization."""
         raise NotImplementedError(f"{self.__class__.__name__} must implement get_tag()")

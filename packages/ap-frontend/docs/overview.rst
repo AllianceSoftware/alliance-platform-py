@@ -1,6 +1,54 @@
 Overview
 =========
 
+Bundling Assets
+###############
+
+In order to bundle assets for production the bundler (e.g. Vite) needs to know about which assets to bundle. In order
+too identify these assets, the bundler uses a combination of the following:
+
+.. _bundler-static-paths:
+
+Template Static Paths
+---------------------
+
+Various template tags accept a path to an asset. For example, :ttag:`bundler_embed` accepts the path to an asset to embed
+and :ttag:`component` accepts the path to a React component. These paths must be static values, i.e. they cannot be
+template variables or expressions. This is because the paths must be known when the frontend build occurs, so that
+the bundler knows which files to include in the build. The :class:`extract_frontend_assets <alliance_platform.frontend.management.commands.extract_frontend_assets.Command>`
+management command will extract these paths from the templates and generate a list of files to include in the build.
+
+Examples:
+
+.. code-block:: html+django
+
+    {# Valid, the path can be extracted by looking at the template file #}
+    {% bundler_embed "styles.css" %}
+
+    {# Invalid #}
+    {% bundler_embed "styles.css"|upper %}
+    {% bundler_embed variable %}
+
+This approach guarantees that the bundler knows about all the assets that need to be included in the build.
+
+Custom Template Nodes
+---------------------
+
+If you extend :class:`~alliance_platform.frontend.templatetags.react.ComponentNode`, you can override
+:meth:`~alliance_platform.frontend.templatetags.react.ComponentNode.get_paths_for_bundling` to return a list of paths
+that should be included in the build. Note that this is still only a static list - you do not have access to
+the runtime context. This is useful if the node itself generates known paths, for example ``ComponentNode`` itself
+will return the path to :data:`~alliance_platform.frontend.settings.AlliancePlatformFrontendSettingsType.REACT_RENDER_COMPONENT_FILE`.
+
+Prop Handlers
+-------------
+
+Prop handlers are used to convert any Python value into a format that can be passed to a React component. For example,
+:class:`~alliance_platform.frontend.prop_handlers.SetProp` will convert a Python ``set`` into a JavaScript ``Set``.
+In some cases, the value required on the frontend may require the use of JavaScript that needs to be imported - whether
+a custom JS file or a third party package. In these cases, you can use the :meth:`~alliance_platform.frontend.prop_handlers.ComponentProp.get_paths_for_bundling`
+to return the list of paths required for the prop handler. Note that this method is a ``classmethod``.
+
 .. _styling:
 
 Styling
