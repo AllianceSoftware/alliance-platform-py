@@ -1,5 +1,18 @@
 # alliance-platform-frontend
 
+## 0.0.10
+
+### Patch Changes
+
+- ce4f612: Fix issue where associated CSS for a nested component wasn't being embedded
+- 8f3fb4b: Add classmethod `get_paths_for_bundling` to `ComponentProp`. This allows a handler to specify what dependencies they have that need to be included by the bundler. Previously this was done manually using `FrontendAssetRegistry"
+- d3eea6f: TimeProp, DateTimeProp, DateProp, ZonedDateTimeProp no long use the frontend/src/re-exports.tsx file, and instead directly reference @internationalized/date
+- 91835ae: Add `LabeledInput` template tag to `alliance_ui`
+- ba4bb6f: Default `extra_widget_props` to empty dict if not set. This avoids need for widget templates to check for existence; it can rely on it being set so long as `FORM_RENDERED` is set. This allows widget templates to work when used with or without the `form_input` tag.
+- 5c9efa7: `form_input` can now be used within `{% component %}` tags
+- 5c9efa7: Add `non_standard_widget` option to `form_input`. This will wrap the widget in a `LabeledInput` to display label, help text, validation errors etc in same format as other alliance_ui widgets
+- d606d99: alliance_ui tag `{% Fragment %}` no longer imports from re-exports and instead uses "react" directly. This removes the need for the frontend/src/re-exports file in projects and can be removed.
+
 ## 0.0.9
 
 ### Patch Changes
