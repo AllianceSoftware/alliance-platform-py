@@ -231,13 +231,13 @@ class BundlerAssetServerSideRenderer:
                 try:
                     # If SSR server responds with JSON it will have an 'error' and optional 'stack' key for more info
                     data = ssr_response.json()
-                    msg = f"Bad response {ssr_response.status_code} from dev-server.ts: {data['error']}"
+                    msg = f"Bad response {ssr_response.status_code} from SSR server: {data['error']}"
                     if "stack" in data:
                         msg += f"\n{data['stack']}"
                     logger.error(msg)
                 except JSONDecodeError:
                     logger.error(
-                        f"Bad response {ssr_response.status_code} from dev-server.ts: {ssr_response.content.decode()}"
+                        f"Bad response {ssr_response.status_code} from SSR server: {ssr_response.content.decode()}"
                     )
             else:
                 # See ssr.ts ServerRenderComponentReturnValue for what this is
