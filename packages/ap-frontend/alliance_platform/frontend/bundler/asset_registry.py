@@ -1,6 +1,9 @@
+import logging
 from pathlib import Path
 
 from django.conf import settings
+
+logger = logging.getLogger("alliance_platform.frontend")
 
 
 class FrontendAssetRegistry:
@@ -68,8 +71,8 @@ class FrontendAssetRegistry:
         if settings.DEBUG:
             for filename in self._assets:
                 if not filename.is_absolute():
-                    raise ValueError(
-                        f'Filenames should be absolute - e.g. Try `settings.PROJECT_DIR / "{filename}"`'
+                    logging.warning(
+                        f'Filenames passed to `FrontendAssetRegistry.add` should be absolute - e.g. Try `settings.PROJECT_DIR / "{filename}"`'
                     )
                 if not filename.exists():
-                    raise ValueError(f"{filename} was added to frontend asset registry but does not exist")
+                    logging.warning(f"{filename} was added to frontend asset registry but does not exist")
