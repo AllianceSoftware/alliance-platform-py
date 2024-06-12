@@ -252,6 +252,9 @@ class ViteManifest:
             # what the key is in the manifest.json, which most of the time matches, but sometimes doesn't. We handle
             # the most common case above - which is the resolved path is /package-name/index.js - but this is customisable
             # by setting `module` or `exports` in the package.json.
+            # See https://gitlab.internal.alliancesoftware.com.au/alliance/template-django/-/merge_requests/495/diffs?commit_id=b83920cbda5d6e26445e19ea0b740a9201b488f8
+            # for where this plugin was introduced
+            # TODO: We will migrate this to a separate package at some point, clean up the above reference when done
             if value.get("unresolvedPath") and value.get("unresolvedPath") != str(key):
                 unresolved_path = Path(value.get("unresolvedPath"))
                 entries[unresolved_path] = entries[key]

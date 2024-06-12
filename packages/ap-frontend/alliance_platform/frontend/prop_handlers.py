@@ -83,7 +83,7 @@ class ComponentProp(SSRCustomFormatSerializable, CodeGeneratorNode):
     def get_paths_for_bundling(cls):
         """Return any paths that need to be included in bundling to make use of this prop
 
-        Note that if this is specified, the paths will _always_ be included in the bundler even if the props
+        Note that if this is specified, the paths will _always_ be included in the bundler even if the prop
         is not used.
 
         Returns:
