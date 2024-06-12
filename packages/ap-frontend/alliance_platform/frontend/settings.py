@@ -132,6 +132,9 @@ class AlliancePlatformFrontendSettings(AlliancePlatformSettingsBase):
     def check_settings(self):
         # TODO: Implement checks on required settings
 
+        # Make sure registry is unlocked; this can happen in tests where settings are reloaded
+        # Just modify property directly, it's for internal use only - don't want 'unlock' part of the API
+        self.FRONTEND_ASSET_REGISTRY._locked = False
         # lock registry to make sure assets aren't added after startup that would be missed by
         # extract_frontend_assets
         for prop_handler in self.REACT_PROP_HANDLERS:
