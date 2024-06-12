@@ -13,6 +13,10 @@
 - 5c9efa7: Add `non_standard_widget` option to `form_input`. This will wrap the widget in a `LabeledInput` to display label, help text, validation errors etc in same format as other alliance_ui widgets
 - d606d99: alliance_ui tag `{% Fragment %}` no longer imports from re-exports and instead uses "react" directly. This removes the need for the frontend/src/re-exports file in projects and can be removed.
 
+#### Upgrade instructions
+
+See [this MR](https://gitlab.internal.alliancesoftware.com.au/alliance/template-django/-/merge_requests/495) for the relevant commits.
+
 ## 0.0.9
 
 ### Patch Changes
