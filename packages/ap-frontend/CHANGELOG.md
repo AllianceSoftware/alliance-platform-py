@@ -1,5 +1,11 @@
 # alliance-platform-frontend
 
+## 0.0.11
+
+### Patch Changes
+
+- f92e443: Handle error with FrontendAssetRegistry that could occur in test cases when @modify_settings is used
+
 ## 0.0.10
 
 ### Patch Changes
