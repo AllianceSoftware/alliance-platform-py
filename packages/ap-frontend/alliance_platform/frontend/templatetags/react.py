@@ -156,9 +156,6 @@ class ComponentProps(SSRSerializable):
     def __repr__(self):
         return f"ComponentProps({self.props})"
 
-    def get_tag(self):
-        return "json"
-
     def _serialize_prop(self, value: PropType, ssr_context: SSRSerializerContext):
         if isinstance(value, dict):
             return {underscore_to_camel(k): self._serialize_prop(v, ssr_context) for k, v in value.items()}
