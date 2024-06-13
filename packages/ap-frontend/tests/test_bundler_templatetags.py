@@ -1048,3 +1048,17 @@ class TestComponentTemplateTagOutput(SimpleTestCase):
                 {% component "div" %}<input "=5 id="test">{% endcomponent %}""",
                 """<div><input id="test" /></div>""",
             )
+
+    def test_camel_case_top_level_only(self):
+        self.assertComponentEqual(
+            """
+            {% component "MyComponent" camel_case=5 %}{% endcomponent %}""",
+            """<MyComponent camelCase={5} />""",
+        )
+
+        self.assertComponentEqual(
+            """
+            {% component "MyComponent" camel_case=obj %}{% endcomponent %}""",
+            """<MyComponent camelCase={{CAMEL_KEY: { NESTED_CAMEL_KEY: "value"}}} />""",
+            obj={"CAMEL_KEY": {"NESTED_CAMEL_KEY": "value"}},
+        )
