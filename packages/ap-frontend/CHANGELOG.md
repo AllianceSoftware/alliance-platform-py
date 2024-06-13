@@ -1,5 +1,12 @@
 # alliance-platform-frontend
 
+## 0.0.12
+
+### Patch Changes
+
+- 99e73ac: FrontendAssetRegistry.lock will now only warn rather than throw an error if invalid values are used. This only occurs when DEBUG is True. This is to better accomodate configurations where node_modules might not be available (e.g. having DEBUG on in CI, but node_modules not installed).
+- b28d46d: `{% component %}` tag will now only convert prop names from `this_case` to `thisCase`. Previously this was converting nested dicts as well - so things like `{ MY_CONSTANT: 5}` became `{ MYCONSTANT: 5}`.
+
 ## 0.0.11
 
 ### Patch Changes
