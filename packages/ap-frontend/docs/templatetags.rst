@@ -380,7 +380,10 @@ for documentation about adding your own complex props.
 Components are rendered using the ``renderComponent`` function in :data:`~alliance_platform.frontend.settings.AlliancePlatformFrontendSettingsType.REACT_RENDER_COMPONENT_FILE`. This can be modified as needed,
 for example if a new provider is required.
 
-.. note:: All props passed through are converted to camel case automatically (i.e. ``my_prop`` will become ``myProp``)
+.. note::
+
+    All props passed through are converted to camel case automatically (i.e. ``my_prop`` will become ``myProp``). This
+    transformation only applies to the prop name itself, any objects passed will not be recursively converted.
 
 Server Side Rendering (SSR)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -158,7 +158,7 @@ class ComponentProps(SSRSerializable):
 
     def _serialize_prop(self, value: PropType, ssr_context: SSRSerializerContext):
         if isinstance(value, dict):
-            return {underscore_to_camel(k): self._serialize_prop(v, ssr_context) for k, v in value.items()}
+            return {k: self._serialize_prop(v, ssr_context) for k, v in value.items()}
         if isinstance(value, (list, tuple)):
             return [self._serialize_prop(v, ssr_context) for v in value]
         if isinstance(value, ComponentProp):
@@ -534,7 +534,7 @@ class ComponentSourceCodeGenerator:
 
     def _codegen_prop(self, value: PropType):
         if isinstance(value, dict):
-            return {underscore_to_camel(k): self._codegen_prop(v) for k, v in value.items()}
+            return {k: self._codegen_prop(v) for k, v in value.items()}
         if isinstance(value, (list, tuple)):
             return [self._codegen_prop(v) for v in value]
         if isinstance(value, CodeGeneratorNode):
@@ -559,7 +559,7 @@ class ComponentSourceCodeGenerator:
         flexible here as anything can technically be passed to `createElement`.
         """
         try:
-            return StringLiteral(key.lower()) if "-" in key else Identifier(underscore_to_camel(key))
+            return StringLiteral(key.lower()) if "-" in key else Identifier(key)
         except InvalidIdentifier:
             return StringLiteral(key)
 
@@ -930,7 +930,9 @@ class ComponentNode(template.Node, BundlerAsset):
                 props.update(extra_props)
         if self.html_attribute_template_nodes:
             props.update(self.html_attribute_template_nodes.resolve(context))
-        return ComponentProps({key: self.resolve_prop(value, context) for key, value in props.items()})
+        return ComponentProps(
+            {underscore_to_camel(key): self.resolve_prop(value, context) for key, value in props.items()}
+        )
 
     def _queue_css(self):
         css_items = self.bundler.get_embed_items(self.get_paths_for_bundling(), "text/css")
