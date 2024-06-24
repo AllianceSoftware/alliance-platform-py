@@ -416,7 +416,13 @@ class TypescriptPrinter:
                 if not isinstance(child, Node):
                     child = convert_to_node(child)
                 if isinstance(child, StringLiteral):
-                    pieces.append(child.value)
+                    escaped_string = child.value.translate(
+                        (ESCAPE_TARGET_FILE if self.codegen_target == "file" else ESCAPE_TARGET_HTML)
+                        | {
+                            ord("`"): "\\`",
+                        }
+                    )
+                    pieces.append(escaped_string)
                 else:
                     pieces.append(f"${{{self.print(child)}}}")
             return f"`{''.join(pieces)}`"
