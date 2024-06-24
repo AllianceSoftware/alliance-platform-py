@@ -21,6 +21,7 @@ from alliance_platform.codegen.typescript import JsxElement
 from alliance_platform.codegen.typescript import MultiLineComment
 from alliance_platform.codegen.typescript import Node as TypescriptNode
 from alliance_platform.codegen.typescript import PropertyAccessExpression
+from alliance_platform.codegen.typescript import RawNode
 from alliance_platform.codegen.typescript import ReturnStatement
 from alliance_platform.codegen.typescript import StringLiteral
 from alliance_platform.codegen.typescript import UnconvertibleValueException
@@ -665,7 +666,7 @@ class ComponentSourceCodeGenerator:
                             Identifier("document"),
                             Identifier("querySelector"),
                         ),
-                        [f"[data-djid='{container_id}']"],
+                        [RawNode(f"\"[data-djid='{container_id}']\"")],
                     ),
                     jsx_element,
                     container_id,

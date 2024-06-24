@@ -1,14 +1,13 @@
 import contextlib
 import dataclasses
 from functools import wraps
-import json
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Callable
+from typing import Literal
 from typing import Sequence
 
 from django.conf import settings
-from django.utils.html import escape
 
 from .settings import ap_codegen_settings
 from .typescript import ArrayLiteralExpression
@@ -108,6 +107,29 @@ default_jsx_transform = PropertyAccessExpression(
 )
 
 
+#: Output target for codegen - either embedded in HTML, or outputs to a typescript file. This is used to control
+#: the level of escaping that is done. When target is 'html', the code will be escaped for use in HTML.
+CodegenTarget = Literal["html"] | Literal["file"]
+
+#: When target is 'file', these characters will be escaped
+ESCAPE_TARGET_FILE = {
+    ord("\\"): "\\\\",
+    ord('"'): '\\"',
+    ord("'"): "\\'",
+    ord("\n"): "\\n",
+    ord("\r"): "\\r",
+    ord("\t"): "\\t",
+}
+
+#: When target is 'html', these characters will be escaped (includes all ``ESCAPE_TARGET_FILE`` characters)
+ESCAPE_TARGET_HTML = {
+    **ESCAPE_TARGET_FILE,
+    ord(">"): "\\u003E",
+    ord("<"): "\\u003C",
+    ord("&"): "\\u0026",
+}
+
+
 class TypescriptPrinter:
     """Print out code for the specified node
 
@@ -123,12 +145,16 @@ class TypescriptPrinter:
     jsx_transform: Node | None
     #: Current node stack for printing. As each node is printed it is pushed onto this stack. This can be used to determine the parent node of the current node.
     node_stack: list[NodeLike]
+    #: The target for codegen. If target is 'html' then the code will be escaped for use in HTML, i.e. embedded in a script tag
+    #: 'html' is the default target to avoid accidental XSS vulnerabilities, and will work for file targets as well (just with extra escaping which makes it less readable)
+    codegen_target: CodegenTarget
 
     def __init__(
         self,
         relative_to_path: Path | None = None,
         resolve_import_url: Callable[[Path | str], str] | None = None,
         jsx_transform: Node | None = default_jsx_transform,
+        codegen_target: CodegenTarget = "html",
     ):
         if relative_to_path is None:
             relative_to_path = ap_codegen_settings.JS_ROOT_DIR
@@ -136,6 +162,7 @@ class TypescriptPrinter:
         self.resolve_import_url = resolve_import_url
         self.jsx_transform = jsx_transform
         self.node_stack = []
+        self.codegen_target = codegen_target
 
     def _format_literal(self, value: str | int | float | bool):
         """Format a literal for printing
@@ -144,13 +171,10 @@ class TypescriptPrinter:
         Numeric values will be converted to strings.
         """
         if isinstance(value, str):
-            # use json.dumps to escape strings & quote them
-            return json.dumps(
-                value,
-                # don't escape non-ascii. I added this specifically for generating code for React, e.g. '“I'm in a lquo;“' should
-                # not end up as \u201cI'm in a lquo;\u201c
-                ensure_ascii=False,
+            escaped_string = value.translate(
+                ESCAPE_TARGET_FILE if self.codegen_target == "file" else ESCAPE_TARGET_HTML
             )
+            return f'"{escaped_string}"'
         if isinstance(value, bool):
             return "true" if value else "false"
         return str(value)
@@ -191,6 +215,24 @@ class TypescriptPrinter:
         finally:
             self.node_stack.pop()
 
+    def _format_jsx_attribute_string(self, value: str):
+        """Format a string for use in JSX attribute
+
+        If string would need to be escaped, that escaped version  will be wrapped in curly braces to make it an
+        expression.
+
+        In JSX, this isn't valid: myString="this is a \"quoted\" string"
+
+        That particular example could be myString='this is a "quoted" string', but for simpler implementation
+        we'll just use the curly braces which handles other cases like myString=" a 'mixed' \"quoted\" string"
+        """
+        formatted_value = self._format_literal(value)
+        if f'"{value}"' != formatted_value:
+            # If escaping is needed, use a JSX expression. For example, if the string is "Hello <World>" then
+            # this will be printed as {"Hello <World>"}
+            return f"{{{formatted_value}}}"
+        return formatted_value
+
     @push_node_stack
     @print_comments
     def print(self, node: NodeLike) -> str:  # noqa: T202
@@ -200,7 +242,7 @@ class TypescriptPrinter:
         if isinstance(node, JsxText) or isinstance(node, StringLiteral) and self.is_within_jsx():
             if self.jsx_transform:
                 return self._format_literal(node.value)
-            if node.value != escape(node.value):
+            if node.value != node.value.translate(ESCAPE_TARGET_HTML):
                 # If escaping is needed, use a JSX expression. For example, if the string is "Hello <World>" then
                 # this will be printed as {"Hello <World>"}
                 return f"{{{self._format_literal(node.value)}}}"
@@ -254,7 +296,9 @@ class TypescriptPrinter:
                         )
                         # if string use form 'name="value"', otherwise use form 'name={value}'
                         if isinstance(attr.initializer, StringLiteral):
-                            attrs.append(f"{name}={self._format_literal(attr.initializer.value)}")
+                            attrs.append(
+                                f"{name}={self._format_jsx_attribute_string(attr.initializer.value)}"
+                            )
                         else:
                             attrs.append(f"{name}={{{self.print(attr.initializer)}}}")
                     else:
