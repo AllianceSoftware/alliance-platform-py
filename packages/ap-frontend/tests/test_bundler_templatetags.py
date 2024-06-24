@@ -1,3 +1,4 @@
+from contextlib import ExitStack
 import datetime
 import json
 from typing import cast
@@ -391,18 +392,18 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
             (
                 "test_production_bundler",
                 """
-                    <dj-component data-djid="C1"><!-- ___SSR_PLACEHOLDER_0___ --></dj-component>
-                    <script type="module">
-                        import { createElement, renderComponent } from '/static/assets/renderComponent-e1.js';
-                        import Button, {  } from '/static/assets/Button-def456.js';
-                        renderComponent(
-                            document.querySelector("[data-djid='C1']"),
-                            createElement(Button, {}, "Click Me"),
-                            "C1",
-                            true
-                        );
-                    </script>
-                """,
+                        <dj-component data-djid="C1"><!-- ___SSR_PLACEHOLDER_0___ --></dj-component>
+                        <script type="module">
+                            import { createElement, renderComponent } from '/static/assets/renderComponent-e1.js';
+                            import Button, {  } from '/static/assets/Button-def456.js';
+                            renderComponent(
+                                document.querySelector("[data-djid='C1']"),
+                                createElement(Button, {}, "Click Me"),
+                                "C1",
+                                true
+                            );
+                        </script>
+                    """,
             ),
         ]:
             with mock.patch(
@@ -542,6 +543,45 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
                             }
                         },
                     )
+
+    def test_escaping(self):
+        script_tag = "</script><script>alert('xss');</script>"
+        script_tag_encoded = "\\u003C/script\\u003E\\u003Cscript\\u003Ealert(\\'xss\\');\\u003C/script\\u003E"
+        test_strings = [
+            ({"children": script_tag}, f'{{}}, "{script_tag_encoded}"'),
+            (
+                {"props": {"level1": {"level2": "</script><script>alert('xss');</script>"}}},
+                '{level1: {level2: "%s"}}' % script_tag_encoded,
+            ),
+            (
+                {"props": {"</script><script>alert('xss');</script>": "cheeky key"}},
+                '{"%s": "cheeky key"}' % script_tag_encoded,
+            ),
+        ]
+
+        with ExitStack() as stack:
+            stack.enter_context(override_ap_frontend_settings(BUNDLER=self.test_development_bundler))
+            stack.enter_context(
+                BundlerAssetContext(frontend_asset_registry=bypass_frontend_asset_registry, skip_checks=True)
+            )
+            mock_method = stack.enter_context(
+                mock.patch("alliance_platform.frontend.bundler.middleware.BundlerAssetContext.generate_id")
+            )
+            container_id = "C1"
+            mock_method.return_value = container_id
+            for context_vars, expected_output in test_strings:
+                tpl = Template(
+                    "{% load react %}"
+                    "{% component 'Component' props=props %}{{ children }}{% endcomponent %}"
+                )
+                context = Context(context_vars)
+                contents = tpl.render(context)
+                render_line = contents[contents.find("renderComponent(") :].split("\n")[0]
+                self.assertEqual(
+                    render_line,
+                    """renderComponent(document.querySelector("[data-djid='C1']"), createElement(Component, %s), "C1", true)"""
+                    % expected_output,
+                )
 
     def test_ssr_disabled(self):
         with override_ap_frontend_settings(
@@ -790,7 +830,7 @@ class TestComponentTemplateTagOutput(SimpleTestCase):
     def _get_debug_tree(self, template_contents: str, **kwargs: dict):
         def patch_debug_tree(self, props: ComponentProps, include_template_origin=True):
             # Like the default implementation except we never include template origin string
-            printer = TypescriptPrinter(jsx_transform=None)
+            printer = TypescriptPrinter(jsx_transform=None, codegen_target="file")
             generator = ComponentSourceCodeGenerator(self)
             jsx_element = generator.create_jsx_element_node(self, props, False)
             return printer.print(jsx_element)

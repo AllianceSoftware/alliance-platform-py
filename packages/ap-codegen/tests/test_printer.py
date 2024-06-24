@@ -431,7 +431,7 @@ class TypescriptPrinterTestCase(SimpleTestCase):
         ]
         for jsx_transform, expected in tests:
             with self.subTest(jsx_transform=jsx_transform):
-                p = TypescriptPrinter(jsx_transform=jsx_transform)
+                p = TypescriptPrinter(jsx_transform=jsx_transform, codegen_target="file")
                 self.assertEqual(
                     p.print(
                         JsxElement(
@@ -624,6 +624,32 @@ class TypescriptPrinterTestCase(SimpleTestCase):
                     }
                 """
             ).strip(),
+        )
+
+    def test_escape_strings(self):
+        script_tag = "</script><script>alert('xss');</script>"
+        script_tag_encoded = "\\u003C/script\\u003E\\u003Cscript\\u003Ealert(\\'xss\\');\\u003C/script\\u003E"
+        node = JsxElement(
+            Identifier("Wrapper"),
+            [
+                JsxAttribute(
+                    StringLiteral("src"),
+                    StringLiteral(
+                        script_tag,
+                    ),
+                )
+            ],
+            [],
+        )
+        p = TypescriptPrinter()
+        self.assertEqual(
+            p.print(node),
+            'React.createElement(Wrapper, {"src": "%s"})' % script_tag_encoded,
+        )
+        p = TypescriptPrinter()
+        self.assertEqual(
+            p.print(node),
+            'React.createElement(Wrapper, {"src": "%s"})' % script_tag_encoded,
         )
 
 
