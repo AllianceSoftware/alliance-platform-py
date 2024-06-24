@@ -646,10 +646,23 @@ class TypescriptPrinterTestCase(SimpleTestCase):
             p.print(node),
             'React.createElement(Wrapper, {"src": "%s"})' % script_tag_encoded,
         )
-        p = TypescriptPrinter()
+        p = TypescriptPrinter(codegen_target="file")
         self.assertEqual(
             p.print(node),
-            'React.createElement(Wrapper, {"src": "%s"})' % script_tag_encoded,
+            'React.createElement(Wrapper, {"src": "</script><script>alert(\\\'xss\\\');</script>"})',
+        )
+
+    def test_template_string_escape(self):
+        script_tag = "</script><script>alert('xss');</script>"
+        script_tag_encoded = "\\u003C/script\\u003E\\u003Cscript\\u003Ealert(\\'xss\\');\\u003C/script\\u003E"
+        p = TypescriptPrinter()
+        self.assertEqual(
+            p.print(TemplateExpression([StringLiteral(script_tag), Identifier("name")])),
+            "`%s${name}`" % script_tag_encoded,
+        )
+
+        self.assertEqual(
+            p.print(TemplateExpression(["See `ref` ", Identifier("name")])), "`See \\`ref\\` ${name}`"
         )
 
 
