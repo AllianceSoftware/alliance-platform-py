@@ -665,6 +665,11 @@ class TypescriptPrinterTestCase(SimpleTestCase):
             p.print(TemplateExpression(["See `ref` ", Identifier("name")])), "`See \\`ref\\` ${name}`"
         )
 
+    def test_multiline_comment_escape(self):
+        p = TypescriptPrinter()
+        self.assertEqual(p.print(MultiLineComment("Multiline comment")), "/* Multiline comment */")
+        self.assertEqual(p.print(MultiLineComment("Multiline comment */")), "/* Multiline comment *\/ */")
+
 
 fixtures_dir = settings.BASE_DIR / "alliance_platform_frontend/bundler/tests/fixtures"
 

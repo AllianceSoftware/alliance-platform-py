@@ -432,7 +432,9 @@ class TypescriptPrinter:
             return f"// {lines}"
 
         if isinstance(node, MultiLineComment):
-            return f"/* {node.comment_text} */"
+            # Handle */ in comments that would close the comment early
+            text = node.comment_text.replace("*/", "*\\/")
+            return f"/* {text} */"
 
         if isinstance(node, NullKeyword):
             return "null"
