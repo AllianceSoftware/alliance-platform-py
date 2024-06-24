@@ -27,6 +27,7 @@ from alliance_platform.codegen.typescript import ObjectLiteralExpression
 from alliance_platform.codegen.typescript import ObjectProperty
 from alliance_platform.codegen.typescript import Parameter
 from alliance_platform.codegen.typescript import PropertyAccessExpression
+from alliance_platform.codegen.typescript import RawNode
 from alliance_platform.codegen.typescript import ReturnStatement
 from alliance_platform.codegen.typescript import SingleLineComment
 from alliance_platform.codegen.typescript import SpreadAssignment
@@ -599,6 +600,31 @@ class TypescriptPrinterTestCase(SimpleTestCase):
                     ),
                     expected,
                 )
+
+    def test_raw_node(self):
+        p = TypescriptPrinter()
+        self.assertEqual(
+            textwrap.dedent(
+                p.print(
+                    FunctionDeclaration(
+                        Identifier("renderButton"),
+                        [Parameter(Identifier("name"))],
+                        [
+                            RawNode('function myTest(test = "initial") { return test; }'),
+                            ReturnStatement(RawNode("myTest(name)")),
+                        ],
+                    )
+                )
+            ),
+            textwrap.dedent(
+                """
+                    function renderButton(name) {
+                      function myTest(test = "initial") { return test; };
+                    return myTest(name);
+                    }
+                """
+            ).strip(),
+        )
 
 
 fixtures_dir = settings.BASE_DIR / "alliance_platform_frontend/bundler/tests/fixtures"
