@@ -342,7 +342,7 @@ class TypescriptPrinterTestCase(SimpleTestCase):
                     [StringLiteral("Hello my name is "), Identifier("name"), ". What's yours?"]
                 )
             ),
-            "`Hello my name is ${name}. What's yours?`",
+            "`Hello my name is ${name}. What\\'s yours?`",
         )
 
     def test_new_expression(self):
