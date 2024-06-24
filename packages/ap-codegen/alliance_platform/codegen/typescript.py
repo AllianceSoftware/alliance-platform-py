@@ -643,6 +643,21 @@ class JsxElement(Node):
     children: list[Union[JsxText, JsxExpression, "JsxElement"]]
 
 
+@dataclass
+class RawNode(Node):
+    """A raw node that will be output as is
+
+    This is useful if you have some code you want to manually craft as a string rather than building
+    up from nodes.
+
+    .. warning::
+
+        Be careful using this with any user input, as no escaping will be done.
+    """
+
+    code: str
+
+
 def construct_object_property_key(
     value: AcceptedPropertyKeyType,
 ) -> Identifier | NumericLiteral | StringLiteral:

@@ -40,6 +40,7 @@ from .typescript import ObjectLiteralExpression
 from .typescript import ObjectProperty
 from .typescript import Parameter
 from .typescript import PropertyAccessExpression
+from .typescript import RawNode
 from .typescript import ReturnStatement
 from .typescript import SingleLineComment
 from .typescript import SpreadAssignment
@@ -194,6 +195,8 @@ class TypescriptPrinter:
     @print_comments
     def print(self, node: NodeLike) -> str:  # noqa: T202
         """Recursively print the code for the specified ``node``"""
+        if isinstance(node, RawNode):
+            return node.code
         if isinstance(node, JsxText) or isinstance(node, StringLiteral) and self.is_within_jsx():
             if self.jsx_transform:
                 return self._format_literal(node.value)
