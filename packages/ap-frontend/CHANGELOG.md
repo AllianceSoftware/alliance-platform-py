@@ -1,5 +1,11 @@
 # alliance-platform-frontend
 
+## 0.0.13
+
+### Patch Changes
+
+- c8ef3b6: Fix code generated for embedding with <script> tags to properly escape code and avoid XSS vulnerabilities. This affected the `{% component %}` tag.
+
 ## 0.0.12
 
 ### Patch Changes

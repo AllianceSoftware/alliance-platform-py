@@ -1,5 +1,12 @@
 # alliance-platform-codegen
 
+## 0.0.7
+
+### Patch Changes
+
+- ee3ea1c: Add `RawNode` to codegen to support outputing code directly
+- c8ef3b6: Fix code generated for embedding with <script> tags to properly escape code and avoid XSS vulnerabilities. This affected the `{% component %}` tag.
+
 ## 0.0.6
 
 ### Patch Changes
