@@ -22,12 +22,13 @@ class DatePickerNode(ComponentNode):
             )
             granularity = "day"
             values.update({"granularity": self.resolve_prop(granularity, context)})
-        if values.has_prop("default_value") and isinstance(values.props["default_value"], str):
+
+        if values.has_prop("defaultValue") and isinstance(values.props["defaultValue"], str):
             values.update(
                 {
-                    "default_value": self.resolve_prop(
+                    "defaultValue": self.resolve_prop(
                         (parse_date if granularity == "day" else parse_datetime)(
-                            values.props["default_value"]
+                            values.props["defaultValue"]
                         ),
                         context,
                     )

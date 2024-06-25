@@ -12,9 +12,9 @@ from .utils import get_module_import_source
 class TimeInputNode(ComponentNode):
     def resolve_props(self, context: Context) -> ComponentProps:
         values = super().resolve_props(context)
-        if values.has_prop("default_value") and isinstance(values.props["default_value"], str):
+        if values.has_prop("defaultValue") and isinstance(values.props["defaultValue"], str):
             values.update(
-                {"default_value": self.resolve_prop(parse_time(values.props["default_value"]), context)}
+                {"defaultValue": self.resolve_prop(parse_time(values.props["defaultValue"]), context)}
             )
         return values
 
