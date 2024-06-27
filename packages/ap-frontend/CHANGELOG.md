@@ -1,5 +1,11 @@
 # alliance-platform-frontend
 
+## 0.0.15
+
+### Patch Changes
+
+- 6990b7b: Add `static_url_prefix` to `ViteBundler` to support `STATICFILES_DIRS` settings containing a prefix
+
 ## 0.0.14
 
 ### Patch Changes
