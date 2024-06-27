@@ -51,18 +51,13 @@ force-single-line = true
 force-sort-within-sections = true
 
 [tool.pdm.scripts]
-frontend-test.cmd = "./manage.py test"
-frontend-test.working_dir = "packages/ap-frontend"
-frontend-mypy.cmd = "mypy ."
-frontend-mypy.working_dir = "packages/ap-frontend"
+frontend-test = { shell = "./manage.py test", working_dir = "packages/ap-frontend" }
+frontend-mypy = { cmd = "mypy .", working_dir = "packages/ap-frontend" }
 
-codegen-test.cmd = "./manage.py test"
-codegen-test.working_dir = "packages/ap-codegen"
-codegen-mypy.cmd = "mypy ."
-codegen-mypy.working_dir = "packages/ap-codegen"
+codegen-test = { shell = "./manage.py test", working_dir = "packages/ap-codegen" }
+codegen-mypy = { cmd = "mypy .", working_dir = "packages/ap-codegen" }
 
-core-mypy.cmd = "mypy ."
-core-mypy.working_dir = "packages/ap-core"
+core-mypy = { cmd = "mypy .", working_dir = "packages/ap-core" }
 
 test = {composite = ["frontend-test", "codegen-test"], keep_going = true}
 
