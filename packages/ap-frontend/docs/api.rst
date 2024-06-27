@@ -46,6 +46,12 @@ Bundler
 .. autoclass:: alliance_platform.frontend.bundler.base.DevServerCheck
     :members:
 
+.. autoclass:: alliance_platform.frontend.bundler.context.BundlerAssetContext
+    :members:
+
+.. autoclass:: alliance_platform.frontend.bundler.middleware.BundlerAssetContextMiddleware
+    :members:
+
 
 Vite Bundler
 -------------
@@ -179,6 +185,9 @@ See :ttag:`{% component %} <component>` for more information on how to use React
 .. autoclass:: alliance_platform.frontend.prop_handlers.ComponentProp
     :members:
     :inherited-members:
+
+.. autoclass:: alliance_platform.frontend.templatetags.react.ComponentSSRItem
+    :members:
 
 Default Prop Handlers
 ---------------------
