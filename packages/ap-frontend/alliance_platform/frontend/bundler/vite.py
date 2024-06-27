@@ -305,6 +305,9 @@ class ViteBundler(BaseBundler):
         disable_ssr: Set to ``True`` to disable SSR entirely. Defaults to ``False``.
         server_build_dir: The directory SSR files are outputted to (see ``yarn build:ssr``). Required unless ``disable_ssr`` is ``True``.
         production_ssr_url: URL for SSR (only used in production mode). Required unless ``disable_ssr`` is ``True``.
+        static_url_prefix: Static prefix for assets in production. This should match the prefix specified (if any) in the :setting:`STATICFILES_DIRS <django:STATICFILES_DIRS>` entry for the frontend build.
+            For example, if the frontend build is outputted to ``/frontend/build`` and ``STATICFILES_DIRS`` is set to ``(('frontend-dist', '/frontend/build'),)``, then
+            you should pass ``static_url_prefix="frontend-dist"``.
 
     """
 
@@ -320,6 +323,8 @@ class ViteBundler(BaseBundler):
     mode: str
     #: URL for SSR (only used in production mode)
     production_ssr_url: str | None
+    #: Static prefix for assets in production. This should match the prefix specified (if any) in the :setting:`STATICFILES_DIRS <django:STATICFILES_DIRS>` entry for the frontend build.
+    static_url_prefix: str | None
     #: Function that can be passed that will be called before requesting assets for server.
     wait_for_server: Callable[[], None] | None = None
     #: Path to the vite metdata JSON file that we use in dev to resolve optimised deps
@@ -343,6 +348,7 @@ class ViteBundler(BaseBundler):
         # These options are not required if ``disable_ssr`` is ``True``
         server_build_dir: Path | None = None,
         production_ssr_url: str | None = None,
+        static_url_prefix: str | None = None,
     ):
         valid_modes = ["development", "production", "preview"]
         if mode not in valid_modes:
@@ -351,6 +357,9 @@ class ViteBundler(BaseBundler):
             raise ValueError("server_build_dir must be set if SSR is enabled")
         super().__init__(root_dir, path_resolvers)
 
+        if static_url_prefix and not static_url_prefix.endswith("/"):
+            static_url_prefix += "/"
+        self.static_url_prefix = static_url_prefix
         self.disable_ssr = disable_ssr
         self.wait_for_server = wait_for_server
         self.mode = mode
@@ -394,13 +403,16 @@ class ViteBundler(BaseBundler):
 
         In development this will be served from the dev server and in production from ``STATIC_URL``
         """
-        if self.wait_for_server:
+        if self.is_development() and self.wait_for_server:
             self.wait_for_server()
 
         if not isinstance(path, Path):
             path = Path(path)
         if self.mode in ["production", "preview"]:
-            return static(str(path))
+            path_with_prefix = (
+                urljoin(self.static_url_prefix, str(path)) if self.static_url_prefix else str(path)
+            )
+            return static(path_with_prefix)
         if path.is_absolute():
             path = path.relative_to(self.root_dir)
         return urljoin(self.dev_server_url, str(path))
