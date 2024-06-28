@@ -72,7 +72,12 @@ class FormInputNode(template.Node):
             )
             if help_text:
                 # Help text can be HTML and django docs make it clear this value is not HTML-escaped.
-                help_text = convert_html_string(help_text, self.origin)[0]
+                try:
+                    # this may return an empty list if the HTML is invalid
+                    help_text = convert_html_string(help_text, self.origin)[0]
+                except IndexError:
+                    help_text = ""
+                    warnings.warn(f"Bad help text on field, likely invalid HTML: {help_text}")
             extra_attrs[field.form.renderer.form_input_context_key] = {
                 "raw_value": field.value(),
                 "extra_widget_props": {
