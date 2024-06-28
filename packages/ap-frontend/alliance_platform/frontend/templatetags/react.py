@@ -861,6 +861,9 @@ class ComponentNode(template.Node, BundlerAsset):
         to convert values to the new type.
         """
 
+        # Always handle this first, as ``ComponentNode`` is also a ``Node`` but shouldn't be rendered directly here
+        if isinstance(value, ComponentNode):
+            return NestedComponentProp(value, self, context)
         # In the case of raw HTML that is transformed with the ``convert_html_string`` function we need to handle
         # the case of a template node being used as a prop, e.g. ``<a href="{% url 'some-url' %}">``.
         if isinstance(value, Node):
@@ -913,9 +916,6 @@ class ComponentNode(template.Node, BundlerAsset):
         if isinstance(value, FilterExpression):
             value = value.resolve(context)
             return self.resolve_prop(value, context)
-        # Always handle this first as many things rely on NestedComponentProp being here
-        if isinstance(value, ComponentNode):
-            return NestedComponentProp(value, self, context)
         return resolve_prop(value, self, context)
 
     def resolve_props(self, context: Context) -> ComponentProps:
