@@ -158,6 +158,8 @@ def convert_html_string(
     """
     Given a string that may contain HTML, convert it to a tree of ``ComponentNode``s
 
+    Note that invalid HTML is ignored, so it's possible an empty list will be returned even with a non-empty input.
+
     Args:
         html: The html string to convert
         origin: The template origin
