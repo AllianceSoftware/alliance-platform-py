@@ -1,5 +1,12 @@
 # alliance-platform-frontend
 
+## 0.0.16
+
+### Patch Changes
+
+- a974e38: `{% form_input %}` will now ignore bad HTML in help_text and warn about it
+- 604aaea: Fix `{% component %}` handling of HTML help_text. Previously, a component coming through in help_text from `{% form_input %}` would be outputted as its escaped embed code rather than rendering it.
+
 ## 0.0.15
 
 ### Patch Changes
