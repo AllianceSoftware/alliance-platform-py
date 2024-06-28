@@ -11,11 +11,13 @@ from alliance_platform.frontend.bundler.ssr import SSRJsonEncoder
 from alliance_platform.frontend.bundler.ssr import SSRSerializerContext
 from alliance_platform.frontend.bundler.vanilla_extract import resolve_vanilla_extract_cache_names
 from alliance_platform.frontend.bundler.vite import ViteCssEmbed
+from alliance_platform.frontend.html_parser import convert_html_string
 from alliance_platform.frontend.templatetags.react import ComponentNode
 from alliance_platform.frontend.templatetags.react import ComponentProps
 from alliance_platform.frontend.templatetags.react import ComponentSourceCodeGenerator
 from django.conf import settings
 from django.template import Context
+from django.template import Origin
 from django.template import Template
 from django.test import SimpleTestCase
 from django.test import override_settings
@@ -583,6 +585,33 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
                     % expected_output,
                 )
 
+    def test_component_as_prop(self):
+        """Tests that a component node is resolved when used as a prop"""
+        with ExitStack() as stack:
+            stack.enter_context(override_ap_frontend_settings(BUNDLER=self.test_development_bundler))
+            stack.enter_context(
+                BundlerAssetContext(frontend_asset_registry=bypass_frontend_asset_registry, skip_checks=True)
+            )
+            mock_method = stack.enter_context(
+                mock.patch("alliance_platform.frontend.bundler.middleware.BundlerAssetContext.generate_id")
+            )
+            container_id = "C1"
+            mock_method.return_value = container_id
+            tpl = Template(
+                "{% load react %}" "{% component 'Component' description=help_text %}{% endcomponent %}"
+            )
+            context = Context(
+                {
+                    "help_text": convert_html_string("<span>Help</span>", Origin("UNKNOWN"))[0],
+                }
+            )
+            contents = tpl.render(context)
+            render_line = contents[contents.find("renderComponent(") :].split("\n")[0]
+            self.assertEqual(
+                render_line,
+                """renderComponent(document.querySelector("[data-djid='C1']"), createElement(Component, {description: createElement("span", {}, "Help")}), "C1", true)""",
+            )
+
     def test_ssr_disabled(self):
         with override_ap_frontend_settings(
             BUNDLER=self.test_development_bundler,
@@ -1016,6 +1045,15 @@ class TestComponentTemplateTagOutput(SimpleTestCase):
             {% component "div" %}<a href="{{ url }}">Test</a>{% endcomponent %}""",
             """<div><a href="/test/">Test</a></div>""",
             url="/test/",
+        )
+
+    def test_component_as_prop(self):
+        """Tests that a component node is resolved when used as a prop"""
+        self.assertComponentEqual(
+            """
+            {% component "Input" description=help_text %}{% endcomponent %}""",
+            """<Input description={<span>Help</span>} />""",
+            help_text=convert_html_string("<span>Help</span>", Origin("UNKNOWN"))[0],
         )
 
     def test_void_tags(self):
