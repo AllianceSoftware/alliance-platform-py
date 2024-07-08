@@ -1,5 +1,11 @@
 # alliance-platform-frontend
 
+## 0.0.17
+
+### Patch Changes
+
+- f6d6ea7: Add `camelize` templatetag for passing props to frontend
+
 ## 0.0.16
 
 ### Patch Changes
