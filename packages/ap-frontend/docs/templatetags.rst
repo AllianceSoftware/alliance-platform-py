@@ -671,3 +671,28 @@ Usage:
 .. code-block:: html+django
 
     {% component "@alliancesoftware/ui" "NumberInput" default_value=widget.value|none_as_nan %}{% endcomponent %}
+
+
+``camelize``
+--------------------
+
+Recursively converts dictionary keys from ``snake_case`` to ``camelCase`` for passing props to the frontend
+
+Calls `camelize <https://github.com/AllianceSoftware/django-allianceutils?tab=readme-ov-file#camelize>`_
+
+Usage:
+
+.. code-block:: html+django
+
+    {% component "MyComponent" props=widget.attrs|camelize %}{% endcomponent %}
+
+.. note::
+
+    If you need to pass keys to ``ignore`` in the function call, you should run the ``camelize`` utility function in ``get_context_data`` manually,
+    rather than using this filter.
+
+    .. code-block:: python
+
+        def get_context_data(self, **kwargs):
+            props = camelize(MySerializer(self.object).data, ignore=["ignored_key_1", "ignored_key_2"])
+            return super().get_context_data(**kwargs, props=props)

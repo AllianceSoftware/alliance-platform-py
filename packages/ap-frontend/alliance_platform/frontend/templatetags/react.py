@@ -30,6 +30,7 @@ from allianceutils.template import build_html_attrs
 from allianceutils.template import is_static_expression
 from allianceutils.template import parse_tag_arguments
 from allianceutils.template import resolve
+from allianceutils.util import camelize as camelize_util
 from allianceutils.util import underscore_to_camel
 from django import template
 from django.core.exceptions import ImproperlyConfigured
@@ -1137,7 +1138,7 @@ def merge_props(attrs1: dict, attrs2: dict | None):
     if attrs2 is None:
         return attrs1
     new_props = {**attrs1, **attrs2}
-    # TODO: merge class names. need to work out nomralization
+    # TODO: merge class names. need to work out normalization
     # ie. class vs class_name vs className
     return new_props
 
@@ -1152,6 +1153,17 @@ def none_as_nan(value):
     if value is None:
         return math.nan
     return value
+
+
+@register.filter
+def camelize(attrs: dict):
+    """Recursively camelizes keys in a dictionary for passing to the frontend as props
+
+    Usage::
+
+        {% component "MyComponent" props=widget.attrs|camelize %}{% endcomponent %}
+    """
+    return camelize_util(attrs)
 
 
 def get_component_source_from_tag_args(args: list[Any], tag_name: str, origin: Origin) -> ComponentSourceBase:
