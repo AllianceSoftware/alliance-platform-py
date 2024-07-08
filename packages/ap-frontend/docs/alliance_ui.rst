@@ -25,7 +25,7 @@ Filters
 
 Resolve a URL and check if the current user has permission to access it.
 
-If you don't need permission checks, use :tfilter:`url_with_perm`.
+If you don't need permission checks, use :tfilter:`url`.
 
 If permission check fails, the component that uses the value will be omitted from rendering.
 
