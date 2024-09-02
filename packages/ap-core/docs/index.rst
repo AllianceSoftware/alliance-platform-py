@@ -71,5 +71,6 @@ See the individual package documentation for more information on the available s
     :maxdepth: 2
 
     settings
+    api
 
 .. include:: _sidebar.rst.inc
