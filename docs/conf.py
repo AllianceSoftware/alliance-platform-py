@@ -53,6 +53,10 @@ multiproject_projects = {
         "name": "Codegen",
         "path": "../packages/ap-codegen/docs",
     },
+    "storage": {
+        "name": "Storage",
+        "path": "../packages/ap-storage/docs",
+    },
 }
 
 # -- Options for Intersphinx extension ---------------------------------------
@@ -70,6 +74,7 @@ dev_port_map = {
     "core": 56675,
     "frontend": 56676,
     "codegen": 56677,
+    "storage": 56678,
 }
 
 
@@ -89,6 +94,7 @@ intersphinx_mapping = {
     "alliance-platform-core": get_project_mapping("core"),
     "alliance-platform-frontend": get_project_mapping("frontend"),
     "alliance-platform-codegen": get_project_mapping("codegen"),
+    "alliance-platform-storage": get_project_mapping("storage"),
     "django": (
         "https://docs.djangoproject.com/en/stable/",
         ("https://docs.djangoproject.com/en/stable/_objects/"),

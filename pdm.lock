@@ -5,7 +5,7 @@
 groups = ["default", "dev", "docs"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.2"
-content_hash = "sha256:58d4511a6b88d909c3242af1f356853255342ae427b16b57db63b24c3dcc125e"
+content_hash = "sha256:42501d5032b0c866ace6eeb9b2fa8118aae485f9e5a04311621356ef876c1765"
 
 [[package]]
 name = "alabaster"
@@ -58,6 +58,15 @@ dependencies = [
     "requests",
     "typing-extensions>=4.5.0",
 ]
+
+[[package]]
+name = "alliance-platform-storage"
+version = "0.0.1"
+requires_python = ">=3.11"
+editable = true
+path = "./packages/ap-storage"
+summary = "Alliance Platform Storage"
+groups = ["dev"]
 
 [[package]]
 name = "anyio"
