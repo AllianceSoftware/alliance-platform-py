@@ -95,7 +95,8 @@ class GenerateUploadUrlView(View):
         if instance_id:
             manager = cast(ModelWithDefaultManager, field.model).objects
             obj = manager.get(pk=instance_id)
-        if not request.user.has_perm(field.perm_update if obj else field.perm_create, obj):
+        required_perm = field.perm_update if obj else field.perm_create
+        if required_perm is not None and not request.user.has_perm(required_perm, obj):
             raise PermissionDenied
 
         filename = validated_data["filename"]

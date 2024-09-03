@@ -2,8 +2,9 @@ from hashlib import shake_256
 import json
 import logging
 import os
-import unittest
 from unittest import mock
+from unittest.mock import patch
+from urllib.parse import urlencode
 
 from alliance_platform.storage.fields.async_file import AsyncFileField
 from alliance_platform.storage.fields.async_file import AsyncFileInput
@@ -12,9 +13,7 @@ from alliance_platform.storage.fields.async_file import default_max_length as as
 from alliance_platform.storage.models import AsyncTempFile
 from alliance_platform.storage.registry import AsyncFieldRegistry
 from alliance_platform.storage.registry import default_async_field_registry
-from alliance_platform.storage.s3 import S3AsyncUploadStorage
 from alliance_platform.storage.views import DownloadRedirectView
-from alliance_platform.storage.views import GenerateUploadUrlView
 from django.core.exceptions import SuspiciousFileOperation
 from django.core.exceptions import ValidationError
 from django.core.files import File
@@ -23,18 +22,10 @@ from django.forms import ModelForm
 from django.test import TestCase
 from django.test import override_settings
 from django.urls import reverse
-from rest_framework.test import APIRequestFactory
-from rest_framework.test import force_authenticate
+from test_alliance_platform_storage.models import AsyncFilePermTestModel
 from test_alliance_platform_storage.models import AsyncFileTestModel
+from test_alliance_platform_storage.models import User
 from test_alliance_platform_storage.storage import DummyStorage
-from xenopus_frog_app.tests.user_type_defs import AppAdminProfileFactory
-
-try:
-    import PIL  # noqa
-
-    pillow_installed = True
-except ModuleNotFoundError:
-    pillow_installed = False
 
 TEST_IMAGE_PATH = os.path.join(
     os.path.dirname(__file__) + "/../test_alliance_platform.storage/files/test.png"
@@ -46,6 +37,8 @@ TEST_IMAGE_64_64_PATH = os.path.join(
 
 class AsyncFileMixinTestCase(TestCase):
     def test_validate_storage_class(self):
+        from alliance_platform.storage.s3 import S3AsyncUploadStorage
+
         with override_settings(DEFAULT_FILE_STORAGE="storages.backends.s3boto3.S3Boto3Storage"):
             with self.assertRaisesRegex(ValueError, "file storage class must extend AsyncUploadStorage"):
                 AsyncFileField()
@@ -71,7 +64,6 @@ class AsyncFileMixinTestCase(TestCase):
         self.assertEqual(field2.async_field_registry, another_registry)
         self.assertEqual(another_registry.fields_by_id[another_registry.generate_id(field2)], field2)
 
-    @unittest.skipIf(not pillow_installed, "Pillow not installed; skipping")
     def test_image_field_dimensions(self):
         with mock.patch("test_alliance_platform_storage.storage.DummyStorage._open") as mock_method:
             tf = AsyncTempFile.create_for_field(
@@ -114,7 +106,6 @@ class AsyncFileMixinTestCase(TestCase):
 
             mock_method.assert_called_once_with(tf.key, "rb")
 
-    @unittest.skipIf(not pillow_installed, "Pillow not installed; skipping")
     def test_image_field_dimensions_recalculate(self):
         with mock.patch("test_alliance_platform_storage.storage.DummyStorage._open") as mock_method:
             tf = AsyncTempFile.create_for_field(
@@ -183,7 +174,6 @@ class AsyncFileMixinTestCase(TestCase):
             self.assertEqual(tm.image_height, 16)
             mock_method.assert_not_called()
 
-    @unittest.skipIf(not pillow_installed, "Pillow not installed; skipping")
     def test_image_field_dimensions_refresh_from_db(self):
         with mock.patch("test_alliance_platform_storage.storage.DummyStorage._open") as mock_method:
             tf = AsyncTempFile.create_for_field(
@@ -278,7 +268,6 @@ class AsyncFileMixinTestCase(TestCase):
         tm.save()
         self.assertEqual(tm.file1.name, "test2.pdf")
 
-    @unittest.skipIf(not pillow_installed, "Pillow not installed; skipping")
     def test_move_image_file(self):
         with mock.patch("test_alliance_platform_storage.storage.DummyStorage._open") as mock_method:
             # On creation the temp file will be moved to the final location. As part
@@ -313,7 +302,6 @@ class AsyncFileMixinTestCase(TestCase):
             mock_method.assert_called_once_with(tf.key, "rb")
             mock_method.mock_reset()
 
-    @unittest.skipIf(not pillow_installed, "Pillow not installed; skipping")
     def test_move_multiple_files(self):
         # On creation the temp file will be moved to the final location. As part
         # of this dimensions should _not_ be calculated as they were passed in.
@@ -343,7 +331,6 @@ class AsyncFileMixinTestCase(TestCase):
         self.assertEqual(AsyncTempFile.objects.filter(moved_to_location="").count(), 0)
         self.assertEqual(AsyncTempFile.objects.filter(moved_to_location__startswith="test").count(), 3)
 
-    @unittest.skipIf(not pillow_installed, "Pillow not installed; skipping")
     def test_move_multiple_files_errors(self):
         # On creation the temp file will be moved to the final location. As part
         # of this dimensions should _not_ be calculated as they were passed in.
@@ -489,36 +476,136 @@ class AsyncFileFormTestCase(TestCase):
 
 
 class GenerateUploadUrlViewTestCase(TestCase):
-    def setUp(self) -> None:
-        # Avoid warnings due to everything using the default registry
-        default_async_field_registry.attached_view = None
+    def _get_url(self, instance: AsyncFileTestModel | None = None, field_name="file1", filename="abc.jpg"):
+        field_id = default_async_field_registry.generate_id(AsyncFileTestModel._meta.get_field(field_name))
+        query_params = dict(field_id=field_id, filename=filename)
+        if instance:
+            query_params["instanceId"] = instance.pk
+        return f"{reverse(default_async_field_registry.attached_view)}?{urlencode(query_params)}"
 
-    def test_view(self):
-        user = AppAdminProfileFactory(is_superuser=True)
-        factory = APIRequestFactory()
-        field_id = default_async_field_registry.generate_id(AsyncFileTestModel._meta.get_field("file1"))
-        request = factory.get(f"/?field_id={field_id}&filename=abc.jpg")
-        force_authenticate(request, user=user)
-        view = GenerateUploadUrlView.as_view()
-        response = view(request).render()
+    def _get_perm_url(
+        self, field_name: str, instance: AsyncFilePermTestModel | None = None, filename="abc.jpg"
+    ):
+        """Return a URL for the AsyncFilePermTestModel"""
+        field_id = default_async_field_registry.generate_id(
+            AsyncFilePermTestModel._meta.get_field(field_name)
+        )
+        query_params = dict(fieldId=field_id, filename=filename)
+        if instance:
+            query_params["instanceId"] = instance.pk
+        return f"{reverse(default_async_field_registry.attached_view)}?{urlencode(query_params)}"
+
+    def test_validation(self):
+        tests = [
+            ({}, {"filename": ["This field is required."], "fieldId": ["This field is required."]}),
+            ({"filename": "abc.jpg", "field_id": "invalid"}, {"fieldId": ["Unknown fieldId"]}),
+        ]
+        for params, errors in tests:
+            with self.subTest(params=params):
+                url = f"{reverse(default_async_field_registry.attached_view)}?{urlencode(params)}"
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 400)
+                self.assertEqual(response.json(), errors)
+
+    def test_no_permission_required(self):
+        response = self.client.get(self._get_perm_url("file_no_perms"))
         self.assertEqual(response.status_code, 200)
-        data = json.loads(response.content)
-        self.assertEqual(AsyncTempFile.objects.count(), 1)
-        async_temp_file = AsyncTempFile.objects.first()
-        assert async_temp_file is not None
-        self.assertEqual(async_temp_file.original_filename, "abc.jpg")
-        self.assertEqual(data["key"], async_temp_file.key)
-        self.assertEqual(data["uploadUrl"], f"http://signme.com/{async_temp_file.key}")
-        self.assertEqual(async_temp_file.field_name, "file1")
-        self.assertEqual(async_temp_file.content_type.model_class(), AsyncFileTestModel)
 
-        # Create record using temp file key. This results in move_file being
-        # called, AsyncTempFile being deleted and the file field being updated
-        # to the original filename
-        file = AsyncFileTestModel.objects.create(file1=async_temp_file.key)
-        self.assertEqual(file.file1, "abc.jpg")
-        self.assertEqual(AsyncTempFile.objects.count(), 1)
-        self.assertEqual(AsyncTempFile.objects.filter(moved_to_location="abc.jpg").count(), 1)
+    def test_perm_denied(self):
+        with patch("test_alliance_platform_storage.models.User.has_perm", return_value=False):
+            user = User.objects.create(username="test")
+            self.client.force_login(user)
+            response = self.client.get(self._get_perm_url("file_custom_perms"))
+            self.assertEqual(response.status_code, 403)
+
+    def test_custom_perm_create(self):
+        with patch("test_alliance_platform_storage.models.User.has_perm", return_value=True) as mock_has_perm:
+            user = User.objects.create(username="test")
+            self.client.force_login(user)
+            response = self.client.get(self._get_perm_url("file_custom_perms"))
+            self.assertEqual(response.status_code, 200)
+            mock_has_perm.assert_called_with("custom_create", None)
+
+    def test_custom_perm_update(self):
+        with patch("test_alliance_platform_storage.models.User.has_perm", return_value=True) as mock_has_perm:
+            user = User.objects.create(username="test")
+            self.client.force_login(user)
+            existing_record = AsyncFilePermTestModel.objects.create()
+            response = self.client.get(self._get_perm_url("file_custom_perms", instance=existing_record))
+            self.assertEqual(response.status_code, 200)
+            mock_has_perm.assert_called_with("custom_update", existing_record)
+
+    def test_default_perm_create(self):
+        with patch("test_alliance_platform_storage.models.User.has_perm", return_value=True) as mock_has_perm:
+            user = User.objects.create(username="test")
+            self.client.force_login(user)
+            response = self.client.get(self._get_perm_url("file_default_perms"))
+            self.assertEqual(response.status_code, 200)
+            mock_has_perm.assert_called_with(
+                "test_alliance_platform_storage.asyncfilepermtestmodel_create", None
+            )
+
+    def test_default_perm_update(self):
+        with patch("test_alliance_platform_storage.models.User.has_perm", return_value=True) as mock_has_perm:
+            user = User.objects.create(username="test")
+            self.client.force_login(user)
+            existing_record = AsyncFilePermTestModel.objects.create()
+            response = self.client.get(self._get_perm_url("file_default_perms", instance=existing_record))
+            self.assertEqual(response.status_code, 200)
+            mock_has_perm.assert_called_with(
+                "test_alliance_platform_storage.asyncfilepermtestmodel_update", existing_record
+            )
+
+    def test_generate_url_create(self):
+        with patch("test_alliance_platform_storage.models.User.has_perm", return_value=True):
+            user = User.objects.create(username="test")
+            self.client.force_login(user)
+            response = self.client.get(self._get_url())
+            self.assertEqual(response.status_code, 200)
+            data = json.loads(response.content)
+            self.assertEqual(AsyncTempFile.objects.count(), 1)
+            async_temp_file = AsyncTempFile.objects.first()
+            assert async_temp_file is not None
+            self.assertEqual(async_temp_file.original_filename, "abc.jpg")
+            self.assertEqual(data["key"], async_temp_file.key)
+            self.assertEqual(data["uploadUrl"], f"http://signme.com/{async_temp_file.key}")
+            self.assertEqual(async_temp_file.field_name, "file1")
+            self.assertEqual(async_temp_file.content_type.model_class(), AsyncFileTestModel)
+            self.assertEqual(async_temp_file.moved_to_location, "")
+
+            # Create record using temp file key. This results in move_file being
+            # called, AsyncTempFile having `movefd_to_location` set and the file field being updated
+            # to the original filename
+            file = AsyncFileTestModel.objects.create(file1=async_temp_file.key)
+            self.assertEqual(file.file1, "abc.jpg")
+            self.assertEqual(AsyncTempFile.objects.count(), 1)
+            self.assertEqual(AsyncTempFile.objects.filter(moved_to_location="abc.jpg").count(), 1)
+
+    def test_generate_url_update(self):
+        with patch("test_alliance_platform_storage.models.User.has_perm", return_value=True):
+            user = User.objects.create(username="test")
+            self.client.force_login(user)
+            instance = AsyncFileTestModel.objects.create(file1="some/value.jpg")
+            response = self.client.get(self._get_url(instance=instance))
+            self.assertEqual(response.status_code, 200)
+            data = json.loads(response.content)
+            self.assertEqual(AsyncTempFile.objects.count(), 1)
+            async_temp_file = AsyncTempFile.objects.first()
+            assert async_temp_file is not None
+            self.assertEqual(async_temp_file.original_filename, "abc.jpg")
+            self.assertEqual(data["key"], async_temp_file.key)
+            self.assertEqual(data["uploadUrl"], f"http://signme.com/{async_temp_file.key}")
+            self.assertEqual(async_temp_file.field_name, "file1")
+            self.assertEqual(async_temp_file.content_type.model_class(), AsyncFileTestModel)
+            self.assertEqual(async_temp_file.moved_to_location, "")
+
+            # Update the file1 to use the new temp key. This results in move_file being
+            # called, AsyncTempFile having `movefd_to_location` set and the file field being updated
+            # to the original filename
+            instance.file1 = async_temp_file.key
+            instance.save()
+            self.assertEqual(AsyncTempFile.objects.count(), 1)
+            self.assertEqual(AsyncTempFile.objects.filter(moved_to_location="abc.jpg").count(), 1)
 
 
 class DownloadRedirectViewTestCase(TestCase):
@@ -527,12 +614,11 @@ class DownloadRedirectViewTestCase(TestCase):
         default_async_field_registry.attached_download_view = None
 
     def test_view(self):
-        user = AppAdminProfileFactory(is_superuser=True)
-        factory = APIRequestFactory()
+        user = User.objects.create()
         record = AsyncFileTestModel.objects.create(file1="test.png")
         field_id = default_async_field_registry.generate_id(AsyncFileTestModel._meta.get_field("file1"))
-        request = factory.get(f"/?field_id={field_id}&instance_id={record.pk}")
-        force_authenticate(request, user=user)
+        self.client.force_login(user=user)
+        request = self.client.get(f"/?field_id={field_id}&instance_id={record.pk}")
         view = DownloadRedirectView.as_view()
         response = view(request)
         self.assertRedirects(response, "http://downloadme.com/test.png", fetch_redirect_response=False)

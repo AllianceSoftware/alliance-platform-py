@@ -12,6 +12,7 @@ from typing import TypedDict
 from typing import cast
 from urllib.parse import urlencode
 
+from alliance_platform.core.auth import resolve_perm_name
 from alliance_platform.storage.models import AsyncTempFile
 from alliance_platform.storage.registry import AsyncFieldRegistry
 from alliance_platform.storage.registry import default_async_field_registry
@@ -34,7 +35,6 @@ from django.db.models.fields.files import ImageFieldFile
 from django.forms.widgets import Input
 from django.urls import reverse
 from django.utils.deconstruct import deconstructible
-from django_site_core.auth import resolve_perm_name
 
 logger = logging.getLogger("alliance_platform.storage")
 
@@ -193,6 +193,8 @@ default_max_size = 100
 # Default max_length on underlying CharField. Note that changing this after fields exist won't be detected by djangos migration system
 default_max_length = 500
 
+_UNSET = object()
+
 
 class AsyncFileMixin(AsyncFileMixinProtocol):
     """Mixin for file fields that works with :class:`~alliance_platform.storage.storage.AsyncUploadStorage` to
@@ -203,8 +205,9 @@ class AsyncFileMixin(AsyncFileMixinProtocol):
     to a specific registry which you can specify in ``async_field_registry`` (defaults to :data:`~alliance_platform.storage.registry.default_async_field_registry`).
 
     The permissions used by :class:`~alliance_platform.storage.views.GenerateUploadUrlView` can be specified in
-    ``perm_create`` and ``perm_update``. If not provided they default to the value returned by :meth:`django_site_core.auth.resolve_perm_name`
-    for the action 'create' and 'update' respectively.
+    ``perm_create`` and ``perm_update``. If not provided they default to the value returned by :meth:`alliance_platform.auth.resolve_perm_name`
+    for the action 'create' and 'update' respectively. To disable checking permissions, you can pass ``None`` - this will
+    mean any user, including anonymous users, can generate upload urls.
 
     When using django forms :class:`~alliance_platform.storage.fields.async_file.AsyncFileFormField` provides a widget for handling
     the upload from the frontend. This is the default ``formfield`` provided by :class:`~alliance_platform.storage.fields.async_file.AsyncFileField`.
@@ -253,7 +256,7 @@ class AsyncFileMixin(AsyncFileMixinProtocol):
     The url returned when accessing the ``url`` property, eg. ``model.file_field.url`` will always return the URL for
     :class:`~alliance_platform.storage.views.DownloadRedirectView`. This view will check the user has permission to download the
     file by checking the ``perm_download`` permission. If not provided this defaults to the value returned by
-    :meth:`django_site_core.auth.resolve_perm_name` with the action "detail" (ie. if they have permission to view the record
+    :meth:`alliance_platform.auth.resolve_perm_name` with the action "detail" (ie. if they have permission to view the record
     they can download the file). This view will then redirect to the URL provided by
     :meth:`~alliance_platform.storage.storage.AsyncUploadStorage.generate_download_url`.
 
@@ -298,9 +301,9 @@ class AsyncFileMixin(AsyncFileMixinProtocol):
     def __init__(
         self,
         *args,
-        perm_create=None,
-        perm_update=None,
-        perm_detail=None,
+        perm_create=_UNSET,
+        perm_update=_UNSET,
+        perm_detail=_UNSET,
         max_size=default_max_size,
         file_restrictions=None,
         async_field_registry=default_async_field_registry,
@@ -329,14 +332,14 @@ class AsyncFileMixin(AsyncFileMixinProtocol):
             field = cast(AsyncFileField, self)
             AsyncFileModelRegistry.register_field(cls, field)
             self.async_field_registry.register_field(field)
-            if not self.perm_update:
+            if self.perm_update is _UNSET:
                 self.perm_update = resolve_perm_name(
                     app_config=self.model._meta.app_config,
                     model=self.model,
                     action="update",
                     is_global=False,
                 )
-            if not self.perm_create:
+            if self.perm_create is _UNSET:
                 self.perm_create = resolve_perm_name(
                     app_config=self.model._meta.app_config,
                     model=self.model,
@@ -344,7 +347,7 @@ class AsyncFileMixin(AsyncFileMixinProtocol):
                     is_global=True,
                 )
 
-            if not self.perm_detail:
+            if self.perm_detail is _UNSET:
                 self.perm_detail = resolve_perm_name(
                     app_config=self.model._meta.app_config,
                     model=self.model,

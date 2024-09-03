@@ -15,6 +15,10 @@ PROJECT_DIR = BASE_DIR
 
 STATIC_URL = "/static/"
 
+ROOT_URLCONF = "test_alliance_platform_storage.urls"
+
+AUTH_USER_MODEL = "test_alliance_platform_storage.User"
+
 
 class AlliancePlatformSettings(TypedDict):
     CORE: AlliancePlatformCoreSettingsType

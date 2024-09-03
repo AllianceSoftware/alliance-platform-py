@@ -1,5 +1,6 @@
 from alliance_platform.storage.fields.async_file import AsyncFileField
 from alliance_platform.storage.fields.async_file import AsyncImageField
+from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.db.models import CASCADE
 
@@ -29,3 +30,26 @@ class AsyncFileTestModel(models.Model):
 
     class Meta:
         db_table = "test_alliance_platform_storage_async_file_test_model"
+
+
+class AsyncFilePermTestModel(models.Model):
+    file_no_perms = AsyncFileField(
+        storage=DummyStorage(), null=True, blank=True, perm_create=None, perm_detail=None, perm_update=None
+    )
+    file_default_perms = AsyncFileField(storage=DummyStorage(), null=True, blank=True)
+    file_custom_perms = AsyncFileField(
+        storage=DummyStorage(),
+        null=True,
+        blank=True,
+        perm_create="custom_create",
+        perm_detail="custom_detail",
+        perm_update="custom_update",
+    )
+
+    class Meta:
+        db_table = "test_alliance_platform_storage_async_file_perm_test_model"
+
+
+class User(AbstractUser):
+    class Meta:
+        db_table = "test_alliance_platform_storage_custom_user"
