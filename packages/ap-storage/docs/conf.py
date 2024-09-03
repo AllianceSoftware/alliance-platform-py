@@ -1,3 +1,10 @@
+import os
+
+import django
+
+os.environ["DJANGO_SETTINGS_MODULE"] = "test_alliance_platform_storage.settings"
+django.setup()
+
 # Configuration file for the Sphinx documentation builder.
 #
 # For the full list of built-in configuration values, see the documentation:
