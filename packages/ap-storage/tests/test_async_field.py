@@ -11,50 +11,58 @@ from alliance_platform.storage.fields.async_file import AsyncFileInput
 from alliance_platform.storage.fields.async_file import AsyncFileInputData
 from alliance_platform.storage.fields.async_file import default_max_length as async_file_max_length
 from alliance_platform.storage.models import AsyncTempFile
-from alliance_platform.storage.registry import AsyncFieldRegistry
 from alliance_platform.storage.registry import default_async_field_registry
 from django.core.exceptions import SuspiciousFileOperation
 from django.core.exceptions import ValidationError
 from django.core.files import File
-from django.db import models
 from django.forms import ModelForm
 from django.test import TestCase
 from django.test import override_settings
 from django.urls import reverse
+from test_alliance_platform_storage.models import AlternateRegistryModel
 from test_alliance_platform_storage.models import AsyncFilePermTestModel
 from test_alliance_platform_storage.models import AsyncFileTestModel
 from test_alliance_platform_storage.models import User
+from test_alliance_platform_storage.models import another_registry
 from test_alliance_platform_storage.storage import DummyStorage
 
 TEST_IMAGE_PATH = os.path.join(
-    os.path.dirname(__file__) + "/../test_alliance_platform.storage/files/test.png"
+    os.path.dirname(__file__) + "/../test_alliance_platform_storage/files/test.png"
 )
 TEST_IMAGE_64_64_PATH = os.path.join(
-    os.path.dirname(__file__) + "/../test_alliance_platform.storage/files/test-64x64.png"
+    os.path.dirname(__file__) + "/../test_alliance_platform_storage/files/test-64x64.png"
 )
+
+DUMMY_STORAGES_SETTING = {
+    "default": {
+        "BACKEND": "test_alliance_platform_storage.storage.DummyStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
 
 
 class AsyncFileMixinTestCase(TestCase):
     def test_validate_storage_class(self):
-        from alliance_platform.storage.s3 import S3AsyncUploadStorage
-
-        with override_settings(DEFAULT_FILE_STORAGE="storages.backends.s3boto3.S3Boto3Storage"):
+        with override_settings(
+            STORAGES={
+                "default": {
+                    "BACKEND": "django.core.files.storage.FileSystemStorage",
+                },
+                "staticfiles": {
+                    "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+                },
+            }
+        ):
             with self.assertRaisesRegex(ValueError, "file storage class must extend AsyncUploadStorage"):
                 AsyncFileField()
-            AsyncFileField(storage=S3AsyncUploadStorage())
-        with override_settings(DEFAULT_FILE_STORAGE="alliance_platform.storage.s3.S3AsyncUploadStorage"):
+        with override_settings(STORAGES=DUMMY_STORAGES_SETTING):
             AsyncFileField()
 
-    @override_settings(DEFAULT_FILE_STORAGE="alliance_platform.storage.s3.S3AsyncUploadStorage")
     def test_registry(self):
-        another_registry = AsyncFieldRegistry("another registry")
-
-        class TestModel(models.Model):
-            file1 = AsyncFileField()
-            file2 = AsyncFileField(async_field_registry=another_registry)
-
-        field1 = TestModel._meta.get_field("file1")
-        field2 = TestModel._meta.get_field("file2")
+        field1 = AlternateRegistryModel._meta.get_field("file1")
+        field2 = AlternateRegistryModel._meta.get_field("file2")
         self.assertEqual(field1.async_field_registry, default_async_field_registry)
         self.assertEqual(
             default_async_field_registry.fields_by_id[default_async_field_registry.generate_id(field1)],

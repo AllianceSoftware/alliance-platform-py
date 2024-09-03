@@ -3,6 +3,7 @@ from alliance_platform.storage.fields.async_file import AsyncImageField
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.db.models import CASCADE
+from storage.registry import AsyncFieldRegistry
 
 from test_alliance_platform_storage.storage import DummyStorage
 
@@ -12,11 +13,14 @@ class AsyncFileTestParentModel(models.Model):
         db_table = "test_alliance_platform_storage_async_file_test_parent_model"
 
 
+storage = DummyStorage()
+
+
 class AsyncFileTestModel(models.Model):
     parent = models.ForeignKey(AsyncFileTestParentModel, on_delete=CASCADE, null=True, related_name="files")
-    file1 = AsyncFileField(storage=DummyStorage(), null=True, blank=True)  # type: ignore[abstract] # mypy issue #3115
+    file1 = AsyncFileField(storage=storage, null=True, blank=True)  # type: ignore[abstract] # mypy issue #3115
     image_with_dims = AsyncImageField(  # type: ignore[abstract] # mypy issue #3115
-        storage=DummyStorage(),
+        storage=storage,
         null=True,
         blank=True,
         width_field="image_width",
@@ -26,7 +30,7 @@ class AsyncFileTestModel(models.Model):
     image_width = models.IntegerField(blank=True, null=True)
     image_height = models.IntegerField(blank=True, null=True)
 
-    image_no_dims = AsyncImageField(storage=DummyStorage(), null=True, blank=True, suppress_pillow_check=True)  # type: ignore[abstract] # mypy issue #3115
+    image_no_dims = AsyncImageField(storage=storage, null=True, blank=True, suppress_pillow_check=True)  # type: ignore[abstract] # mypy issue #3115
 
     class Meta:
         db_table = "test_alliance_platform_storage_async_file_test_model"
@@ -34,11 +38,11 @@ class AsyncFileTestModel(models.Model):
 
 class AsyncFilePermTestModel(models.Model):
     file_no_perms = AsyncFileField(
-        storage=DummyStorage(), null=True, blank=True, perm_create=None, perm_detail=None, perm_update=None
+        storage=storage, null=True, blank=True, perm_create=None, perm_detail=None, perm_update=None
     )
-    file_default_perms = AsyncFileField(storage=DummyStorage(), null=True, blank=True)
+    file_default_perms = AsyncFileField(storage=storage, null=True, blank=True)
     file_custom_perms = AsyncFileField(
-        storage=DummyStorage(),
+        storage=storage,
         null=True,
         blank=True,
         perm_create="custom_create",
@@ -53,3 +57,11 @@ class AsyncFilePermTestModel(models.Model):
 class User(AbstractUser):
     class Meta:
         db_table = "test_alliance_platform_storage_custom_user"
+
+
+another_registry = AsyncFieldRegistry("another registry")
+
+
+class AlternateRegistryModel(models.Model):
+    file1 = AsyncFileField(storage=storage)
+    file2 = AsyncFileField(storage=storage, async_field_registry=another_registry)
