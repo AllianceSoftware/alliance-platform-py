@@ -5,48 +5,50 @@ from typing import cast
 from alliance_platform.storage.models import AsyncTempFile
 from alliance_platform.storage.registry import AsyncFieldRegistry
 from alliance_platform.storage.registry import default_async_field_registry
+from allianceutils.util import camelize
+from allianceutils.util import underscoreize
 from django.core.exceptions import BadRequest
+from django.core.exceptions import PermissionDenied
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Manager
+from django.http import HttpRequest
+from django.http import HttpResponse
 from django.http import HttpResponseRedirect
-from rest_framework import serializers
-from rest_framework.exceptions import PermissionDenied
-from rest_framework.exceptions import ValidationError
-from rest_framework.generics import get_object_or_404
-from rest_framework.request import Request
-from rest_framework.response import Response
-from rest_framework.views import APIView
+from django.http import JsonResponse
+from django.http import QueryDict
+from django.shortcuts import get_object_or_404
+from django.views import View
 
 
-class GenerateUploadUrlViewInputSerializer(serializers.Serializer):
-    field_id = serializers.CharField()
-    filename = serializers.CharField()
-    params = serializers.JSONField(required=False)
-    instance_id = serializers.CharField(required=False)
+def validate_generate_upload_url(data: QueryDict, registry: AsyncFieldRegistry):
+    field_id = data.get("field_id")
+    filename = data.get("filename")
+    params = data.get("params", None)
+    instance_id = data.get("instance_id", None)
+    errors: dict[str, str] = {}
 
-    def __init__(self, registry: AsyncFieldRegistry, **kwargs):
-        self.registry = registry
-        super().__init__(**kwargs)
+    if not field_id:
+        errors["field_id"] = "This field is required."
+    elif field_id not in registry.fields_by_id:
+        errors["field_id"] = "Unknown fieldId"
+    if not filename:
+        errors["filename"] = "This field is required."
+    if errors:
+        raise ValidationError(errors)
 
-    def validate(self, attrs):
-        if attrs["field_id"] not in self.registry.fields_by_id:
-            raise ValidationError({"field_id": "Unknown field_id"})
-        return attrs
-
-
-class APIViewProtocol(Protocol):
-    initkwargs: dict[str, Any]  # drf-stubs is missing this
+    return {"field_id": field_id, "filename": filename, "params": params, "instance_id": instance_id}
 
 
-class ViewsetProtocol(Protocol):
-    initkwargs: dict[str, Any]  # drf-stubs is missing this too..
+class ViewProtocol(Protocol):
+    view_initkwargs: dict[str, Any]  # drf-stubs is missing this
 
 
 class ModelWithDefaultManager(Protocol):
     objects: Manager
 
 
-class GenerateUploadUrlView(APIView):
+class GenerateUploadUrlView(View):
     """View to generate a URL using :meth:`~alliance_platform.storage.storage.AsyncUploadStorage.generate_upload_url`.
 
     Each view is tied to a specific registry which you can specify in the ``registry`` kwarg (defaults to :data:`~alliance_platform.storage.registry.default_async_field_registry`).
@@ -70,8 +72,8 @@ class GenerateUploadUrlView(APIView):
 
     @classmethod
     def as_view(cls, **initkwargs):
-        view: APIViewProtocol = cast(APIViewProtocol, super().as_view(**initkwargs))
-        registry = view.initkwargs.get("registry", default_async_field_registry)
+        view: ViewProtocol = cast(ViewProtocol, super().as_view(**initkwargs))
+        registry = view.view_initkwargs.get("registry", default_async_field_registry)
         if registry.attached_view:
             import warnings
 
@@ -81,14 +83,14 @@ class GenerateUploadUrlView(APIView):
         registry.attached_view = view
         return view
 
-    def get(self, request: Request) -> Response:
-        input_serializer = GenerateUploadUrlViewInputSerializer(
-            registry=self.registry, data=request.query_params
-        )
-        input_serializer.is_valid(raise_exception=True)
-        field_id = input_serializer.data["field_id"]
+    def get(self, request: HttpRequest) -> HttpResponse:
+        try:
+            validated_data = validate_generate_upload_url(underscoreize(request.GET), self.registry)
+        except ValidationError as e:
+            return JsonResponse(camelize(e.message_dict), status=400)
+        field_id = validated_data["field_id"]
         field = self.registry.fields_by_id[field_id]
-        instance_id = input_serializer.data.get("instance_id")
+        instance_id = validated_data["instance_id"]
         obj = None
         if instance_id:
             manager = cast(ModelWithDefaultManager, field.model).objects
@@ -96,7 +98,7 @@ class GenerateUploadUrlView(APIView):
         if not request.user.has_perm(field.perm_update if obj else field.perm_create, obj):
             raise PermissionDenied
 
-        filename = input_serializer.data["filename"]
+        filename = validated_data["filename"]
         if field.file_restrictions:
             if not field.is_valid_filetype(filename):
                 raise BadRequest
@@ -107,31 +109,30 @@ class GenerateUploadUrlView(APIView):
             conditions.append(["content-length-range", 0, field.max_size * 1024 * 1024])
         # this matches any, but is OK because we are signing a single key only anyway which will restrict the type
         conditions.append(["starts-with", "$Content-Type", ""])
-        return Response(
+        return JsonResponse(
             {
                 "uploadUrl": field.storage.generate_upload_url(
-                    temp_file.key, fields=input_serializer.data.get("params"), conditions=conditions or None
+                    temp_file.key, fields=validated_data.get("params"), conditions=conditions or None
                 ),
                 "key": temp_file.key,
             }
         )
 
 
-class AsyncFileDownloadViewSerializer(serializers.Serializer):
-    field_id = serializers.CharField()
-    instance_id = serializers.CharField(required=False)
+def validate_async_file_download(data: QueryDict, registry: AsyncFieldRegistry):
+    field_id = data.get("field_id")
+    instance_id = data.get("instance_id", None)
 
-    def __init__(self, registry: AsyncFieldRegistry, **kwargs):
-        self.registry = registry
-        super().__init__(**kwargs)
+    if not field_id:
+        raise ValidationError({"field_id": "This field is required."})
 
-    def validate(self, attrs):
-        if attrs["field_id"] not in self.registry.fields_by_id:
-            raise ValidationError({"field_id": "Unknown field_id"})
-        return attrs
+    if field_id not in registry.fields_by_id:
+        raise ValidationError({"field_id": "Unknown fieldId"})
+
+    return {"field_id": field_id, "instance_id": instance_id}
 
 
-class DownloadRedirectView(APIView):
+class DownloadRedirectView(View):
     """View that checks permissions and redirects to a download URL using :meth:`~alliance_platform.storage.storage.AsyncUploadStorage.generate_download_url`.
 
     Each view is tied to a specific registry which you can specify in the ``registry`` kwarg (defaults to :data:`~alliance_platform.storage.registry.default_async_field_registry`).
@@ -152,8 +153,8 @@ class DownloadRedirectView(APIView):
 
     @classmethod
     def as_view(cls, **initkwargs):
-        view: APIViewProtocol = cast(APIViewProtocol, super().as_view(**initkwargs))
-        registry = view.initkwargs.get("registry", default_async_field_registry)
+        view: ViewProtocol = cast(ViewProtocol, super().as_view(**initkwargs))
+        registry = view.view_initkwargs.get("registry", default_async_field_registry)
         if registry.attached_download_view:
             import warnings
 
@@ -164,11 +165,13 @@ class DownloadRedirectView(APIView):
         return view
 
     def get(self, request):
-        input_serializer = AsyncFileDownloadViewSerializer(registry=self.registry, data=request.query_params)
-        input_serializer.is_valid(raise_exception=True)
-        field_id = input_serializer.data["field_id"]
+        try:
+            validated_data = validate_async_file_download(underscoreize(request.GET), self.registry)
+        except ValidationError as e:
+            return JsonResponse(camelize(e.message_dict), status=400)
+        field_id = validated_data["field_id"]
         field = self.registry.fields_by_id[field_id]
-        instance_id = input_serializer.data.get("instance_id")
+        instance_id = validated_data.get("instance_id")
 
         manager = cast(ModelWithDefaultManager, field.model).objects
         obj: models.Model = get_object_or_404(manager, pk=instance_id)
