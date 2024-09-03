@@ -4,6 +4,8 @@ import sys
 from urllib.parse import urlparse
 
 from multiproject.utils import get_project
+from sphinx import addnodes
+from sphinx.domains.std import Cmdoption
 
 current_dir = Path(__file__).parent
 sys.path.append(str(current_dir / "_doc_utils"))
@@ -127,6 +129,14 @@ html_context = {
 }
 
 
+def parse_management_command(env, sig, signode):
+    command = sig.split(" ")[0]
+    env.ref_context["std:program"] = command
+    title = "./manage.py %s" % sig
+    signode += addnodes.desc_name(title, title)
+    return command
+
+
 def setup(app):
     # Allows using `:ttag:` and `:tfilter:` roles in the documentation to link to template tags and filters.
     app.add_crossref_type(
@@ -145,6 +155,13 @@ def setup(app):
         rolename="setting",
         indextemplate="pair: %s; setting",
     )
+    app.add_object_type(
+        directivename="django-manage",
+        rolename="djmanage",
+        indextemplate="pair: %s; django-manage command",
+        parse_node=parse_management_command,
+    )
+    app.add_directive("django-manage-option", Cmdoption)
 
 
 generate_sidebar(current_dir, globals())
