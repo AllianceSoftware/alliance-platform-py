@@ -58,6 +58,9 @@ class Command(BaseCommand):
             try:
                 cast(AsyncFileField, field).storage.delete(temp_file.key)
             except Exception as e:
-                # Ignore any errors from storage and continue processing
-                self.stdout.write(self.style.ERROR(f"Storage failed to remove key {temp_file.key}: {str(e)}"))
+                if not options["quiet"]:
+                    # Ignore any errors from storage and continue processing
+                    self.stdout.write(
+                        self.style.ERROR(f"Storage failed to remove key {temp_file.key}: {str(e)}")
+                    )
             temp_file.delete()
