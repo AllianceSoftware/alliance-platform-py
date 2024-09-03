@@ -14,6 +14,7 @@ from django.db import models
 from django.db.models import Manager
 from django.http import HttpRequest
 from django.http import HttpResponse
+from django.http import HttpResponseNotFound
 from django.http import HttpResponseRedirect
 from django.http import JsonResponse
 from django.http import QueryDict
@@ -176,7 +177,9 @@ class DownloadRedirectView(View):
 
         manager = cast(ModelWithDefaultManager, field.model).objects
         obj: models.Model = get_object_or_404(manager, pk=instance_id)
-        if not request.user.has_perm(field.perm_detail, obj):
+        if field.perm_detail is not None and not request.user.has_perm(field.perm_detail, obj):
             raise PermissionDenied
         value = getattr(obj, field.name)
+        if not value:
+            return HttpResponseNotFound(f"No value set for {field.name}")
         return HttpResponseRedirect(field.storage.generate_download_url(value.name))

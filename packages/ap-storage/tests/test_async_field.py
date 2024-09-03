@@ -13,7 +13,6 @@ from alliance_platform.storage.fields.async_file import default_max_length as as
 from alliance_platform.storage.models import AsyncTempFile
 from alliance_platform.storage.registry import AsyncFieldRegistry
 from alliance_platform.storage.registry import default_async_field_registry
-from alliance_platform.storage.views import DownloadRedirectView
 from django.core.exceptions import SuspiciousFileOperation
 from django.core.exceptions import ValidationError
 from django.core.files import File
@@ -609,16 +608,76 @@ class GenerateUploadUrlViewTestCase(TestCase):
 
 
 class DownloadRedirectViewTestCase(TestCase):
-    def setUp(self) -> None:
-        # Avoid warnings due to everything using the default registry
-        default_async_field_registry.attached_download_view = None
+    def _get_url(self, instance: AsyncFileTestModel, field_name="file1", filename="abc.jpg"):
+        field_id = default_async_field_registry.generate_id(AsyncFileTestModel._meta.get_field(field_name))
+        query_params = dict(fieldId=field_id, filename=filename, instanceId=instance.pk)
+        return f"{reverse(default_async_field_registry.attached_download_view)}?{urlencode(query_params)}"
 
-    def test_view(self):
-        user = User.objects.create()
-        record = AsyncFileTestModel.objects.create(file1="test.png")
-        field_id = default_async_field_registry.generate_id(AsyncFileTestModel._meta.get_field("file1"))
-        self.client.force_login(user=user)
-        request = self.client.get(f"/?field_id={field_id}&instance_id={record.pk}")
-        view = DownloadRedirectView.as_view()
-        response = view(request)
+    def _get_perm_url(self, instance: AsyncFilePermTestModel, field_name: str, filename="abc.jpg"):
+        """Return a URL for the AsyncFilePermTestModel"""
+        field_id = default_async_field_registry.generate_id(
+            AsyncFilePermTestModel._meta.get_field(field_name)
+        )
+        query_params = dict(fieldId=field_id, filename=filename, instanceId=instance.pk)
+        return f"{reverse(default_async_field_registry.attached_download_view)}?{urlencode(query_params)}"
+
+    def test_validation(self):
+        tests = [
+            ({}, {"filename": ["This field is required."], "fieldId": ["This field is required."]}),
+            ({"filename": "abc.jpg", "field_id": "invalid"}, {"fieldId": ["Unknown fieldId"]}),
+        ]
+        for params, errors in tests:
+            with self.subTest(params=params):
+                url = f"{reverse(default_async_field_registry.attached_view)}?{urlencode(params)}"
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 400)
+                self.assertEqual(response.json(), errors)
+
+    def test_no_permission_required(self):
+        record = AsyncFilePermTestModel.objects.create(file_no_perms="test.png")
+        response = self.client.get(self._get_perm_url(record, "file_no_perms"))
         self.assertRedirects(response, "http://downloadme.com/test.png", fetch_redirect_response=False)
+
+    def test_perm_denied(self):
+        with patch("test_alliance_platform_storage.models.User.has_perm", return_value=False):
+            user = User.objects.create(username="test")
+            self.client.force_login(user)
+            existing_record = AsyncFilePermTestModel.objects.create(file_no_perms="test.png")
+            response = self.client.get(self._get_perm_url(existing_record, "file_custom_perms"))
+            self.assertEqual(response.status_code, 403)
+
+    def test_no_value(self):
+        with patch("test_alliance_platform_storage.models.User.has_perm", return_value=True):
+            user = User.objects.create(username="test")
+            self.client.force_login(user)
+            existing_record = AsyncFilePermTestModel.objects.create()
+            response = self.client.get(self._get_perm_url(existing_record, "file_custom_perms"))
+            self.assertEqual(response.status_code, 404)
+
+    def test_custom_perm(self):
+        with patch("test_alliance_platform_storage.models.User.has_perm", return_value=True) as mock_has_perm:
+            user = User.objects.create(username="test")
+            self.client.force_login(user)
+            existing_record = AsyncFilePermTestModel.objects.create(file_custom_perms="test.png")
+            response = self.client.get(self._get_perm_url(existing_record, "file_custom_perms"))
+            mock_has_perm.assert_called_with("custom_detail", existing_record)
+            self.assertRedirects(response, "http://downloadme.com/test.png", fetch_redirect_response=False)
+
+    def test_default_perm(self):
+        with patch("test_alliance_platform_storage.models.User.has_perm", return_value=True) as mock_has_perm:
+            user = User.objects.create(username="test")
+            self.client.force_login(user)
+            existing_record = AsyncFilePermTestModel.objects.create(file_default_perms="test.png")
+            response = self.client.get(self._get_perm_url(existing_record, "file_default_perms"))
+            mock_has_perm.assert_called_with(
+                "test_alliance_platform_storage.asyncfilepermtestmodel_detail", existing_record
+            )
+            self.assertRedirects(response, "http://downloadme.com/test.png", fetch_redirect_response=False)
+
+    def test_redirects_to_download(self):
+        with patch("test_alliance_platform_storage.models.User.has_perm", return_value=True):
+            user = User.objects.create()
+            record = AsyncFileTestModel.objects.create(file1="test.png")
+            self.client.force_login(user=user)
+            response = self.client.get(self._get_url(record, "file1", "test.png"))
+            self.assertRedirects(response, "http://downloadme.com/test.png", fetch_redirect_response=False)
