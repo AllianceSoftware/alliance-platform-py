@@ -5,11 +5,18 @@ from alliance_platform.storage.fields.async_file import AsyncFileField as AsyncF
 from alliance_platform.storage.fields.async_file import AsyncFileInputData
 from alliance_platform.storage.fields.async_file import AsyncFileInputDataLengthValidator
 from alliance_platform.storage.fields.async_file import AsyncFileInputDataValidator
+from django.core.exceptions import ImproperlyConfigured
 from django.core.exceptions import ValidationError as CoreValidationError
-from rest_framework import serializers
-from rest_framework.fields import empty
-from rest_framework.fields import get_attribute
-from rest_framework.utils.formatting import lazy_format
+
+try:
+    from rest_framework import serializers
+    from rest_framework.fields import empty
+    from rest_framework.fields import get_attribute
+    from rest_framework.utils.formatting import lazy_format
+except ImportError as e:
+    raise ImproperlyConfigured(
+        "Optional dependency 'rest_framework' is not installed. This is required to make use of the DRF fields."
+    ) from e
 
 
 class AsyncFileField(serializers.ModelField):

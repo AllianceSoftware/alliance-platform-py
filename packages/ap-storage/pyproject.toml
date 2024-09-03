@@ -42,6 +42,7 @@ dev = [
     "-e alliance-platform-core @ file:///${PROJECT_ROOT}/../ap-core",
     "psycopg2",
     "rules",
-    "Pillow"
+    "Pillow",
+    "djangorestframework"
 ]
 
