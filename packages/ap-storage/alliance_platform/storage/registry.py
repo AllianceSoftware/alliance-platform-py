@@ -3,7 +3,7 @@ from __future__ import annotations
 from hashlib import shake_256
 from typing import TYPE_CHECKING
 
-from alliance_platform.storage.storage import AsyncUploadStorage
+from alliance_platform.storage.base import AsyncUploadStorage
 from django.db.models import Field
 from django.views import View
 

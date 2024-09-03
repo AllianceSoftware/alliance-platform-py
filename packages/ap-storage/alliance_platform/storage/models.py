@@ -21,7 +21,7 @@ class AsyncTempFile(models.Model):
 
     Once a file has been uploaded and the form saved the key recorded here will be saved against the
     underlying file field (either :class:`~alliance_platform.storage.fields.async_file.AsyncFileField` or :class:`~alliance_platform.storage.fields.async_file.AsyncImageField`)
-    on the target model which will check if that key is a temporary file using an :meth:`~alliance_platform.storage.storage.AsyncUploadStorage.is_temporary_path`. If so the
+    on the target model which will check if that key is a temporary file using an :meth:`~alliance_platform.storage.base.AsyncUploadStorage.is_temporary_path`. If so the
     file will be moved to its permanent location using :meth:`~alliance_platform.storage.s3.S3AsyncUploadStorage.move_file`
     and the :class:`AsyncTempFile` record will have the ``moved_to_location`` value set. See :class:`~alliance_platform.storage.fields.async_file.AsyncFileMixin`
     for where this happens and more details.

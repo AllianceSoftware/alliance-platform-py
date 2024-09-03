@@ -13,10 +13,10 @@ from typing import cast
 from urllib.parse import urlencode
 
 from alliance_platform.core.auth import resolve_perm_name
+from alliance_platform.storage.base import AsyncUploadStorage
 from alliance_platform.storage.models import AsyncTempFile
 from alliance_platform.storage.registry import AsyncFieldRegistry
 from alliance_platform.storage.registry import default_async_field_registry
-from alliance_platform.storage.storage import AsyncUploadStorage
 from allianceutils.middleware import CurrentRequestMiddleware
 from django import forms
 from django.contrib.contenttypes.models import ContentType
@@ -103,7 +103,7 @@ class AsyncFileModelRegistry:
         If the destination filename is too long for the database after ``upload_to`` is applied then the
         file will be truncated by the ``Storage.get_available_name`` method.
 
-        Also see :meth:`~alliance_platform.storage.storage.AsyncUploadStorage.move_file`
+        Also see :meth:`~alliance_platform.storage.base.AsyncUploadStorage.move_file`
 
         This uses as few queries as possible to do the moves and update new values. Only async fields
         that have a temporary key are touched - other fields that have already been moved are left
@@ -197,7 +197,7 @@ _UNSET = object()
 
 
 class AsyncFileMixin(AsyncFileMixinProtocol):
-    """Mixin for file fields that works with :class:`~alliance_platform.storage.storage.AsyncUploadStorage` to
+    """Mixin for file fields that works with :class:`~alliance_platform.storage.base.AsyncUploadStorage` to
     handle uploading directly to external service like S3 or Azure.
 
     This field works in conjunction with :class:`~alliance_platform.storage.views.GenerateUploadUrlView`. The view will
@@ -214,7 +214,7 @@ class AsyncFileMixin(AsyncFileMixinProtocol):
 
     .. note:: The key for the file is stored in the database as a CharField and as such has a max_length. The default
         for this is ``500``. This must be sufficient to accommodate the temporary file value which looks something like
-        ``async-temp-files/2021/03/03/fVy5cSVBQpOb-test.png`` by default (see :meth:`~alliance_platform.storage.storage.AsyncUploadStorage.generate_temporary_path`
+        ``async-temp-files/2021/03/03/fVy5cSVBQpOb-test.png`` by default (see :meth:`~alliance_platform.storage.base.AsyncUploadStorage.generate_temporary_path`
         for how to customise this).
 
         Anything after the ``-`` will be truncated if necessary for the purposes of the temporary key. The actual filename
@@ -236,17 +236,17 @@ class AsyncFileMixin(AsyncFileMixinProtocol):
            and optionally an ``instance_id`` if it's an update for an existing record. :class:`~alliance_platform.storage.views.GenerateUploadUrlView`
            looks up the registry for the ``async_field_id`` to get the field and checks permissions on it (``perm_update`` if
            ``instance_id`` is passed otherwise ``perm_create``). If the permission check passes it will then create a
-           :class:`~alliance_platform.storage.models.AsyncTempFile` record to track the ``filename`` passed in and a :meth:`generated key <alliance_platform.storage.storage.AsyncUploadStorage.generate_temporary_path>`
+           :class:`~alliance_platform.storage.models.AsyncTempFile` record to track the ``filename`` passed in and a :meth:`generated key <alliance_platform.storage.base.AsyncUploadStorage.generate_temporary_path>`
            that will be used to upload the file to a temporary location on the storage backend. The view will return an
-           upload url by calling :meth:`~alliance_platform.storage.storage.AsyncUploadStorage.generate_upload_url` along with the generated ``key``.
+           upload url by calling :meth:`~alliance_platform.storage.base.AsyncUploadStorage.generate_upload_url` along with the generated ``key``.
 
         3) The frontend will receive the ``upload_url`` and ``key`` and proceed to upload to it. When the form is submitted
-           and saved the ``key`` (the value returned from :meth:`generated key <alliance_platform.storage.storage.AsyncUploadStorage.generate_temporary_path>`)
+           and saved the ``key`` (the value returned from :meth:`generated key <alliance_platform.storage.base.AsyncUploadStorage.generate_temporary_path>`)
            is the what will be stored in the database.
 
         4) On save a ``post_save`` signal will be called which will check if the file needs to be moved to a permanent
-           location. It does this by calling :meth:`~alliance_platform.storage.storage.AsyncUploadStorage.is_temporary_path` and
-           :meth:`~alliance_platform.storage.storage.AsyncUploadStorage.move_file` is called to move the file to its permanent
+           location. It does this by calling :meth:`~alliance_platform.storage.base.AsyncUploadStorage.is_temporary_path` and
+           :meth:`~alliance_platform.storage.base.AsyncUploadStorage.move_file` is called to move the file to its permanent
            location at which point the ``AsyncTempFile`` is deleted.
 
         5) If an upload occurs but the form isn't submitted :class:`~alliance_platform.storage.models.AsyncTempFile` will be created
@@ -258,9 +258,9 @@ class AsyncFileMixin(AsyncFileMixinProtocol):
     file by checking the ``perm_download`` permission. If not provided this defaults to the value returned by
     :meth:`alliance_platform.auth.resolve_perm_name` with the action "detail" (ie. if they have permission to view the record
     they can download the file). This view will then redirect to the URL provided by
-    :meth:`~alliance_platform.storage.storage.AsyncUploadStorage.generate_download_url`.
+    :meth:`~alliance_platform.storage.base.AsyncUploadStorage.generate_download_url`.
 
-    .. note:: You must you this with a storage class that implements :class:`~alliance_platform.storage.storage.AsyncUploadStorage`.
+    .. note:: You must you this with a storage class that implements :class:`~alliance_platform.storage.base.AsyncUploadStorage`.
         Either set DEFAULT_FILE_STORAGE to a class (eg. :class:`~alliance_platform.storage.s3.S3AsyncUploadStorage`) or pass an
         instance in the ``storage`` kwarg.
 

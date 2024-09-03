@@ -1,7 +1,14 @@
 from typing import Any
 
-from alliance_platform.storage.storage import AsyncUploadStorage
-from storages.backends.s3boto3 import S3Boto3Storage
+from alliance_platform.storage.base import AsyncUploadStorage
+from django.core.exceptions import ImproperlyConfigured
+
+try:
+    from storages.backends.s3boto3 import S3Boto3Storage
+except ImportError as e:
+    raise ImproperlyConfigured(
+        "Optional dependency 'django-storages[s3]' is not installed. This is required for the S3AsyncUploadStorage backend."
+    ) from e
 
 
 class S3AsyncUploadStorage(S3Boto3Storage, AsyncUploadStorage):

@@ -1,9 +1,9 @@
 from alliance_platform.storage.fields.async_file import AsyncFileField
 from alliance_platform.storage.fields.async_file import AsyncImageField
+from alliance_platform.storage.registry import AsyncFieldRegistry
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.db.models import CASCADE
-from storage.registry import AsyncFieldRegistry
 
 from test_alliance_platform_storage.storage import DummyStorage
 

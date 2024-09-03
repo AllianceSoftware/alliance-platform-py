@@ -13,7 +13,7 @@ from rest_framework.utils.formatting import lazy_format
 
 
 class AsyncFileField(serializers.ModelField):
-    """Field that works with :class:`~alliance_platform.storage.storage.AsyncUploadStorage` to handle uploading directly to
+    """Field that works with :class:`~alliance_platform.storage.base.AsyncUploadStorage` to handle uploading directly to
     external service like S3 or Azure.
 
     Unlike most fields this field must be backed by an underlying model field specified in the ``model_field``
