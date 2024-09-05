@@ -16,6 +16,7 @@ include = [
 ]
 [project.optional-dependencies]
 s3 = ["django-storages[s3]"]
+azure = ["django-storages[azure]"]
 
 [build-system]
 requires = ["pdm-backend"]

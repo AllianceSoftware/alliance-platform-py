@@ -13,6 +13,8 @@ If you are using one of the optional backends, you can specify it as an extra:
 
     # For Amazon S3
     poetry add alliance_platform_storage -E s3
+    # For Azure
+    poetry add alliance_platform_storage -E azure
 
 Add ``alliance_platform.storage`` to your ``INSTALLED_APPS``.
 
@@ -63,6 +65,27 @@ To make it the default for fields set the :setting:`STORAGES <django:STORAGES>` 
     }
 
 See the `authentication documentation <https://django-storages.readthedocs.io/en/latest/backends/amazon-S3.html#authentication-settings>`_
+for what other settings will need to be set.
+
+Use with Azure Blob Storage
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To use with Azure `django-storages with Azure <https://django-storages.readthedocs.io/en/latest/backends/azure.html#installation>`_
+is required. If you installed `alliance_platform_storage` with `-E azure` this will be installed, otherwise run:
+
+.. code-block:: bash
+
+    poetry add django-storages -E azure
+
+To make it the default for fields set the :setting:`STORAGES <django:STORAGES>` setting::
+
+    STORAGES = {
+        "default": {
+            "BACKEND": "alliance_platform.storage.azure.AzureAsyncUploadStorage"
+        },
+    }
+
+See the `authentication documentation <https://django-storages.readthedocs.io/en/latest/backends/azure.html#authentication-settings>`_
 for what other settings will need to be set.
 
 Configuration
