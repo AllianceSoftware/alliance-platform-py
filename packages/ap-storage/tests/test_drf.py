@@ -140,14 +140,16 @@ class SerializerAsyncFileTestCase(TestCase):
             ),
         )
 
-        # test that code remains so so the pk handling patch is still necessary - if this fails
-        # due to DRF improved to handle such case, drop the patch with _instance_pk
-        data = AsyncFileTestModelSerializer(instance=tm).data
-        nesting_serializer = AsyncFileTestModelParentSerializer(
-            data={"files": [data]},
-            instance=parent,
-        )
-        self.assertFalse(nesting_serializer.is_valid())
+        # We have a workaround for nested serializers to track the instance, which is otherwise unavailable in DRF.
+        # This test covers that patch - if this fails in the future it likely indicates DRF has better
+        # handling of nester serializers and we can drop our patch.
+        with self.assertLogs(logging.getLogger("alliance_platform.storage")):
+            data = AsyncFileTestModelSerializer(instance=tm).data
+            nesting_serializer = AsyncFileTestModelParentSerializer(
+                data={"files": [data]},
+                instance=parent,
+            )
+            self.assertFalse(nesting_serializer.is_valid())
 
         # emulates FE payload where id would be included
         data["id"] = tm.id
