@@ -7,6 +7,13 @@ Install the ``alliance_platform_storage`` package:
 
     poetry add alliance_platform_storage
 
+If you are using one of the optional backends, you can specify it as an extra:
+
+.. code-block:: bash
+
+    # For Amazon S3
+    poetry add alliance_platform_storage -E s3
+
 Add ``alliance_platform.storage`` to your ``INSTALLED_APPS``.
 
 .. code-block:: python
@@ -40,7 +47,8 @@ can be run as frequently as desired, but once a day is reasonable.
 Use with Amazon S3
 ~~~~~~~~~~~~~~~~~~
 
-To use with Amazon S3 install `django-storages with S3 <https://django-storages.readthedocs.io/en/latest/backends/amazon-S3.html#installation>`_:
+To use with Amazon S3 `django-storages with S3 <https://django-storages.readthedocs.io/en/latest/backends/amazon-S3.html#installation>`_
+is required. If you installed `alliance_platform_storage` with `-E s3` this will be installed, otherwise run:
 
 .. code-block:: bash
 
