@@ -23,7 +23,7 @@ def is_same_field(field1: Field, field2: Field) -> bool:
 
 
 class AsyncFieldRegistry:
-    """A registry for async fields. This allows looking up a field by it's ID.
+    """A registry for async fields. This allows looking up a field by its ID.
 
     In most cases the default registry :code:`default_async_field_registry` is suitable and more than one
     registry is not necessary.
