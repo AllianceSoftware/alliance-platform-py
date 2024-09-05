@@ -67,6 +67,11 @@ editable = true
 path = "./packages/ap-storage"
 summary = "Alliance Platform Storage"
 groups = ["dev"]
+dependencies = [
+    "Django>=4.2.11",
+    "alliance-platform-core",
+    "django-allianceutils>=4.0",
+]
 
 [[package]]
 name = "anyio"
