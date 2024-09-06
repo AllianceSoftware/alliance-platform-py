@@ -296,6 +296,7 @@ class AsyncFileMixin(AsyncFileMixinProtocol):
 
     """
 
+    model: type[models.Model]
     storage: AsyncUploadStorage
 
     def __init__(
