@@ -4,7 +4,9 @@ from alliance_platform.storage.base import AsyncUploadStorage
 from django.core.exceptions import ImproperlyConfigured
 
 try:
-    from storages.backends.s3boto3 import S3Boto3Storage
+    from storages.backends.s3boto3 import (  # type: ignore[import-untyped] # no types for storages
+        S3Boto3Storage,
+    )
 except ImportError as e:
     raise ImproperlyConfigured(
         "Optional dependency 'django-storages[s3]' is not installed. This is required for the S3AsyncUploadStorage backend."
@@ -21,7 +23,12 @@ class S3AsyncUploadStorage(S3Boto3Storage, AsyncUploadStorage):
     querystring_auth = True
 
     def generate_upload_url(
-        self, name: str, expire: int | None = 3600, conditions: Any | None = None, fields: Any | None = None
+        self,
+        name: str,
+        *,
+        expire: int | None = 3600,
+        conditions: Any | None = None,
+        fields: Any | None = None,
     ) -> str:  # type: ignore[override] # Specific kwargs for s3
         """
         Generates a presigned POST signed URL. Returns a dictionary with two elements: url and fields. Url is the url to post to. Fields is a dictionary filled with the form fields and respective values to use when submitting the post.

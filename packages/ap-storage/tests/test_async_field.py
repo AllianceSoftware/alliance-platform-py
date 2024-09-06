@@ -2,6 +2,8 @@ from hashlib import shake_256
 import json
 import logging
 import os
+from typing import Literal
+from typing import cast
 from unittest import mock
 from unittest.mock import patch
 from urllib.parse import urlencode
@@ -483,19 +485,22 @@ class AsyncFileFormTestCase(TestCase):
 
 
 class GenerateUploadUrlViewTestCase(TestCase):
-    def _get_url(self, instance: AsyncFileTestModel | None = None, field_name="file1", filename="abc.jpg"):
-        field_id = default_async_field_registry.generate_id(AsyncFileTestModel._meta.get_field(field_name))
+    def _get_url(self, instance: AsyncFileTestModel | None = None, filename="abc.jpg"):
+        field_id = default_async_field_registry.generate_id(AsyncFileTestModel._meta.get_field("file1"))
         query_params = dict(field_id=field_id, filename=filename)
         if instance:
             query_params["instanceId"] = instance.pk
         return f"{reverse(default_async_field_registry.attached_view)}?{urlencode(query_params)}"
 
     def _get_perm_url(
-        self, field_name: str, instance: AsyncFilePermTestModel | None = None, filename="abc.jpg"
+        self,
+        field_name: Literal["file_no_perms", "file_custom_perms", "file_default_perms"],
+        instance: AsyncFilePermTestModel | None = None,
+        filename="abc.jpg",
     ):
         """Return a URL for the AsyncFilePermTestModel"""
         field_id = default_async_field_registry.generate_id(
-            AsyncFilePermTestModel._meta.get_field(field_name)
+            cast(AsyncFileField, AsyncFilePermTestModel._meta.get_field(field_name))
         )
         query_params = dict(fieldId=field_id, filename=filename)
         if instance:
@@ -616,15 +621,20 @@ class GenerateUploadUrlViewTestCase(TestCase):
 
 
 class DownloadRedirectViewTestCase(TestCase):
-    def _get_url(self, instance: AsyncFileTestModel, field_name="file1", filename="abc.jpg"):
-        field_id = default_async_field_registry.generate_id(AsyncFileTestModel._meta.get_field(field_name))
+    def _get_url(self, instance: AsyncFileTestModel, filename="abc.jpg"):
+        field_id = default_async_field_registry.generate_id(AsyncFileTestModel._meta.get_field("file1"))
         query_params = dict(fieldId=field_id, filename=filename, instanceId=instance.pk)
         return f"{reverse(default_async_field_registry.attached_download_view)}?{urlencode(query_params)}"
 
-    def _get_perm_url(self, instance: AsyncFilePermTestModel, field_name: str, filename="abc.jpg"):
+    def _get_perm_url(
+        self,
+        instance: AsyncFilePermTestModel,
+        field_name: Literal["file_no_perms", "file_custom_perms", "file_default_perms"],
+        filename="abc.jpg",
+    ):
         """Return a URL for the AsyncFilePermTestModel"""
         field_id = default_async_field_registry.generate_id(
-            AsyncFilePermTestModel._meta.get_field(field_name)
+            cast(AsyncFileField, AsyncFilePermTestModel._meta.get_field(field_name))
         )
         query_params = dict(fieldId=field_id, filename=filename, instanceId=instance.pk)
         return f"{reverse(default_async_field_registry.attached_download_view)}?{urlencode(query_params)}"
@@ -687,5 +697,5 @@ class DownloadRedirectViewTestCase(TestCase):
             user = User.objects.create()
             record = AsyncFileTestModel.objects.create(file1="test.png")
             self.client.force_login(user=user)
-            response = self.client.get(self._get_url(record, "file1", "test.png"))
+            response = self.client.get(self._get_url(record, "test.png"))
             self.assertRedirects(response, "http://downloadme.com/test.png", fetch_redirect_response=False)

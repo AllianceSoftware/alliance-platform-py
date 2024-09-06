@@ -30,6 +30,8 @@ dev = [
   "tox",
   "tox-pdm>=0.7.2",
   "ruff",
+  "django-storages[s3]",
+  "django-storages[azure]",
 ]
 docs = [
   "sphinx>=7.2.6",
@@ -69,6 +71,7 @@ mypy = { composite = [
   "codegen-mypy",
   "frontend-mypy",
   "core-mypy",
+  "storage-mypy",
 ], keep_going = true }
 
 build-docs-watch.cmd = "./scripts/build-docs.sh"

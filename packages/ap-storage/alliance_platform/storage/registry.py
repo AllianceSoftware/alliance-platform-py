@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from hashlib import shake_256
 from typing import TYPE_CHECKING
+from typing import Callable
 
 from alliance_platform.storage.base import AsyncUploadStorage
 from django.db.models import Field
-from django.views import View
+from django.http import HttpResponse
 
 if TYPE_CHECKING:
     # circular imports
@@ -34,11 +35,11 @@ class AsyncFieldRegistry:
     fields_by_id: dict[str, AsyncFileField | AsyncImageField]
     # The attached GenerateUploadUrlView as returned by GenerateUploadUrlView.as_view(). This is attached automatically
     # when GenerateUploadUrlView.as_view() is called.
-    attached_view: View | None = None
+    attached_view: Callable[..., HttpResponse] | None = None
 
     # The attached AsyncFileDownloadView as returned by AsyncFileDownloadView.as_view(). This is attached automatically
     # when AsyncFileDownloadView.as_view() is called.
-    attached_download_view: View | None = None
+    attached_download_view: Callable[..., HttpResponse] | None = None
 
     def __init__(self, name):
         """

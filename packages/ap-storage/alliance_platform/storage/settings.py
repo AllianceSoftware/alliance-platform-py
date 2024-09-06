@@ -1,3 +1,4 @@
+from typing import Any
 from typing import TypedDict
 
 from alliance_platform.base_settings import AlliancePlatformSettingsBase
@@ -22,7 +23,9 @@ class AlliancePlatformStorageSettings(AlliancePlatformSettingsBase):
     pass
 
 
-DEFAULTS = {}
+# TODO: Currently no settings - I'm anticipating adding some before first release. If this doesn't happen, we can
+# remove storage settings entirely.
+DEFAULTS: Any = {}
 
 ap_storage_settings = AlliancePlatformStorageSettings(
     "STORAGE",

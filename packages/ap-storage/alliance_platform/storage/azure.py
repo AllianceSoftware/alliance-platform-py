@@ -1,11 +1,14 @@
 from datetime import timedelta
+from typing import Any
 
 from alliance_platform.storage.base import AsyncUploadStorage
 from django.core.exceptions import ImproperlyConfigured
 from django.utils import timezone
 
 try:
-    from storages.backends.azure_storage import AzureStorage
+    from storages.backends.azure_storage import (  # type: ignore[import-untyped] # no types for storages
+        AzureStorage,
+    )
 except ImportError as e:
     raise ImproperlyConfigured(
         "Optional dependency 'django-storages[azure]' is not installed. This is required for the AzureAsyncUploadStorage backend."
@@ -27,7 +30,14 @@ class AzureAsyncUploadStorage(AzureStorage, AsyncUploadStorage):
     Uses signed URLs for uploading.
     """
 
-    def generate_upload_url(self, name, expire=3600, conditions=None, fields=None):
+    def generate_upload_url(
+        self,
+        name: str,
+        *,
+        expire: int = 3600,
+        conditions: Any | None = None,
+        fields: Any | None = None,
+    ):
         """
         Generates a presigned PUT signed URL. Returns a dictionary with two elements: url and fields. Url is the url to post to. Fields is a dictionary filled with the form fields and respective values to use when submitting the post.
 

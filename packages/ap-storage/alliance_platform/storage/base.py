@@ -30,7 +30,7 @@ class AsyncUploadStorage(Storage):
     #: temporary file to know whether to move them and so *must* be unique to temporary files.
     temporary_key_prefix = "async-temp-files"
 
-    def generate_upload_url(self, name: str, **kwargs) -> str:
+    def generate_upload_url(self, name: str, *args, **kwargs) -> str:
         """Should return a URL that a file can be uploaded directly to
 
         In S3 this would be a signed URL.

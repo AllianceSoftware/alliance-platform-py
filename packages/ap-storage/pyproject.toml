@@ -46,6 +46,8 @@ dev = [
     "psycopg2",
     "rules",
     "Pillow",
-    "djangorestframework"
+    "djangorestframework",
+    "django-storages[s3]",
+    "django-storages[azure]"
 ]
 

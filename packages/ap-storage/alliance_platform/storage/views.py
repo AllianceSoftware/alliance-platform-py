@@ -72,7 +72,7 @@ class GenerateUploadUrlView(View):
     registry = default_async_field_registry
 
     @classmethod
-    def as_view(cls, **initkwargs):
+    def as_view(cls, **initkwargs: Any):
         view: ViewProtocol = cast(ViewProtocol, super().as_view(**initkwargs))
         registry = view.view_initkwargs.get("registry", default_async_field_registry)
         if registry.attached_view:
@@ -154,7 +154,7 @@ class DownloadRedirectView(View):
     registry = default_async_field_registry
 
     @classmethod
-    def as_view(cls, **initkwargs):
+    def as_view(cls, **initkwargs: Any):
         view: ViewProtocol = cast(ViewProtocol, super().as_view(**initkwargs))
         registry = view.view_initkwargs.get("registry", default_async_field_registry)
         if registry.attached_download_view:
@@ -166,7 +166,7 @@ class DownloadRedirectView(View):
         registry.attached_download_view = view
         return view
 
-    def get(self, request):
+    def get(self, request: HttpRequest):
         try:
             validated_data = validate_async_file_download(underscoreize(request.GET), self.registry)
         except ValidationError as e:
@@ -183,3 +183,4 @@ class DownloadRedirectView(View):
         if not value:
             return HttpResponseNotFound(f"No value set for {field.name}")
         return HttpResponseRedirect(field.storage.generate_download_url(value.name))
+        # TODO: Handle setting to override behaviour here

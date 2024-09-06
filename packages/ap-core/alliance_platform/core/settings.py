@@ -39,12 +39,12 @@ class AlliancePlatformCoreSettings(AlliancePlatformSettingsBase):
 
 
 DEFAULTS = dict(
-    CACHE_DIR=LazySetting(lambda: ap_core_settings.PROJECT_DIR / ".alliance-platform"),
+    CACHE_DIR=LazySetting(lambda: ap_core_settings.PROJECT_DIR / ".alliance-platform"),  # type: ignore[has-type]
     RESOLVE_PERM_NAME="alliance_platform.core.auth.default_resolve_perm_name",
 )
 
 ap_core_settings = AlliancePlatformCoreSettings(
     "CORE",
-    defaults=DEFAULTS,  # type: ignore[has-type]
+    defaults=DEFAULTS,
     import_strings=["RESOLVE_PERM_NAME"],
 )

@@ -42,7 +42,7 @@ logger = logging.getLogger("alliance_platform.storage")
 if TYPE_CHECKING:
 
     class AsyncFileMixinProtocol(Protocol):
-        model: models.Model
+        model: type[models.Model]
 
         def contribute_to_class(self, cls: type[Model], name: str, private_only: bool = ...) -> None: ...
 
@@ -93,7 +93,7 @@ class AsyncFileModelRegistry:
             registry = getattr(model_class, key)
         registry.fields.append(field)
 
-    def _move_temp_files_into_place(self, instance, *args, **kwargs):
+    def _move_temp_files_into_place(self, instance: Model, *args, **kwargs):
         """For each async file on the instance move them from temporary location to permanent location
 
         This is triggered by the ``post_save`` signal. The destination filename goes through the normal
