@@ -18,8 +18,8 @@ storage = DummyStorage()
 
 class AsyncFileTestModel(models.Model):
     parent = models.ForeignKey(AsyncFileTestParentModel, on_delete=CASCADE, null=True, related_name="files")
-    file1 = AsyncFileField(storage=storage, null=True, blank=True)  # type: ignore[abstract] # mypy issue #3115
-    image_with_dims = AsyncImageField(  # type: ignore[abstract] # mypy issue #3115
+    file1 = AsyncFileField(storage=storage, null=True, blank=True)
+    image_with_dims = AsyncImageField(
         storage=storage,
         null=True,
         blank=True,
@@ -30,7 +30,7 @@ class AsyncFileTestModel(models.Model):
     image_width = models.IntegerField(blank=True, null=True)
     image_height = models.IntegerField(blank=True, null=True)
 
-    image_no_dims = AsyncImageField(storage=storage, null=True, blank=True, suppress_pillow_check=True)  # type: ignore[abstract] # mypy issue #3115
+    image_no_dims = AsyncImageField(storage=storage, null=True, blank=True, suppress_pillow_check=True)
 
     class Meta:
         db_table = "test_alliance_platform_storage_async_file_test_model"

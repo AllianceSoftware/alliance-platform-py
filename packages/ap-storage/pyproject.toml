@@ -39,6 +39,7 @@ plugins = [
     "mypy_drf_plugin.main",
 ]
 explicit_package_bases = true
+warn_unused_ignores = true
 
 [tool.pdm.dev-dependencies]
 dev = [

@@ -29,7 +29,7 @@ class S3AsyncUploadStorage(S3Boto3Storage, AsyncUploadStorage):
         expire: int | None = 3600,
         conditions: Any | None = None,
         fields: Any | None = None,
-    ) -> str:  # type: ignore[override] # Specific kwargs for s3
+    ) -> str:
         """
         Generates a presigned POST signed URL. Returns a dictionary with two elements: url and fields. Url is the url to post to. Fields is a dictionary filled with the form fields and respective values to use when submitting the post.
         e.g

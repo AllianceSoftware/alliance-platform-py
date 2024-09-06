@@ -29,5 +29,5 @@ DEFAULTS: Any = {}
 
 ap_storage_settings = AlliancePlatformStorageSettings(
     "STORAGE",
-    defaults=DEFAULTS,  # type: ignore[has-type]
+    defaults=DEFAULTS,
 )

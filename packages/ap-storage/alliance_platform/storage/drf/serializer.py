@@ -71,7 +71,7 @@ class AsyncFileField(serializers.ModelField):
         if not isinstance(value, dict):
             return value
 
-        parent_meta = self.parent.Meta  # type: ignore[attr-defined] # metaclass
+        parent_meta = self.parent.Meta
         pk_name = parent_meta.model._meta.pk.name
         if pk_name in dictionary:
             self._instance_pk = dictionary[pk_name]

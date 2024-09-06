@@ -96,7 +96,7 @@ class TestViteBundlerTestCase(TestCase):
             server_resolve_package_url="redirect-package-url",
         )
         bundler_kwargs.update(kwargs)
-        return TestViteBundler(**bundler_kwargs)  # type: ignore [arg-type]
+        return TestViteBundler(**bundler_kwargs)
 
     def test_dev_url(self):
         with self.assertRaisesMessage(ValueError, "static_url cannot be a full URL in dev"):

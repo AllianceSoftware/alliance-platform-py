@@ -311,7 +311,7 @@ class AsyncFileMixin(AsyncFileMixinProtocol):
         max_length=default_max_length,
         **kwargs,
     ):
-        super().__init__(*args, max_length=max_length, **kwargs)  # type: ignore[safe-super]
+        super().__init__(*args, max_length=max_length, **kwargs)
         if not isinstance(self.storage, AsyncUploadStorage):
             raise ValueError(
                 "When using AsyncFileMixin the file storage class must extend AsyncUploadStorage. Either set DEFAULT_FILE_STORAGE or pass the 'storage' kwarg"
@@ -709,7 +709,7 @@ class AsyncFileField(AsyncFileMixin, FileField):  # type: ignore[misc] # mypy do
     attr_class = AsyncFieldFile
     descriptor_class = AsyncFileDescriptor
 
-    def formfield(self, **kwargs):  # type: ignore[override] # can fix this with *args, but the implementation of FileField.formfield only accepts kwargs so I'll just follow it's implementation
+    def formfield(self, **kwargs):
         return super().formfield(
             **{
                 "form_class": AsyncFileFormField,
@@ -831,7 +831,7 @@ class AsyncImageField(AsyncFileMixin, ImageField):  # type: ignore[misc] # mypy 
             height = getattr(instance, cast(str, self.height_field))
             self.dimension_cache = (width, height)
 
-    def formfield(self, **kwargs):  # type: ignore[override] # can fix this with *args, but the implementation of FileField.formfield only accepts kwargs so I'll just follow it's implementation
+    def formfield(self, **kwargs):
         return super().formfield(
             **{
                 "form_class": AsyncImageFormField,
