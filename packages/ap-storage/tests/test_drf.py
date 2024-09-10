@@ -108,7 +108,7 @@ class SerializerAsyncFileTestCase(TestCase):
         self.assertTrue(serializer.is_valid())
 
         with self.assertLogs(logging.getLogger("alliance_platform.storage")):
-            # Changing the key on existing item isn't accepted (unless its a temp path)
+            # Changing the key on existing item isn't accepted (unless it's a temp path)
             serializer = AsyncFileTestModelSerializer(
                 data={"image_with_dims": {"key": "test2.png", "name": "test.png"}}, instance=tm
             )
@@ -132,19 +132,21 @@ class SerializerAsyncFileTestCase(TestCase):
 
     def test_nested_serializer_behavior(self):
         parent = AsyncFileTestParentModel.objects.create()
-        tf = AsyncTempFile.create_for_field(AsyncFileTestModel._meta.get_field("image_with_dims"), "test.png")
-        tm = AsyncFileTestModel.objects.create(
+        temp_file = AsyncTempFile.create_for_field(
+            AsyncFileTestModel._meta.get_field("image_with_dims"), "test.png"
+        )
+        test_model = AsyncFileTestModel.objects.create(
             parent=parent,
             image_with_dims=async_file_fields.AsyncFileInputData(
-                key=tf.key, name=tf.original_filename, width=32, height=32
+                key=temp_file.key, name=temp_file.original_filename, width=32, height=32
             ),
         )
 
         # We have a workaround for nested serializers to track the instance, which is otherwise unavailable in DRF.
         # This test covers that patch - if this fails in the future it likely indicates DRF has better
-        # handling of nester serializers and we can drop our patch.
+        # handling of nested serializers and we can drop our patch.
         with self.assertLogs(logging.getLogger("alliance_platform.storage")):
-            data = AsyncFileTestModelSerializer(instance=tm).data
+            data = AsyncFileTestModelSerializer(instance=test_model).data
             nesting_serializer = AsyncFileTestModelParentSerializer(
                 data={"files": [data]},
                 instance=parent,
@@ -152,7 +154,7 @@ class SerializerAsyncFileTestCase(TestCase):
             self.assertFalse(nesting_serializer.is_valid())
 
         # emulates FE payload where id would be included
-        data["id"] = tm.id
+        data["id"] = test_model.id
 
         # test that when frontend submits a nested request with unchanged data, it succeeds
         nesting_serializer = AsyncFileTestModelParentSerializer(
@@ -162,10 +164,10 @@ class SerializerAsyncFileTestCase(TestCase):
         self.assertTrue(nesting_serializer.is_valid())
 
         # test that changing the file also wont raise a validation error on changed key
-        new_tf = AsyncTempFile.create_for_field(
+        new_temp_file = AsyncTempFile.create_for_field(
             AsyncFileTestModel._meta.get_field("image_with_dims"), "test2.png"
         )
-        data["image_with_dims"] = {"key": new_tf.key, "name": "test2.png", "width": 16, "height": 16}
+        data["image_with_dims"] = {"key": new_temp_file.key, "name": "test2.png", "width": 16, "height": 16}
         nesting_serializer = AsyncFileTestModelParentSerializer(
             data={"files": [data]},
             instance=parent,

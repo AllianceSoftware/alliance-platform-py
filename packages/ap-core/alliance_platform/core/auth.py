@@ -28,7 +28,8 @@ def default_resolve_perm_name(
     The default implementation makes no use of the ``is_global`` parameter.
 
     Args:
-        app_config: The app config the permission is for. All permissions are scoped to an app.
+        app_config: The app config the permission is for. All permissions are scoped to an app. If ``model``, you can pass
+            ``model._meta.app_config`` here..
         model: The model to use in the permission name. Can be ``None`` if permission is not specific to a model.
         action: The action to perform. For example, common ones include ``"create"``, ``"update"``, ``"detail"``, ``"list"``, ``"delete"`,
             but it can be anything.
@@ -67,7 +68,8 @@ def resolve_perm_name(
         "myapp.management"
 
     Args:
-        app_config: The app config the permission is for. All permissions are scoped to an app.
+        app_config: The app config the permission is for. All permissions are scoped to an app. If ``model``, you can pass
+            ``model._meta.app_config`` here.
         model: The model to use in the permission name. Can be ``None`` if permission is not specific to a model.
         action: The action to perform. For example, common ones include ``"create"``, ``"update"``, ``"detail"``, ``"list"``, ``"delete"`,
             but it can be anything.

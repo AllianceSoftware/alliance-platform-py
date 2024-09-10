@@ -42,7 +42,7 @@ def validate_generate_upload_url(data: QueryDict, registry: AsyncFieldRegistry):
 
 
 class ViewProtocol(Protocol):
-    view_initkwargs: dict[str, Any]  # drf-stubs is missing this
+    view_initkwargs: dict[str, Any]  # django-stubs is missing this
 
 
 class ModelWithDefaultManager(Protocol):

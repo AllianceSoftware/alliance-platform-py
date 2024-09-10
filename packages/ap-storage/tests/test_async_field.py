@@ -586,7 +586,7 @@ class GenerateUploadUrlViewTestCase(TestCase):
             self.assertEqual(async_temp_file.moved_to_location, "")
 
             # Create record using temp file key. This results in move_file being
-            # called, AsyncTempFile having `movefd_to_location` set and the file field being updated
+            # called, AsyncTempFile having `moved_to_location` set and the file field being updated
             # to the original filename
             file = AsyncFileTestModel.objects.create(file1=async_temp_file.key)
             self.assertEqual(file.file1, "abc.jpg")
@@ -612,7 +612,7 @@ class GenerateUploadUrlViewTestCase(TestCase):
             self.assertEqual(async_temp_file.moved_to_location, "")
 
             # Update the file1 to use the new temp key. This results in move_file being
-            # called, AsyncTempFile having `movefd_to_location` set and the file field being updated
+            # called, AsyncTempFile having `moved_to_location` set and the file field being updated
             # to the original filename
             instance.file1 = async_temp_file.key
             instance.save()
