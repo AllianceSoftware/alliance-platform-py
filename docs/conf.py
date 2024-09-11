@@ -1,3 +1,5 @@
+import importlib
+import inspect
 import os
 from pathlib import Path
 import sys
@@ -34,6 +36,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
     "sphinx_rtd_theme",
+    "sphinx.ext.linkcode",
 ]
 
 templates_path = ["_templates"]
@@ -165,3 +168,40 @@ def setup(app):
 
 
 generate_sidebar(current_dir, globals())
+
+git_identifier = os.environ.get("READTHEDOCS_GIT_IDENTIFIER", "main")
+
+
+def linkcode_resolve(domain, info):
+    """Handle resolving URL for the linkcode extension.
+
+    See https://www.sphinx-doc.org/en/master/usage/extensions/linkcode.html#confval-linkcode_resolve
+    """
+    if domain != "py":
+        return None
+    if not info["module"]:
+        return None
+    filename = info["module"].replace(".", "/")
+    try:
+        # e.g. alliance_platform/frontend/whatever
+        # project will be 'frontend'
+        package, project, _ = filename.rsplit("/", 2)
+    except ValueError:
+        return None
+    if package != "alliance_platform":
+        return None
+    obj_name, *parts = info["fullname"].split(".")
+    obj = getattr(importlib.import_module(info["module"]), obj_name)
+    try:
+        if parts:
+            try:
+                _, linenum = inspect.getsourcelines(getattr(obj, parts[0]))
+            except (TypeError, AttributeError):
+                # This will happen when getattr above returns a variable instead of method
+                _, linenum = inspect.getsourcelines(obj)
+        else:
+            _, linenum = inspect.getsourcelines(obj)
+    except TypeError:
+        # May fail still, e.g. for types
+        linenum = 0
+    return f"https://github.com/AllianceSoftware/alliance-platform-py/blob/{git_identifier}/packages/ap-{project}/{filename}.py#L{linenum}"
