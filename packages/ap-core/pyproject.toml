@@ -30,4 +30,5 @@ getter = "extract_version:get_version()"
 python_version = "3.11"
 plugins = []
 explicit_package_bases = true
+warn_unused_ignores = true
 

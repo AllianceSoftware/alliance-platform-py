@@ -127,7 +127,7 @@ class Command(BaseCommand):
         stderr_warn = OutputWrapper(sys.stderr)
         stderr_warn.style_func = self.style.WARNING
         f = io.StringIO()
-        with redirect_stdout(f if quiet else self.stdout):  # type: ignore[type-var]
+        with redirect_stdout(f if quiet else self.stdout):
             files, breakdown, errors, warnings = extract_asset_filenames()
             if warnings:
                 stderr_warn.write("\n".join(warnings))

@@ -89,4 +89,5 @@ a `package.json` file; base these off the existing packages.
    3. Under the new project, go to Settings and Environment Variables. Add a new variable `PROJECT` and name it the same as
       what the key in `multiple_projects` is.
    4. Go to Automation Rules and add a rule for detecting version tags. Set it to a custom match on tags with the pattern `alliance-platform-NAME@\d\.\d\.\d` (where NAME is replaced with the package name)
-   5. Then, under the main `alliance-platform` settings you can add it as a subproject.
+   5. Under settings check the `Build pull requests for this project:` option
+   6. Then, under the main `alliance-platform` settings you can add it as a subproject.
