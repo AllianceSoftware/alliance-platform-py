@@ -10,17 +10,17 @@ from .test_utils import override_ap_core_settings
 class TestAuth(TestCase):
     def test_default_resolve_perm_name(self):
         self.assertEqual(
-            resolve_perm_name(PermTestModelA._meta.app_config, PermTestModelA, "list", True),
+            resolve_perm_name(PermTestModelA, "list", True),
             "test_alliance_platform_core.permtestmodela_list",
         )
 
         self.assertEqual(
-            resolve_perm_name(PermTestModelB._meta.app_config, PermTestModelB, "update", False),
+            resolve_perm_name(PermTestModelB(), "update", False),
             "test_alliance_platform_core.permtestmodelb_update",
         )
 
         self.assertEqual(
-            resolve_perm_name(apps.get_app_config("test_alliance_platform_core"), None, "management", True),
+            resolve_perm_name(apps.get_app_config("test_alliance_platform_core"), "management", True),
             "test_alliance_platform_core.management",
         )
 
@@ -29,18 +29,18 @@ class TestAuth(TestCase):
             with self.subTest(setting_value=setting_value):
                 with override_ap_core_settings(RESOLVE_PERM_NAME=setting_value):
                     self.assertEqual(
-                        resolve_perm_name(PermTestModelA._meta.app_config, PermTestModelA, "list", True),
+                        resolve_perm_name(PermTestModelA, "list", True),
                         "test_alliance_platform_core|permtestmodela|list|True",
                     )
 
                     self.assertEqual(
-                        resolve_perm_name(PermTestModelB._meta.app_config, PermTestModelB, "update", False),
+                        resolve_perm_name(PermTestModelB, "update", False),
                         "test_alliance_platform_core|permtestmodelb|update|False",
                     )
 
                     self.assertEqual(
                         resolve_perm_name(
-                            apps.get_app_config("test_alliance_platform_core"), None, "management", True
+                            apps.get_app_config("test_alliance_platform_core"), "management", True
                         ),
                         "test_alliance_platform_core|management|True",
                     )

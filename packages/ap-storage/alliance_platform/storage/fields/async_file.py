@@ -335,23 +335,20 @@ class AsyncFileMixin(AsyncFileMixinProtocol):
             self.async_field_registry.register_field(field)
             if self.perm_update is _UNSET:
                 self.perm_update = resolve_perm_name(
-                    app_config=self.model._meta.app_config,
-                    model=self.model,
+                    self.model,
                     action="update",
                     is_global=False,
                 )
             if self.perm_create is _UNSET:
                 self.perm_create = resolve_perm_name(
-                    app_config=self.model._meta.app_config,
-                    model=self.model,
+                    self.model,
                     action="create",
                     is_global=True,
                 )
 
             if self.perm_detail is _UNSET:
                 self.perm_detail = resolve_perm_name(
-                    app_config=self.model._meta.app_config,
-                    model=self.model,
+                    self.model,
                     action="detail",
                     is_global=False,
                 )
