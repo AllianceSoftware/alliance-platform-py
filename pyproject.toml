@@ -60,12 +60,13 @@ frontend-mypy = { cmd = "mypy .", working_dir = "packages/ap-frontend" }
 codegen-test = { shell = "./manage.py test", working_dir = "packages/ap-codegen" }
 codegen-mypy = { cmd = "mypy .", working_dir = "packages/ap-codegen" }
 
+core-test = { shell = "./manage.py test", working_dir = "packages/ap-core" }
 core-mypy = { cmd = "mypy .", working_dir = "packages/ap-core" }
 
 storage-test = { shell = "./manage.py test", working_dir = "packages/ap-storage" }
 storage-mypy = { cmd = "mypy .", working_dir = "packages/ap-storage" }
 
-test = { composite = ["frontend-test", "codegen-test"], keep_going = true }
+test = { composite = ["frontend-test", "codegen-test", "core-test", "storage-test"], keep_going = true }
 
 mypy = { composite = [
   "codegen-mypy",
