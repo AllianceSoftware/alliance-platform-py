@@ -30,6 +30,7 @@ dev = [
   "tox",
   "tox-pdm>=0.7.2",
   "ruff",
+  "Pillow",
   "django-storages[s3]",
   "django-storages[azure]",
 ]
