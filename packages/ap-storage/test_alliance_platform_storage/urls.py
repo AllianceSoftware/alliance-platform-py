@@ -1,10 +1,6 @@
-from alliance_platform.storage.views import DownloadRedirectView
-from alliance_platform.storage.views import GenerateUploadUrlView
-from django.urls import path
+from alliance_platform.storage.registry import default_async_field_registry
 
 app_name = "test_alliance_platform_storage"
 
-urlpatterns = [
-    path("download-file/", DownloadRedirectView.as_view()),
-    path("generate-upload-url/", GenerateUploadUrlView.as_view()),
-]
+
+urlpatterns = [*default_async_field_registry.get_url_patterns()]

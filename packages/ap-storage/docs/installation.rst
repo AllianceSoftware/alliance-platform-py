@@ -31,11 +31,18 @@ Register URLs
 
 The core functionality of ``alliance_platform_storage`` is to allow uploading directly to a backend, like S3 or Azure,
 and to allow downloading previously uploaded files, while making sure this functionality is only available to
-authorised users. To facilitate this, the following URLs need to be registered::
+authorised users. To facilitate this, some URLs need to be registered.
+
+The easiest way to do this is to call :meth:`~alliance_platform.storage.registry.AsyncFieldRegistry.get_url_patterns`, which
+will return the URLs required for any of the storage classes used::
+
+
+    from django.urls import include
+    from django.urls import path
+    from alliance_platform.storage.registry import default_async_field_registry
 
     urlpatterns = [
-        path("download-file/", DownloadRedirectView.as_view()),
-        path("generate-upload-url/", GenerateUploadUrlView.as_view()),
+        path("async-upload/", include(default_async_field_registry.get_url_patterns())),
     ]
 
 You can choose whatever path you like - the above is just an example.
@@ -64,7 +71,7 @@ To make it the default for fields set the :setting:`STORAGES <django:STORAGES>` 
         },
     }
 
-See the `authentication documentation <https://django-storages.readthedocs.io/en/latest/backends/amazon-S3.html#authentication-settings>`_
+See the `S3 authentication documentation <https://django-storages.readthedocs.io/en/latest/backends/amazon-S3.html#authentication-settings>`_
 for what other settings will need to be set.
 
 Use with Azure Blob Storage
@@ -85,7 +92,7 @@ To make it the default for fields set the :setting:`STORAGES <django:STORAGES>` 
         },
     }
 
-See the `authentication documentation <https://django-storages.readthedocs.io/en/latest/backends/azure.html#authentication-settings>`_
+See the `Azure authentication documentation <https://django-storages.readthedocs.io/en/latest/backends/azure.html#authentication-settings>`_
 for what other settings will need to be set.
 
 Configuration

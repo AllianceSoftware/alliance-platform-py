@@ -3,10 +3,12 @@ import os
 from typing import TYPE_CHECKING
 
 from django.core.exceptions import SuspiciousFileOperation
+from django.urls import path
 from django.utils.crypto import get_random_string
 
 if TYPE_CHECKING:
     # when doing type checks we can assume AsyncUploadStorage is used w/ an actual Storage as a mixin
+    from alliance_platform.storage.registry import AsyncFieldRegistry
     from django.core.files.storage import Storage
 else:
 
@@ -90,3 +92,28 @@ class AsyncUploadStorage(Storage):
         if not filename:
             return False
         return filename.startswith(self.temporary_key_prefix + "/")
+
+    def get_url_patterns(self, registry: "AsyncFieldRegistry"):
+        """Return the URL patterns for any views required by the storage class
+
+        When extending ``AsyncUploadStorage``, this method can be implemented if any custom views
+        are required to support the implementation. By default, two views are supplied:
+
+        1) :class:`~alliance_platform.storage.views.DownloadRedirectView` to support downloading an existing file. This
+           is attached to the `"download-file/"` path.
+        2) :class:`~alliance_platform.storage.views.GenerateUploadUrlView` to generate a URL that can be uploaded to
+           directly from the frontend. This is attached to the `"generate-upload-url/"` path.
+
+        This method is called by :meth:`~alliance_platform.storage.registry.AsyncFieldRegistry.get_url_patterns`.
+        """
+        from alliance_platform.storage.views import DownloadRedirectView
+        from alliance_platform.storage.views import GenerateUploadUrlView
+
+        # already generated patterns for these views, can return nothing
+        if registry.attached_download_view and registry.attached_view:
+            return []
+
+        return [
+            path("download-file/", DownloadRedirectView.as_view(registry=registry)),
+            path("generate-upload-url/", GenerateUploadUrlView.as_view(registry=registry)),
+        ]
