@@ -114,7 +114,10 @@ class GenerateUploadUrlView(View):
         return JsonResponse(
             {
                 "uploadUrl": field.storage.generate_upload_url(
-                    temp_file.key, fields=validated_data.get("params"), conditions=conditions or None
+                    temp_file.key,
+                    field_id,
+                    fields=validated_data.get("params"),
+                    conditions=conditions or None,
                 ),
                 "key": temp_file.key,
             }
@@ -182,5 +185,4 @@ class DownloadRedirectView(View):
         value = getattr(obj, field.name)
         if not value:
             return HttpResponseNotFound(f"No value set for {field.name}")
-        return HttpResponseRedirect(field.storage.generate_download_url(value.name))
-        # TODO: Handle setting to override behaviour here
+        return HttpResponseRedirect(field.storage.generate_download_url(value.name, field_id))

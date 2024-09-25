@@ -3,13 +3,13 @@ import os
 from typing import TYPE_CHECKING
 
 from django.core.exceptions import SuspiciousFileOperation
+from django.core.files.storage import Storage
 from django.urls import path
 from django.utils.crypto import get_random_string
 
 if TYPE_CHECKING:
     # when doing type checks we can assume AsyncUploadStorage is used w/ an actual Storage as a mixin
     from alliance_platform.storage.registry import AsyncFieldRegistry
-    from django.core.files.storage import Storage
 else:
 
     class Storage:
@@ -32,14 +32,14 @@ class AsyncUploadStorage(Storage):
     #: temporary file to know whether to move them and so *must* be unique to temporary files.
     temporary_key_prefix = "async-temp-files"
 
-    def generate_upload_url(self, name: str, *args, **kwargs) -> str:
+    def generate_upload_url(self, name: str, field_id: str, *args, **kwargs) -> str:
         """Should return a URL that a file can be uploaded directly to
 
         In S3 this would be a signed URL.
         """
         raise NotImplementedError("generate_upload_url must be implemented")
 
-    def generate_download_url(self, key, **kwargs):
+    def generate_download_url(self, key: str, field_id: str, **kwargs):
         """Should return a URL that the specified key should be downloadable from
 
         In S3 this would be a signed URL.

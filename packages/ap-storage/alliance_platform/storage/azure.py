@@ -33,6 +33,7 @@ class AzureAsyncUploadStorage(AzureStorage, AsyncUploadStorage):
     def generate_upload_url(
         self,
         name: str,
+        field_id: str,
         *,
         expire: int = 3600,
         conditions: Any | None = None,
@@ -63,7 +64,7 @@ class AzureAsyncUploadStorage(AzureStorage, AsyncUploadStorage):
         container_blob_url = self.client.get_blob_client(name).url
         return {"url": BlobClient.from_blob_url(container_blob_url, credential=credential).url, "fields": {}}
 
-    def generate_download_url(self, key, **kwargs):
+    def generate_download_url(self, key, field_id, **kwargs):
         """Generates a signed URL to download the file"""
         return super().url(key, **kwargs)
 

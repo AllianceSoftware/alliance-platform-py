@@ -25,6 +25,7 @@ class S3AsyncUploadStorage(S3Boto3Storage, AsyncUploadStorage):
     def generate_upload_url(
         self,
         name: str,
+        field_id: str,
         *,
         expire: int | None = 3600,
         conditions: Any | None = None,
@@ -61,7 +62,7 @@ class S3AsyncUploadStorage(S3Boto3Storage, AsyncUploadStorage):
             self.bucket_name, name, Fields=fields, Conditions=conditions, ExpiresIn=expire
         )
 
-    def generate_download_url(self, key, **kwargs):
+    def generate_download_url(self, key: str, field_id: str, **kwargs):
         """Generates a signed URL to download the file"""
         return super().url(key)
 
