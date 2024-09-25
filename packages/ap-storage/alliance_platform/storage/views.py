@@ -1,3 +1,5 @@
+import json
+from json import JSONDecodeError
 from typing import Any
 from typing import Protocol
 from typing import cast
@@ -37,6 +39,11 @@ def validate_generate_upload_url(data: QueryDict, registry: AsyncFieldRegistry):
         errors["filename"] = "This field is required."
     if errors:
         raise ValidationError(errors)
+    if params:
+        try:
+            params = json.loads(params)
+        except JSONDecodeError:
+            errors["params"] = "Invalid JSON"
 
     return {"field_id": field_id, "filename": filename, "params": params, "instance_id": instance_id}
 
