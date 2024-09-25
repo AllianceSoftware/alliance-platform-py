@@ -15,6 +15,7 @@ implementations for S3 & Azure, or you can implement your own.
 
    installation
    settings
+   legacy_migration
    usage
    commands
    api
