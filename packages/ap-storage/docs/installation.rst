@@ -26,6 +26,8 @@ Add ``alliance_platform.storage`` to your ``INSTALLED_APPS``.
         ...
     ]
 
+.. _register-urls:
+
 Register URLs
 ~~~~~~~~~~~~~
 
@@ -94,6 +96,19 @@ To make it the default for fields set the :setting:`STORAGES <django:STORAGES>` 
 
 See the `Azure authentication documentation <https://django-storages.readthedocs.io/en/latest/backends/azure.html#authentication-settings>`_
 for what other settings will need to be set.
+
+Use with File System
+~~~~~~~~~~~~~~~~~~~~
+
+To use with the local filesystem you can use :class:`~alliance_platform.storage.filesystem.FileSystemAsyncUploadStorage`.
+
+To make it the default for fields set the :setting:`STORAGES <django:STORAGES>` setting::
+
+    STORAGES = {
+        "default": {
+            "BACKEND": "alliance_platform.storage.azure.FileSystemAsyncUploadStorage"
+        },
+    }
 
 Configuration
 -------------

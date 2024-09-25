@@ -1,9 +1,23 @@
 API
 =============================================
 
+
+Storage classes
+***************
+
 .. autoclass:: alliance_platform.storage.base.AsyncUploadStorage
     :members:
 
+.. autoclass:: alliance_platform.storage.s3.S3AsyncUploadStorage
+
+.. autoclass:: alliance_platform.storage.azure.AzureAsyncUploadStorage
+
+.. autoclass:: alliance_platform.storage.filesystem.FileSystemAsyncUploadStorage
+
+Staticfiles Storage
+*******************
+
+.. autoclass:: alliance_platform.storage.manifest_storage.ExcludingManifestStaticFilesStorage
 
 Models
 ******
@@ -66,6 +80,10 @@ Views
 .. autoclass:: alliance_platform.storage.views.GenerateUploadUrlView
 
 .. autoclass:: alliance_platform.storage.views.DownloadRedirectView
+
+.. autoclass:: alliance_platform.storage.filesystem_views.FileSystemAsyncStorageUploadView
+
+.. autoclass:: alliance_platform.storage.filesystem_views.FileSystemAsyncStorageDownloadView
 
 Registry
 ********

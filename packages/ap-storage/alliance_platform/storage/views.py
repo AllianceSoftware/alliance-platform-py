@@ -74,6 +74,8 @@ class GenerateUploadUrlView(View):
     (this happens as part of :class:`~alliance_platform.storage.fields.async_file.AsyncFileMixin`)
 
     See :class:`~alliance_platform.storage.fields.async_file.AsyncFileMixin` for a detailed explanation of how all the pieces fit together.
+
+    This view is automatically registered if you have followed the :ref:`register-urls` guide.
     """
 
     registry = default_async_field_registry
@@ -159,6 +161,8 @@ class DownloadRedirectView(View):
     :meth:`~alliance_platform.storage.base.AsyncUploadStorage.generate_download_url`.
 
     See :class:`~alliance_platform.storage.fields.async_file.AsyncFileMixin` for a detailed explanation of how all the pieces fit together.
+
+    This view is automatically registered if you have followed the :ref:`register-urls` guide.
     """
 
     registry = default_async_field_registry
