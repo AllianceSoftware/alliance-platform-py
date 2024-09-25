@@ -1,6 +1,7 @@
 import datetime
 import os
 from typing import TYPE_CHECKING
+from typing import TypedDict
 
 from django.core.exceptions import SuspiciousFileOperation
 from django.core.files.storage import Storage
@@ -14,6 +15,13 @@ else:
 
     class Storage:
         pass
+
+
+class GenerateUploadUrlResponse(TypedDict):
+    #: The URL to post to
+    url: str
+    #: A dictionary of form field names and their values to be included when submitting
+    fields: dict
 
 
 class AsyncUploadStorage(Storage):
@@ -32,7 +40,7 @@ class AsyncUploadStorage(Storage):
     #: temporary file to know whether to move them and so *must* be unique to temporary files.
     temporary_key_prefix = "async-temp-files"
 
-    def generate_upload_url(self, name: str, field_id: str, *args, **kwargs) -> str:
+    def generate_upload_url(self, name: str, field_id: str, *args, **kwargs) -> GenerateUploadUrlResponse:
         """Should return a URL that a file can be uploaded directly to
 
         In S3 this would be a signed URL.

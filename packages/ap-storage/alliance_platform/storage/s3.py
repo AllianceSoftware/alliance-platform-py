@@ -1,6 +1,7 @@
 from typing import Any
 
 from alliance_platform.storage.base import AsyncUploadStorage
+from alliance_platform.storage.base import GenerateUploadUrlResponse
 from alliance_platform.storage.settings import ap_storage_settings
 from django.core.exceptions import ImproperlyConfigured
 
@@ -31,7 +32,7 @@ class S3AsyncUploadStorage(S3Boto3Storage, AsyncUploadStorage):
         expire: int | None = ap_storage_settings.UPLOAD_URL_EXPIRY,
         conditions: Any | None = None,
         fields: Any | None = None,
-    ) -> str:
+    ) -> GenerateUploadUrlResponse:
         """
         Generates a presigned POST signed URL. Returns a dictionary with two elements: url and fields. Url is the url to post to. Fields is a dictionary filled with the form fields and respective values to use when submitting the post.
         e.g
