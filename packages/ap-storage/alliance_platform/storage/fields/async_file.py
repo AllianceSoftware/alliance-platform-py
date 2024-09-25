@@ -482,10 +482,13 @@ class AsyncFileInput(Input):
     of :class:`~alliance_platform.storage.fields.async_file.AsyncFileInputData`. This is then handled
     on the descriptor classes for :class:`~alliance_platform.storage.fields.async_file.AsyncFileField`
     and :class:`~alliance_platform.storage.fields.async_file.AsyncImageField`.
+
+    To customise the widget rendered on the frontend you can override the template
+    ``alliance_platform/storage/widgets/async_file_input.html``.
     """
 
     input_type = "async-file"
-    template_name = "widgets/async_file_input.html"
+    template_name = "alliance_platform/storage/widgets/async_file_input.html"
 
     # This is needed to generate URL to file in case where we only
     # have the AsyncTempFile (see `format_value`)
