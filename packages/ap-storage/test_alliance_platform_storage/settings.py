@@ -53,6 +53,7 @@ INSTALLED_APPS = (
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "rules.apps.AutodiscoverRulesConfig",
+    "django.contrib.staticfiles",
 )
 
 AUTHENTICATION_BACKENDS = [
