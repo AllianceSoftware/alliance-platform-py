@@ -6,16 +6,14 @@ from alliance_platform.storage.settings import ap_storage_settings
 from django.core.exceptions import ImproperlyConfigured
 
 try:
-    from storages.backends.s3boto3 import (  # type: ignore[import-untyped] # no types for storages
-        S3Boto3Storage,
-    )
+    from storages.backends.s3 import S3Storage  # type: ignore[import-untyped] # no types for storages
 except ImportError as e:
     raise ImproperlyConfigured(
         "Optional dependency 'django-storages[s3]' is not installed. This is required for the S3AsyncUploadStorage backend."
     ) from e
 
 
-class S3AsyncUploadStorage(S3Boto3Storage, AsyncUploadStorage):
+class S3AsyncUploadStorage(S3Storage, AsyncUploadStorage):
     """S3 implementation of AsyncUploadStorage
 
     Uses signed URLs for uploading.
