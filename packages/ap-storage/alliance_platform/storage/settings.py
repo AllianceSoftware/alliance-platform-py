@@ -18,14 +18,23 @@ class AlliancePlatformStorageSettingsType(TypedDict, total=False):
         }
     """
 
+    #: Number of seconds a generated upload URL is valid for by default. Defaults to 3600.
+    UPLOAD_URL_EXPIRY: int | None
+    #: Number of seconds a generated download URL is valid for by default. Defaults to 3600.
+    DOWNLOAD_URL_EXPIRY: int | None
+
 
 class AlliancePlatformStorageSettings(AlliancePlatformSettingsBase):
-    pass
+    #: Number of seconds a generated upload URL is valid for by default. Defaults to 3600.
+    UPLOAD_URL_EXPIRY: int
+    #: Number of seconds a generated download URL is valid for by default. Defaults to 3600.
+    DOWNLOAD_URL_EXPIRY: int
 
 
-# TODO: Currently no settings - I'm anticipating adding some before first release. If this doesn't happen, we can
-# remove storage settings entirely.
-DEFAULTS: Any = {}
+DEFAULTS: Any = {
+    "UPLOAD_URL_EXPIRY": 3600,
+    "DOWNLOAD_URL_EXPIRY": 3600,
+}
 
 ap_storage_settings = AlliancePlatformStorageSettings(
     "STORAGE",

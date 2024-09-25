@@ -114,5 +114,3 @@ See above for setting the django :setting:`STORAGES <django:STORAGES>` setting t
         )
 
 See the :doc:`settings` documentation for details about each of the available settings.
-
-TODO: Fill this out

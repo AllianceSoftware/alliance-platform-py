@@ -1,6 +1,7 @@
 from typing import Any
 
 from alliance_platform.storage.base import AsyncUploadStorage
+from alliance_platform.storage.settings import ap_storage_settings
 from django.core.exceptions import ImproperlyConfigured
 
 try:
@@ -27,7 +28,7 @@ class S3AsyncUploadStorage(S3Boto3Storage, AsyncUploadStorage):
         name: str,
         field_id: str,
         *,
-        expire: int | None = 3600,
+        expire: int | None = ap_storage_settings.UPLOAD_URL_EXPIRY,
         conditions: Any | None = None,
         fields: Any | None = None,
     ) -> str:
@@ -62,9 +63,11 @@ class S3AsyncUploadStorage(S3Boto3Storage, AsyncUploadStorage):
             self.bucket_name, name, Fields=fields, Conditions=conditions, ExpiresIn=expire
         )
 
-    def generate_download_url(self, key: str, field_id: str, **kwargs):
+    def generate_download_url(
+        self, key: str, field_id: str, expire=ap_storage_settings.DOWNLOAD_URL_EXPIRY, **kwargs
+    ):
         """Generates a signed URL to download the file"""
-        return super().url(key)
+        return super().url(key, expire=expire)
 
     def move_file(self, from_key, to_key):
         """Moves file by copying :code:`from_key` to :code:`to_key` and then deletes :code:`from_key`"""

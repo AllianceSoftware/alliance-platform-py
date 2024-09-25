@@ -2,6 +2,7 @@ from datetime import timedelta
 from typing import Any
 
 from alliance_platform.storage.base import AsyncUploadStorage
+from alliance_platform.storage.settings import ap_storage_settings
 from django.core.exceptions import ImproperlyConfigured
 from django.utils import timezone
 
@@ -35,7 +36,7 @@ class AzureAsyncUploadStorage(AzureStorage, AsyncUploadStorage):
         name: str,
         field_id: str,
         *,
-        expire: int = 3600,
+        expire: int = ap_storage_settings.UPLOAD_URL_EXPIRY,
         conditions: Any | None = None,
         fields: Any | None = None,
     ):
@@ -64,9 +65,11 @@ class AzureAsyncUploadStorage(AzureStorage, AsyncUploadStorage):
         container_blob_url = self.client.get_blob_client(name).url
         return {"url": BlobClient.from_blob_url(container_blob_url, credential=credential).url, "fields": {}}
 
-    def generate_download_url(self, key, field_id, **kwargs):
+    def generate_download_url(
+        self, key: str, field_id: str, expire=ap_storage_settings.DOWNLOAD_URL_EXPIRY, **kwargs
+    ):
         """Generates a signed URL to download the file"""
-        return super().url(key, **kwargs)
+        return super().url(key, expire=expire)
 
     def move_file(self, from_key, to_key):
         """Moves file by copying :code:`from_key` to :code:`to_key` and then deletes :code:`from_key`"""
