@@ -17,7 +17,7 @@ Storage classes
 Staticfiles Storage
 *******************
 
-.. autoclass:: alliance_platform.storage.manifest_storage.ExcludingManifestStaticFilesStorage
+.. autoclass:: alliance_platform.storage.staticfiles.storage.ExcludingManifestStaticFilesStorage()
 
 Models
 ******

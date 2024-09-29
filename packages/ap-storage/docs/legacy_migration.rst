@@ -50,9 +50,24 @@ table in ``alliance_platform.storage``.
 Notable differences
 ===================
 
-The only potential breaking change between the most recent version of `common_storage <https://gitlab.internal.alliancesoftware.com.au/alliance/template-django/-/tree/10d5f3466ad5a2a7304f5db4c0aaf17d054593ec/django-root/common_storage>`_
+The only potential breaking change in async uploads between the most recent version of `common_storage <https://gitlab.internal.alliancesoftware.com.au/alliance/template-django/-/tree/10d5f3466ad5a2a7304f5db4c0aaf17d054593ec/django-root/common_storage>`_
 and the initial published version of ``alliance_platform_storage`` is the addition of the ``field_id`` argument to
 :meth:`~alliance_platform.storage.base.AsyncUploadStorage.generate_upload_url` and
 :meth:`~alliance_platform.storage.base.AsyncUploadStorage.generate_download_url`. However, this will only matter if you are
 calling these functions directly, or have extended an ``AsyncUploadStorage`` class and overridden these methods. If so,
 you will just need to update the signature to accept the ``field_id`` argument.
+
+ManifestStaticFilesExcludeWebpackStorage
+========================================
+
+The other change is the removal of the ``ManifestStaticFilesExcludeWebpackStorage`` class. Instead, you can now use
+:class:`~alliance_platform.storage.staticfiles.storage.ExcludingManifestStaticFilesStorage`. Its usage would be something
+like::
+
+    STORAGES = {
+        "staticfiles": {
+            "BACKEND": "alliance_platform.storage.staticfiles.storage.ExcludingManifestStaticFilesStorage",
+            # Adjust this based on the specific setting name or build directory in your project
+            "OPTIONS": {"exclude_patterns": [f"{settings.FRONTEND_PRODUCTION_DIR}/*"]},
+        }
+    }
