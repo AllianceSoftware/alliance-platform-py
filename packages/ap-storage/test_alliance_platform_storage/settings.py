@@ -3,7 +3,6 @@ import os
 from pathlib import Path
 import random
 from typing import TypedDict
-import warnings
 
 from alliance_platform.core.settings import AlliancePlatformCoreSettingsType
 from alliance_platform.storage.settings import AlliancePlatformStorageSettingsType
@@ -105,18 +104,3 @@ PASSWORD_HASHERS = (
 # -------------------------------------
 # Custom settings
 QUERY_COUNT_WARNING_THRESHOLD = 40
-
-warnings.simplefilter("always")
-
-try:
-    from django.utils.deprecation import RemovedInDjango51Warning  # noqa
-except ImportError:
-    pass
-else:
-    # SHA1Passwordhasher might be on its way out but it is still good for test cases because it's
-    # much faster than the (secure) alternatives
-    warnings.filterwarnings(
-        "ignore",
-        category=PendingDeprecationWarning,
-        message="django.contrib.auth.hashers.SHA1PasswordHasher is deprecated.",
-    )
