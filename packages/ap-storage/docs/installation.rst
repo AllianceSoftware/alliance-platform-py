@@ -7,7 +7,7 @@ Install the ``alliance_platform_storage`` package:
 
     poetry add alliance_platform_storage
 
-If you are using one of the optional backends, you can specify it as an extra:
+If you are using one of the :ref:`optional async upload backends <async-upload-backends>`, you can specify it as an extra:
 
 .. code-block:: bash
 
@@ -26,96 +26,13 @@ Add ``alliance_platform.storage`` to your ``INSTALLED_APPS``.
         ...
     ]
 
-.. _register-urls:
-
-Register URLs
+Async Uploads
 ~~~~~~~~~~~~~
 
-The core functionality of ``alliance_platform_storage`` is to allow uploading directly to a backend, like S3 or Azure,
-and to allow downloading previously uploaded files, while making sure this functionality is only available to
-authorised users. To facilitate this, some URLs need to be registered.
+If you are using the :doc:`async_uploads` feature, see the :ref:`async uploads installation instructions<async-uploads-installation>`.
 
-The easiest way to do this is to call :meth:`~alliance_platform.storage.registry.AsyncFieldRegistry.get_url_patterns`, which
-will return the URLs required for any of the storage classes used::
-
-
-    from django.urls import include
-    from django.urls import path
-    from alliance_platform.storage.registry import default_async_field_registry
-
-    urlpatterns = [
-        path("async-upload/", include(default_async_field_registry.get_url_patterns())),
-    ]
-
-You can choose whatever path you like - the above is just an example.
-
-Cleanup Script
+Other settings
 ~~~~~~~~~~~~~~
-
-The :djmanage:`cleanup_async_temp_files` script should be run periodically to clean up any incomplete uploads. It
-can be run as frequently as desired, but once a day is reasonable.
-
-Use with Amazon S3
-~~~~~~~~~~~~~~~~~~
-
-To use with Amazon S3 `django-storages with S3 <https://django-storages.readthedocs.io/en/latest/backends/amazon-S3.html#installation>`_
-is required. If you installed `alliance_platform_storage` with `-E s3` this will be installed, otherwise run:
-
-.. code-block:: bash
-
-    poetry add django-storages -E s3
-
-To make it the default for fields set the :setting:`STORAGES <django:STORAGES>` setting::
-
-    STORAGES = {
-        "default": {
-            "BACKEND": "alliance_platform.storage.s3.S3AsyncUploadStorage"
-        },
-    }
-
-See the `S3 authentication documentation <https://django-storages.readthedocs.io/en/latest/backends/amazon-S3.html#authentication-settings>`_
-for what other settings will need to be set.
-
-Use with Azure Blob Storage
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-To use with Azure `django-storages with Azure <https://django-storages.readthedocs.io/en/latest/backends/azure.html#installation>`_
-is required. If you installed `alliance_platform_storage` with `-E azure` this will be installed, otherwise run:
-
-.. code-block:: bash
-
-    poetry add django-storages -E azure
-
-To make it the default for fields set the :setting:`STORAGES <django:STORAGES>` setting::
-
-    STORAGES = {
-        "default": {
-            "BACKEND": "alliance_platform.storage.azure.AzureAsyncUploadStorage"
-        },
-    }
-
-See the `Azure authentication documentation <https://django-storages.readthedocs.io/en/latest/backends/azure.html#authentication-settings>`_
-for what other settings will need to be set.
-
-Use with File System
-~~~~~~~~~~~~~~~~~~~~
-
-To use with the local filesystem you can use :class:`~alliance_platform.storage.filesystem.FileSystemAsyncUploadStorage`.
-
-To make it the default for fields set the :setting:`STORAGES <django:STORAGES>` setting::
-
-    STORAGES = {
-        "default": {
-            "BACKEND": "alliance_platform.storage.azure.FileSystemAsyncUploadStorage"
-        },
-    }
-
-Configuration
--------------
-
-.. _storage-configuration:
-
-See above for setting the django :setting:`STORAGES <django:STORAGES>` setting to the relevant storage class.
 
 .. note::
 
@@ -127,5 +44,27 @@ See above for setting the django :setting:`STORAGES <django:STORAGES>` setting t
             "allianceutils.middleware.CurrentRequestMiddleware",
             ...
         )
+
+All settings are optional, so you can omit this if the defaults are satisfactory.
+
+In the settings file:
+
+.. code-block:: python
+
+    from alliance_platform.core.settings import AlliancePlatformCoreSettingsType
+    from alliance_platform.storage.settings import AlliancePlatformStorageSettingsType
+
+    class AlliancePlatformSettings(TypedDict):
+        CORE: AlliancePlatformCoreSettingsType
+        STORAGE: AlliancePlatformStorageSettingsType
+        # Any other settings for alliance_platform packages, e.g. FRONTEND
+
+    ALLIANCE_PLATFORM: AlliancePlatformSettings = {
+        "CORE": {"PROJECT_DIR": PROJECT_DIR},
+        "STORAGE": {
+            "UPLOAD_URL_EXPIRY": 3600,
+            "DOWNLOAD_URL_EXPIRY": 3600,
+        },
+    }
 
 See the :doc:`settings` documentation for details about each of the available settings.

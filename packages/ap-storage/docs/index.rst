@@ -18,6 +18,7 @@ with a build system that already does hashing.
 
    installation
    settings
+   async_uploads
    legacy_migration
    usage
    commands
