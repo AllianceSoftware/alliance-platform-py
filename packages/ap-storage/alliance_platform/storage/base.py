@@ -9,12 +9,7 @@ from django.urls import path
 from django.utils.crypto import get_random_string
 
 if TYPE_CHECKING:
-    # when doing type checks we can assume AsyncUploadStorage is used w/ an actual Storage as a mixin
     from alliance_platform.storage.registry import AsyncFieldRegistry
-else:
-
-    class Storage:
-        pass
 
 
 class GenerateUploadUrlResponse(TypedDict):

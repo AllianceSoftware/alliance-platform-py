@@ -1,7 +1,7 @@
 Alliance Platform Storage
 =============================================
 
-This package provides classes & fields for working with storage easier.
+This package provides classes & fields for working with storage more easily.
 
 The :class:`~alliance_platform.storage.fields.async_file.AsyncFileField` and :class:`~alliance_platform.storage.fields.async_file.AsyncImageField`
 fields can be used on a model to support uploading direct to the backend (eg. S3) without going through django.

@@ -12,7 +12,7 @@ from django.urls import reverse
 
 
 class FileSystemAsyncUploadStorage(FileSystemStorage, AsyncUploadStorage):
-    """Implementation of AsyncUploadStorage that uploads to direct the local server
+    """Implementation of AsyncUploadStorage that uploads directly to the local server
 
     This is useful in local dev, or when you still want the behaviour of uploading immediately rather than waiting
     until the whole form is submitted.

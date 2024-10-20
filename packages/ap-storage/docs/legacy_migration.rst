@@ -26,7 +26,7 @@ Follow these steps:
 * In ``urls.py`` remove the paths for ``DownloadRedirectView`` and ``GenerateUploadView``, and add the following instead
   (if not already done as part of installation)::
 
-    # You can change the path to whatever you like, or add the pattersn to the top level
+    # You can change the path to whatever you like, or add the patterns to the top level
     path("async-file/", include(default_async_field_registry.get_url_patterns())),
 
 When you migrate, if the ``common_storage_async_temp_file`` table exists its data will be copied into the corresponding
@@ -34,7 +34,7 @@ table in ``alliance_platform.storage``.
 
 .. warning::
 
-    Before doing this upgrade, check that the ``AsyncTemplFile`` table has the following fields, otherwise the
+    Before doing this upgrade, check that the ``AsyncTempFile`` table has the following fields, otherwise the
     migration will break. If any of these fields don't exist you will need to first upgrade to the latest version of
     `common_storage <https://gitlab.internal.alliancesoftware.com.au/alliance/template-django/-/tree/10d5f3466ad5a2a7304f5db4c0aaf17d054593ec/django-root/common_storage>`_.
 

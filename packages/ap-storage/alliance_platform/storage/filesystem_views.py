@@ -78,7 +78,7 @@ class FileSystemAsyncStorageUploadView(View):
         uploaded_file = cast(UploadedFile, request.FILES["file"])
         storage.save(path, uploaded_file)
 
-        return HttpResponse("File uploaded successfully.")
+        return HttpResponse("File uploaded successfully.", status=201)
 
 
 class FileSystemAsyncStorageDownloadView(View):
