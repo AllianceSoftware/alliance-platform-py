@@ -84,6 +84,27 @@ class AsyncFieldRegistry:
 
             self.fields_by_id[field_id] = field
 
+    def get_url_patterns(self):
+        """Get the required URL patterns for the storage classes used by the registered fields
+
+        This calls :meth:`~alliance_platform.storage.base.AsyncUploadStorage.get_url_patterns` on each
+        storage instance and combines the results.
+
+        Usage::
+
+            from django.urls import path
+            from django.urls import include
+            from alliance_platform.storage.registry import default_async_field_registry
+
+            urlpatterns = [path("async-uploads/", include(default_async_field_registry.get_url_patterns()))]
+        """
+        storage_instances = {field.storage for field in self.fields_by_id.values()}
+
+        patterns = []
+        for storage in storage_instances:
+            patterns += storage.get_url_patterns(self)
+        return patterns
+
 
 #: The default registry class to use when none is provided.
 default_async_field_registry = AsyncFieldRegistry("default")

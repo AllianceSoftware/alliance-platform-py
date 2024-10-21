@@ -1,3 +1,5 @@
+import json
+from json import JSONDecodeError
 from typing import Any
 from typing import Protocol
 from typing import cast
@@ -37,6 +39,11 @@ def validate_generate_upload_url(data: QueryDict, registry: AsyncFieldRegistry):
         errors["filename"] = "This field is required."
     if errors:
         raise ValidationError(errors)
+    if params:
+        try:
+            params = json.loads(params)
+        except JSONDecodeError:
+            errors["params"] = "Invalid JSON"
 
     return {"field_id": field_id, "filename": filename, "params": params, "instance_id": instance_id}
 
@@ -67,6 +74,8 @@ class GenerateUploadUrlView(View):
     (this happens as part of :class:`~alliance_platform.storage.fields.async_file.AsyncFileMixin`)
 
     See :class:`~alliance_platform.storage.fields.async_file.AsyncFileMixin` for a detailed explanation of how all the pieces fit together.
+
+    This view is automatically registered if you have followed the :ref:`register-urls` guide.
     """
 
     registry = default_async_field_registry
@@ -114,7 +123,10 @@ class GenerateUploadUrlView(View):
         return JsonResponse(
             {
                 "uploadUrl": field.storage.generate_upload_url(
-                    temp_file.key, fields=validated_data.get("params"), conditions=conditions or None
+                    temp_file.key,
+                    field_id,
+                    fields=validated_data.get("params"),
+                    conditions=conditions or None,
                 ),
                 "key": temp_file.key,
             }
@@ -149,6 +161,8 @@ class DownloadRedirectView(View):
     :meth:`~alliance_platform.storage.base.AsyncUploadStorage.generate_download_url`.
 
     See :class:`~alliance_platform.storage.fields.async_file.AsyncFileMixin` for a detailed explanation of how all the pieces fit together.
+
+    This view is automatically registered if you have followed the :ref:`register-urls` guide.
     """
 
     registry = default_async_field_registry
@@ -182,5 +196,4 @@ class DownloadRedirectView(View):
         value = getattr(obj, field.name)
         if not value:
             return HttpResponseNotFound(f"No value set for {field.name}")
-        return HttpResponseRedirect(field.storage.generate_download_url(value.name))
-        # TODO: Handle setting to override behaviour here
+        return HttpResponseRedirect(field.storage.generate_download_url(value.name, field_id))

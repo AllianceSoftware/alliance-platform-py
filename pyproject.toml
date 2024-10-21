@@ -33,6 +33,7 @@ dev = [
   "Pillow",
   "django-storages[s3]",
   "django-storages[azure]",
+  "Django>=5.1",
 ]
 docs = [
   "sphinx>=7.2.6",
