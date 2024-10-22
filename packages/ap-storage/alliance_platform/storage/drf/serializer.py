@@ -20,7 +20,7 @@ except ImportError as e:
 
 
 class AsyncFileField(serializers.ModelField):
-    """Field that works with :class:`~alliance_platform.storage.async_uploads.storage.AsyncUploadStorage` to handle uploading directly to
+    """Field that works with :class:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage` to handle uploading directly to
     external service like S3 or Azure.
 
     Unlike most fields this field must be backed by an underlying model field specified in the ``model_field``

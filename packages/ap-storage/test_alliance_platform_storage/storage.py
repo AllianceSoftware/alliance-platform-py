@@ -1,4 +1,4 @@
-from alliance_platform.storage.async_uploads.storage import AsyncUploadStorage
+from alliance_platform.storage.async_uploads.storage.base import AsyncUploadStorage
 from django.core.files.storage import Storage
 from django.utils.deconstruct import deconstructible
 

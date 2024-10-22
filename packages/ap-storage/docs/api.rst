@@ -5,14 +5,14 @@ API
 Storage classes
 ***************
 
-.. autoclass:: alliance_platform.storage.async_uploads.storage.AsyncUploadStorage
+.. autoclass:: alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage
     :members:
 
-.. autoclass:: alliance_platform.storage.async_uploads.storage.S3AsyncUploadStorage
+.. autoclass:: alliance_platform.storage.async_uploads.storage.s3.S3AsyncUploadStorage
 
-.. autoclass:: alliance_platform.storage.async_uploads.storage.AzureAsyncUploadStorage
+.. autoclass:: alliance_platform.storage.async_uploads.storage.azure.AzureAsyncUploadStorage
 
-.. autoclass:: alliance_platform.storage.async_uploads.storage.FileSystemAsyncUploadStorage
+.. autoclass:: alliance_platform.storage.async_uploads.storage.filesystem.FileSystemAsyncUploadStorage
 
 Staticfiles Storage
 *******************

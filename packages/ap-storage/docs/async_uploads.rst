@@ -17,7 +17,7 @@ Key Components:
 
 1. :class:`~alliance_platform.storage.async_uploads.models.AsyncFileField`: The main field for handling async file uploads.
 2. :class:`~alliance_platform.storage.async_uploads.models.AsyncImageField`: Similar to AsyncFileField, but specifically for image files.
-3. :class:`~alliance_platform.storage.async_uploads.storage.AsyncUploadStorage`: The base storage class for handling async uploads.
+3. :class:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage`: The base storage class for handling async uploads.
 4. :class:`~alliance_platform.storage.async_uploads.views.GenerateUploadUrlView`: View for generating upload URLs.
 5. :class:`~alliance_platform.storage.async_uploads.views.DownloadRedirectView`: View for handling file downloads.
 6. :class:`~alliance_platform.storage.async_uploads.registry.AsyncFieldRegistry`: Registry for managing async fields.
@@ -30,11 +30,11 @@ Storage backends:
 Storage backends handle the logic for generating signed upload & download URLs, and for moving files to the final
 location. The following backends are provided:
 
-1. :class:`~alliance_platform.storage.async_uploads.storage.S3AsyncUploadStorage` - Uploads to Amazon S3
-2. :class:`~alliance_platform.storage.async_uploads.storage.AzureAsyncUploadStorage` - Uploads to Azure blob storage
-3. :class:`~alliance_platform.storage.async_uploads.storage.FileSystemAsyncUploadStorage` - Uploads to Django directly and stores the file in the local filesystem (e.g. media files).
+1. :class:`~alliance_platform.storage.async_uploads.storage.s3.S3AsyncUploadStorage` - Uploads to Amazon S3
+2. :class:`~alliance_platform.storage.async_uploads.storage.azure.AzureAsyncUploadStorage` - Uploads to Azure blob storage
+3. :class:`~alliance_platform.storage.async_uploads.storage.filesystem.FileSystemAsyncUploadStorage` - Uploads to Django directly and stores the file in the local filesystem (e.g. media files).
 
-Other implementations can be provided by extending the :class:`~alliance_platform.storage.async_uploads.storage.AsyncUploadStorage`
+Other implementations can be provided by extending the :class:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage`
 class and implementing the relevant methods.
 
 .. _async-uploads-installation:
@@ -71,7 +71,7 @@ To make it the default for fields set the :setting:`STORAGES <django:STORAGES>` 
 
     STORAGES = {
         "default": {
-            "BACKEND": "alliance_platform.storage.async_uploads.storage.S3AsyncUploadStorage"
+            "BACKEND": "alliance_platform.storage.async_uploads.storage.s3.S3AsyncUploadStorage"
         },
     }
 
@@ -92,7 +92,7 @@ To make it the default for fields set the :setting:`STORAGES <django:STORAGES>` 
 
     STORAGES = {
         "default": {
-            "BACKEND": "alliance_platform.async_uploads.storage.AzureAsyncUploadStorage"
+            "BACKEND": "alliance_platform.async_uploads.storage.azure.AzureAsyncUploadStorage"
         },
     }
 
@@ -102,13 +102,13 @@ for what other settings will need to be set.
 File System
 ~~~~~~~~~~~
 
-To use with the local filesystem you can use :class:`~alliance_platform.storage.async_uploads.storage.FileSystemAsyncUploadStorage`.
+To use with the local filesystem you can use :class:`~alliance_platform.storage.async_uploads.storage.filesystem.FileSystemAsyncUploadStorage`.
 
 To make it the default for fields set the :setting:`STORAGES <django:STORAGES>` setting::
 
     STORAGES = {
         "default": {
-            "BACKEND": "alliance_platform.async_uploads.storage.FileSystemAsyncUploadStorage"
+            "BACKEND": "alliance_platform.async_uploads.storage.filesystem.FileSystemAsyncUploadStorage"
         },
     }
 
@@ -176,7 +176,7 @@ Usage
    .. code-block:: python
 
        from alliance_platform.storage.async_uploads.models import AsyncFileField
-       from alliance_platform.storage.async_uploads.storage import S3AsyncUploadStorage
+       from alliance_platform.storage.async_uploads.storage.s3 import S3AsyncUploadStorage
 
        storage = S3AsyncUploadStorage()
 

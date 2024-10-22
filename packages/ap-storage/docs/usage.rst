@@ -1,7 +1,7 @@
 Usage
 =====
 
-To use these fields you must be using an :class:`~alliance_platform.storage.async_uploads.storage.AsyncUploadStorage` storage class at either
+To use these fields you must be using an :class:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage` storage class at either
 the global level, or field level. To setup globally see the :doc:`installation` instructions.
 
 To use at a field level create a storage class and pass it to the field:

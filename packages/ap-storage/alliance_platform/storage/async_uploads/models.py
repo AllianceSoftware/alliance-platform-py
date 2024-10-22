@@ -18,10 +18,14 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db import transaction
+from django.db.models import FileField
+from django.db.models import ImageField
 from django.db.models import Model
 from django.db.models import Q
 from django.db.models import signals
 from django.db.models.fields.files import FieldFile
+from django.db.models.fields.files import FileDescriptor
+from django.db.models.fields.files import ImageFieldFile
 from django.urls import reverse
 
 logger = logging.getLogger("alliance_platform.storage")
@@ -30,8 +34,6 @@ logger = logging.getLogger("alliance_platform.storage")
 if TYPE_CHECKING:
     # this is to avoid accidentally importing the incorrect classes that are
     # only in place for type checking
-    from alliance_platform.storage.async_uploads.models.fields import AsyncFileField as _AsyncFileField
-    from alliance_platform.storage.async_uploads.models.fields import AsyncImageField as _AsyncImageField
 
     class AsyncFileMixinProtocol(Protocol):
         model: type[models.Model]
@@ -43,7 +45,7 @@ if TYPE_CHECKING:
     class FieldFileMixinProtocol(Protocol):
         instance: models.Model
         name: str | None
-        field: _AsyncFileField | _AsyncImageField
+        field: AsyncFileField | AsyncImageField
 
 else:
 
@@ -51,12 +53,6 @@ else:
         pass
 
     class FieldFileMixinProtocol:
-        pass
-
-    class _AsyncFileField:
-        pass
-
-    class _AsyncImageField:
         pass
 
 
@@ -73,7 +69,7 @@ class AsyncFileModelRegistry:
     files.
     """
 
-    fields: list[_AsyncFileField | _AsyncImageField]
+    fields: list[AsyncFileField | AsyncImageField]
     _save_in_progress: list[Model]
 
     def __init__(self):
@@ -81,7 +77,7 @@ class AsyncFileModelRegistry:
         self._save_in_progress = []
 
     @classmethod
-    def register_field(cls, model_class: type[Model], field: _AsyncFileField | _AsyncImageField):
+    def register_field(cls, model_class: type[Model], field: AsyncFileField | AsyncImageField):
         key = "__async_file_model_registry"
         if not hasattr(model_class, key):
             registry = AsyncFileModelRegistry()
@@ -101,7 +97,7 @@ class AsyncFileModelRegistry:
         If the destination filename is too long for the database after ``upload_to`` is applied then the
         file will be truncated by the ``Storage.get_available_name`` method.
 
-        Also see :meth:`~alliance_platform.storage.async_uploads.storage.AsyncUploadStorage.move_file`
+        Also see :meth:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage.move_file`
 
         This uses as few queries as possible to do the moves and update new values. Only async fields
         that have a temporary key are touched - other fields that have already been moved are left
@@ -195,7 +191,7 @@ _UNSET = object()
 
 
 class AsyncFileMixin(AsyncFileMixinProtocol):
-    """Mixin for file fields that works with :class:`~alliance_platform.storage.async_uploads.storage.AsyncUploadStorage` to
+    """Mixin for file fields that works with :class:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage` to
     handle uploading directly to external service like S3 or Azure.
 
     This field works in conjunction with :class:`~alliance_platform.storage.async_uploads.views.GenerateUploadUrlView`. The view will
@@ -212,7 +208,7 @@ class AsyncFileMixin(AsyncFileMixinProtocol):
 
     .. note:: The key for the file is stored in the database as a CharField and as such has a max_length. The default
         for this is ``500``. This must be sufficient to accommodate the temporary file value which looks something like
-        ``async-temp-files/2021/03/03/fVy5cSVBQpOb-test.png`` by default (see :meth:`~alliance_platform.storage.async_uploads.storage.AsyncUploadStorage.generate_temporary_path`
+        ``async-temp-files/2021/03/03/fVy5cSVBQpOb-test.png`` by default (see :meth:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage.generate_temporary_path`
         for how to customise this).
 
         Anything after the ``-`` will be truncated if necessary for the purposes of the temporary key. The actual filename
@@ -234,17 +230,17 @@ class AsyncFileMixin(AsyncFileMixinProtocol):
            and optionally an ``instance_id`` if it's an update for an existing record. :class:`~alliance_platform.storage.async_uploads.views.GenerateUploadUrlView`
            looks up the registry for the ``async_field_id`` to get the field and checks permissions on it (``perm_update`` if
            ``instance_id`` is passed otherwise ``perm_create``). If the permission check passes it will then create a
-           :class:`~alliance_platform.storage.async_uploads.models.AsyncTempFile` record to track the ``filename`` passed in and a :meth:`generated key <alliance_platform.storage.async_uploads.storage.AsyncUploadStorage.generate_temporary_path>`
+           :class:`~alliance_platform.storage.async_uploads.models.AsyncTempFile` record to track the ``filename`` passed in and a :meth:`generated key <alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage.generate_temporary_path>`
            that will be used to upload the file to a temporary location on the storage backend. The view will return an
-           upload url by calling :meth:`~alliance_platform.storage.async_uploads.storage.AsyncUploadStorage.generate_upload_url` along with the generated ``key``.
+           upload url by calling :meth:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage.generate_upload_url` along with the generated ``key``.
 
         3) The frontend will receive the ``upload_url`` and ``key`` and proceed to upload to it. When the form is submitted
-           and saved the ``key`` (the value returned from :meth:`generated key <alliance_platform.storage.async_uploads.storage.AsyncUploadStorage.generate_temporary_path>`)
+           and saved the ``key`` (the value returned from :meth:`generated key <alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage.generate_temporary_path>`)
            is the what will be stored in the database.
 
         4) On save a ``post_save`` signal will be called which will check if the file needs to be moved to a permanent
-           location. It does this by calling :meth:`~alliance_platform.storage.async_uploads.storage.AsyncUploadStorage.is_temporary_path` and
-           :meth:`~alliance_platform.storage.async_uploads.storage.AsyncUploadStorage.move_file` is called to move the file to its permanent
+           location. It does this by calling :meth:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage.is_temporary_path` and
+           :meth:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage.move_file` is called to move the file to its permanent
            location at which point the ``AsyncTempFile`` is deleted.
 
         5) If an upload occurs but the form isn't submitted :class:`~alliance_platform.storage.async_uploads.models.AsyncTempFile` will be created
@@ -256,9 +252,9 @@ class AsyncFileMixin(AsyncFileMixinProtocol):
     file by checking the ``perm_download`` permission. If not provided this defaults to the value returned by
     :meth:`alliance_platform.auth.resolve_perm_name` with the action "detail" (ie. if they have permission to view the record
     they can download the file). This view will then redirect to the URL provided by
-    :meth:`~alliance_platform.storage.async_uploads.storage.AsyncUploadStorage.generate_download_url`.
+    :meth:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage.generate_download_url`.
 
-    .. note:: You must you this with a storage class that implements :class:`~alliance_platform.storage.async_uploads.storage.AsyncUploadStorage`.
+    .. note:: You must you this with a storage class that implements :class:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage`.
         Either set DEFAULT_FILE_STORAGE to a class (eg. :class:`~alliance_platform.storage.s3.S3AsyncUploadStorage`) or pass an
         instance in the ``storage`` kwarg.
 
@@ -328,7 +324,7 @@ class AsyncFileMixin(AsyncFileMixinProtocol):
     def contribute_to_class(self, cls, name: str, private_only: bool = False):
         super().contribute_to_class(cls, name, private_only=private_only)  # type: ignore[safe-super]
         if not cls._meta.abstract and self.model._meta.app_config:
-            field = cast(_AsyncFileField, self)
+            field = cast(AsyncFileField, self)
             AsyncFileModelRegistry.register_field(cls, field)
             self.async_field_registry.register_field(field)
             if self.perm_update is _UNSET:
@@ -407,7 +403,7 @@ class AsyncFileInputData:
         width = self.width
         height = self.height
         if width and height:
-            # See _AsyncImageField.dimension_cache. We do this rather than
+            # See AsyncImageField.dimension_cache. We do this rather than
             # assigning directly to the width + height fields on instance
             # as when creating a new instance by passing in kwargs then
             # the width + height fields may be set to the the defaults
@@ -449,7 +445,7 @@ class AsyncFileInputData:
             raise ValidationError(f"Invalid input keys received: {', '.join(invalid_input)}")
         return cls(**data)
 
-    def validate_key(self, field: _AsyncFileField, existing_value: str | AsyncFieldFile | None):
+    def validate_key(self, field: AsyncFileField, existing_value: str | AsyncFieldFile | None):
         """Validate the key should be accepted
 
         This checks to make sure the key is a temporary path or matches the existing field
@@ -509,8 +505,8 @@ class AsyncTempFile(models.Model):
 
     Once a file has been uploaded and the form saved the key recorded here will be saved against the
     underlying file field (either :class:`~alliance_platform.storage.async_uploads.models.AsyncFileField` or :class:`~alliance_platform.storage.async_uploads.models.AsyncImageField`)
-    on the target model which will check if that key is a temporary file using an :meth:`~alliance_platform.storage.async_uploads.storage.AsyncUploadStorage.is_temporary_path`. If so the
-    file will be moved to its permanent location using :meth:`~alliance_platform.storage.async_uploads.storage.AsyncUploadStorage.move_file`
+    on the target model which will check if that key is a temporary file using an :meth:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage.is_temporary_path`. If so the
+    file will be moved to its permanent location using :meth:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage.move_file`
     and the :class:`AsyncTempFile` record will have the ``moved_to_location`` value set. See :class:`~alliance_platform.storage.async_uploads.models.AsyncFileMixin`
     for where this happens and more details.
 
@@ -532,7 +528,7 @@ class AsyncTempFile(models.Model):
     error = models.TextField(null=True)
 
     @classmethod
-    def create_for_field(cls, field: _AsyncFileField | _AsyncImageField, filename: str) -> AsyncTempFile:
+    def create_for_field(cls, field: AsyncFileField | AsyncImageField, filename: str) -> AsyncTempFile:
         return AsyncTempFile.objects.create(
             original_filename=filename,
             content_type=ContentType.objects.get_for_model(field.model),
@@ -542,3 +538,160 @@ class AsyncTempFile(models.Model):
 
     class Meta:
         db_table = "alliance_platform_storage_async_temp_file"
+
+
+class AsyncFileDescriptor(FileDescriptor):
+    """Extracts the ``key`` from AsyncFileInputData to be set against instance"""
+
+    def __set__(self, instance, value):
+        if isinstance(value, AsyncFileInputData):
+            value.validate_key(cast(AsyncFileField, self.field), instance.__dict__.get(self.field.name))
+            value = value.key
+        super().__set__(instance, value)
+
+
+class AsyncFileField(AsyncFileMixin, FileField):  # type: ignore[misc] # mypy dont like the fact that we're using AsyncUploadStorage and report it as conflict w/ FileField
+    """A FileField that works with AsyncUploadStorage to directly upload somewhere (eg. S3) from the frontend
+
+    See :class:`~alliance_platform.storage.async_uploads.models.AsyncFileMixin` for more details on how this field works.
+    """
+
+    attr_class = AsyncFieldFile
+    descriptor_class = AsyncFileDescriptor
+
+    def formfield(self, **kwargs):
+        from alliance_platform.storage.async_uploads.forms import AsyncFileField as AsyncFileFormField
+
+        return super().formfield(
+            **{
+                "form_class": AsyncFileFormField,
+                "async_field_id": self.async_field_registry.generate_id(self),
+                "async_field_registry": self.async_field_registry,
+                "storage": self.storage,
+                **kwargs,
+            }
+        )
+
+
+class AsyncImageDescriptor(FileDescriptor):
+    """Extracts the ``key`` from AsyncFileInputData to be set against instance & handles width/height
+
+    If width & height are present they are set on the field and handled by
+    :meth:`alliance_platform.storage.async_uploads.models.AsyncImageField.update_dimension_fields`.
+    """
+
+    def __set__(self, instance, value):
+        if isinstance(value, AsyncFileInputData):
+            value.validate_key(cast(AsyncFileField, self.field), instance.__dict__.get(self.field.name))
+            value.update_dimension_cache(self.field)
+            value = value.key
+            super().__set__(instance, value)
+        else:
+            # From ImageFileDescriptor:
+            # To prevent recalculating image dimensions when we are instantiating
+            # an object from the database (bug #11084), only update dimensions if
+            # the field had a value before this assignment.  Since the default
+            # value for FileField subclasses is an instance of field.attr_class,
+            # previous_file will only be None when we are called from
+            # Model.__init__().  The ImageField.update_dimension_fields method
+            # hooked up to the post_init signal handles the Model.__init__() cases.
+            # Assignment happening outside of Model.__init__() will trigger the
+            # update right here.
+
+            # We only do this if we don't have an AsyncFileInputData as
+            # that contains the width / height submitted from the
+            # frontend and so avoids potentially downloading the file
+            # to get the width/height.
+            previous_file = instance.__dict__.get(self.field.name)
+            super().__set__(instance, value)
+            # Don't compare value != previous_file as it doesn't guarantee the underlying
+            # file hasn't changed (eg. the key could be set to same filename again after
+            # a new upload but be a different file)
+            if previous_file is not None:
+                cast(AsyncImageField, self.field).update_dimension_fields(instance, force=True)
+
+
+class AsyncImageFieldFile(FieldFileMixin, ImageFieldFile):
+    pass
+
+
+class AsyncImageField(AsyncFileMixin, ImageField):  # type: ignore[misc] # mypy dont like the fact that we're using AsyncUploadStorage and report it as conflict w/ FileField
+    """A ImageField that works with AsyncUploadStorage to directly upload somewhere (eg. S3) from the frontend
+
+    This supports ``width_field`` and ``height_field`` in two ways
+
+    1) (preferred) The frontend passes the width & height with the form submission. This is supported with the
+    :class:`~alliance_platform.storage.async_uploads.forms.AsyncImageField` form field (the default). This works in
+    conjunction with the ``UploadWidget`` on the frontend.
+
+    2) (slow) Same behaviour as :class:`~django.db.models.ImageField` which requires the file to be downloaded
+    and processed with Pillow.
+
+    See :class:`~alliance_platform.storage.async_uploads.models.AsyncFileMixin` for more details on how this field works.
+    """
+
+    descriptor_class = AsyncImageDescriptor
+    attr_class = AsyncImageFieldFile
+
+    # Cache dimensions as (width, height) from AsyncImageDescriptor. Used in update_dimension_fields
+    dimension_cache: tuple[int, int] | None
+
+    # Don't check if Pillow is installed. This is used to get dimensions of images.
+    _supress_pillow_check: bool
+
+    width_field: str | None
+    height_field: str | None
+
+    def __init__(self, *args, suppress_pillow_check=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._suppress_pillow_check = suppress_pillow_check
+        self.dimension_cache = None
+
+    def check(self, **kwargs):
+        if self._suppress_pillow_check:
+            return super(ImageField, self).check(**kwargs)
+        return super().check(**kwargs)
+
+    def update_dimension_fields(self, instance, force=False, *args, **kwargs):
+        # If we have a cache use that otherwise fall back to default. Note that
+        # the default will open the file to work out dimensions and so with
+        # remote backends like S3 would result in downloading the file first.
+        if self.dimension_cache:
+            has_dimension_fields = self.width_field or self.height_field
+            if not has_dimension_fields or self.attname not in instance.__dict__:
+                return
+            width, height = self.dimension_cache
+            self.dimension_cache = None
+            if self.width_field:
+                setattr(instance, self.width_field, width)
+            if self.height_field:
+                setattr(instance, self.height_field, height)
+        else:
+            super().update_dimension_fields(instance, force, *args, **kwargs)
+
+    def before_move_file(self, instance):
+        """Prior to moving file populate the dimensions cache
+
+        This is so the moved file retains same dimensions as prior to move without
+        needing to recalculate it (ie. it's the same file, just in a different location).
+        """
+        has_dimension_fields = self.width_field and self.height_field
+        if has_dimension_fields and not self.dimension_cache:
+            width = getattr(
+                instance, cast(str, self.width_field)
+            )  # here -> has_dimension_fields -> str | None is str
+            height = getattr(instance, cast(str, self.height_field))
+            self.dimension_cache = (width, height)
+
+    def formfield(self, **kwargs):
+        from alliance_platform.storage.async_uploads.forms import AsyncImageField as AsyncImageFormField
+
+        return super().formfield(
+            **{
+                "form_class": AsyncImageFormField,
+                "async_field_id": self.async_field_registry.generate_id(self),
+                "async_field_registry": self.async_field_registry,
+                "storage": self.storage,
+                **kwargs,
+            }
+        )

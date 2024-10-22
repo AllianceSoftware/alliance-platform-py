@@ -25,7 +25,7 @@ class FileSystemAsyncUploadStorage(FileSystemStorage, AsyncUploadStorage):
 
         STORAGES = {
             "default": {
-                "BACKEND": "alliance_platform.storage.async_uploads.storage.FileSystemAsyncUploadStorage"
+                "BACKEND": "alliance_platform.storage.async_uploads.storage.filesystem.FileSystemAsyncUploadStorage"
             },
         }
 

@@ -8,8 +8,8 @@ from django.core.exceptions import ImproperlyConfigured
 from django.utils import timezone
 
 try:
-    from storages.backends.azure_storage import (
-        AzureStorage,  # type: ignore[import-untyped] # no types for storages
+    from storages.backends.azure_storage import (  # type: ignore[import-untyped] # no types for storages
+        AzureStorage,
     )
 except ImportError as e:
     raise ImproperlyConfigured(

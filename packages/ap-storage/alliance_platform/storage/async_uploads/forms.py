@@ -1,8 +1,8 @@
 import json
 from json import JSONDecodeError
 
-from alliance_platform.storage.async_uploads.models.models import AsyncFileInputData
-from alliance_platform.storage.async_uploads.models.models import AsyncTempFile
+from alliance_platform.storage.async_uploads.models import AsyncFileInputData
+from alliance_platform.storage.async_uploads.models import AsyncTempFile
 from alliance_platform.storage.async_uploads.registry import AsyncFieldRegistry
 from alliance_platform.storage.async_uploads.storage.base import AsyncUploadStorage
 from django import forms
