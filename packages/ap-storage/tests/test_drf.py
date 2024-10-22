@@ -1,11 +1,11 @@
 import logging
 from unittest import mock
 
+import alliance_platform.storage.async_uploads.models as async_file_fields
+from alliance_platform.storage.async_uploads.models import AsyncTempFile
+from alliance_platform.storage.async_uploads.models import default_max_length as async_file_max_length
 from alliance_platform.storage.drf.serializer import AsyncFileField
 from alliance_platform.storage.drf.serializer import AsyncImageField
-import alliance_platform.storage.fields.async_file as async_file_fields
-from alliance_platform.storage.fields.async_file import default_max_length as async_file_max_length
-from alliance_platform.storage.models import AsyncTempFile
 from django.test import TestCase
 from rest_framework import serializers
 from test_alliance_platform_storage.models import AsyncFileTestModel

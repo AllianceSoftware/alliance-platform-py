@@ -52,8 +52,8 @@ Notable differences
 
 The only potential breaking change in async uploads between the most recent version of `common_storage <https://gitlab.internal.alliancesoftware.com.au/alliance/template-django/-/tree/10d5f3466ad5a2a7304f5db4c0aaf17d054593ec/django-root/common_storage>`_
 and the initial published version of ``alliance_platform_storage`` is the addition of the ``field_id`` argument to
-:meth:`~alliance_platform.storage.base.AsyncUploadStorage.generate_upload_url` and
-:meth:`~alliance_platform.storage.base.AsyncUploadStorage.generate_download_url`. However, this will only matter if you are
+:meth:`~alliance_platform.storage.async_uploads.storage.AsyncUploadStorage.generate_upload_url` and
+:meth:`~alliance_platform.storage.async_uploads.storage.AsyncUploadStorage.generate_download_url`. However, this will only matter if you are
 calling these functions directly, or have extended an ``AsyncUploadStorage`` class and overridden these methods. If so,
 you will just need to update the signature to accept the ``field_id`` argument.
 

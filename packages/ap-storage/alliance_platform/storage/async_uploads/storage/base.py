@@ -9,7 +9,7 @@ from django.urls import path
 from django.utils.crypto import get_random_string
 
 if TYPE_CHECKING:
-    from alliance_platform.storage.registry import AsyncFieldRegistry
+    from alliance_platform.storage.async_uploads.registry import AsyncFieldRegistry
 
 
 class GenerateUploadUrlResponse(TypedDict):
@@ -20,14 +20,14 @@ class GenerateUploadUrlResponse(TypedDict):
 
 
 class AsyncUploadStorage(Storage):
-    """Base storage class for use with :class:`~alliance_platform.storage.fields.async_file.AsyncFileField`
+    """Base storage class for use with :class:`~alliance_platform.storage.async_uploads.models.AsyncFileField`
 
     Provides ``generate_upload_url`` to return a URL to upload a file to (eg. a signed URL) and a ``move_file`` method
     to move a file from a temporary location to the permanent location. The key used for temporary files is returned
     by ``generate_temporary_path`` and ``is_temporary_path`` should return whether a file is in the temporary location
     and needs to be moved to a permanent location.
 
-    See :class:`~alliance_platform.storage.fields.async_file.AsyncFileMixin` for a detailed explanation of how
+    See :class:`~alliance_platform.storage.async_uploads.models.AsyncFileMixin` for a detailed explanation of how
     all the pieces fit together.
     """
 
@@ -102,15 +102,15 @@ class AsyncUploadStorage(Storage):
         When extending ``AsyncUploadStorage``, this method can be implemented if any custom views
         are required to support the implementation. By default, two views are supplied:
 
-        1) :class:`~alliance_platform.storage.views.DownloadRedirectView` to support downloading an existing file. This
+        1) :class:`~alliance_platform.storage.async_uploads.views.DownloadRedirectView` to support downloading an existing file. This
            is attached to the `"download-file/"` path.
-        2) :class:`~alliance_platform.storage.views.GenerateUploadUrlView` to generate a URL that can be uploaded to
+        2) :class:`~alliance_platform.storage.async_uploads.views.GenerateUploadUrlView` to generate a URL that can be uploaded to
            directly from the frontend. This is attached to the `"generate-upload-url/"` path.
 
-        This method is called by :meth:`~alliance_platform.storage.registry.AsyncFieldRegistry.get_url_patterns`.
+        This method is called by :meth:`~alliance_platform.storage.async_uploads.registry.AsyncFieldRegistry.get_url_patterns`.
         """
-        from alliance_platform.storage.views import DownloadRedirectView
-        from alliance_platform.storage.views import GenerateUploadUrlView
+        from alliance_platform.storage.async_uploads.views import DownloadRedirectView
+        from alliance_platform.storage.async_uploads.views import GenerateUploadUrlView
 
         # already generated patterns for these views, can return nothing
         if registry.attached_download_view and registry.attached_view:

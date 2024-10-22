@@ -6,7 +6,7 @@ Management commands
 
 .. django-manage:: cleanup_async_temp_files
 
-This command will delete old :class:`~alliance_platform.storage.models.AsyncTempFile` records. This is necessary
+This command will delete old :class:`~alliance_platform.storage.async_uploads.models.AsyncTempFile` records. This is necessary
 as a new record is created everytime an upload URL is requested from the frontend. If the upload then never occurs,
 for whatever reason, then the record will hang around and never be cleaned up.
 
@@ -26,4 +26,3 @@ Only files older than this will be removed (in hours). Defaults to 48.
 
 Don't output anything - this includes number of items removed to stdout, and any files that could not be removed
 from the underlying backend.
-

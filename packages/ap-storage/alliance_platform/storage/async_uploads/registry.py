@@ -4,14 +4,14 @@ from hashlib import shake_256
 from typing import TYPE_CHECKING
 from typing import Callable
 
-from alliance_platform.storage.base import AsyncUploadStorage
+from alliance_platform.storage.async_uploads.storage.base import AsyncUploadStorage
 from django.db.models import Field
 from django.http import HttpResponse
 
 if TYPE_CHECKING:
     # circular imports
-    from alliance_platform.storage.fields.async_file import AsyncFileField
-    from alliance_platform.storage.fields.async_file import AsyncImageField
+    from alliance_platform.storage.async_uploads.models import AsyncFileField
+    from alliance_platform.storage.async_uploads.models import AsyncImageField
 
 
 def is_same_field(field1: Field, field2: Field) -> bool:
@@ -87,14 +87,14 @@ class AsyncFieldRegistry:
     def get_url_patterns(self):
         """Get the required URL patterns for the storage classes used by the registered fields
 
-        This calls :meth:`~alliance_platform.storage.base.AsyncUploadStorage.get_url_patterns` on each
+        This calls :meth:`~alliance_platform.storage.async_uploads.base.AsyncUploadStorage.get_url_patterns` on each
         storage instance and combines the results.
 
         Usage::
 
             from django.urls import path
             from django.urls import include
-            from alliance_platform.storage.registry import default_async_field_registry
+            from alliance_platform.storage.async_uploads.registry import default_async_field_registry
 
             urlpatterns = [path("async-uploads/", include(default_async_field_registry.get_url_patterns()))]
         """

@@ -1,15 +1,15 @@
 from datetime import timedelta
 from typing import Any
 
-from alliance_platform.storage.base import AsyncUploadStorage
-from alliance_platform.storage.base import GenerateUploadUrlResponse
+from alliance_platform.storage.async_uploads.storage.base import AsyncUploadStorage
+from alliance_platform.storage.async_uploads.storage.base import GenerateUploadUrlResponse
 from alliance_platform.storage.settings import ap_storage_settings
 from django.core.exceptions import ImproperlyConfigured
 from django.utils import timezone
 
 try:
-    from storages.backends.azure_storage import (  # type: ignore[import-untyped] # no types for storages
-        AzureStorage,
+    from storages.backends.azure_storage import (
+        AzureStorage,  # type: ignore[import-untyped] # no types for storages
     )
 except ImportError as e:
     raise ImproperlyConfigured(
