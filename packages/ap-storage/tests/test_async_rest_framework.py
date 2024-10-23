@@ -4,8 +4,8 @@ from unittest import mock
 import alliance_platform.storage.async_uploads.models as async_file_fields
 from alliance_platform.storage.async_uploads.models import AsyncTempFile
 from alliance_platform.storage.async_uploads.models import default_max_length as async_file_max_length
-from alliance_platform.storage.drf.serializer import AsyncFileField
-from alliance_platform.storage.drf.serializer import AsyncImageField
+from alliance_platform.storage.async_uploads.rest_framework import AsyncFileField
+from alliance_platform.storage.async_uploads.rest_framework import AsyncImageField
 from django.test import TestCase
 from rest_framework import serializers
 from test_alliance_platform_storage.models import AsyncFileTestModel
@@ -142,8 +142,8 @@ class SerializerAsyncFileTestCase(TestCase):
             ),
         )
 
-        # We have a workaround for nested serializers to track the instance, which is otherwise unavailable in DRF.
-        # This test covers that patch - if this fails in the future it likely indicates DRF has better
+        # We have a workaround for nested serializers to track the instance, which is otherwise unavailable in async_uploads.rest_framework.
+        # This test covers that patch - if this fails in the future it likely indicates async_uploads.rest_framework has better
         # handling of nested serializers and we can drop our patch.
         with self.assertLogs(logging.getLogger("alliance_platform.storage")):
             data = AsyncFileTestModelSerializer(instance=test_model).data

@@ -38,7 +38,7 @@ class AsyncFileField(serializers.ModelField):
 
     This field expects to receive data in the shape { "key": "/storage/file.png", "name": "file.png" }. It will
     extract the key to be set on the file field. See :class:`~alliance_platform.storage.async_uploads.models.AsyncFileMixin`
-    for more details. For :class:`~alliance_platform.storage.drf.serializer.AsyncImageField` the ``width`` and ``height``
+    for more details. For :class:`~alliance_platform.storage.async_uploads.rest_framework.AsyncImageField` the ``width`` and ``height``
     keys may also exist in the data. See :class:`~alliance_platform.async_uploads.models.AsyncFileInputData`
 
     Serialized data is in shape  { "key": "/storage/file.png", "name": "file.png", "url": "/download/?field_id=..." }
@@ -117,7 +117,7 @@ class AsyncFileField(serializers.ModelField):
 
 
 class AsyncImageField(AsyncFileField):
-    """Same behaviour as :class:`~alliance_platform.storage.drf.serializer.AsyncFileField`
+    """Same behaviour as :class:`~alliance_platform.storage.async_uploads.rest_framework.AsyncFileField`
 
     This exists as a separate class to allow codegen to differentiate for the purpose
     of customising the field & widget on the frontend."""

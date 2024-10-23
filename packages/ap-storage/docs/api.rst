@@ -44,8 +44,8 @@ been done in :class:`xenopus_frog_app.base.XenopusFrogAppModelSerializer`):
 .. code:: python
 
     from rest_framework.serializers import ModelSerializer
-    from alliance_platform.storage.drf.serializer import AsyncFileField
-    from alliance_platform.storage.drf.serializer import AsyncImageField
+    from alliance_platform.storage.async_uploads.rest_framework import AsyncFileField
+    from alliance_platform.storage.async_uploads.rest_framework import AsyncImageField
     import alliance_platform.storage.async_uploads.models as async_file_fields
 
 
@@ -56,9 +56,9 @@ been done in :class:`xenopus_frog_app.base.XenopusFrogAppModelSerializer`):
             async_file_fields.AsyncImageField: AsyncImageField,
         }
 
-.. autoclass:: alliance_platform.storage.drf.serializer.AsyncFileField
+.. autoclass:: alliance_platform.storage.async_uploads.rest_framework.AsyncFileField
 
-.. autoclass:: alliance_platform.storage.drf.serializer.AsyncImageField
+.. autoclass:: alliance_platform.storage.async_uploads.rest_framework.AsyncImageField
 
 Forms
 *****

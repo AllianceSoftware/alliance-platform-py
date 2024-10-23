@@ -28,6 +28,7 @@ Follow these steps:
   - ``common_storage.base`` to ``alliance_platform.storage.async_uploads.storage.base``
   - ``common_storage.views`` to ``alliance_platform.storage.async_uploads.views``
   - ``common_storage.registry`` to ``alliance_platform.storage.async_uploads.registry``
+  - ``common_storage.drf`` to ``alliance_platform.storage.async_uploads.rest_framework``
   - ``common_storage.fields.async_file.AsyncFileFormField`` to ``alliance_platform.storage.async_uploads.forms.AsyncFileField``
   - ``common_storage.fields.async_file.AsyncImageFormField`` to ``alliance_platform.storage.async_uploads.forms.AsyncImageField``
   - ``common_storage.fields.async_file.AsyncFileInput`` to ``alliance_platform.storage.async_uploads.forms.AsyncFileInput``

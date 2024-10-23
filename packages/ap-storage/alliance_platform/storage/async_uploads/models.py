@@ -258,7 +258,7 @@ class AsyncFileMixin(AsyncFileMixinProtocol):
         Either set DEFAULT_FILE_STORAGE to a class (eg. :class:`~alliance_platform.storage.s3.S3AsyncUploadStorage`) or pass an
         instance in the ``storage`` kwarg.
 
-    For use with a Presto form use :class:`~alliance_platform.storage.drf.serializer.AsyncFileField` or :class:`~alliance_platform.storage.drf.serializer.AsyncImageField`
+    For use with a Presto form use :class:`~alliance_platform.storage.async_uploads.rest_framework.AsyncFileField` or :class:`~alliance_platform.storage.async_uploads.rest_framework.AsyncImageField`
     on your serializer. This is handled by default when extending :class:`xenopus_frog_app.base.XenopusFrogAppModelSerializer`.
     Codegen will create this as a ``AsyncFileField`` or ``AsyncImageField`` on the frontend Presto model.
     ``getWidgetForField`` will map these fields to the ``UploadWidget``.
@@ -269,8 +269,8 @@ class AsyncFileMixin(AsyncFileMixinProtocol):
     .. warning:: User input should be assigned using the :class:`~alliance_platform.storage.async_uploads.models.AsyncFileInputData` class
         which has validation to disallow things like moving the file by changing the key that passed from the frontend. This
         is handled for you when using :class:`~alliance_platform.storage.async_uploads.models.AsyncFileField`,
-        :class:`~alliance_platform.storage.async_uploads.models.AsyncImageField`, :class:`~alliance_platform.storage.drf.serializer.AsyncFileField`
-        or :class:`~alliance_platform.storage.drf.serializer.AsyncImageField`
+        :class:`~alliance_platform.storage.async_uploads.models.AsyncImageField`, :class:`~alliance_platform.storage.async_uploads.rest_framework.AsyncFileField`
+        or :class:`~alliance_platform.storage.async_uploads.rest_framework.AsyncImageField`
 
     If a file cannot be moved for any reason (eg. any exception is raised) then the error will be saved in the
     ``error`` field on the :class:`~alliance_platform.storage.async_uploads.models.AsyncTempFile` record and the temporary key will be retained as

@@ -192,15 +192,15 @@ Usage
    By default, the :class:`~alliance_platform.storage.async_uploads.forms.AsyncFileField` is used to handle uploads
    from Django forms. The default widget is :class:`~alliance_platform.storage.async_uploads.forms.AsyncFileInput`.
 
-3. DRF Integration:
+3. async_uploads.rest_framework Integration:
 
-   For Django Rest Framework, use the DRF fields :class:`alliance_platform.storage.drf.serializer.AsyncFileField` or :class:`alliance_platform.storage.drf.serializer.AsyncImageField`.
+   For Django Rest Framework, use the async_uploads.rest_framework fields :class:`alliance_platform.storage.async_uploads.rest_framework.AsyncFileField` or :class:`alliance_platform.storage.async_uploads.rest_framework.AsyncImageField`.
 
    You can set this as the default for the corresponding model fields by adding entries to the ``serializer_field_mapping`` on
    a custom ``ModelSerializer`` base class::
 
-        from alliance_platform.storage.drf.serializer import AsyncFileField
-        from alliance_platform.storage.drf.serializer import AsyncImageField
+        from alliance_platform.storage.async_uploads.rest_framework import AsyncFileField
+        from alliance_platform.storage.async_uploads.rest_framework import AsyncImageField
         import alliance_platform.storage.async_uploads.models as async_file_fields
 
         class XenopusFrogAppModelSerializer(ModelSerializer):

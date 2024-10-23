@@ -31,8 +31,9 @@ is performed using the UploadWidget on the frontend (see UploadWidget.tsx).
 For a deeper understanding of how django forms work see :class:`~alliance_platform.storage.async_uploads.forms.AsyncFileField`
 and :class:`~alliance_platform.storage.async_uploads.forms.AsyncFileInput`.
 
-DRF integration requires you to use the DRF fields :class:`alliance_platform.storage.drf.serializer.AsyncFileField` or
-:class:`alliance_platform.storage.drf.serializer.AsyncFileField`. See :ref:`storage-serializer-fields` for how to set
+async_uploads.rest_framework integration requires you to use the async_uploads.rest_framework fields
+:class:`alliance_platform.storage.async_uploads.rest_framework.AsyncFileField` or
+:class:`alliance_platform.storage.async_uploads.rest_framework.AsyncFileField`. See :ref:`storage-serializer-fields` for how to set
 this as a default.
 
 Intermediate files are stored in the :class:`alliance_platform.storage.async_uploads.models.AsyncTempFile` table. This should be periodically
