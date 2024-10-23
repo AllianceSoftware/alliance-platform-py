@@ -21,8 +21,21 @@ Follow these steps:
   specific apps (in the base template ``xenopus_frog_app`` for example, or ``django_site``).
 * Delete the ``common_storage`` app entirely from ``django-root``, and remove it from ``INSTALLED_APPS``.
 * Remove ``common_storage.test_common_storage`` from ``TEST_APPS`` in ``settings/base.py``.
-* Search and replace ``common_storage`` with ``alliance_platform.storage``. This should update all existing imports
-  or setting references (e.g. ``DEFAULT_FILE_STORAGE``)
+* The directory structure is changed from ``common_storage``, so imports and settings references should be replaced as follows:
+
+  - ``common_storage.s3`` to ``alliance_platform.storage.async_uploads.storage.s3``
+  - ``common_storage.azure`` to ``alliance_platform.storage.async_uploads.storage.azure``
+  - ``common_storage.base`` to ``alliance_platform.storage.async_uploads.storage.base``
+  - ``common_storage.views`` to ``alliance_platform.storage.async_uploads.views``
+  - ``common_storage.registry`` to ``alliance_platform.storage.async_uploads.registry``
+  - ``common_storage.fields.async_file.AsyncFileFormField`` to ``alliance_platform.storage.async_uploads.forms.AsyncFileField``
+  - ``common_storage.fields.async_file.AsyncImageFormField`` to ``alliance_platform.storage.async_uploads.forms.AsyncImageField``
+  - ``common_storage.fields.async_file.AsyncFileInput`` to ``alliance_platform.storage.async_uploads.forms.AsyncFileInput``
+  - ``common_storage.fields.async_file.AsyncFileInputDataValidator`` to ``alliance_platform.storage.async_uploads.forms.AsyncFileInputDataValidator``
+  - ``common_storage.fields.async_file.AsyncFileInputDataLengthValidator`` to ``alliance_platform.storage.async_uploads.forms.AsyncFileInputDataLengthValidator``
+  - ``common_storage.models.AsyncTempFile`` to ``alliance_platform.storage.async_uploads.models.AsyncTempFile``
+  - All remaining instances of ``common_storage.fields.async_file`` to ``alliance_platform.storage.async_uploads.models``
+
 * In ``urls.py`` remove the paths for ``DownloadRedirectView`` and ``GenerateUploadView``, and add the following instead
   (if not already done as part of installation)::
 
