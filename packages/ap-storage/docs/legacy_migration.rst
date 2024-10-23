@@ -21,8 +21,22 @@ Follow these steps:
   specific apps (in the base template ``xenopus_frog_app`` for example, or ``django_site``).
 * Delete the ``common_storage`` app entirely from ``django-root``, and remove it from ``INSTALLED_APPS``.
 * Remove ``common_storage.test_common_storage`` from ``TEST_APPS`` in ``settings/base.py``.
-* Search and replace ``common_storage`` with ``alliance_platform.storage``. This should update all existing imports
-  or setting references (e.g. ``DEFAULT_FILE_STORAGE``)
+* The directory structure is changed from ``common_storage``, so imports and settings references should be replaced as follows:
+
+  - ``common_storage.s3`` to ``alliance_platform.storage.async_uploads.storage.s3``
+  - ``common_storage.azure`` to ``alliance_platform.storage.async_uploads.storage.azure``
+  - ``common_storage.base`` to ``alliance_platform.storage.async_uploads.storage.base``
+  - ``common_storage.views`` to ``alliance_platform.storage.async_uploads.views``
+  - ``common_storage.registry`` to ``alliance_platform.storage.async_uploads.registry``
+  - ``common_storage.drf`` to ``alliance_platform.storage.async_uploads.rest_framework``
+  - ``common_storage.fields.async_file.AsyncFileFormField`` to ``alliance_platform.storage.async_uploads.forms.AsyncFileField``
+  - ``common_storage.fields.async_file.AsyncImageFormField`` to ``alliance_platform.storage.async_uploads.forms.AsyncImageField``
+  - ``common_storage.fields.async_file.AsyncFileInput`` to ``alliance_platform.storage.async_uploads.forms.AsyncFileInput``
+  - ``common_storage.fields.async_file.AsyncFileInputDataValidator`` to ``alliance_platform.storage.async_uploads.forms.AsyncFileInputDataValidator``
+  - ``common_storage.fields.async_file.AsyncFileInputDataLengthValidator`` to ``alliance_platform.storage.async_uploads.forms.AsyncFileInputDataLengthValidator``
+  - ``common_storage.models.AsyncTempFile`` to ``alliance_platform.storage.async_uploads.models.AsyncTempFile``
+  - All remaining instances of ``common_storage.fields.async_file`` to ``alliance_platform.storage.async_uploads.models``
+
 * In ``urls.py`` remove the paths for ``DownloadRedirectView`` and ``GenerateUploadView``, and add the following instead
   (if not already done as part of installation)::
 
@@ -52,8 +66,8 @@ Notable differences
 
 The only potential breaking change in async uploads between the most recent version of `common_storage <https://gitlab.internal.alliancesoftware.com.au/alliance/template-django/-/tree/10d5f3466ad5a2a7304f5db4c0aaf17d054593ec/django-root/common_storage>`_
 and the initial published version of ``alliance_platform_storage`` is the addition of the ``field_id`` argument to
-:meth:`~alliance_platform.storage.base.AsyncUploadStorage.generate_upload_url` and
-:meth:`~alliance_platform.storage.base.AsyncUploadStorage.generate_download_url`. However, this will only matter if you are
+:meth:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage.generate_upload_url` and
+:meth:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage.generate_download_url`. However, this will only matter if you are
 calling these functions directly, or have extended an ``AsyncUploadStorage`` class and overridden these methods. If so,
 you will just need to update the signature to accept the ``field_id`` argument.
 

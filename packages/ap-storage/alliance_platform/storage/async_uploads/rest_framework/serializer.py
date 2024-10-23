@@ -1,10 +1,10 @@
 from typing import cast
 
-from alliance_platform.storage.fields.async_file import AsyncFieldFile
-from alliance_platform.storage.fields.async_file import AsyncFileField as AsyncFileBaseField
-from alliance_platform.storage.fields.async_file import AsyncFileInputData
-from alliance_platform.storage.fields.async_file import AsyncFileInputDataLengthValidator
-from alliance_platform.storage.fields.async_file import AsyncFileInputDataValidator
+from alliance_platform.storage.async_uploads.forms import AsyncFileInputDataLengthValidator
+from alliance_platform.storage.async_uploads.forms import AsyncFileInputDataValidator
+from alliance_platform.storage.async_uploads.models import AsyncFieldFile
+from alliance_platform.storage.async_uploads.models import AsyncFileField as AsyncFileBaseField
+from alliance_platform.storage.async_uploads.models import AsyncFileInputData
 from django.core.exceptions import ImproperlyConfigured
 from django.core.exceptions import ValidationError as CoreValidationError
 
@@ -20,7 +20,7 @@ except ImportError as e:
 
 
 class AsyncFileField(serializers.ModelField):
-    """Field that works with :class:`~alliance_platform.storage.base.AsyncUploadStorage` to handle uploading directly to
+    """Field that works with :class:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage` to handle uploading directly to
     external service like S3 or Azure.
 
     Unlike most fields this field must be backed by an underlying model field specified in the ``model_field``
@@ -28,7 +28,7 @@ class AsyncFileField(serializers.ModelField):
 
     .. code:: python
 
-        import alliance_platform.storage.fields.async_file as async_file_fields
+        import alliance_platform.storage.async_uploads.models as async_file_fields
         class BaseModelSerializer(ModelSerializer):
             serializer_field_mapping = {
                 **ModelSerializer.serializer_field_mapping,
@@ -37,9 +37,9 @@ class AsyncFileField(serializers.ModelField):
             }
 
     This field expects to receive data in the shape { "key": "/storage/file.png", "name": "file.png" }. It will
-    extract the key to be set on the file field. See :class:`~alliance_platform.storage.fields.async_file.AsyncFileMixin`
-    for more details. For :class:`~alliance_platform.storage.drf.serializer.AsyncImageField` the ``width`` and ``height``
-    keys may also exist in the data. See :class:`~alliance_platform.storage.fields.async_file.AsyncFileInputData`
+    extract the key to be set on the file field. See :class:`~alliance_platform.storage.async_uploads.models.AsyncFileMixin`
+    for more details. For :class:`~alliance_platform.storage.async_uploads.rest_framework.AsyncImageField` the ``width`` and ``height``
+    keys may also exist in the data. See :class:`~alliance_platform.async_uploads.models.AsyncFileInputData`
 
     Serialized data is in shape  { "key": "/storage/file.png", "name": "file.png", "url": "/download/?field_id=..." }
     which is supported by the UploadWidget on the frontend.
@@ -117,7 +117,7 @@ class AsyncFileField(serializers.ModelField):
 
 
 class AsyncImageField(AsyncFileField):
-    """Same behaviour as :class:`~alliance_platform.storage.drf.serializer.AsyncFileField`
+    """Same behaviour as :class:`~alliance_platform.storage.async_uploads.rest_framework.AsyncFileField`
 
     This exists as a separate class to allow codegen to differentiate for the purpose
     of customising the field & widget on the frontend."""

@@ -8,12 +8,12 @@ from unittest import mock
 from unittest.mock import patch
 from urllib.parse import urlencode
 
-from alliance_platform.storage.fields.async_file import AsyncFileField
-from alliance_platform.storage.fields.async_file import AsyncFileInput
-from alliance_platform.storage.fields.async_file import AsyncFileInputData
-from alliance_platform.storage.fields.async_file import default_max_length as async_file_max_length
-from alliance_platform.storage.models import AsyncTempFile
-from alliance_platform.storage.registry import default_async_field_registry
+from alliance_platform.storage.async_uploads.forms import AsyncFileInput
+from alliance_platform.storage.async_uploads.models import AsyncFileField
+from alliance_platform.storage.async_uploads.models import AsyncFileInputData
+from alliance_platform.storage.async_uploads.models import AsyncTempFile
+from alliance_platform.storage.async_uploads.models import default_max_length as async_file_max_length
+from alliance_platform.storage.async_uploads.registry import default_async_field_registry
 from django.core.exceptions import SuspiciousFileOperation
 from django.core.exceptions import ValidationError
 from django.core.files import File

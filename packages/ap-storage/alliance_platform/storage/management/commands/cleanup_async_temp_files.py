@@ -1,8 +1,8 @@
 from datetime import timedelta
 from typing import cast
 
-from alliance_platform.storage.fields.async_file import AsyncFileField
-from alliance_platform.storage.models import AsyncTempFile
+from alliance_platform.storage.async_uploads.models import AsyncFileField
+from alliance_platform.storage.async_uploads.models import AsyncTempFile
 from django.core.management import BaseCommand
 from django.db import models
 from django.utils import timezone

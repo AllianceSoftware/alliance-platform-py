@@ -5,33 +5,33 @@ API
 Storage classes
 ***************
 
-.. autoclass:: alliance_platform.storage.base.AsyncUploadStorage
+.. autoclass:: alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage
     :members:
 
-.. autoclass:: alliance_platform.storage.s3.S3AsyncUploadStorage
+.. autoclass:: alliance_platform.storage.async_uploads.storage.s3.S3AsyncUploadStorage
 
-.. autoclass:: alliance_platform.storage.azure.AzureAsyncUploadStorage
+.. autoclass:: alliance_platform.storage.async_uploads.storage.azure.AzureAsyncUploadStorage
 
-.. autoclass:: alliance_platform.storage.filesystem.FileSystemAsyncUploadStorage
+.. autoclass:: alliance_platform.storage.async_uploads.storage.filesystem.FileSystemAsyncUploadStorage
 
 Staticfiles Storage
 *******************
 
-.. autoclass:: alliance_platform.storage.staticfiles.storage.ExcludingManifestStaticFilesStorage()
+.. autoclass:: alliance_platform.storage.staticfiles.storage.ExcludingManifestStaticFilesStorage
 
 Models
 ******
 
-.. autoclass:: alliance_platform.storage.models.AsyncTempFile
+.. autoclass:: alliance_platform.storage.async_uploads.models.AsyncTempFile
 
 Fields
 ******
 
-.. autoclass:: alliance_platform.storage.fields.async_file.AsyncFileMixin
+.. autoclass:: alliance_platform.storage.async_uploads.models.AsyncFileMixin
 
-.. autoclass:: alliance_platform.storage.fields.async_file.AsyncFileField
+.. autoclass:: alliance_platform.storage.async_uploads.models.AsyncFileField
 
-.. autoclass:: alliance_platform.storage.fields.async_file.AsyncImageField
+.. autoclass:: alliance_platform.storage.async_uploads.models.AsyncImageField
 
 .. _storage-serializer-fields:
 
@@ -44,9 +44,9 @@ been done in :class:`xenopus_frog_app.base.XenopusFrogAppModelSerializer`):
 .. code:: python
 
     from rest_framework.serializers import ModelSerializer
-    from alliance_platform.storage.drf.serializer import AsyncFileField
-    from alliance_platform.storage.drf.serializer import AsyncImageField
-    import alliance_platform.storage.fields.async_file as async_file_fields
+    from alliance_platform.storage.async_uploads.rest_framework import AsyncFileField
+    from alliance_platform.storage.async_uploads.rest_framework import AsyncImageField
+    import alliance_platform.storage.async_uploads.models as async_file_fields
 
 
     class BaseModelSerializer(ModelSerializer):
@@ -56,41 +56,41 @@ been done in :class:`xenopus_frog_app.base.XenopusFrogAppModelSerializer`):
             async_file_fields.AsyncImageField: AsyncImageField,
         }
 
-.. autoclass:: alliance_platform.storage.drf.serializer.AsyncFileField
+.. autoclass:: alliance_platform.storage.async_uploads.rest_framework.AsyncFileField
 
-.. autoclass:: alliance_platform.storage.drf.serializer.AsyncImageField
+.. autoclass:: alliance_platform.storage.async_uploads.rest_framework.AsyncImageField
 
 Forms
 *****
 
-.. autoclass:: alliance_platform.storage.fields.async_file.AsyncFileFormField
+.. autoclass:: alliance_platform.storage.async_uploads.forms.AsyncFileField
 
     .. automethod:: __init__
 
-.. autoclass:: alliance_platform.storage.fields.async_file.AsyncFileInput
+.. autoclass:: alliance_platform.storage.async_uploads.forms.AsyncFileInput
 
-.. autoclass:: alliance_platform.storage.fields.async_file.AsyncFileInputData
+.. autoclass:: alliance_platform.storage.async_uploads.forms.AsyncFileInputData
     :members:
 
-.. autoclass:: alliance_platform.storage.fields.async_file.AsyncImageFormField
+.. autoclass:: alliance_platform.storage.async_uploads.forms.AsyncImageField
 
 Views
 *****
 
-.. autoclass:: alliance_platform.storage.views.GenerateUploadUrlView
+.. autoclass:: alliance_platform.storage.async_uploads.views.GenerateUploadUrlView
 
-.. autoclass:: alliance_platform.storage.views.DownloadRedirectView
+.. autoclass:: alliance_platform.storage.async_uploads.views.DownloadRedirectView
 
-.. autoclass:: alliance_platform.storage.filesystem_views.FileSystemAsyncStorageUploadView
+.. autoclass:: alliance_platform.storage.async_uploads.views.filesystem.FileSystemAsyncStorageUploadView
 
-.. autoclass:: alliance_platform.storage.filesystem_views.FileSystemAsyncStorageDownloadView
+.. autoclass:: alliance_platform.storage.async_uploads.views.filesystem.FileSystemAsyncStorageDownloadView
 
 Registry
 ********
 
-.. autoclass:: alliance_platform.storage.registry.AsyncFieldRegistry
+.. autoclass:: alliance_platform.storage.async_uploads.registry.AsyncFieldRegistry
     :members:
 
-.. py:data:: alliance_platform.storage.registry.default_async_field_registry
+.. py:data:: alliance_platform.storage.async_uploads.registry.default_async_field_registry
 
     The default registry that is used when one is not explicitly specified
