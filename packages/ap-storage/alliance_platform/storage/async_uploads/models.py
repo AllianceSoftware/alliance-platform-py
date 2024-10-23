@@ -78,7 +78,8 @@ class AsyncFileModelRegistry:
 
     @classmethod
     def register_field(cls, model_class: type[Model], field: AsyncFileField | AsyncImageField):
-        key = "__async_file_model_registry"
+        model_label = f"{model_class.__module__}__{model_class.__name__}"
+        key = f"__{model_label}_async_file_model_registry"
         if not hasattr(model_class, key):
             registry = AsyncFileModelRegistry()
             setattr(model_class, key, registry)
