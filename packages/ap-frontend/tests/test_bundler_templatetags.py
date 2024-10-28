@@ -748,21 +748,21 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
                 self.assertSerializedPropsEqual(
                     "{% load react %}" "{% component 'DateTimePicker' datetime=datetime %}{% endcomponent %}",
                     {
-                        "datetime": datetime.datetime(2022, 12, 1, 12, 10, 10, 0),
+                        "datetime": datetime.datetime(2022, 12, 1, 12, 10, 10, 213000),
                     },
-                    {"datetime": ["@@CUSTOM", "DateTime", [2022, 12, 1, 12, 10, 10, 0]]},
+                    {"datetime": ["@@CUSTOM", "DateTime", [2022, 12, 1, 12, 10, 10, 213]]},
                 )
 
                 self.assertSerializedPropsEqual(
                     "{% load react %}" "{% component 'DateTimePicker' datetime=datetime %}{% endcomponent %}",
                     {
-                        "datetime": make_aware(datetime.datetime(2022, 12, 1, 12, 10, 10, 0)),
+                        "datetime": make_aware(datetime.datetime(2022, 12, 1, 12, 10, 10, 50000)),
                     },
                     {
                         "datetime": [
                             "@@CUSTOM",
                             "ZonedDateTime",
-                            [2022, 12, 1, "Australia/Melbourne", 39600000, 12, 10, 10, 0],
+                            [2022, 12, 1, "Australia/Melbourne", 39600000, 12, 10, 10, 50],
                         ]
                     },
                 )
@@ -775,7 +775,7 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
                 self.assertSerializedPropsEqual(
                     "{% load react %}" "{% component 'Time' time=time %}{% endcomponent %}",
                     {
-                        "time": datetime.time(12, 30, 15, 5),
+                        "time": datetime.time(12, 30, 15, 5000),
                     },
                     {
                         "time": [
