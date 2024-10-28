@@ -92,6 +92,14 @@ class ComponentProp(SSRCustomFormatSerializable, CodeGeneratorNode):
         return []
 
 
+def convert_microseconds(value: int) -> int:
+    """Convert microseconds to milliseconds
+
+    Javascript doesn't support microseconds, only milliseconds.
+    """
+    return int(value / 1000)
+
+
 class DateProp(ComponentProp):
     """Convert a python date or datetime to a js Date"""
 
@@ -138,7 +146,7 @@ class DateTimeProp(ComponentProp):
             self.value.hour,
             self.value.minute,
             self.value.second,
-            self.value.microsecond,
+            convert_microseconds(self.value.microsecond),
         ]
 
     def get_tag(self):
@@ -187,7 +195,7 @@ class ZonedDateTimeProp(ComponentProp):
             self.value.hour,
             self.value.minute,
             self.value.second,
-            self.value.microsecond,
+            convert_microseconds(self.value.microsecond),
         ]
 
     def get_tag(self):
@@ -222,7 +230,12 @@ class TimeProp(ComponentProp):
     def __init__(self, value, *args, **kwargs):
         super().__init__(value, *args, **kwargs)
         self.value = value
-        self.js_args = [self.value.hour, self.value.minute, self.value.second, self.value.microsecond]
+        self.js_args = [
+            self.value.hour,
+            self.value.minute,
+            self.value.second,
+            convert_microseconds(self.value.microsecond),
+        ]
 
     def get_tag(self):
         return "Time"
