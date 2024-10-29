@@ -1,5 +1,12 @@
 # alliance-platform-frontend
 
+## 0.0.17
+
+### Patch Changes
+
+- 402bb26: Fix prop handlers for `Time`, `CalendarDateTime` and `ZonedDateTime` to convert microseconds to milliseconds. Javascript doesn't support microseconds, so convert to milliseconds.
+- f6d6ea7: Add `camelize` templatetag for passing props to frontend
+
 ## 0.0.16
 
 ### Patch Changes
