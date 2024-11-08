@@ -69,24 +69,10 @@ class AsyncFileModelRegistry:
     files.
     """
 
-    fields: list[AsyncFileField | AsyncImageField]
     _save_in_progress: list[Model]
 
     def __init__(self):
-        self.fields = []
         self._save_in_progress = []
-
-    @classmethod
-    def register_field(cls, model_class: type[Model], field: AsyncFileField | AsyncImageField):
-        model_label = f"{model_class.__module__}__{model_class.__name__}"
-        key = f"__{model_label}_async_file_model_registry"
-        if not hasattr(model_class, key):
-            registry = AsyncFileModelRegistry()
-            setattr(model_class, key, registry)
-            signals.post_save.connect(registry._move_temp_files_into_place, sender=model_class)
-        else:
-            registry = getattr(model_class, key)
-        registry.fields.append(field)
 
     def _move_temp_files_into_place(self, instance: Model, *args, **kwargs):
         """For each async file on the instance move them from temporary location to permanent location
@@ -104,11 +90,19 @@ class AsyncFileModelRegistry:
         that have a temporary key are touched - other fields that have already been moved are left
         alone.
         """
+        model_class = instance.__class__
+        class_fields = model_class._meta.fields
+
+        fields = [f for f in class_fields if isinstance(f, AsyncFileMixin)]
+
+        if not fields:
+            return
+
         # Use ``is`` like this instead of ``instance in self._save_in_progress`` so we check object is same not just _pk
         if [x for x in self._save_in_progress if x is instance]:
             return
         _filter = Q()
-        for field in self.fields:
+        for field in fields:
             file = getattr(instance, field.name)
             _filter |= Q(
                 key=file.name,
@@ -120,8 +114,9 @@ class AsyncFileModelRegistry:
             temp_files = {file.field_name: file for file in temp_files_qs}
             pending_save: list[AsyncTempFile] = []
             should_save = False
-            for field in self.fields:
+            for field in fields:
                 file = getattr(instance, field.name)
+                field.before_process_file(instance)
                 if field.storage.is_temporary_path(file.name):
                     try:
                         temp_file = temp_files[field.name]
@@ -147,7 +142,9 @@ class AsyncFileModelRegistry:
                                     f"Error occurred on URL {url}. See record {instance.__class__.__name__}(pk={instance.pk}), field '{field.name}'"
                                 )
                             else:
-                                target_path = field.generate_filename(instance, temp_file.original_filename)
+                                target_path = cast(models.FileField, field).generate_filename(
+                                    instance, temp_file.original_filename
+                                )
                                 if field.max_length:
                                     target_path = field.storage.get_available_name(
                                         target_path, max_length=field.max_length
@@ -182,6 +179,10 @@ class AsyncFileModelRegistry:
             finally:
                 self._save_in_progress = list(filter(lambda x: x is not instance, self._save_in_progress))
 
+
+fields_registry = AsyncFileModelRegistry()
+
+signals.post_save.connect(fields_registry._move_temp_files_into_place, sender=None)
 
 # by default cap to 100MiB
 default_max_size = 100
@@ -326,7 +327,6 @@ class AsyncFileMixin(AsyncFileMixinProtocol):
         super().contribute_to_class(cls, name, private_only=private_only)  # type: ignore[safe-super]
         if not cls._meta.abstract and self.model._meta.app_config:
             field = cast(AsyncFileField, self)
-            AsyncFileModelRegistry.register_field(cls, field)
             self.async_field_registry.register_field(field)
             if self.perm_update is _UNSET:
                 self.perm_update = resolve_perm_name(
@@ -364,6 +364,10 @@ class AsyncFileMixin(AsyncFileMixinProtocol):
             elif mimetype == restriction:
                 return True
         return False
+
+    def before_process_file(self, instance):
+        """Hook to do something before file is processed."""
+        pass
 
     def before_move_file(self, instance):
         """Hook to do something before file is moved."""
@@ -583,7 +587,7 @@ class AsyncImageDescriptor(FileDescriptor):
 
     def __set__(self, instance, value):
         if isinstance(value, AsyncFileInputData):
-            value.validate_key(cast(AsyncFileField, self.field), instance.__dict__.get(self.field.name))
+            value.validate_key(cast(AsyncFileField, self.field), instance.__dict__.get(self.field.attname))
             value.update_dimension_cache(self.field)
             value = value.key
             super().__set__(instance, value)
@@ -603,13 +607,14 @@ class AsyncImageDescriptor(FileDescriptor):
             # that contains the width / height submitted from the
             # frontend and so avoids potentially downloading the file
             # to get the width/height.
-            previous_file = instance.__dict__.get(self.field.name)
+            previous_file = instance.__dict__.get(self.field.attname)
             super().__set__(instance, value)
             # Don't compare value != previous_file as it doesn't guarantee the underlying
             # file hasn't changed (eg. the key could be set to same filename again after
             # a new upload but be a different file)
+            field = cast(AsyncImageField, self.field)
             if previous_file is not None:
-                cast(AsyncImageField, self.field).update_dimension_fields(instance, force=True)
+                field.update_dimension_fields(instance, force=True)
 
 
 class AsyncImageFieldFile(FieldFileMixin, ImageFieldFile):
@@ -654,9 +659,21 @@ class AsyncImageField(AsyncFileMixin, ImageField):  # type: ignore[misc] # mypy 
         return super().check(**kwargs)
 
     def update_dimension_fields(self, instance, force=False, *args, **kwargs):
-        # If we have a cache use that otherwise fall back to default. Note that
-        # the default will open the file to work out dimensions and so with
-        # remote backends like S3 would result in downloading the file first.
+        """
+        NOTE: The base Django image field connects this function to the model's
+        ``post_init`` signal in the field's ``contribute_to_class`` function, to
+        ensure that dimensions are calculated on model initialisation. However,
+        the signal will not be triggered for child models, meaning this function
+        will not be called on initialisation when inherited. This should only affect
+        the setting of ``width_field`` and ``height_field`` on the model, so most
+        functionality of this field should be unaffected. However, it's something to
+        keep in mind when using this field on a model that inherits from a non-abstract
+        model.
+
+        If we have a cache use that otherwise fall back to default. Note that
+        the default will open the file to work out dimensions and so with
+        remote backends like S3 would result in downloading the file first.
+        """
         if self.dimension_cache:
             has_dimension_fields = self.width_field or self.height_field
             if not has_dimension_fields or self.attname not in instance.__dict__:
@@ -667,8 +684,26 @@ class AsyncImageField(AsyncFileMixin, ImageField):  # type: ignore[misc] # mypy 
                 setattr(instance, self.width_field, width)
             if self.height_field:
                 setattr(instance, self.height_field, height)
+            return width, height
+
         else:
             super().update_dimension_fields(instance, force, *args, **kwargs)
+
+    @property
+    def expects_dimension_cache(self):
+        return (self.width_field and self.height_field) and (not self.dimension_cache)
+
+    def before_process_file(self, instance):
+        """
+        The base ImageField ensures that ``update_dimension_fields`` is called on initialisation using ``contribute_to_class``
+        and the ``post_init`` signal. Those can't be relied on for child classes - so here we double-check that width and
+        height are set when we expect them to be set, and if not, manually run ``update_dimension_fields``
+        """
+        if self.expects_dimension_cache:
+            width = getattr(instance, self.width_field)
+            height = getattr(instance, self.height_field)
+            if (width is None) or (height is None):
+                self.update_dimension_fields(instance, force=True)
 
     def before_move_file(self, instance):
         """Prior to moving file populate the dimensions cache
@@ -676,11 +711,8 @@ class AsyncImageField(AsyncFileMixin, ImageField):  # type: ignore[misc] # mypy 
         This is so the moved file retains same dimensions as prior to move without
         needing to recalculate it (ie. it's the same file, just in a different location).
         """
-        has_dimension_fields = self.width_field and self.height_field
-        if has_dimension_fields and not self.dimension_cache:
-            width = getattr(
-                instance, cast(str, self.width_field)
-            )  # here -> has_dimension_fields -> str | None is str
+        if self.expects_dimension_cache:
+            width = getattr(instance, cast(str, self.width_field))
             height = getattr(instance, cast(str, self.height_field))
             self.dimension_cache = (width, height)
 
