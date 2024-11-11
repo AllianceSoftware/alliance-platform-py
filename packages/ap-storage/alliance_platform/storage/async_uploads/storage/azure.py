@@ -1,7 +1,9 @@
 from datetime import timedelta
 from typing import Any
 
-from alliance_platform.storage.base import AsyncUploadStorage
+from alliance_platform.storage.async_uploads.storage.base import AsyncUploadStorage
+from alliance_platform.storage.async_uploads.storage.base import GenerateUploadUrlResponse
+from alliance_platform.storage.settings import ap_storage_settings
 from django.core.exceptions import ImproperlyConfigured
 from django.utils import timezone
 
@@ -33,11 +35,12 @@ class AzureAsyncUploadStorage(AzureStorage, AsyncUploadStorage):
     def generate_upload_url(
         self,
         name: str,
+        field_id: str,
         *,
-        expire: int = 3600,
+        expire: int = ap_storage_settings.UPLOAD_URL_EXPIRY,
         conditions: Any | None = None,
         fields: Any | None = None,
-    ):
+    ) -> GenerateUploadUrlResponse:
         """
         Generates a presigned PUT signed URL. Returns a dictionary with two elements: url and fields. Url is the url to post to. Fields is a dictionary filled with the form fields and respective values to use when submitting the post.
 
@@ -63,9 +66,11 @@ class AzureAsyncUploadStorage(AzureStorage, AsyncUploadStorage):
         container_blob_url = self.client.get_blob_client(name).url
         return {"url": BlobClient.from_blob_url(container_blob_url, credential=credential).url, "fields": {}}
 
-    def generate_download_url(self, key, **kwargs):
+    def generate_download_url(
+        self, key: str, field_id: str, expire=ap_storage_settings.DOWNLOAD_URL_EXPIRY, **kwargs
+    ):
         """Generates a signed URL to download the file"""
-        return super().url(key, **kwargs)
+        return super().url(key, expire=expire)  # type: ignore[call-arg] # Not sure why this is an error... AzureStorage definitely supports expire
 
     def move_file(self, from_key, to_key):
         """Moves file by copying :code:`from_key` to :code:`to_key` and then deletes :code:`from_key`"""

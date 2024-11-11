@@ -28,7 +28,7 @@ def get_all_templates_files() -> list[Path]:
 
     Will exclude any templates the match an entry in :data:`~alliance_platform.frontend.settings.AlliancePlatformFrontendSettingsType.EXTRACT_ASSETS_EXCLUDE_DIRS`
     """
-    dirs = get_app_template_dirs("templates")
+    dirs: tuple[str | Path, ...] = get_app_template_dirs("templates")
     for engine in engines.all():
         dirs += tuple(engine.template_dirs)
     files: list[Path] = []

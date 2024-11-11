@@ -1,28 +1,33 @@
 import datetime
 import os
 from typing import TYPE_CHECKING
+from typing import TypedDict
 
 from django.core.exceptions import SuspiciousFileOperation
+from django.core.files.storage import Storage
+from django.urls import path
 from django.utils.crypto import get_random_string
 
 if TYPE_CHECKING:
-    # when doing type checks we can assume AsyncUploadStorage is used w/ an actual Storage as a mixin
-    from django.core.files.storage import Storage
-else:
+    from alliance_platform.storage.async_uploads.registry import AsyncFieldRegistry
 
-    class Storage:
-        pass
+
+class GenerateUploadUrlResponse(TypedDict):
+    #: The URL to post to
+    url: str
+    #: A dictionary of form field names and their values to be included when submitting
+    fields: dict
 
 
 class AsyncUploadStorage(Storage):
-    """Base storage class for use with :class:`~alliance_platform.storage.fields.async_file.AsyncFileField`
+    """Base storage class for use with :class:`~alliance_platform.storage.async_uploads.models.AsyncFileField`
 
     Provides ``generate_upload_url`` to return a URL to upload a file to (eg. a signed URL) and a ``move_file`` method
     to move a file from a temporary location to the permanent location. The key used for temporary files is returned
     by ``generate_temporary_path`` and ``is_temporary_path`` should return whether a file is in the temporary location
     and needs to be moved to a permanent location.
 
-    See :class:`~alliance_platform.storage.fields.async_file.AsyncFileMixin` for a detailed explanation of how
+    See :class:`~alliance_platform.storage.async_uploads.models.AsyncFileMixin` for a detailed explanation of how
     all the pieces fit together.
     """
 
@@ -30,14 +35,14 @@ class AsyncUploadStorage(Storage):
     #: temporary file to know whether to move them and so *must* be unique to temporary files.
     temporary_key_prefix = "async-temp-files"
 
-    def generate_upload_url(self, name: str, *args, **kwargs) -> str:
+    def generate_upload_url(self, name: str, field_id: str, *args, **kwargs) -> GenerateUploadUrlResponse:
         """Should return a URL that a file can be uploaded directly to
 
         In S3 this would be a signed URL.
         """
         raise NotImplementedError("generate_upload_url must be implemented")
 
-    def generate_download_url(self, key, **kwargs):
+    def generate_download_url(self, key: str, field_id: str, **kwargs):
         """Should return a URL that the specified key should be downloadable from
 
         In S3 this would be a signed URL.
@@ -90,3 +95,28 @@ class AsyncUploadStorage(Storage):
         if not filename:
             return False
         return filename.startswith(self.temporary_key_prefix + "/")
+
+    def get_url_patterns(self, registry: "AsyncFieldRegistry"):
+        """Return the URL patterns for any views required by the storage class
+
+        When extending ``AsyncUploadStorage``, this method can be implemented if any custom views
+        are required to support the implementation. By default, two views are supplied:
+
+        1) :class:`~alliance_platform.storage.async_uploads.views.DownloadRedirectView` to support downloading an existing file. This
+           is attached to the `"download-file/"` path.
+        2) :class:`~alliance_platform.storage.async_uploads.views.GenerateUploadUrlView` to generate a URL that can be uploaded to
+           directly from the frontend. This is attached to the `"generate-upload-url/"` path.
+
+        This method is called by :meth:`~alliance_platform.storage.async_uploads.registry.AsyncFieldRegistry.get_url_patterns`.
+        """
+        from alliance_platform.storage.async_uploads.views import DownloadRedirectView
+        from alliance_platform.storage.async_uploads.views import GenerateUploadUrlView
+
+        # already generated patterns for these views, can return nothing
+        if registry.attached_download_view and registry.attached_view:
+            return []
+
+        return [
+            path("download-file/", DownloadRedirectView.as_view(registry=registry)),
+            path("generate-upload-url/", GenerateUploadUrlView.as_view(registry=registry)),
+        ]

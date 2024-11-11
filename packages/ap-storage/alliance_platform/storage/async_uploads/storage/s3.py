@@ -1,19 +1,19 @@
 from typing import Any
 
-from alliance_platform.storage.base import AsyncUploadStorage
+from alliance_platform.storage.async_uploads.storage.base import AsyncUploadStorage
+from alliance_platform.storage.async_uploads.storage.base import GenerateUploadUrlResponse
+from alliance_platform.storage.settings import ap_storage_settings
 from django.core.exceptions import ImproperlyConfigured
 
 try:
-    from storages.backends.s3boto3 import (  # type: ignore[import-untyped] # no types for storages
-        S3Boto3Storage,
-    )
+    from storages.backends.s3 import S3Storage  # type: ignore[import-untyped] # no types for storages
 except ImportError as e:
     raise ImproperlyConfigured(
         "Optional dependency 'django-storages[s3]' is not installed. This is required for the S3AsyncUploadStorage backend."
     ) from e
 
 
-class S3AsyncUploadStorage(S3Boto3Storage, AsyncUploadStorage):
+class S3AsyncUploadStorage(S3Storage, AsyncUploadStorage):
     """S3 implementation of AsyncUploadStorage
 
     Uses signed URLs for uploading.
@@ -25,11 +25,12 @@ class S3AsyncUploadStorage(S3Boto3Storage, AsyncUploadStorage):
     def generate_upload_url(
         self,
         name: str,
+        field_id: str,
         *,
-        expire: int | None = 3600,
+        expire: int | None = ap_storage_settings.UPLOAD_URL_EXPIRY,
         conditions: Any | None = None,
         fields: Any | None = None,
-    ) -> str:
+    ) -> GenerateUploadUrlResponse:
         """
         Generates a presigned POST signed URL. Returns a dictionary with two elements: url and fields. Url is the url to post to. Fields is a dictionary filled with the form fields and respective values to use when submitting the post.
         e.g
@@ -61,9 +62,11 @@ class S3AsyncUploadStorage(S3Boto3Storage, AsyncUploadStorage):
             self.bucket_name, name, Fields=fields, Conditions=conditions, ExpiresIn=expire
         )
 
-    def generate_download_url(self, key, **kwargs):
+    def generate_download_url(
+        self, key: str, field_id: str, expire=ap_storage_settings.DOWNLOAD_URL_EXPIRY, **kwargs
+    ):
         """Generates a signed URL to download the file"""
-        return super().url(key)
+        return super().url(key, expire=expire)  # type: ignore[call-arg] # Not sure why this is an error... S3Storage definitely supports expire
 
     def move_file(self, from_key, to_key):
         """Moves file by copying :code:`from_key` to :code:`to_key` and then deletes :code:`from_key`"""
