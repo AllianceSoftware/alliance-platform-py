@@ -1,9 +1,13 @@
+import importlib
+import inspect
 import os
 from pathlib import Path
 import sys
 from urllib.parse import urlparse
 
 from multiproject.utils import get_project
+from sphinx import addnodes
+from sphinx.domains.std import Cmdoption
 
 current_dir = Path(__file__).parent
 sys.path.append(str(current_dir / "_doc_utils"))
@@ -32,6 +36,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
     "sphinx_rtd_theme",
+    "sphinx.ext.linkcode",
 ]
 
 templates_path = ["_templates"]
@@ -53,6 +58,10 @@ multiproject_projects = {
         "name": "Codegen",
         "path": "../packages/ap-codegen/docs",
     },
+    "storage": {
+        "name": "Storage",
+        "path": "../packages/ap-storage/docs",
+    },
 }
 
 # -- Options for Intersphinx extension ---------------------------------------
@@ -70,6 +79,7 @@ dev_port_map = {
     "core": 56675,
     "frontend": 56676,
     "codegen": 56677,
+    "storage": 56678,
 }
 
 
@@ -89,6 +99,7 @@ intersphinx_mapping = {
     "alliance-platform-core": get_project_mapping("core"),
     "alliance-platform-frontend": get_project_mapping("frontend"),
     "alliance-platform-codegen": get_project_mapping("codegen"),
+    "alliance-platform-storage": get_project_mapping("storage"),
     "django": (
         "https://docs.djangoproject.com/en/stable/",
         ("https://docs.djangoproject.com/en/stable/_objects/"),
@@ -121,6 +132,14 @@ html_context = {
 }
 
 
+def parse_management_command(env, sig, signode):
+    command = sig.split(" ")[0]
+    env.ref_context["std:program"] = command
+    title = "./manage.py %s" % sig
+    signode += addnodes.desc_name(title, title)
+    return command
+
+
 def setup(app):
     # Allows using `:ttag:` and `:tfilter:` roles in the documentation to link to template tags and filters.
     app.add_crossref_type(
@@ -139,6 +158,50 @@ def setup(app):
         rolename="setting",
         indextemplate="pair: %s; setting",
     )
+    app.add_object_type(
+        directivename="django-manage",
+        rolename="djmanage",
+        indextemplate="pair: %s; django-manage command",
+        parse_node=parse_management_command,
+    )
+    app.add_directive("django-manage-option", Cmdoption)
 
 
 generate_sidebar(current_dir, globals())
+
+git_identifier = os.environ.get("READTHEDOCS_GIT_IDENTIFIER", "main")
+
+
+def linkcode_resolve(domain, info):
+    """Handle resolving URL for the linkcode extension.
+
+    See https://www.sphinx-doc.org/en/master/usage/extensions/linkcode.html#confval-linkcode_resolve
+    """
+    if domain != "py":
+        return None
+    if not info["module"]:
+        return None
+    filename = info["module"].replace(".", "/")
+    try:
+        # e.g. alliance_platform/frontend/whatever
+        # project will be 'frontend'
+        package, project, _ = filename.rsplit("/", 2)
+    except ValueError:
+        return None
+    if package != "alliance_platform":
+        return None
+    obj_name, *parts = info["fullname"].split(".")
+    obj = getattr(importlib.import_module(info["module"]), obj_name)
+    try:
+        if parts:
+            try:
+                _, linenum = inspect.getsourcelines(getattr(obj, parts[0]))
+            except (TypeError, AttributeError):
+                # This will happen when getattr above returns a variable instead of method
+                _, linenum = inspect.getsourcelines(obj)
+        else:
+            _, linenum = inspect.getsourcelines(obj)
+    except TypeError:
+        # May fail still, e.g. for types
+        linenum = 0
+    return f"https://github.com/AllianceSoftware/alliance-platform-py/blob/{git_identifier}/packages/ap-{project}/{filename}.py#L{linenum}"

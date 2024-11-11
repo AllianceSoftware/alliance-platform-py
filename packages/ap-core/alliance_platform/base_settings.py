@@ -21,7 +21,7 @@ def maybe_import_string(val: Any | None):
     return val
 
 
-SettingKey = Literal["CORE", "FRONTEND", "CODEGEN"]
+SettingKey = Literal["CORE", "FRONTEND", "CODEGEN", "STORAGE"]
 
 
 class AlliancePlatformSettingsBase:
@@ -61,7 +61,8 @@ class AlliancePlatformSettingsBase:
         try:
             self._user_settings = platform_settings[self._key]
         except KeyError:
-            raise ImproperlyConfigured(f"Missing {self._key} settings in ALLIANCE_PLATFORM settings dict")
+            # Don't throw an error if not set so things work with packages that only have optional settings
+            self._user_settings = {}
 
     @lru_cache()
     def __getattr__(self, key):

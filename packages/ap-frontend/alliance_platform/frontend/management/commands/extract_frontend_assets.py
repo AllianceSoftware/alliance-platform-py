@@ -28,7 +28,7 @@ def get_all_templates_files() -> list[Path]:
 
     Will exclude any templates the match an entry in :data:`~alliance_platform.frontend.settings.AlliancePlatformFrontendSettingsType.EXTRACT_ASSETS_EXCLUDE_DIRS`
     """
-    dirs = get_app_template_dirs("templates")
+    dirs: tuple[str | Path, ...] = get_app_template_dirs("templates")
     for engine in engines.all():
         dirs += tuple(engine.template_dirs)
     files: list[Path] = []
@@ -127,7 +127,7 @@ class Command(BaseCommand):
         stderr_warn = OutputWrapper(sys.stderr)
         stderr_warn.style_func = self.style.WARNING
         f = io.StringIO()
-        with redirect_stdout(f if quiet else self.stdout):  # type: ignore[type-var]
+        with redirect_stdout(f if quiet else self.stdout):
             files, breakdown, errors, warnings = extract_asset_filenames()
             if warnings:
                 stderr_warn.write("\n".join(warnings))

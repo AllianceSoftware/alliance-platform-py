@@ -152,7 +152,7 @@ class ComponentProps(SSRSerializable):
         self.props = props.copy()
         # Remove form input context key if present - this can't be used beyond this point and exists only as
         # a workaround to pass extra context to widgets, see FormInputContextRenderer
-        if form_input_context_key in self.props:  # type: ignore[comparison-overlap]
+        if form_input_context_key in self.props:
             self.props.pop(form_input_context_key)  # type: ignore[call-overload]
 
     def __repr__(self):
