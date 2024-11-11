@@ -23,6 +23,7 @@ from django.test import override_settings
 from django.urls import reverse
 from test_alliance_platform_storage.models import AlternateRegistryModel
 from test_alliance_platform_storage.models import AsyncFilePermTestModel
+from test_alliance_platform_storage.models import AsyncFileTestChildModel
 from test_alliance_platform_storage.models import AsyncFileTestModel
 from test_alliance_platform_storage.models import User
 from test_alliance_platform_storage.models import another_registry
@@ -46,6 +47,8 @@ DUMMY_STORAGES_SETTING = {
 
 
 class AsyncFileMixinTestCase(TestCase):
+    MODELS_TO_TEST = [AsyncFileTestModel, AsyncFileTestChildModel]
+
     def test_validate_storage_class(self):
         with override_settings(
             STORAGES={
@@ -74,48 +77,56 @@ class AsyncFileMixinTestCase(TestCase):
         self.assertEqual(another_registry.fields_by_id[another_registry.generate_id(field2)], field2)
 
     def test_image_field_dimensions(self):
-        with mock.patch("test_alliance_platform_storage.storage.DummyStorage._open") as mock_method:
-            tf = AsyncTempFile.create_for_field(
-                AsyncFileTestModel._meta.get_field("image_with_dims"), "example.png"
-            )
-            tm = AsyncFileTestModel.objects.create(
-                image_with_dims=AsyncFileInputData(key=tf.key, name=tf.original_filename, width=32, height=32)
-            )
-            self.assertEqual(tm.image_with_dims, "example.png")
-            self.assertEqual(tm.image_width, 32)
-            self.assertEqual(tm.image_height, 32)
+        for async_model_to_test in self.MODELS_TO_TEST:
+            with self.subTest(async_model_to_test.__name__):
+                with mock.patch("test_alliance_platform_storage.storage.DummyStorage._open") as mock_method:
+                    tf = AsyncTempFile.create_for_field(
+                        async_model_to_test._meta.get_field("image_with_dims"), "example.png"
+                    )
+                    tm = async_model_to_test.objects.create(
+                        image_with_dims=AsyncFileInputData(
+                            key=tf.key, name=tf.original_filename, width=32, height=32
+                        )
+                    )
+                    self.assertEqual(tm.image_with_dims, "example.png")
+                    self.assertEqual(tm.image_width, 32)
+                    self.assertEqual(tm.image_height, 32)
 
-            # If width & height are set using AsyncFileInputData then storage should not have to open the file
-            mock_method.assert_not_called()
+                    # If width & height are set using AsyncFileInputData then storage should not have to open the file
+                    mock_method.assert_not_called()
 
-            mock_method.return_value = File(open(TEST_IMAGE_PATH, "rb"))
+                    mock_method.return_value = File(open(TEST_IMAGE_PATH, "rb"))
 
-            # This should result in storage opening the file and reading dimensions from there
-            tm.image_with_dims = "test.png"
-            tm.save()
+                    # This should result in storage opening the file and reading dimensions from there
+                    tm.image_with_dims = "test.png"
+                    tm.save()
 
-            self.assertEqual(tm.image_with_dims, "test.png")
-            self.assertEqual(tm.image_width, 16)
-            self.assertEqual(tm.image_height, 16)
+                    self.assertEqual(tm.image_with_dims, "test.png")
+                    self.assertEqual(tm.image_width, 16)
+                    self.assertEqual(tm.image_height, 16)
 
-            mock_method.assert_called_once_with("test.png", "rb")
-            mock_method.mock_reset()
+                    mock_method.assert_called_once_with("test.png", "rb")
+                    mock_method.mock_reset()
 
-        with mock.patch("test_alliance_platform_storage.storage.DummyStorage._open") as mock_method:
-            mock_method.return_value = File(open(TEST_IMAGE_PATH, "rb"))
-            # Not passing dimensions should result in file being read for it
-            tf = AsyncTempFile.create_for_field(
-                AsyncFileTestModel._meta.get_field("image_with_dims"), "example.png"
-            )
-            tm = AsyncFileTestModel.objects.create(
-                image_with_dims=AsyncFileInputData(key=tf.key, name="example.png")
-            )
-            self.assertEqual(tm.image_width, 16)
-            self.assertEqual(tm.image_height, 16)
+                with mock.patch("test_alliance_platform_storage.storage.DummyStorage._open") as mock_method:
+                    mock_method.return_value = File(open(TEST_IMAGE_PATH, "rb"))
+                    # Not passing dimensions should result in file being read for it
+                    tf = AsyncTempFile.create_for_field(
+                        async_model_to_test._meta.get_field("image_with_dims"), "example.png"
+                    )
+                    tm = async_model_to_test.objects.create(
+                        image_with_dims=AsyncFileInputData(key=tf.key, name="example.png")
+                    )
+                    self.assertEqual(tm.image_width, 16)
+                    self.assertEqual(tm.image_height, 16)
 
-            mock_method.assert_called_once_with(tf.key, "rb")
+                    mock_method.assert_called_once_with(tf.key, "rb")
 
     def test_image_field_dimensions_recalculate(self):
+        # only test for parent model - we know that child model doesn't work for dimension recalculation.
+        # this is because Django runs size retrieval at initialisation using a post_init signal. signals
+        # don't activate for child models, and since the post_init signal is connected in the field's
+        # internal contribute_to_class function, the signal is only attached to the parent model
         with mock.patch("test_alliance_platform_storage.storage.DummyStorage._open") as mock_method:
             tf = AsyncTempFile.create_for_field(
                 AsyncFileTestModel._meta.get_field("image_with_dims"), "example.png"
@@ -184,184 +195,171 @@ class AsyncFileMixinTestCase(TestCase):
             mock_method.assert_not_called()
 
     def test_image_field_dimensions_refresh_from_db(self):
-        with mock.patch("test_alliance_platform_storage.storage.DummyStorage._open") as mock_method:
-            tf = AsyncTempFile.create_for_field(
-                AsyncFileTestModel._meta.get_field("image_with_dims"), "example.png"
-            )
-            tm = AsyncFileTestModel.objects.create(
-                image_with_dims=AsyncFileInputData(key=tf.key, name=tf.original_filename, width=32, height=32)
-            )
-            self.assertEqual(tm.image_with_dims, "example.png")
-            self.assertEqual(tm.image_width, 32)
-            self.assertEqual(tm.image_height, 32)
+        for async_model_to_test in self.MODELS_TO_TEST:
+            with self.subTest(async_model_to_test.__name__):
+                with mock.patch("test_alliance_platform_storage.storage.DummyStorage._open") as mock_method:
+                    tf = AsyncTempFile.create_for_field(
+                        async_model_to_test._meta.get_field("image_with_dims"), "example.png"
+                    )
+                    tm = async_model_to_test.objects.create(
+                        image_with_dims=AsyncFileInputData(
+                            key=tf.key, name=tf.original_filename, width=32, height=32
+                        )
+                    )
+                    self.assertEqual(tm.image_with_dims, "example.png")
+                    self.assertEqual(tm.image_width, 32)
+                    self.assertEqual(tm.image_height, 32)
 
-            # If width & height are set using AsyncFileInputData then storage should not have to open the file
-            mock_method.assert_not_called()
+                    # If width & height are set using AsyncFileInputData then storage should not have to open the file
+                    mock_method.assert_not_called()
 
-            tm2 = AsyncFileTestModel.objects.get(pk=tm.pk)
+                    tm2 = async_model_to_test.objects.get(pk=tm.pk)
 
-            mock_method.return_value = File(open(TEST_IMAGE_PATH, "rb"))
-            tm2.image_with_dims = "test.png"
-            tm2.save()
-            mock_method.assert_called_once_with("test.png", "rb")
-            mock_method.reset_mock()
+                    mock_method.return_value = File(open(TEST_IMAGE_PATH, "rb"))
+                    tm2.image_with_dims = "test.png"
+                    tm2.save()
+                    mock_method.assert_called_once_with("test.png", "rb")
+                    mock_method.reset_mock()
 
-            # refresh_from_db will trigger logic in AsyncImageDescriptor that results in
-            # update_dimensions_being called. Technically this isn't necessary; if the
-            # record was retrieved direct from database instead of refresh_from_db it
-            # would not do this. Unfortunately we don't know about refresh_from_db in
-            # the field and so it just looks like the value has changed.
-            mock_method.return_value = File(open(TEST_IMAGE_PATH, "rb"))
-            tm.refresh_from_db()
-            mock_method.assert_called_once_with("test.png", "rb")
+                    # refresh_from_db will trigger logic in AsyncImageDescriptor that results in
+                    # update_dimensions_being called. Technically this isn't necessary; if the
+                    # record was retrieved direct from database instead of refresh_from_db it
+                    # would not do this. Unfortunately we don't know about refresh_from_db in
+                    # the field and so it just looks like the value has changed.
+                    mock_method.return_value = File(open(TEST_IMAGE_PATH, "rb"))
+                    tm.refresh_from_db()
+                    mock_method.assert_called_once_with("test.png", "rb")
 
-            self.assertEqual(tm.image_with_dims, "test.png")
-            self.assertEqual(tm.image_width, 16)
-            self.assertEqual(tm.image_height, 16)
+                    self.assertEqual(tm.image_with_dims, "test.png")
+                    self.assertEqual(tm.image_width, 16)
+                    self.assertEqual(tm.image_height, 16)
 
     def test_image_field_no_dimensions(self):
         with mock.patch("test_alliance_platform_storage.storage.DummyStorage._open") as mock_method:
-            tf = AsyncTempFile.create_for_field(
-                AsyncFileTestModel._meta.get_field("image_no_dims"), "test.png"
-            )
-            tm = AsyncFileTestModel.objects.create(
-                image_no_dims=AsyncFileInputData(key=tf.key, name=tf.original_filename)
-            )
-            self.assertEqual(tm.image_no_dims.name, "test.png")
-            mock_method.assert_not_called()
+            for async_model_to_test in self.MODELS_TO_TEST:
+                with self.subTest(async_model_to_test.__name__):
+                    tf = AsyncTempFile.create_for_field(
+                        async_model_to_test._meta.get_field("image_no_dims"), "test.png"
+                    )
+                    tm = async_model_to_test.objects.create(
+                        image_no_dims=AsyncFileInputData(key=tf.key, name=tf.original_filename)
+                    )
+                    self.assertEqual(tm.image_no_dims.name, "test.png")
+                    mock_method.assert_not_called()
 
     def test_field_url(self):
-        file1 = AsyncTempFile.create_for_field(AsyncFileTestModel._meta.get_field("file1"), "test.png")
-        file2 = AsyncTempFile.create_for_field(
-            AsyncFileTestModel._meta.get_field("image_no_dims"), "example.png"
-        )
-        tm = AsyncFileTestModel.objects.create(
-            file1=file1.key,
-            image_no_dims=AsyncFileInputData(key=file2.key, name=file2.original_filename),
-        )
-        field = AsyncFileTestModel._meta.get_field("file1")
-        registry = field.async_field_registry
-        self.assertEqual(
-            tm.file1.url,
-            reverse(registry.attached_download_view)
-            + f"?field_id={registry.generate_id(field)}&instance_id={tm.pk}&_={shake_256(tm.file1.name.encode()).hexdigest(8)}",
-        )
-        field = AsyncFileTestModel._meta.get_field("image_no_dims")
-        registry = field.async_field_registry
-        self.assertEqual(
-            tm.image_no_dims.url,
-            reverse(field.async_field_registry.attached_download_view)
-            + f"?field_id={registry.generate_id(field)}&instance_id={tm.pk}&_={shake_256(tm.image_no_dims.name.encode()).hexdigest(8)}",
-        )
+        for async_model_to_test in self.MODELS_TO_TEST:
+            with self.subTest(async_model_to_test.__name__):
+                file1 = AsyncTempFile.create_for_field(
+                    async_model_to_test._meta.get_field("file1"), "test.png"
+                )
+                file2 = AsyncTempFile.create_for_field(
+                    async_model_to_test._meta.get_field("image_no_dims"), "example.png"
+                )
+                tm = async_model_to_test.objects.create(
+                    file1=file1.key,
+                    image_no_dims=AsyncFileInputData(key=file2.key, name=file2.original_filename),
+                )
+                field = async_model_to_test._meta.get_field("file1")
+                registry = field.async_field_registry
+                self.assertEqual(
+                    tm.file1.url,
+                    reverse(registry.attached_download_view)
+                    + f"?field_id={registry.generate_id(field)}&instance_id={tm.pk}&_={shake_256(tm.file1.name.encode()).hexdigest(8)}",
+                )
+                field = async_model_to_test._meta.get_field("image_no_dims")
+                registry = field.async_field_registry
+                self.assertEqual(
+                    tm.image_no_dims.url,
+                    reverse(field.async_field_registry.attached_download_view)
+                    + f"?field_id={registry.generate_id(field)}&instance_id={tm.pk}&_={shake_256(tm.image_no_dims.name.encode()).hexdigest(8)}",
+                )
 
     def test_move_file(self):
-        tf = AsyncTempFile.create_for_field(AsyncFileTestModel._meta.get_field("file1"), "test.pdf")
-        tm = AsyncFileTestModel.objects.create(
-            file1=AsyncFileInputData(key=tf.key, name=tf.original_filename)
-        )
-        self.assertEqual(tm.file1.name, "test.pdf")
+        for async_model_to_test in self.MODELS_TO_TEST:
+            with self.subTest(async_model_to_test.__name__):
+                tf = AsyncTempFile.create_for_field(async_model_to_test._meta.get_field("file1"), "test.pdf")
+                file = AsyncFileInputData(key=tf.key, name=tf.original_filename)
+                tm = async_model_to_test.objects.create(file1=file)
+                self.assertEqual(tm.file1.name, "test.pdf")
 
-        # No error; key is same
-        tm.file1 = AsyncFileInputData(key="test.pdf", name="test.pdf")
-        tm.save()
-
-        # Error; can't change key using AsyncFileInputData
-        with self.assertRaisesRegex(ValidationError, "Invalid upload"):
-            with self.assertLogs(logging.getLogger("alliance_platform.storage")):
-                tm.file1 = AsyncFileInputData(key="test2.pdf", name="test.pdf")
+                # No error; key is same
+                tm.file1 = AsyncFileInputData(key="test.pdf", name="test.pdf")
                 tm.save()
 
-        # No problem setting a new temp file location however
-        tf = AsyncTempFile.create_for_field(AsyncFileTestModel._meta.get_field("file1"), "test2.pdf")
-        tm.file1 = AsyncFileInputData(key=tf.key, name=tf.original_filename)
-        tm.save()
-        self.assertEqual(tm.file1.name, "test2.pdf")
+                # Error; can't change key using AsyncFileInputData
+                with self.assertRaisesRegex(ValidationError, "Invalid upload"):
+                    with self.assertLogs(logging.getLogger("alliance_platform.storage")):
+                        tm.file1 = AsyncFileInputData(key="test2.pdf", name="test.pdf")
+                        tm.save()
+
+                # No problem setting a new temp file location however
+                tf = AsyncTempFile.create_for_field(async_model_to_test._meta.get_field("file1"), "test2.pdf")
+                tm.file1 = AsyncFileInputData(key=tf.key, name=tf.original_filename)
+                tm.save()
+                self.assertEqual(tm.file1.name, "test2.pdf")
 
     def test_move_image_file(self):
-        with mock.patch("test_alliance_platform_storage.storage.DummyStorage._open") as mock_method:
-            # On creation the temp file will be moved to the final location. As part
-            # of this dimensions should _not_ be calculated as they were passed in.
-            tf = AsyncTempFile.create_for_field(
-                AsyncFileTestModel._meta.get_field("image_with_dims"), "test.png"
-            )
-            tm = AsyncFileTestModel.objects.create(
-                image_with_dims=AsyncFileInputData(key=tf.key, name=tf.original_filename, width=32, height=32)
-            )
-            self.assertEqual(tm.image_with_dims.name, "test.png")
-            self.assertEqual(tm.image_width, 32)
-            self.assertEqual(tm.image_height, 32)
+        for async_model_to_test in self.MODELS_TO_TEST:
+            with self.subTest(async_model_to_test.__name__):
+                with mock.patch("test_alliance_platform_storage.storage.DummyStorage._open") as mock_method:
+                    # On creation the temp file will be moved to the final location. As part
+                    # of this dimensions should _not_ be calculated as they were passed in.
+                    tf = AsyncTempFile.create_for_field(
+                        async_model_to_test._meta.get_field("image_with_dims"), "test.png"
+                    )
+                    tm = async_model_to_test.objects.create(
+                        image_with_dims=AsyncFileInputData(
+                            key=tf.key, name=tf.original_filename, width=32, height=32
+                        )
+                    )
+                    self.assertEqual(tm.image_with_dims.name, "test.png")
+                    self.assertEqual(tm.image_width, 32)
+                    self.assertEqual(tm.image_height, 32)
 
-            # If width & height are set using AsyncFileInputData then storage should not have to open the file
-            mock_method.assert_not_called()
+                    # If width & height are set using AsyncFileInputData then storage should not have to open the file
+                    mock_method.assert_not_called()
 
-            # If temp file is created without passing the width/height then we
-            # do expect the dimensions to be calculated, but only once
-            tf = AsyncTempFile.create_for_field(
-                AsyncFileTestModel._meta.get_field("image_with_dims"), "test.png"
-            )
-            mock_method.return_value = File(open(TEST_IMAGE_PATH, "rb"))
-            tm = AsyncFileTestModel.objects.create(
-                image_with_dims=AsyncFileInputData(key=tf.key, name=tf.original_filename)
-            )
+                    # If temp file is created without passing the width/height then we
+                    # do expect the dimensions to be calculated, but only once
+                    tf = AsyncTempFile.create_for_field(
+                        async_model_to_test._meta.get_field("image_with_dims"), "test.png"
+                    )
+                    mock_method.return_value = File(open(TEST_IMAGE_PATH, "rb"))
+                    tm = async_model_to_test.objects.create(
+                        image_with_dims=AsyncFileInputData(key=tf.key, name=tf.original_filename)
+                    )
 
-            self.assertEqual(tm.image_with_dims, "test.png")
-            self.assertEqual(tm.image_width, 16)
-            self.assertEqual(tm.image_height, 16)
+                    self.assertEqual(tm.image_with_dims, "test.png")
+                    self.assertEqual(tm.image_width, 16)
+                    self.assertEqual(tm.image_height, 16)
 
-            mock_method.assert_called_once_with(tf.key, "rb")
-            mock_method.mock_reset()
+                    mock_method.assert_called_once_with(tf.key, "rb")
+                    mock_method.mock_reset()
 
     def test_move_multiple_files(self):
-        # On creation the temp file will be moved to the final location. As part
-        # of this dimensions should _not_ be calculated as they were passed in.
-        image_with_dims = AsyncTempFile.create_for_field(
-            AsyncFileTestModel._meta.get_field("image_with_dims"), "test.png"
-        )
-        image_no_dims = AsyncTempFile.create_for_field(
-            AsyncFileTestModel._meta.get_field("image_no_dims"), "test2.png"
-        )
-        file1 = AsyncTempFile.create_for_field(AsyncFileTestModel._meta.get_field("file1"), "test.pdf")
-        # 2 for transaction (savepoint + release), 1 for initial create, 1 for save on instance after files moved, 1 to select temp files, 1 to update temp files
-        with self.assertNumQueries(6):
-            tm = AsyncFileTestModel.objects.create(
-                file1=AsyncFileInputData(key=file1.key, name=file1.original_filename),
-                image_no_dims=AsyncFileInputData(key=image_no_dims.key, name=image_no_dims.original_filename),
-                image_with_dims=AsyncFileInputData(
-                    key=image_with_dims.key, name=image_with_dims.original_filename, width=32, height=32
-                ),
-            )
-        self.assertEqual(tm.image_with_dims.name, "test.png")
-        self.assertEqual(tm.image_width, 32)
-        self.assertEqual(tm.image_height, 32)
-
-        self.assertEqual(tm.image_no_dims.name, "test2.png")
-        self.assertEqual(tm.file1.name, "test.pdf")
-
-        self.assertEqual(AsyncTempFile.objects.filter(moved_to_location="").count(), 0)
-        self.assertEqual(AsyncTempFile.objects.filter(moved_to_location__startswith="test").count(), 3)
-
-    def test_move_multiple_files_errors(self):
-        # On creation the temp file will be moved to the final location. As part
-        # of this dimensions should _not_ be calculated as they were passed in.
-        image_with_dims = AsyncTempFile.create_for_field(
-            AsyncFileTestModel._meta.get_field("image_with_dims"), "test.png"
-        )
-        image_no_dims = AsyncTempFile.create_for_field(
-            AsyncFileTestModel._meta.get_field("image_no_dims"), "test2.png"
-        )
-        file1 = AsyncTempFile.create_for_field(AsyncFileTestModel._meta.get_field("file1"), "test.pdf")
-
-        def fail_on_file1(self, from_key, to_key):
-            if to_key == "test.pdf":
-                raise ValueError("Cannot move")
-
-        with mock.patch("test_alliance_platform_storage.storage.DummyStorage.move_file", new=fail_on_file1):
-            # 2 for transaction (savepoint & release savepoint)
-            # 1 for initial create, 1 for save on instance after files moved, 1 to select temp files, 1 to delete temp files and
-            # 1 to save the error on the file1 AsyncTempFile
-            with self.assertNumQueries(7):
-                with self.assertLogs(logging.getLogger("alliance_platform.storage")):
-                    tm = AsyncFileTestModel.objects.create(
+        for i, async_model_to_test in enumerate(self.MODELS_TO_TEST):
+            test_count = i + 1
+            if async_model_to_test == AsyncFileTestModel:
+                # 2 for transaction (savepoint + release), 1 for initial create, 1 for save on instance after files moved, 1 to select temp files, 1 to update temp files
+                expected_queries = 6
+            else:
+                # 2 additional queries - 1 for create in child table, one for update in child table
+                expected_queries = 8
+            with self.subTest(async_model_to_test.__name__):
+                # On creation the temp file will be moved to the final location. As part
+                # of this dimensions should _not_ be calculated as they were passed in.
+                image_with_dims = AsyncTempFile.create_for_field(
+                    async_model_to_test._meta.get_field("image_with_dims"), "test.png"
+                )
+                image_no_dims = AsyncTempFile.create_for_field(
+                    async_model_to_test._meta.get_field("image_no_dims"), "test2.png"
+                )
+                file1 = AsyncTempFile.create_for_field(
+                    async_model_to_test._meta.get_field("file1"), "test.pdf"
+                )
+                with self.assertNumQueries(expected_queries):
+                    tm = async_model_to_test.objects.create(
                         file1=AsyncFileInputData(key=file1.key, name=file1.original_filename),
                         image_no_dims=AsyncFileInputData(
                             key=image_no_dims.key, name=image_no_dims.original_filename
@@ -373,18 +371,77 @@ class AsyncFileMixinTestCase(TestCase):
                             height=32,
                         ),
                     )
-        self.assertEqual(tm.image_with_dims.name, "test.png")
-        self.assertEqual(tm.image_width, 32)
-        self.assertEqual(tm.image_height, 32)
+                self.assertEqual(tm.image_with_dims.name, "test.png")
+                self.assertEqual(tm.image_width, 32)
+                self.assertEqual(tm.image_height, 32)
 
-        self.assertEqual(tm.image_no_dims.name, "test2.png")
-        self.assertEqual(tm.file1.name, file1.key)
+                self.assertEqual(tm.image_no_dims.name, "test2.png")
+                self.assertEqual(tm.file1.name, "test.pdf")
 
-        file1.refresh_from_db()
+                self.assertEqual(AsyncTempFile.objects.filter(moved_to_location="").count(), 0)
+                self.assertEqual(
+                    AsyncTempFile.objects.filter(moved_to_location__startswith="test").count(), 3 * test_count
+                )
 
-        self.assertEqual(AsyncTempFile.objects.filter(error__isnull=False).count(), 1)
-        self.assertEqual(AsyncTempFile.objects.filter(moved_to_location__startswith="test").count(), 2)
-        self.assertRegex(file1.error, "Cannot move")
+    def test_move_multiple_files_errors(self):
+        for i, async_model_to_test in enumerate(self.MODELS_TO_TEST):
+            test_count = i + 1
+            if async_model_to_test == AsyncFileTestModel:
+                # 2 for transaction (savepoint & release savepoint)
+                # 1 for initial create, 1 for save on instance after files moved, 1 to select temp files, 1 to delete temp files and
+                # 1 to save the error on the file1 AsyncTempFile
+                expected_queries = 7
+            else:
+                # 2 additional queries - 1 for create in child table, one for update in child table
+                expected_queries = 9
+            with self.subTest(async_model_to_test.__name__):
+                # On creation the temp file will be moved to the final location. As part
+                # of this dimensions should _not_ be calculated as they were passed in.
+                image_with_dims = AsyncTempFile.create_for_field(
+                    async_model_to_test._meta.get_field("image_with_dims"), "test.png"
+                )
+                image_no_dims = AsyncTempFile.create_for_field(
+                    async_model_to_test._meta.get_field("image_no_dims"), "test2.png"
+                )
+                file1 = AsyncTempFile.create_for_field(
+                    async_model_to_test._meta.get_field("file1"), "test.pdf"
+                )
+
+                def fail_on_file1(self, from_key, to_key):
+                    if to_key == "test.pdf":
+                        raise ValueError("Cannot move")
+
+                with mock.patch(
+                    "test_alliance_platform_storage.storage.DummyStorage.move_file", new=fail_on_file1
+                ):
+                    with self.assertNumQueries(expected_queries):
+                        with self.assertLogs(logging.getLogger("alliance_platform.storage")):
+                            tm = async_model_to_test.objects.create(
+                                file1=AsyncFileInputData(key=file1.key, name=file1.original_filename),
+                                image_no_dims=AsyncFileInputData(
+                                    key=image_no_dims.key, name=image_no_dims.original_filename
+                                ),
+                                image_with_dims=AsyncFileInputData(
+                                    key=image_with_dims.key,
+                                    name=image_with_dims.original_filename,
+                                    width=32,
+                                    height=32,
+                                ),
+                            )
+                self.assertEqual(tm.image_with_dims.name, "test.png")
+                self.assertEqual(tm.image_width, 32)
+                self.assertEqual(tm.image_height, 32)
+
+                self.assertEqual(tm.image_no_dims.name, "test2.png")
+                self.assertEqual(tm.file1.name, file1.key)
+
+                file1.refresh_from_db()
+
+                self.assertEqual(AsyncTempFile.objects.filter(error__isnull=False).count(), 1 * test_count)
+                self.assertEqual(
+                    AsyncTempFile.objects.filter(moved_to_location__startswith="test").count(), 2 * test_count
+                )
+                self.assertRegex(file1.error, "Cannot move")
 
 
 class AsyncFileFormTestCase(TestCase):

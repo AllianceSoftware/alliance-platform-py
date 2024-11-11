@@ -30,10 +30,26 @@ class AsyncFileTestModel(models.Model):
     image_width = models.IntegerField(blank=True, null=True)
     image_height = models.IntegerField(blank=True, null=True)
 
+    image_width_base = models.IntegerField(blank=True, null=True)
+    image_height_base = models.IntegerField(blank=True, null=True)
+
+    base_image_with_dims = models.ImageField(
+        storage=storage,
+        null=True,
+        blank=True,
+        width_field="image_width_base",
+        height_field="image_height_base",
+    )
+
     image_no_dims = AsyncImageField(storage=storage, null=True, blank=True, suppress_pillow_check=True)
 
     class Meta:
         db_table = "test_alliance_platform_storage_async_file_test_model"
+
+
+class AsyncFileTestChildModel(AsyncFileTestModel):
+    class Meta:
+        db_table = "test_alliance_platform_storage_async_file_test_child_model_same_fields"
 
 
 class AsyncFilePermTestModel(models.Model):
