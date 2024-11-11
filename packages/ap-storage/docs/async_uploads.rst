@@ -9,18 +9,18 @@ In this context, the async in "Async Upload" means the file is immediately uploa
 continues to fill out a form. A reference (the key) to the uploaded file is stored in the form and handled in the Django model save when
 processing the form submission. See `How it works`_ for more specifics.
 
-It's primarily implemented through the :class:`~alliance_platform.storage.fields.async_file.AsyncFileField` and :class:`~alliance_platform.storage.fields.async_file.AsyncImageField` classes.
+It's primarily implemented through the :class:`~alliance_platform.storage.async_uploads.models.AsyncFileField` and :class:`~alliance_platform.storage.async_uploads.models.AsyncImageField` classes.
 
 
 Key Components:
 ^^^^^^^^^^^^^^^
 
-1. :class:`~alliance_platform.storage.fields.async_file.AsyncFileField`: The main field for handling async file uploads.
-2. :class:`~alliance_platform.storage.fields.async_file.AsyncImageField`: Similar to AsyncFileField, but specifically for image files.
-3. :class:`~alliance_platform.storage.base.AsyncUploadStorage`: The base storage class for handling async uploads.
-4. :class:`~alliance_platform.storage.views.GenerateUploadUrlView`: View for generating upload URLs.
-5. :class:`~alliance_platform.storage.views.DownloadRedirectView`: View for handling file downloads.
-6. :class:`~alliance_platform.storage.registry.AsyncFieldRegistry`: Registry for managing async fields.
+1. :class:`~alliance_platform.storage.async_uploads.models.AsyncFileField`: The main field for handling async file uploads.
+2. :class:`~alliance_platform.storage.async_uploads.models.AsyncImageField`: Similar to AsyncFileField, but specifically for image files.
+3. :class:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage`: The base storage class for handling async uploads.
+4. :class:`~alliance_platform.storage.async_uploads.views.GenerateUploadUrlView`: View for generating upload URLs.
+5. :class:`~alliance_platform.storage.async_uploads.views.DownloadRedirectView`: View for handling file downloads.
+6. :class:`~alliance_platform.storage.async_uploads.registry.AsyncFieldRegistry`: Registry for managing async fields.
 
 .. _async-upload-backends:
 
@@ -30,11 +30,11 @@ Storage backends:
 Storage backends handle the logic for generating signed upload & download URLs, and for moving files to the final
 location. The following backends are provided:
 
-1. :class:`~alliance_platform.storage.s3.S3AsyncUploadStorage` - Uploads to Amazon S3
-2. :class:`~alliance_platform.storage.azure.AzureAsyncUploadStorage` - Uploads to Azure blob storage
-3. :class:`~alliance_platform.storage.filesystem.FileSystemAsyncUploadStorage` - Uploads to Django directly and stores the file in the local filesystem (e.g. media files).
+1. :class:`~alliance_platform.storage.async_uploads.storage.s3.S3AsyncUploadStorage` - Uploads to Amazon S3
+2. :class:`~alliance_platform.storage.async_uploads.storage.azure.AzureAsyncUploadStorage` - Uploads to Azure blob storage
+3. :class:`~alliance_platform.storage.async_uploads.storage.filesystem.FileSystemAsyncUploadStorage` - Uploads to Django directly and stores the file in the local filesystem (e.g. media files).
 
-Other implementations can be provided by extending the :class:`~alliance_platform.storage.base.AsyncUploadStorage`
+Other implementations can be provided by extending the :class:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage`
 class and implementing the relevant methods.
 
 .. _async-uploads-installation:
@@ -71,7 +71,7 @@ To make it the default for fields set the :setting:`STORAGES <django:STORAGES>` 
 
     STORAGES = {
         "default": {
-            "BACKEND": "alliance_platform.storage.s3.S3AsyncUploadStorage"
+            "BACKEND": "alliance_platform.storage.async_uploads.storage.s3.S3AsyncUploadStorage"
         },
     }
 
@@ -92,7 +92,7 @@ To make it the default for fields set the :setting:`STORAGES <django:STORAGES>` 
 
     STORAGES = {
         "default": {
-            "BACKEND": "alliance_platform.storage.azure.AzureAsyncUploadStorage"
+            "BACKEND": "alliance_platform.async_uploads.storage.azure.AzureAsyncUploadStorage"
         },
     }
 
@@ -102,13 +102,13 @@ for what other settings will need to be set.
 File System
 ~~~~~~~~~~~
 
-To use with the local filesystem you can use :class:`~alliance_platform.storage.filesystem.FileSystemAsyncUploadStorage`.
+To use with the local filesystem you can use :class:`~alliance_platform.storage.async_uploads.storage.filesystem.FileSystemAsyncUploadStorage`.
 
 To make it the default for fields set the :setting:`STORAGES <django:STORAGES>` setting::
 
     STORAGES = {
         "default": {
-            "BACKEND": "alliance_platform.storage.azure.FileSystemAsyncUploadStorage"
+            "BACKEND": "alliance_platform.async_uploads.storage.filesystem.FileSystemAsyncUploadStorage"
         },
     }
 
@@ -119,11 +119,11 @@ Register URLs
 ^^^^^^^^^^^^^
 
 To facilitate async uploads, some URLs need to be registered. This is crucial for generating upload URLs and handling downloads.
-You can register the URLs by calling :meth:`~alliance_platform.storage.registry.AsyncFieldRegistry.get_url_patterns`.
+You can register the URLs by calling :meth:`~alliance_platform.storage.async_uploads.registry.AsyncFieldRegistry.get_url_patterns`.
 
 .. code-block:: python
 
-       from alliance_platform.storage.registry import default_async_field_registry
+       from alliance_platform.storage.async_uploads.registry import default_async_field_registry
 
        urlpatterns = [
            # ... other patterns ...
@@ -138,7 +138,7 @@ You can register the URLs by calling :meth:`~alliance_platform.storage.registry.
 Cleanup command
 ^^^^^^^^^^^^^^^
 
-Intermediate files are stored in the :class:`alliance_platform.storage.models.AsyncTempFile` table. Periodically clean up these files by running
+Intermediate files are stored in the :class:`alliance_platform.storage.async_uploads.models.AsyncTempFile` table. Periodically clean up these files by running
 the :djmanage:`cleanup_async_temp_files` command:
 
 .. code-block:: bash
@@ -149,20 +149,20 @@ the :djmanage:`cleanup_async_temp_files` command:
 How it works
 ------------
 
-The AsyncFile feature works in conjunction with :class:`~alliance_platform.storage.views.GenerateUploadUrlView`. The view generates a URL (e.g., a signed URL when using S3) that the frontend can then use for direct uploads. Each view is tied to a specific registry, which you can specify using ``async_field_registry`` (defaults to :data:`~alliance_platform.storage.registry.default_async_field_registry`).
-In most cases, a single registry is fine and you don't need to explicitly reference it. 
+The AsyncFile feature works in conjunction with :class:`~alliance_platform.storage.async_uploads.views.GenerateUploadUrlView`. The view generates a URL (e.g., a signed URL when using S3) that the frontend can then use for direct uploads. Each view is tied to a specific registry, which you can specify using ``async_field_registry``
+(defaults to :data:`~alliance_platform.storage.async_uploads.registry.default_async_field_registry`). In most cases, a single registry is fine and you don't need to explicitly reference it.
 
 The flow for async file uploads is as follows:
 
-1. When a form is rendered on the frontend (e.g., using :class:`~alliance_platform.storage.fields.async_file.AsyncFileFormField`), it knows the ``async_field_id`` from the registry and the ``generate_upload_url`` endpoint.
+1. When a form is rendered on the frontend (e.g., using :class:`~alliance_platform.storage.async_uploads.forms.AsyncFileField`), it knows the ``async_field_id`` from the registry and the ``generate_upload_url`` endpoint.
 
 2. When an upload occurs, the frontend first hits the ``generate_upload_url`` endpoint, passing the ``async_field_id``, filename, and optionally an ``instance_id`` for updates.
 
-3. :class:`~alliance_platform.storage.views.GenerateUploadUrlView` looks up the registry for the ``async_field_id``, checks permissions, and creates an :class:`~alliance_platform.storage.models.AsyncTempFile` record.
+3. :class:`~alliance_platform.storage.async_uploads.views.GenerateUploadUrlView` looks up the registry for the ``async_field_id``, checks permissions, and creates an :class:`~alliance_platform.storage.async_uploads.models.AsyncTempFile` record.
 
-4. The frontend receives the upload URL and uploads the file directly to the storage backend. The key for the :class:`~alliance_platform.storage.models.AsyncTempFile` is stored in the form for submission.
+4. The frontend receives the upload URL and uploads the file directly to the storage backend. The key for the :class:`~alliance_platform.storage.async_uploads.models.AsyncTempFile` is stored in the form for submission.
 
-5. Upon form submission, the backend moves the file from its temporary location to its final destination, and cleans up the :class:`~alliance_platform.storage.models.AsyncTempFile` record.
+5. Upon form submission, the backend moves the file from its temporary location to its final destination, and cleans up the :class:`~alliance_platform.storage.async_uploads.models.AsyncTempFile` record.
 
 6. If form submission never occurs, for example the user abandons the form after uploading a file, then the file will be retained until
    the :djmanage:`cleanup_async_temp_files` command is run.
@@ -170,13 +170,13 @@ The flow for async file uploads is as follows:
 Usage
 -----
 
-1. Add a :class:`~alliance_platform.storage.fields.async_file.AsyncFileField`: or :class:`~alliance_platform.storage.fields.async_file.AsyncImageField` to a model, optionally passing
+1. Add a :class:`~alliance_platform.storage.async_uploads.models.AsyncFileField`: or :class:`~alliance_platform.storage.async_uploads.models.AsyncImageField` to a model, optionally passing
    the ``storage`` option  if you need to use a different backend from the project :setting:`STORAGES <django:STORAGES>` setting.
 
    .. code-block:: python
 
-       from alliance_platform.storage.fields import AsyncFileField
-       from alliance_platform.storage.s3 import S3AsyncUploadStorage
+       from alliance_platform.storage.async_uploads.models import AsyncFileField
+       from alliance_platform.storage.async_uploads.storage.s3 import S3AsyncUploadStorage
 
        storage = S3AsyncUploadStorage()
 
@@ -189,19 +189,19 @@ Usage
 
 2. Form Usage:
 
-   By default, the :class:`~alliance_platform.storage.fields.async_file.AsyncFileFormField` is used to handle uploads
-   from Django forms. The default widget is :class:`~alliance_platform.storage.fields.async_file.AsyncFileInput`.
+   By default, the :class:`~alliance_platform.storage.async_uploads.forms.AsyncFileField` is used to handle uploads
+   from Django forms. The default widget is :class:`~alliance_platform.storage.async_uploads.forms.AsyncFileInput`.
 
-3. DRF Integration:
+3. async_uploads.rest_framework Integration:
 
-   For Django Rest Framework, use the DRF fields :class:`alliance_platform.storage.drf.serializer.AsyncFileField` or :class:`alliance_platform.storage.drf.serializer.AsyncImageField`.
+   For Django Rest Framework, use the async_uploads.rest_framework fields :class:`alliance_platform.storage.async_uploads.rest_framework.AsyncFileField` or :class:`alliance_platform.storage.async_uploads.rest_framework.AsyncImageField`.
 
    You can set this as the default for the corresponding model fields by adding entries to the ``serializer_field_mapping`` on
    a custom ``ModelSerializer`` base class::
 
-        from alliance_platform.storage.drf.serializer import AsyncFileField
-        from alliance_platform.storage.drf.serializer import AsyncImageField
-        import alliance_platform.storage.fields.async_file as async_file_fields
+        from alliance_platform.storage.async_uploads.rest_framework import AsyncFileField
+        from alliance_platform.storage.async_uploads.rest_framework import AsyncImageField
+        import alliance_platform.storage.async_uploads.models as async_file_fields
 
         class XenopusFrogAppModelSerializer(ModelSerializer):
             serializer_field_mapping = {

@@ -1,8 +1,8 @@
 from datetime import timedelta
 from typing import Any
 
-from alliance_platform.storage.base import AsyncUploadStorage
-from alliance_platform.storage.base import GenerateUploadUrlResponse
+from alliance_platform.storage.async_uploads.storage.base import AsyncUploadStorage
+from alliance_platform.storage.async_uploads.storage.base import GenerateUploadUrlResponse
 from alliance_platform.storage.settings import ap_storage_settings
 from django.core.exceptions import ImproperlyConfigured
 from django.utils import timezone

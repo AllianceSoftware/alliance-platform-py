@@ -1,14 +1,18 @@
 import os
+from typing import TYPE_CHECKING
 from urllib.parse import urlencode
 
-from alliance_platform.storage.base import AsyncUploadStorage
-from alliance_platform.storage.base import GenerateUploadUrlResponse
-from alliance_platform.storage.registry import AsyncFieldRegistry
+from alliance_platform.storage.async_uploads.storage.base import AsyncUploadStorage
+from alliance_platform.storage.async_uploads.storage.base import GenerateUploadUrlResponse
 from django.core.files.move import file_move_safe
 from django.core.files.storage import FileSystemStorage
 from django.core.signing import TimestampSigner
 from django.urls import path
 from django.urls import reverse
+
+if TYPE_CHECKING:
+    # circular imports
+    from alliance_platform.storage.async_uploads.registry import AsyncFieldRegistry
 
 
 class FileSystemAsyncUploadStorage(FileSystemStorage, AsyncUploadStorage):
@@ -21,12 +25,12 @@ class FileSystemAsyncUploadStorage(FileSystemStorage, AsyncUploadStorage):
 
         STORAGES = {
             "default": {
-                "BACKEND": "alliance_platform.storage.filesystem.FileSystemAsyncUploadStorage"
+                "BACKEND": "alliance_platform.storage.async_uploads.storage.filesystem.FileSystemAsyncUploadStorage"
             },
         }
 
-    Alternatively, pass an instance of the class to the ``storage`` argument on :class:`~alliance_platform.storage.fields.async_file.AsyncFileField`
-    or :class:`~alliance_platform.storage.fields.async_file.AsyncImageField`.
+    Alternatively, pass an instance of the class to the ``storage`` argument on :class:`~alliance_platform.storage.async_uploads.models.AsyncFileField`
+    or :class:`~alliance_platform.storage.async_uploads.models.AsyncImageField`.
     """
 
     def __init__(self, *args, **kwargs):
@@ -75,10 +79,12 @@ class FileSystemAsyncUploadStorage(FileSystemStorage, AsyncUploadStorage):
             raise FileExistsError("%s exists and is not a directory." % directory)
         file_move_safe(self.path(from_key), full_path, allow_overwrite=self._allow_overwrite)
 
-    def get_url_patterns(self, registry: AsyncFieldRegistry):
+    def get_url_patterns(self, registry: "AsyncFieldRegistry"):
         patterns = super().get_url_patterns(registry)
-        from alliance_platform.storage.filesystem_views import FileSystemAsyncStorageDownloadView
-        from alliance_platform.storage.filesystem_views import FileSystemAsyncStorageUploadView
+        from alliance_platform.storage.async_uploads.views.filesystem import (
+            FileSystemAsyncStorageDownloadView,
+        )
+        from alliance_platform.storage.async_uploads.views.filesystem import FileSystemAsyncStorageUploadView
 
         # already generated patterns for these views, can return nothing
         if getattr(registry, FileSystemAsyncStorageUploadView.registration_attach_key, None):

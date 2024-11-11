@@ -4,9 +4,9 @@ from typing import Any
 from typing import Protocol
 from typing import cast
 
-from alliance_platform.storage.models import AsyncTempFile
-from alliance_platform.storage.registry import AsyncFieldRegistry
-from alliance_platform.storage.registry import default_async_field_registry
+from alliance_platform.storage.async_uploads.models import AsyncTempFile
+from alliance_platform.storage.async_uploads.registry import AsyncFieldRegistry
+from alliance_platform.storage.async_uploads.registry import default_async_field_registry
 from allianceutils.util import camelize
 from allianceutils.util import underscoreize
 from django.core.exceptions import BadRequest
@@ -45,7 +45,12 @@ def validate_generate_upload_url(data: QueryDict, registry: AsyncFieldRegistry):
         except JSONDecodeError:
             errors["params"] = "Invalid JSON"
 
-    return {"field_id": field_id, "filename": filename, "params": params, "instance_id": instance_id}
+    return {
+        "field_id": field_id,
+        "filename": filename,
+        "params": params,
+        "instance_id": instance_id,
+    }
 
 
 class ViewProtocol(Protocol):
@@ -57,23 +62,23 @@ class ModelWithDefaultManager(Protocol):
 
 
 class GenerateUploadUrlView(View):
-    """View to generate a URL using :meth:`~alliance_platform.storage.base.AsyncUploadStorage.generate_upload_url`.
+    """View to generate a URL using :meth:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage.generate_upload_url`.
 
-    Each view is tied to a specific registry which you can specify in the ``registry`` kwarg (defaults to :data:`~alliance_platform.storage.registry.default_async_field_registry`).
+    Each view is tied to a specific registry which you can specify in the ``registry`` kwarg (defaults to :data:`~alliance_platform.storage.async_uploads.registry.default_async_field_registry`).
 
     This view expects a ``async_field_id``, a ``filename`` and optionally an ``instance_id`` if it's an update for an existing
     record. ``async_field_id`` is used to look up in ``registry`` the matching ``field`` instance. From the retrieved field
-    instance the corresponding :class:`~alliance_platform.storage.base.AsyncUploadStorage` is retrieved along with the permissions
-    to check (see :class:`~alliance_platform.storage.fields.async_file.AsyncFileMixin` for where to specify this).
+    instance the corresponding :class:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage` is retrieved along with the permissions
+    to check (see :class:`~alliance_platform.storage.async_uploads.models.AsyncFileMixin` for where to specify this).
 
-    If the permission check passes a :class:`~alliance_platform.storage.models.AsyncTempFile` record is created which stores the
+    If the permission check passes a :class:`~alliance_platform.storage.async_uploads.models.AsyncTempFile` record is created which stores the
     ``filename`` and a generated key that will be used as a temporary location to upload the file to. An upload URL
-    returned from :meth:`~alliance_platform.storage.base.AsyncUploadStorage.generate_upload_url` and the temporary key is returned
+    returned from :meth:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage.generate_upload_url` and the temporary key is returned
     to the frontend. The frontend will submit the returned temporary key from the form and save it on the target model.
-    On save the file is then moved to the permanent location using :meth:`~alliance_platform.storage.base.AsyncUploadStorage.move_file`
-    (this happens as part of :class:`~alliance_platform.storage.fields.async_file.AsyncFileMixin`)
+    On save the file is then moved to the permanent location using :meth:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage.move_file`
+    (this happens as part of :class:`~alliance_platform.storage.async_uploads.models.AsyncFileMixin`)
 
-    See :class:`~alliance_platform.storage.fields.async_file.AsyncFileMixin` for a detailed explanation of how all the pieces fit together.
+    See :class:`~alliance_platform.storage.async_uploads.models.AsyncFileMixin` for a detailed explanation of how all the pieces fit together.
 
     This view is automatically registered if you have followed the :ref:`register-urls` guide.
     """
@@ -147,20 +152,20 @@ def validate_async_file_download(data: QueryDict, registry: AsyncFieldRegistry):
 
 
 class DownloadRedirectView(View):
-    """View that checks permissions and redirects to a download URL using :meth:`~alliance_platform.storage.base.AsyncUploadStorage.generate_download_url`.
+    """View that checks permissions and redirects to a download URL using :meth:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage.generate_download_url`.
 
-    Each view is tied to a specific registry which you can specify in the ``registry`` kwarg (defaults to :data:`~alliance_platform.storage.registry.default_async_field_registry`).
+    Each view is tied to a specific registry which you can specify in the ``registry`` kwarg (defaults to :data:`~alliance_platform.storage.async_uploads.registry.default_async_field_registry`).
 
     This view expects a ``async_field_id`` and ``instance_id`` which is the primary key of the record the file field is
     attached to. record. ``async_field_id`` is used to look up in ``registry`` the matching ``field`` instance. From the
-    retrieved field instance the corresponding :class:`~alliance_platform.storage.base.AsyncUploadStorage` is retrieved along
-    with the permission (``perm_download``) to check (see :class:`~alliance_platform.storage.fields.async_file.AsyncFileMixin` for
+    retrieved field instance the corresponding :class:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage` is retrieved along
+    with the permission (``perm_download``) to check (see :class:`~alliance_platform.storage.async_uploads.models.AsyncFileMixin` for
     where to specify this).
 
     Once the permission check has passed the view will redirect to the URL returned from
-    :meth:`~alliance_platform.storage.base.AsyncUploadStorage.generate_download_url`.
+    :meth:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage.generate_download_url`.
 
-    See :class:`~alliance_platform.storage.fields.async_file.AsyncFileMixin` for a detailed explanation of how all the pieces fit together.
+    See :class:`~alliance_platform.storage.async_uploads.models.AsyncFileMixin` for a detailed explanation of how all the pieces fit together.
 
     This view is automatically registered if you have followed the :ref:`register-urls` guide.
     """
