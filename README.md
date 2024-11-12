@@ -83,7 +83,8 @@ a `package.json` file; base these off the existing packages.
    scope should be for the specific package only - if the package hasn't been published yet you can create one for all packages but
    you must re-create it after the initial publish and limit it to the specific package scope. Note that the PyPi Trusted Publishers
    would be good for this but I couldn't work out how to re-purpose it for our publishing workflow.
-7. Create a `docs` dir, see existing package for an example.
+   1. Update `.github/workflows/release.yml` and add the token under the `env` for the `Create Release Pull Request or Publish to pypi` step.
+7. Create a `docs` dir, see existing package for an example. 
    1. Create an entry in `docs/conf.py` under `multiproject_projects` for the new package.
    2. In readthedocs.org, a new project needs to be created. To do this, import the https://github.com/AllianceSoftware/alliance-platform-py repo
       again, but name it according to the package name (`alliance-platform-<name>`).
