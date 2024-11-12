@@ -6,6 +6,7 @@ A collection of Python packages for use in the Alliance Platform Django template
     * [Core](packages/ap-core/README.md)
     * [Frontend](packages/ap-frontend/README.md)
     * [Codegen](packages/ap-codegen/README.md)
+    * [Storage](packages/ap-storage/README.md)
 
 ## Contributing
 
@@ -24,7 +25,7 @@ to be imported from `alliance_platform` while being released and versioned indep
 1. You will need to have [PDM](https://pdm-project.org/latest/) installed to manage the dependencies for this project.
 
 ```bash
-brew install pdm 
+brew install pdm
 ```
 
 2. Run `pdm install`; this should create a virtual environment and install the dependencies.
@@ -41,7 +42,7 @@ This is handled by `ruff`, and should automatically be run on commit. You can ru
 ```bash
 pdm run ruff check
 pdm run ruff check --fix
-pdm run ruff format 
+pdm run ruff format
 ```
 
 #### Running tests & type checking
@@ -82,7 +83,7 @@ a `package.json` file; base these off the existing packages.
    scope should be for the specific package only - if the package hasn't been published yet you can create one for all packages but
    you must re-create it after the initial publish and limit it to the specific package scope. Note that the PyPi Trusted Publishers
    would be good for this but I couldn't work out how to re-purpose it for our publishing workflow.
-7. Create a `docs` dir, see existing package for an example. 
+7. Create a `docs` dir, see existing package for an example.
    1. Create an entry in `docs/conf.py` under `multiproject_projects` for the new package.
    2. In readthedocs.org, a new project needs to be created. To do this, import the https://github.com/AllianceSoftware/alliance-platform-py repo
       again, but name it according to the package name (`alliance-platform-<name>`).
