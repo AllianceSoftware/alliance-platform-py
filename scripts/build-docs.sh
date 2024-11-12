@@ -16,8 +16,10 @@ PROJECT=codegen sphinx-autobuild --port=56677 -a --watch packages/ap-codegen/ do
 pid_codegen=$!
 PROJECT=storage sphinx-autobuild --port=56678 -a --watch packages/ap-storage/ docs _docs-build/storage &
 pid_storage=$!
+PROJECT=storage sphinx-autobuild --port=56679 -a --watch packages/ap-audit/ docs _docs-build/audit &
+pid_audit=$!
 sphinx-autobuild --port=56675 --open-browser -a --watch packages/ap-core/ docs _docs-build/core &
 pid_core=$!
 
 # Wait for all background processes to finish
-wait $pid_core $pid_frontend $pid_codegen $pid_storage
+wait $pid_core $pid_frontend $pid_codegen $pid_storage $pid_audit
