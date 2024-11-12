@@ -11,8 +11,8 @@ py-modules = []
 dev = [
   "-e alliance-platform-frontend @ file:///${PROJECT_ROOT}/packages/ap-frontend",
   "-e alliance-platform-codegen @ file:///${PROJECT_ROOT}/packages/ap-codegen",
-  "-e alliance-platform-codegen @ file:///${PROJECT_ROOT}/packages/ap-core",
-  "-e alliance-platform-codegen @ file:///${PROJECT_ROOT}/packages/ap-storage",
+  "-e alliance-platform-core @ file:///${PROJECT_ROOT}/packages/ap-core",
+  "-e alliance-platform-storage @ file:///${PROJECT_ROOT}/packages/ap-storage",
   "beautifulsoup4<5.0,>=4.11",
   "django-stubs",
   "djangorestframework-stubs",
