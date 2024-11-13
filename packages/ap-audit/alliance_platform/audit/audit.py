@@ -67,15 +67,15 @@ def create_audit_model_base(
                 db_table = "xenopus_frog_user_auditevent"
 
     Should you wish to add events that are manually-triggered eg a pdf file had been downloaded, just specify
-    those events in ``manual_events``; to then trigger a manual event use :meth:`~common_audit.audit.create_audit_event`.
+    those events in ``manual_events``; to then trigger a manual event use :meth:`~alliance_platform.audit.audit.create_audit_event`.
 
     :code:`events` refers to the :class:`~pghistory.RowEvent` to be used which defaults to
-    :class:`~common_audit.events.AuditSnapshot`. This audits :code:`CREATE`, :code:`UPDATE` and :code:`DELETE` events and
+    :class:`~alliance_platform.audit.events.AuditSnapshot`. This audits :code:`CREATE`, :code:`UPDATE` and :code:`DELETE` events and
     has handling for many to many fields. You most likely do not need to change this option.
 
     If you need to monitor other database events, such as BeforeInsert, you could do so by passing in
     :code:`events`; this will supersede AuditSnapshot which if you intend to keep can be done by adding
-    :code:`AuditSnapshot(label="your label")` to the list. See :class:`~common_audit.events.AuditSnapshot`
+    :code:`AuditSnapshot(label="your label")` to the list. See :class:`~alliance_platform.audit.events.AuditSnapshot`
     to see what you need to be aware of before doing this.
 
     One noteworthy kwarg is ``fields``, where you can ask the audit module to only watch changes made to
@@ -109,7 +109,7 @@ def create_audit_model_base(
         registry: The audit registry to add to. You most likely don't need this; the default suffices for most cases
         list_perm: The permission to use when showing audit events in list view. This should be a global
             permission (ie. doesn't accept a specific object). If not specified uses :code:`resolve_perm_name`
-            with an action of settings.AUDIT_LIST_PERM_ACTION (which defaults to ``audit``) for the model ``model``
+            with an action of ap_audit_settings.LIST_PERM_ACTION (which defaults to ``audit``) for the model ``model``
             (ie. the source model).
         fields: The fields to track. If None, all fields on :code:`model` are tracked.
         exclude: Exclude these fields from tracking. Only one of :code:`fields` and ``exclude`` should be specified.
@@ -213,7 +213,7 @@ def create_audit_model_base(
 def resolve_audit_list_perm(model: type[models.Model]) -> str:
     return resolve_perm_name(
         entity=model,
-        action=ap_audit_settings.AUDIT_LIST_PERM_ACTION,
+        action=cast(str, ap_audit_settings.LIST_PERM_ACTION),
         is_global=True,
     )
 
@@ -226,7 +226,7 @@ def with_audit_model(
     """
     Model class decorator to create an associated audit model
 
-    Wraps :func:`~common_audit.audit.create_audit_model_base` in decorator form and adds some sensible defaults
+    Wraps :func:`~alliance_platform.audit.audit.create_audit_model_base` in decorator form and adds some sensible defaults
     """
 
     def decorate(model: type[AuditableModelProtocol]) -> type[models.Model]:
@@ -255,10 +255,10 @@ def create_audit_event(object: models.Model, label: str) -> models.Model:
     :code:`create_audit_event(pdf, "accessed")`.
 
     The event must be registered on the specified model (eg. should be passed in :code:`manual_events` to
-    :func:`~common_audit.audit.create_audit_model_base`).
+    :func:`~alliance_platform.audit.audit.create_audit_model_base`).
 
     All manual log entries are tied to objects (ie, you can't have object-less events such as
-    :code:`create_audit_event("system shutdown")` ). By default, :meth:`~common_audit.middleware.AuditMiddleware` tracks and records
+    :code:`create_audit_event("system shutdown")` ). By default, :meth:`~alliance_platform.audit.middleware.AuditMiddleware` tracks and records
     the current user and URL in the :code:`pgh_context` for the created log event, and additional info can be
     added by wrapping :code:`create_audit_event` in :code:`with pghistory.context(**kwargs)`. See :class:`pghistory.context`
     for more details about how context works.

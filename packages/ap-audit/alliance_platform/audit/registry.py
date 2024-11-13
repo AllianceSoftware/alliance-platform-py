@@ -6,6 +6,7 @@ import hashlib
 from typing import Protocol
 from typing import cast
 
+from alliance_platform.audit.settings import ap_audit_settings
 from alliance_platform.audit.utils import is_m2m
 from django.db import models
 from django.db.models.fields.related_descriptors import ForwardOneToOneDescriptor
@@ -139,7 +140,7 @@ class AuditRegistry:
     def get_registrations_for_user(self, user) -> list[AuditModelRegistration]:
         registrations: list[AuditModelRegistration] = []
 
-        if not user.has_perm("common_audit.can_audit"):
+        if not user.has_perm(ap_audit_settings.GLOBAL_AUDIT_PERMISSION_NAME):
             return registrations
 
         for reg in self.registrations.values():

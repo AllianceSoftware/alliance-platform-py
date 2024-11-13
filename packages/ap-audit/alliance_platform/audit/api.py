@@ -17,12 +17,12 @@ from alliance_platform.audit.registry import AuditedModelProtocol
 from alliance_platform.audit.registry import AuditModelRegistration
 from alliance_platform.audit.registry import default_audit_registry
 from alliance_platform.audit.registry import get_audited_fields
+from alliance_platform.audit.settings import ap_audit_settings
 from alliance_platform.audit.utils import AuditEventProtocol
 from alliance_platform.core.auth import resolve_perm_name
 from alliance_platform.core.display import default_display_for_value
 from allianceutils.util import camel_to_underscore
 from allianceutils.util import camelize
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.exceptions import PermissionDenied
@@ -55,7 +55,7 @@ class AuditLogContext(TypedDict):
 
 
 def get_audit_user_choices(*args, **kwargs):
-    return get_user_model()._meta.base_manager.annotate(name=settings.AUDIT_USERNAME_FORMAT)
+    return get_user_model()._meta.base_manager.annotate(name=ap_audit_settings.USERNAME_FORMAT)
 
 
 def get_model_data(event: AuditEventProtocol, context: AuditLogContext):
@@ -174,7 +174,7 @@ def generate_serialized_audit_log(event_list: Iterable[AuditEventProtocol], cont
             "user": user,
             "hijacker": hijacker,
             "label": registered_event.pgh_label,
-            "created_at": localtime(event.pgh_created_at).strftime(settings.AUDIT_DATETIME_FORMAT),
+            "created_at": localtime(event.pgh_created_at).strftime(ap_audit_settings.DATETIME_FORMAT),
             "model_data": get_model_data(registered_event, context),
             "model_label": event.model_label,
         }
@@ -409,7 +409,7 @@ class AuditLogView(ViewWithPaginationAndFiltering):
     This viewset handles returning data from the appropriate model Event table based on the :code:`model`
     request parameter. If :code:`model="all"` then all audited models are returned using a database UNION.
 
-    In most apps there will be a single :class:`~common_audit.registry.AuditRegistry` and you never need to
+    In most apps there will be a single :class:`~alliance_platform.audit.registry.AuditRegistry` and you never need to
     explicitly define it. In cases where multiple registries are desired (for example to split between
     different apps - admin vs public app) you can pass the :code:`registry` argument:
 
@@ -417,13 +417,13 @@ class AuditLogView(ViewWithPaginationAndFiltering):
 
         path("api/auditlog/", AuditLogView.as_view(registry=my_registry))
 
-    If you wish to restrict the queryset for any Events in some way override :meth:`~common_audit.api.AuditLogView.get_single_queryset`.
+    If you wish to restrict the queryset for any Events in some way override :meth:`~alliance_platform.audit.api.AuditLogView.get_single_queryset`.
 
     Note that in the case that all models are being shown :code:`get_queryset` will return a :code:`EventUnion` instead of
     a :code:`QuerySet`. Each queryset in the :code:`union.querysets` will be filtered in :code:`filter_queryset` before being combined
     with a :code:`.union()` call. If you override :code:`get_queryset` you should handle this (eg. call :code:`super().get_queryset()`)
-    and handle the case where a :code:`EventUnion` is returned. It is recommended you override :meth:`~common_audit.api.AuditLogView.get_single_queryset` or
-    :meth:`~common_audit.api.AuditLogView.get_multiple_queryset` instead.
+    and handle the case where a :code:`EventUnion` is returned. It is recommended you override :meth:`~alliance_platform.audit.api.AuditLogView.get_single_queryset` or
+    :meth:`~alliance_platform.audit.api.AuditLogView.get_multiple_queryset` instead.
 
     All fields available on the source model will be available on on the queryset as well regardless of whether they
     exist in audit_fields_to_display; you can do something like ``return qs.filter(owner=request.user.org)`` if all
@@ -476,7 +476,7 @@ class AuditLogView(ViewWithPaginationAndFiltering):
         if not bool(request.user and request.user.is_authenticated):
             raise PermissionDenied
 
-        if not request.user.has_perm("common_audit.can_audit"):
+        if not request.user.has_perm(ap_audit_settings.GLOBAL_AUDIT_PERMISSION_NAME):
             raise PermissionDenied
 
         model_requested = request.GET.get("model")

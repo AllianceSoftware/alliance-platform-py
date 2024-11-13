@@ -30,7 +30,7 @@ def search_audit_by_context(
     * **user** - the user (or hijacked user) who triggered the changed
     * **hijacker** - the original user in the case `user` is hijacked
     * **url** - the current URL
-    * **ip** - the users IP address (only if ``AUDIT_TRACK_IP_ADDRESS` enabled)
+    * **ip** - the users IP address (only if ``TRACK_IP_ADDRESS` enabled)
 
     Extra context can be added with [pghistory.context](https://django-pghistory.readthedocs.io/en/latest/package.html#pghistory.context).
 
