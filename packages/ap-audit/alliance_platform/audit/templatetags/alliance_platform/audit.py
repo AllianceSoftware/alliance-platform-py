@@ -1,23 +1,34 @@
 from typing import Any
 from typing import Type
+from typing import cast
 
-from alliance_platform.audit.registry import default_audit_registry
-from alliance_platform.frontend.bundler import get_bundler
-from alliance_platform.frontend.bundler.base import ResolveContext
-from alliance_platform.frontend.templatetags.react import ComponentNode
-from alliance_platform.frontend.templatetags.react import ComponentProps
-from alliance_platform.frontend.templatetags.react import ComponentSourceBase
-from alliance_platform.frontend.templatetags.react import ImportComponentSource
-from alliance_platform.frontend.templatetags.react import parse_component_tag
 from allianceutils.template import resolve
 from allianceutils.util import camelize
 from django import template
+from django.core.exceptions import ImproperlyConfigured
 from django.db import models
 from django.template import Context
 from django.template import Origin
 from django.template.base import UNKNOWN_SOURCE
+from django.template.exceptions import TemplateSyntaxError
 from django.urls import NoReverseMatch
 from django.urls import reverse_lazy
+
+from alliance_platform.audit.registry import default_audit_registry
+from alliance_platform.audit.settings import ap_audit_settings
+
+try:
+    from alliance_platform.frontend.bundler import get_bundler
+    from alliance_platform.frontend.bundler.base import ResolveContext
+    from alliance_platform.frontend.templatetags.react import ComponentNode
+    from alliance_platform.frontend.templatetags.react import ComponentProps
+    from alliance_platform.frontend.templatetags.react import ComponentSourceBase
+    from alliance_platform.frontend.templatetags.react import ImportComponentSource
+    from alliance_platform.frontend.templatetags.react import parse_component_tag
+except ImportError as e:
+    raise ImproperlyConfigured(
+        "Optional dependency 'alliance_platform.frontend' is not installed. This is required to render audit templatetags."
+    ) from e
 
 register = template.Library()
 
@@ -180,6 +191,9 @@ def render_audit_list(parser: template.base.Parser, token: template.base.Token):
 
       renders an antd table that lists only events recorded for that object
 
+    Requires ``alliance_platform.frontend`` to be installed, and the ap_audit_settings.AUDIT_LOG_COMPONENT_PATH to
+    point to a react component in your frontend source folder that renders the audit log component.
+
     Args:
         context: django context for the purpose of accessing user. provided by default.
         model: the string name of a model either being "all" or in the format of ``app.model`` eg ``admin.user``
@@ -193,11 +207,18 @@ def render_audit_list(parser: template.base.Parser, token: template.base.Token):
     bundler = get_bundler()
     origin = parser.origin or Origin(UNKNOWN_SOURCE)
     resolver_context = ResolveContext(bundler.root_dir, origin.name)
-    source_path = get_bundler().resolve_path(
-        "audit/AuditLog",
-        resolver_context,
-        resolve_extensions=[".ts", ".tsx", ".js"],
-    )
+    component_path = ap_audit_settings.AUDIT_LOG_COMPONENT_PATH
+    try:
+        source_path = get_bundler().resolve_path(
+            cast(str, component_path),
+            resolver_context,
+            resolve_extensions=[".ts", ".tsx", ".js"],
+        )
+    except TemplateSyntaxError:
+        raise ImproperlyConfigured(
+            f"Unable to locate audit log component at {component_path} - check that AUDIT_LOG_COMPONENT_PATH points to a valid React component in your frontend source folder"
+        )
+
     asset_source = ImportComponentSource(source_path, "AuditLog", True)
     return parse_component_tag(
         parser, token, node_class=AuditListNode, asset_source=asset_source, no_end_tag=True

@@ -28,7 +28,7 @@ class PatchedEvent(Event):
 
     """
 
-    event_model: AuditEventProtocol
+    event_model: AuditEventProtocol  # type: ignore[assignment]
 
     def get_func(self, model):
         m2m_fields = {
