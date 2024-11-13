@@ -49,5 +49,6 @@ warn_unused_ignores = true
 dev = [
     "-e alliance-platform-core @ file:///${PROJECT_ROOT}/../ap-core",
     "psycopg2",
+    "django-hijack>=3.0.4",
     "rules",
 ]

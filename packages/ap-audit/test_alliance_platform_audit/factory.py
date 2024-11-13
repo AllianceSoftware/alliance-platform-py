@@ -8,6 +8,7 @@ from .models import Plaza
 from .models import Profile
 from .models import Shop
 from .models import SuperMemberProfile
+from .models import User
 
 
 class AppPaymentMethodFactory(factory.django.DjangoModelFactory):
@@ -48,3 +49,8 @@ class SuperMemberProfileFactory(factory.django.DjangoModelFactory):
 
     class Meta:
         model = SuperMemberProfile
+
+
+class UserFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = User

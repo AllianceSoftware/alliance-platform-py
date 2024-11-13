@@ -1,16 +1,16 @@
 from pathlib import Path
 from unittest import skip
+from unittest.mock import patch
 
 from alliance_platform.audit import create_audit_event
 from alliance_platform.audit import create_audit_model_base
 from alliance_platform.audit.registry import AuditRegistry
 from alliance_platform.audit.registry import _registration_by_model
 from alliance_platform.audit.search import search_audit_by_context
-from alliance_platform.audit.templatetags.audit import AuditListNode
+from alliance_platform.audit.templatetags.alliance_platform.audit import AuditListNode
 from alliance_platform.frontend.bundler.asset_registry import FrontendAssetRegistry
 from alliance_platform.frontend.bundler.context import BundlerAssetContext
 from allianceutils.util import camelize
-from csv_permissions.test_utils import override_csv_permissions
 from django.db import models
 from django.http import HttpRequest
 from django.template import Template
@@ -26,6 +26,7 @@ from test_alliance_platform_audit.factory import AuthorProfileFactory
 from test_alliance_platform_audit.factory import MemberProfileFactory
 from test_alliance_platform_audit.factory import ProfileFactory
 from test_alliance_platform_audit.factory import SuperMemberProfileFactory
+from test_alliance_platform_audit.factory import UserFactory
 from test_alliance_platform_audit.models import AuthorProfile
 from test_alliance_platform_audit.models import MemberProfile
 from test_alliance_platform_audit.models import PaymentMethod
@@ -33,21 +34,17 @@ from test_alliance_platform_audit.models import Plaza
 from test_alliance_platform_audit.models import Profile
 from test_alliance_platform_audit.models import Shop
 from test_alliance_platform_audit.models import SuperMemberProfile
+from test_alliance_platform_audit.models import User
 from test_alliance_platform_audit.models import test_audit_registry
-from xenopus_frog_app.tests.user_type_defs import AppAdminProfileFactory
-from xenopus_frog_app.tests.user_type_defs import AppCustomerProfileFactory
-from xenopus_frog_app.tests.user_type_defs import AppUser
-from xenopus_frog_app.tests.user_type_defs import AppUserFactory
 
 
 def get_audit_list_props(context, **kwargs):
-    # TODO: I added this to make it easy to migrate to the new audit list component. We should consider
-    # whether these tests should be rewritten to properly render the template rather than rely on inspecting
-    # props (might be a lot of work though so maybe not worth it)
+    # just inspecting props rather than properly rendering the template because
+    # the actual component currently only exists in the template project
     arg_str = " ".join([f"{k}={k}" for k in kwargs.keys()])
     nodes = Template(
         f"""
-    {{% load audit %}}
+    {{% load alliance_platform.audit %}}
     {{% render_audit_list {arg_str} %}}
     """
     ).compile_nodelist()
@@ -126,8 +123,8 @@ class TestAuditModule(TestCase):
 
     def test_context_middleware(self):
         client = Client()
-        user = AppUserFactory.create(password="2")
-        client.login(username=user.email, password="2")
+        user = UserFactory.create()
+        client.force_login(user)
         url = reverse("test_audit_create_plaza")
         client.post(path=url)
         event = Plaza.AuditEvent.objects.latest("id")
@@ -135,8 +132,8 @@ class TestAuditModule(TestCase):
 
     def test_context_middleware_with_additional_context(self):
         client = Client()
-        user = AppUserFactory.create(password="2")
-        client.login(username=user.email, password="2")
+        user = UserFactory.create()
+        client.force_login(user)
         url = reverse("test_audit_create_plaza_with_context")
         client.post(path=url)
         event = Plaza.AuditEvent.objects.latest("id")
@@ -227,8 +224,8 @@ class TestAuditModule(TestCase):
 
     def test_search_audit_by_context(self):
         client = Client()
-        user = AppUserFactory.create(password="2")
-        client.login(username=user.email, password="2")
+        user = UserFactory.create()
+        client.force_login(user)
         url = reverse("test_audit_create_plaza_with_context")
         client.post(path=url)
         url = reverse("test_audit_create_plaza")
@@ -243,98 +240,55 @@ class TestAuditModule(TestCase):
         plaza_hash = test_audit_registry.hash_model(Plaza)
         shop_hash = test_audit_registry.hash_model(Shop)
 
-        client = Client()
+        # can audit shop but not plaza
 
-        # admin can audit Shop but not Plaza
-        # customer cant audit either Shop or Plaza
-        admin = AppAdminProfileFactory.create(password="2")
-        customer = AppCustomerProfileFactory.create(password="2")
+        user = User.objects.create(username="test")
+        client = self.client
 
-        csv_contents = f"""
-        Model,              App,               Action,    Is Global, {admin.user_type}, {customer.user_type}
-        ,                   alliance_platform.audit,      can_audit, yes,       yes,               yes
-        Shop,               test_alliance_platform_audit, audit,     yes,       yes,
-        Plaza,              test_alliance_platform_audit, audit,     yes,       ,
+        self.assertTrue(user.has_perm("test_alliance_platform_audit.shop_audit"))
+        self.assertFalse(user.has_perm("test_alliance_platform_audit.plaza_audit"))
 
-        # these are created by user creation so there will be audit events
-        AuthorProfile,      test_alliance_platform_audit, audit,  yes,       ,
-        MemberProfile,      test_alliance_platform_audit, audit,  yes,       ,
-        PaymentMethod,      test_alliance_platform_audit, audit,  yes,       ,
-        Profile,            test_alliance_platform_audit, audit,  yes,       ,
-        SuperMemberProfile, test_alliance_platform_audit, audit,  yes,       ,
-        """
+        client.force_login(user)
 
-        with override_csv_permissions([csv_contents]):
-            self.assertFalse(customer.has_perm("test_alliance_platform_audit.shop_audit"))
-            self.assertFalse(customer.has_perm("test_alliance_platform_audit.plaza_audit"))
-
-            self.assertTrue(admin.has_perm("test_alliance_platform_audit.shop_audit"))
-            self.assertFalse(admin.has_perm("test_alliance_platform_audit.plaza_audit"))
-
-            # as customer can access neither, model / all should all return 403
-            client.login(username=customer.email, password="2")
-            with self.assertLogs("django.request", "WARNING"):
-                response = client.get(f"{url}?model=all")
-                self.assertEqual(response.status_code, 403)
-                response = client.get(f"{url}?model={shop_hash}")
-                self.assertEqual(response.status_code, 403)
-                response = client.get(f"{url}?model={plaza_hash}")
-                self.assertEqual(response.status_code, 403)
-
-            client.logout()
-
-            # and admin can access shop, so 403 on plaza, 200 on shop and "all"
-            client.login(username=admin.email, password="2")
-
-            # triggers a creation of one shop & one plaza in db
-            client.post(path=reverse("test_audit_create_shop"))
-
-            with self.assertLogs("django.request", "WARNING"):
-                response = client.get(f"{url}?model={plaza_hash}")
-                self.assertEqual(response.status_code, 403)
-
+        with self.assertLogs("django.request", "WARNING"):
             response = client.get(f"{url}?model={shop_hash}")
             self.assertEqual(response.status_code, 200)
+            response = client.get(f"{url}?model={plaza_hash}")
+            self.assertEqual(response.status_code, 403)
+            # if user has access to no audits, can't access "all"
+            with patch(
+                "test_alliance_platform_audit.auth.backends.AuditBackend.has_audit_perm", return_value=False
+            ):
+                response = client.get(f"{url}?model=all")
+                self.assertEqual(response.status_code, 403)
 
-            response = client.get(f"{url}?model=all")
-            self.assertEqual(response.status_code, 200)
+        # triggers a creation of one shop & one plaza in db
+        client.post(path=reverse("test_audit_create_shop"))
 
-            # additionally, when querying "all", the result from shop should be returned
-            # but not the one for plaza
-            r = response.json()
-            self.assertEqual(r["count"], 1)
-            self.assertEqual(r["results"][0]["modelLabel"], "Shop")
+        # since user has access to at least one audit, should be able to access "all"
+        response = client.get(f"{url}?model=all")
+        self.assertEqual(response.status_code, 200)
+
+        # additionally, when querying "all", the result from shop should be returned
+        # but not the one for plaza
+        r = response.json()
+        self.assertEqual(r["count"], 1)
+        self.assertEqual(r["results"][0]["modelLabel"], "Shop")
 
     def test_global_audit_permission(self):
         url = reverse("test_audit_log_view")
         plaza_hash = test_audit_registry.hash_model(Plaza)
         shop_hash = test_audit_registry.hash_model(Shop)
 
-        client = Client()
+        client = self.client
+        user = User.objects.create(username="test")
 
-        # admin can audit Shop but not Plaza, but global audit permission should deny everything
-        admin = AppAdminProfileFactory.create(password="2")
-
-        csv_contents = f"""
-        Model,              App,               Action,    Is Global, {admin.user_type}
-        ,                   alliance_platform.audit,      can_audit, yes,
-        Shop,               test_alliance_platform_audit, audit,     yes,       yes
-        Plaza,              test_alliance_platform_audit, audit,     yes,
-
-        # these are created by user creation so there will be audit events
-        AuthorProfile,      test_alliance_platform_audit, audit,  yes,
-        MemberProfile,      test_alliance_platform_audit, audit,  yes,
-        PaymentMethod,      test_alliance_platform_audit, audit,  yes,
-        Profile,            test_alliance_platform_audit, audit,  yes,
-        SuperMemberProfile, test_alliance_platform_audit, audit,  yes,
-        """
-
-        with override_csv_permissions([csv_contents]):
-            self.assertTrue(admin.has_perm("test_alliance_platform_audit.shop_audit"))
-            self.assertFalse(admin.has_perm("test_alliance_platform_audit.plaza_audit"))
+        with patch("test_alliance_platform_audit.auth.backends.global_audit_enabled", return_value=False):
+            self.assertTrue(user.has_perm("test_alliance_platform_audit.shop_audit"))
+            self.assertFalse(user.has_perm("test_alliance_platform_audit.plaza_audit"))
 
             # global audit permission turned off, so 403 on all audit listings
-            client.login(username=admin.email, password="2")
+            client.force_login(user)
 
             # triggers a creation of one shop & one plaza in db
             client.post(path=reverse("test_audit_create_shop"))
@@ -360,56 +314,40 @@ class TestAuditModule(TestCase):
         plaza_hash = test_audit_registry.hash_model(Plaza)
         shop_hash = test_audit_registry.hash_model(Shop)
 
-        client = Client()
+        client = self.client
+        user = User.objects.create(username="test")
 
-        admin = AppAdminProfileFactory.create(password="2")
+        self.assertTrue(user.has_perm("test_alliance_platform_audit.shop_audit"))
+        self.assertFalse(user.has_perm("test_alliance_platform_audit.plaza_audit"))
 
-        csv_contents = f"""
-        Model,              App,               Action,    Is Global, {admin.user_type}
-        ,                   alliance_platform.audit,      can_audit, yes,       yes,
-        Shop,               test_alliance_platform_audit, audit,     yes,       yes,
-        Plaza,              test_alliance_platform_audit, audit,     yes,       ,
+        # and admin can access shop, so 403 on plaza, 200 on shop and "all"
+        client.force_login(user)
 
-        # these are created by user creation so there will be audit events
-        AuthorProfile,      test_alliance_platform_audit, audit,  yes,       ,
-        MemberProfile,      test_alliance_platform_audit, audit,  yes,       ,
-        PaymentMethod,      test_alliance_platform_audit, audit,  yes,       ,
-        Profile,            test_alliance_platform_audit, audit,  yes,       ,
-        SuperMemberProfile, test_alliance_platform_audit, audit,  yes,       ,
-        """
+        # triggers a creation of one shop & one plaza in db
+        client.post(path=reverse("test_audit_create_shop"))
 
-        with override_csv_permissions([csv_contents]):
-            self.assertTrue(admin.has_perm("test_alliance_platform_audit.shop_audit"))
-            self.assertFalse(admin.has_perm("test_alliance_platform_audit.plaza_audit"))
+        with self.assertLogs("django.request", "WARNING"):
+            response = client.get(f"{url}?model={plaza_hash}")
+            self.assertEqual(response.status_code, 403)
 
-            # and admin can access shop, so 403 on plaza, 200 on shop and "all"
-            client.login(username=admin.email, password="2")
+        response = client.get(f"{url}?model={shop_hash}")
+        self.assertEqual(response.status_code, 200)
 
-            # triggers a creation of one shop & one plaza in db
-            client.post(path=reverse("test_audit_create_shop"))
+        response = client.get(f"{url}?model=all")
+        self.assertEqual(response.status_code, 200)
 
-            with self.assertLogs("django.request", "WARNING"):
-                response = client.get(f"{url}?model={plaza_hash}")
-                self.assertEqual(response.status_code, 403)
-
-            response = client.get(f"{url}?model={shop_hash}")
-            self.assertEqual(response.status_code, 200)
-
-            response = client.get(f"{url}?model=all")
-            self.assertEqual(response.status_code, 200)
-
-            # additionally, when querying "all", the result from shop should be returned
-            # but not the one for plaza
-            r = response.json()
-            self.assertEqual(r["count"], 1)
-            self.assertEqual(r["results"][0]["modelLabel"], "Shop")
+        # additionally, when querying "all", the result from shop should be returned
+        # but not the one for plaza
+        r = response.json()
+        self.assertEqual(r["count"], 1)
+        self.assertEqual(r["results"][0]["modelLabel"], "Shop")
 
     def test_audit_hijack(self):
-        customer = AppCustomerProfileFactory.create(password="2")
-        admin = AppAdminProfileFactory.create(password="2")
+        customer = User.objects.create(username="hijacked")
+        admin = User.objects.create(username="hijacker")
 
-        client = Client()
-        client.login(username=admin.email, password="2")
+        client = self.client
+        client.force_login(admin)
         client.post(reverse("hijack:acquire"), {"user_pk": customer.id}, follow=True)
 
         url = reverse("test_audit_create_plaza")
@@ -417,17 +355,17 @@ class TestAuditModule(TestCase):
         event = Plaza.AuditEvent.objects.latest("id")
         self.assertEqual(event.pgh_context.metadata, {"url": url, "user": customer.id, "hijacker": admin.id})
 
-    def test_audit_login_logout_signals(self):
-        admin = AppAdminProfileFactory.create(password="2")
-        client = Client()
-        client.login(username=admin.email, password="2")
+    def test_custom_events_from_signals(self):
+        client = self.client
+        user = User.objects.create(username="test", password="test")
+        client.force_login(user)
         self.assertEqual(
-            _registration_by_model[AppUser].event_model.objects.count(),
-            3,  # CREATE+ACTIVATE+LOGIN
+            _registration_by_model[User].event_model.objects.count(),
+            3,  # CREATE+LOGIN+UPDATE - logging in will also update "last logged in" time
         )
 
         self.assertEqual(
-            _registration_by_model[AppUser].event_model.objects.latest("pgh_id").pgh_label, "LOGIN"
+            _registration_by_model[User].event_model.objects.order_by("pgh_id")[1].pgh_label, "LOGIN"
         )
 
     def test_inheritance_checks(self):
@@ -436,10 +374,15 @@ class TestAuditModule(TestCase):
             ref = models.CharField(max_length=100)
 
             class Meta:
+                app_label = "test_alliance_platform_audit"
                 db_table = "test_alliance_platform_audit_base_model"
 
         class ChildModel(BaseModel):
             child_field = models.CharField(max_length=100)
+
+            class Meta:
+                app_label = "test_alliance_platform_audit"
+                db_table = "test_alliance_platform_audit_base_model_child"
 
         with self.assertRaisesRegex(ValueError, r"Fields id, name, ref exist .* not being audited"):
             registry = AuditRegistry()
@@ -453,13 +396,22 @@ class TestAuditModule(TestCase):
             registry = AuditRegistry()
 
             class BaseModelEvent(create_audit_model_base(BaseModel, fields=["name"], registry=registry)):
+                class Meta:
+                    app_label = "test_alliance_platform_audit"
+
                 pass
 
             class ChildModelEvent2(create_audit_model_base(ChildModel, registry=registry)):
+                class Meta:
+                    app_label = "test_alliance_platform_audit"
+
                 pass
 
         # This should work
         class ChildModelEvent3(create_audit_model_base(ChildModel, exclude=["id", "ref"], registry=registry)):
+            class Meta:
+                app_label = "test_alliance_platform_audit"
+
             pass
 
     def test_inheritance(self):
@@ -481,7 +433,7 @@ class TestAuditModule(TestCase):
 
         with BundlerAssetContext(frontend_asset_registry=bypass_frontend_asset_registry):
             request = HttpRequest()
-            request.user = AppUserFactory.create(is_superuser=True)
+            request.user = UserFactory.create(is_superuser=True)
             request.session = None
             props = get_audit_list_props({"request": request}, object=author, registry=test_audit_registry)
             self.assertEqual(
@@ -508,7 +460,7 @@ class TestAuditModule(TestCase):
 
         with BundlerAssetContext(frontend_asset_registry=bypass_frontend_asset_registry):
             request = HttpRequest()
-            request.user = AppUserFactory.create(is_superuser=True)
+            request.user = UserFactory.create(is_superuser=True)
             request.session = None
             props = get_audit_list_props(
                 {"request": request}, object=super_member, registry=test_audit_registry
@@ -558,7 +510,7 @@ class TestAuditModule(TestCase):
             create_audit_event(super_member, "REDEEM")
             create_audit_event(super_member_alt, "REFER")
             request = HttpRequest()
-            request.user = AppUserFactory.create(is_superuser=True)
+            request.user = UserFactory.create(is_superuser=True)
             request.session = None
             props = get_audit_list_props(
                 {"request": request}, object=super_member, registry=test_audit_registry
