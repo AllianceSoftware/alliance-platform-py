@@ -19,7 +19,7 @@ all packages.
 
 .. code-block:: bash
 
-    poetry add alliance_platform_core alliance_platform_codegen alliance_platform_frontend
+    poetry add alliance_platform_core alliance_platform_codegen alliance_platform_frontend alliance_platform_audit
 
 Javascript Packages
 -------------------
