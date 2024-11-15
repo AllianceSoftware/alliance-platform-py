@@ -9,3 +9,5 @@ See CHANGELOG for relevant packages.
 [alliance-platform-frontend](packages/ap-frontend/CHANGELOG.md)
 
 [alliance-platform-storage](packages/ap-storage/CHANGELOG.md)
+
+[alliance-platform-storage](packages/ap-audit/CHANGELOG.md)
