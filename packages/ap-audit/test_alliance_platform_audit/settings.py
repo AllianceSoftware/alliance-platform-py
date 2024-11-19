@@ -49,7 +49,9 @@ ALLIANCE_PLATFORM: AlliancePlatformSettings = {
         "SSR_GLOBAL_CONTEXT_RESOLVER": None,
         "NODE_MODULES_DIR": os.environ.get("NODE_MODULES_DIR", BASE_DIR.parent.parent / "node_modules"),
     },
-    "AUDIT": {},
+    "AUDIT": {
+        "AUDIT_LOG_COMPONENT_PATH": "audit/AuditLog",
+    },
 }
 
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
