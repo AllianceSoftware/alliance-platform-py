@@ -33,7 +33,7 @@ class AlliancePlatformAuditSettingsType(TypedDict, total=False):
     #: Whether to include IP address in context logs. make sure you take GDPR into consideration (recording without disclosure
     #: is a violation; ie. minimal: your site need to have a privacy statement somewhere.). Defaults to ``False``.
     TRACK_IP_ADDRESS: bool | None
-    #: Path to frontend component for rendering audit log component. Defaults to ``"audit/AuditLog"``. Accepts
+    #: Path to frontend component for rendering audit log component. Defaults to ``"@alliancesoftware/ui-audit/AuditLog"``. Accepts
     #: ``.ts``, ``.tsx``, and ``.jsx`` extensions.
     AUDIT_LOG_COMPONENT_PATH: str | None
 
@@ -52,7 +52,7 @@ class AlliancePlatformAuditSettings(AlliancePlatformSettingsBase):
     #: Whether to include IP address in context logs. make sure you take GDPR into consideration (recording without disclosure
     #: is a violation; ie. minimal: your site need to have a privacy statement somewhere.). Defaults to ``False``.
     TRACK_IP_ADDRESS: bool
-    #: Path to frontend component for rendering audit log component. Defaults to ``"audit/AuditLog"``. Accepts
+    #: Path to frontend component for rendering audit log component. Defaults to ``"@alliancesoftware/ui-audit/AuditLog"``. Accepts
     #: ``.ts``, ``.tsx``, and ``.jsx`` extensions.
     AUDIT_LOG_COMPONENT_PATH: str
 
@@ -63,7 +63,7 @@ DEFAULTS = {
     "USERNAME_FORMAT": Concat("first_name", Value(" "), "last_name"),
     "DATETIME_FORMAT": "%Y-%m-%d %H:%M:%S",
     "TRACK_IP_ADDRESS": False,
-    "AUDIT_LOG_COMPONENT_PATH": "audit/AuditLog",
+    "AUDIT_LOG_COMPONENT_PATH": "@allianceplatform/ui-audit/AuditLog",
 }
 ap_audit_settings = AlliancePlatformAuditSettings(
     "AUDIT",

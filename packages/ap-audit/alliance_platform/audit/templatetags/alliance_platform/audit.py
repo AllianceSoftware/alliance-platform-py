@@ -216,7 +216,7 @@ def render_audit_list(parser: template.base.Parser, token: template.base.Token):
         )
     except TemplateSyntaxError:
         raise ImproperlyConfigured(
-            f"Unable to locate audit log component at {component_path} - check that AUDIT_LOG_COMPONENT_PATH points to a valid React component in your frontend source folder"
+            f"Unable to locate audit log component at {component_path} - check that AUDIT_LOG_COMPONENT_PATH points to a valid React component export"
         )
 
     asset_source = ImportComponentSource(source_path, "AuditLog", True)
