@@ -21,12 +21,15 @@ class AlliancePlatformAuditSettingsType(TypedDict, total=False):
     """
 
     #: The name of the action used to evaluate permissions for auditing a model. Defaults to 'audit'.
+    #: The action name is passed through :external:func:`~alliance_platform.core.auth.resolve_perm_name` to generate the permission.
     LIST_PERM_ACTION: str | None
-    #: The SQL function used to generate the display name for users in audit logs. Defaults to showing first name and last name
     #: The name of the permission used to evaluate whether auditing of any type can be performed.
     #: If a user has audit permissions for a model, but not the permission specified here, they will be unable to audit
     #: models that they have permissions for.
     CAN_AUDIT_PERM_NAME: str | None
+    #: The SQL function used to generate the display name for users in audit logs. Defaults to ``Concat("first_name", Value(" "), "last_name")``.
+    #: If your user model does not include ``first_name`` and ``last_name`` fields, you will need to change
+    #: this setting.
     USERNAME_FORMAT: Func | None
     #: The format string to use when displaying timestamps for audit logs. Defaults to ``"%Y-%m-%d %H:%M:%S"``
     DATETIME_FORMAT: str | None
@@ -40,12 +43,15 @@ class AlliancePlatformAuditSettingsType(TypedDict, total=False):
 
 class AlliancePlatformAuditSettings(AlliancePlatformSettingsBase):
     #: The name of the action used to evaluate permissions for auditing a model. Defaults to 'audit'.
+    #: The action name is passed through :func:`~alliance_platform.core.auth.resolve_perm_name` to generate the permission.
     LIST_PERM_ACTION: str
-    #: The SQL function used to generate the display name for users in audit logs. Defaults to showing first name and last name
     #: The name of the permission used to evaluate whether auditing of any type can be performed.
     #: If a user has audit permissions for a model, but not the permission specified here, they will be unable to audit
     #: models that they have permissions for.
     CAN_AUDIT_PERM_NAME: str
+    #: The SQL function used to generate the display name for users in audit logs. Defaults to ``Concat("first_name", Value(" "), "last_name")``.
+    #: If your user model does not include ``first_name`` and ``last_name`` fields, you will need to change
+    #: this setting.
     USERNAME_FORMAT: Func
     #: The format string to use when displaying timestamps for audit logs. Defaults to '%Y-%m-%d %H:%M:%S'
     DATETIME_FORMAT: str

@@ -1,7 +1,7 @@
 Usage
 #####
 
-To add audit tracking to a model, add the :meth:`~alliance_platform.audit.audit.with_audit_model` decorator to the model class:
+To add audit tracking to a model, add the :func:`~alliance_platform.audit.with_audit_model` decorator to the model class:
 
 .. code-block:: python
 
@@ -11,13 +11,13 @@ To add audit tracking to a model, add the :meth:`~alliance_platform.audit.audit.
             db_table = "xenopus_frog_foo"
 
 At a lower level, this will create a new model called :code:`FooAuditEvent` that inherits from a base audit class
-(generated using :meth:`~alliance_platform.audit.audit.create_audit_model_base`). The :code:`AuditEvent` model has a copy of
+(generated using :meth:`~alliance_platform.audit.create_audit_model_base`). The :code:`AuditEvent` model has a copy of
 every field that is being audited and is written to automatically whenever the source model changes.
 The event model itself has migrations as it is just a standard django model. The triggers are handled
 by :code:`pgtrigger` and will be updated automatically whenever :code:`migrate` is run.
 
 If you need more control over the generated audit model, you can use
-:meth:`~alliance_platform.audit.audit.create_audit_model_base` directly to generate the base class, and manually create the
+:func:`~alliance_platform.audit.create_audit_model_base` directly to generate the base class, and manually create the
 audit event model as a separate model definition, e.g.:
 
 .. code-block:: python
@@ -32,8 +32,8 @@ audit event model as a separate model definition, e.g.:
             db_table = "xenopus_frog_foo_auditeventtracker"
 
 
-Arguments to the :meth:`~alliance_platform.audit.audit.with_audit_model` decorator are passed through to
-:meth:`~alliance_platform.audit.audit.create_audit_model_base`, so the following example will create an
+Arguments to the :func:`~alliance_platform.audit.with_audit_model` decorator are passed through to
+:func:`~alliance_platform.audit.create_audit_model_base`, so the following example will create an
 audit model for :code:`User` that excludes two fields from tracking, and registers 2 manual events.
 
 .. code-block:: python
@@ -45,14 +45,14 @@ audit model for :code:`User` that excludes two fields from tracking, and registe
     class User(BaseUser):
         ...
 
-To use the manual events call :func:`~alliance_platform.audit.audit.create_audit_event`:
+To use the manual events call :func:`~alliance_platform.audit.create_audit_event`:
 
 .. code-block:: python
 
     def track_login(sender, user, **kwargs):
         create_audit_event(user, "LOGIN")
 
-Any audit events that occur within a non-GET request will automatically be wrapped in :class:`pghistory.context`. :code:`GET`
+Any audit events that occur within a non-GET request will automatically be wrapped in pghistory :external:class:`~pghistory.context`. :code:`GET`
 requests shouldn't generally modify anything and so the default :class:`~alliance_platform.audit.middleware.AuditMiddleware` doesn't
 wrap these in :code:`context`. You can do it manually however:
 
@@ -72,8 +72,8 @@ You can also add extra context by nesting :code:`context` calls - they get merge
     # Context will be saved with:
     # {'foo': 'bar', 'job': 'Cron'}
 
-The :meth:`~alliance_platform.audit.templatetags.alliance_platform.audit.render_audit_list` can be used to render the audit log React
-component defined by the ``AUDIT_LOG_COMPONENT_PATH`` setting.
+The :ttag:`render_audit_list` can be used to render the audit log React
+component defined by the :data:`~alliance_platform.audit.settings.AlliancePlatformAuditSettingsType.AUDIT_LOG_COMPONENT_PATH` setting.
 
 .. code-block:: html
 
@@ -118,14 +118,14 @@ Multi-table inheritance
 
 For models with multi-table inheritance (eg. :code:`AdminProfile` inherits from :code:`User`) you must audit each model
 individually. For example if :code:`AdminProfile` wants to audit :code:`email` which is defined on :code:`User` then
-:meth:`~alliance_platform.audit.audit.create_audit_model_base` will throw an error if that field isn't audited on :code:`User`.
+:meth:`~alliance_platform.audit.create_audit_model_base` will throw an error if that field isn't audited on :code:`User`.
 
 Under the hood changes to each model are tracked individually. So if a save would write to both tables then there will
-be 2 events written. The provided UI will show events from both tables when you call :meth:`~alliance_platform.audit.templatetags.audit.render_audit_list`
+be 2 events written. The provided UI will show events from both tables when you call :ttag:`render_audit_list`
 on the descendant model.
 
 Caution: while Audit module allows you to add the same manual event to multi table inheritance models, you should be
-careful on which instance to supply to :meth:`~alliance_platform.audit.audit.create_audit_event`. By default the instance supplied will always take the highest
+careful on which instance to supply to :meth:`~alliance_platform.audit.create_audit_event`. By default the instance supplied will always take the highest
 priority, then one of its parents will catch the event and log it there: there's no propagation.
 
 Managing Triggers

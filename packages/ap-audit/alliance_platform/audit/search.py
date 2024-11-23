@@ -44,6 +44,7 @@ def search_audit_by_context(
     a hit.
 
     usage:
+
     .. code-block:: python
 
         # find all changes made to Favorite and PaymentRecord models by user 2 hijacking someone else

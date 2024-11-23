@@ -3,7 +3,7 @@ Legacy Migration
 
 These instructions can be used to migrate a project using the legacy ``common_audit`` package to ``alliance_platform_audit``.
 
-The only structural change to the repository is that the :func:`~alliance_platform.audit.templatetags.alliance_platform.audit.render_audit_list`
+The only structural change to the repository is that the :ttag:`render_audit_list`
 templatetag has been namespaced under ``alliance_platform.audit``.
 
 Install the ``alliance_platform_audit`` package as per the :doc:`installation instructions <installation>`.
@@ -27,10 +27,10 @@ Follow these steps:
 Frontend
 ~~~~~~~~
 
-The ``render_audit_list`` templatetag is designed to be used with the ``@alliancesoftware/ui-audit/AuditLog``
+The :ttag:`render_audit_list` templatetag is designed to be used with the ``@alliancesoftware/ui-audit/AuditLog``
 component by default. However, the ``audit/AuditLog.tsx`` component is (as of writing) still compatible
 with the templatetag. If you wish to continue using the audit log component defined in your project,
-make sure to set the ``AUDIT_LOG_COMPONENT_PATH`` to ``"audit/AuditLog"`` so the templatetag will
+make sure to set the :data:`~alliance_platform.audit.settings.AlliancePlatformAuditSettingsType.AUDIT_LOG_COMPONENT_PATH` to ``"audit/AuditLog"`` so the templatetag will
 continue to render your project-specific audit log component.
 
 You can also import ``useAuditEndpoint`` from ``@alliancesoftware/ui-audit`` to write your own audit
