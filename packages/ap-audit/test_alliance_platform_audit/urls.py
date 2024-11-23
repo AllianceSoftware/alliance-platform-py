@@ -1,4 +1,5 @@
 from alliance_platform.audit.api import AuditLogView
+from alliance_platform.audit.api import AuditUserChoicesView
 from django.urls import include
 from django.urls import path
 
@@ -27,5 +28,6 @@ urlpatterns = [
         name="test_audit_create_plaza_with_context",
     ),
     path("auditlog/", AuditLogView.as_view(registry=test_audit_registry), name="test_audit_log_view"),
+    path("auditusers/", AuditUserChoicesView.as_view(), name="audit_user_choices"),
     path("hijack/", include("hijack.urls", namespace="hijack")),
 ]

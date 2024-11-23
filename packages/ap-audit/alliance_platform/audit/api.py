@@ -605,6 +605,14 @@ class AuditUserChoicesView(ViewWithPaginationAndFiltering):
 
     filter_function = filter_users
 
+    @classmethod
+    def as_view(cls, **initkwargs):
+        view = super().as_view(**initkwargs)
+
+        registry = default_audit_registry
+        registry.user_choices_view = view
+        return view
+
     def get(self, request, *args, **kwargs):
         self.check_permissions(request)
         queryset = self.filter_queryset(get_audit_user_choices())

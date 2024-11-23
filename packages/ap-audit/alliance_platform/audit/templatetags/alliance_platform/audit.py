@@ -12,6 +12,7 @@ from django.template import Origin
 from django.template.base import UNKNOWN_SOURCE
 from django.template.exceptions import TemplateSyntaxError
 from django.urls import NoReverseMatch
+from django.urls import reverse
 from django.urls import reverse_lazy
 
 from alliance_platform.audit.registry import default_audit_registry
@@ -95,12 +96,11 @@ class AuditListNode(ComponentNode):
         api_url = reverse_lazy(registry.attached_view)
 
         try:
-            url = reverse_lazy("audit_user_choices")
+            # reverse_lazy will only trigger the error when the URL is actually accessed - not what we want
+            # for this try/except
+            url = reverse(default_audit_registry.user_choices_view)
         except NoReverseMatch:
-            raise ValueError(
-                "AsyncChoices are required but AuditUserChoicesView has not been registered as audit_user_choices. "
-                "Either add the URL or check if the existing URL is namespaced. Namespaced URLs are not supported."
-            )
+            raise ValueError("AsyncChoices are required but AuditUserChoicesView has not been registered.")
 
         props.update(
             camelize(

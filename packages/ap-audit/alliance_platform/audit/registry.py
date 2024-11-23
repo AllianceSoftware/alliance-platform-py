@@ -103,6 +103,7 @@ class AuditRegistry:
         self.registrations = {}
         self.registrations_by_hash = {}
         self.attached_view = None
+        self.user_choices_view = None
 
     def get_registration_by_model(self, model):
         return self.registrations.get(model, None)
