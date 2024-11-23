@@ -18,7 +18,7 @@ Add ``pgtrigger``, ``pghistory``, and ``alliance_platform.audit`` to your ``INST
         ...
     ]
 
-* Add :class:`alliance_platform.audit.middleware.AuditMiddleware` to :setting:`MIDDLEWARE`
+* Add :class:`alliance_platform.audit.middleware.AuditMiddleware` to ``MIDDLEWARE``
 
 * In ``urls.py``, add paths for :class:`alliance_platform.audit.api.AuditLogView` and :class:`alliance_platform.audit.api.AuditUserChoicesView`.
 
@@ -26,20 +26,20 @@ Frontend
 ~~~~~~~~
 
 If you want to use the pre-made audit log component (built off of ``@alliancesoftware/ui``), you will need
-to add ``@alliancesoftware/ui-audit`` to your ``package.json``. By default, the ``render_audit_list``
+to add ``@alliancesoftware/ui-audit`` to your ``package.json``. By default, the :ttag:`render_audit_list`
 templatetag looks in this package to import the audit log component to display.
 
 If you want to write your own audit log component, you can use the ``useAuditEndpoint`` hook from
 ``@alliancesoftware/ui-audit`` to help interface between your component and the audit log endpoint.
-This will work out of the box with the props passed from the ``render_audit_list`` templatetab.
+This will work out of the box with the props passed from the :ttag:`render_audit_list` template tag.
 
 Audit Template Tags
 ~~~~~~~~~~~~~~~~~~~
 
-To use the audit list templatetags, you need to install `alliance_platform.frontend <http://127.0.0.1:56676/>`__ and add it to ``INSTALLED_APPS``.
+To use the audit list templatetags, you need to install :doc:`alliance_platform.frontend <alliance-platform-frontend:installation>` and add it to ``INSTALLED_APPS``.
 
-You will also need to ensure that the ``AUDIT_LOG_COMPONENT_PATH`` setting points to a React component that will render
-the audit log that accepts the args expected in the :func:`~alliance_platform.audit.templatetags.audit.render_audit_list`
+You will also need to ensure that the :data:`~alliance_platform.audit.settings.AlliancePlatformAuditSettingsType.AUDIT_LOG_COMPONENT_PATH` setting points to a React component that will render
+the audit log that accepts the args expected in the :ttag:`render_audit_list`
 templatetag. By default, this will assume you have the ``@alliancesoftware/ui-audit`` package installed, and will
 render ``@alliancesoftware/ui-audit/AuditLog``.
 
