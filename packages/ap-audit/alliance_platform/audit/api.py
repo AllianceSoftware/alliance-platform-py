@@ -476,7 +476,7 @@ class AuditLogView(ViewWithPaginationAndFiltering):
         if not bool(request.user and request.user.is_authenticated):
             raise PermissionDenied
 
-        if not request.user.has_perm(ap_audit_settings.GLOBAL_AUDIT_PERMISSION_NAME):
+        if not request.user.has_perm(ap_audit_settings.CAN_AUDIT_PERM_NAME):
             raise PermissionDenied
 
         model_requested = request.GET.get("model")

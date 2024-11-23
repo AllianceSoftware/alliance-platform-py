@@ -141,7 +141,7 @@ class AuditRegistry:
     def get_registrations_for_user(self, user) -> list[AuditModelRegistration]:
         registrations: list[AuditModelRegistration] = []
 
-        if not user.has_perm(ap_audit_settings.GLOBAL_AUDIT_PERMISSION_NAME):
+        if not user.has_perm(ap_audit_settings.CAN_AUDIT_PERM_NAME):
             return registrations
 
         for reg in self.registrations.values():

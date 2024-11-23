@@ -22,11 +22,11 @@ class AlliancePlatformAuditSettingsType(TypedDict, total=False):
 
     #: The name of the action used to evaluate permissions for auditing a model. Defaults to 'audit'.
     LIST_PERM_ACTION: str | None
-    #: The name of the permission used to evaluate whether auditing of any type can be performed. If it resolves to ``False``,
-    #: this will override individual audit permissions determined by ``LIST_PERM_ACTION``. Defaults to
-    #: ``"alliance_platform.audit.can_audit"``
-    GLOBAL_AUDIT_PERMISSION_NAME: str | None
     #: The SQL function used to generate the display name for users in audit logs. Defaults to showing first name and last name
+    #: The name of the permission used to evaluate whether auditing of any type can be performed.
+    #: If a user has audit permissions for a model, but not the permission specified here, they will be unable to audit
+    #: models that they have permissions for.
+    CAN_AUDIT_PERM_NAME: str | None
     USERNAME_FORMAT: Func | None
     #: The format string to use when displaying timestamps for audit logs. Defaults to ``"%Y-%m-%d %H:%M:%S"``
     DATETIME_FORMAT: str | None
@@ -41,11 +41,11 @@ class AlliancePlatformAuditSettingsType(TypedDict, total=False):
 class AlliancePlatformAuditSettings(AlliancePlatformSettingsBase):
     #: The name of the action used to evaluate permissions for auditing a model. Defaults to 'audit'.
     LIST_PERM_ACTION: str
-    #: The name of the permission used to evaluate whether auditing of any type can be performed. If it resolves to ``False``,
-    #: this will override individual audit permissions determined by ``LIST_PERM_ACTION``. Defaults to
-    #: ``"alliance_platform.audit.can_audit"``
-    GLOBAL_AUDIT_PERMISSION_NAME: str
     #: The SQL function used to generate the display name for users in audit logs. Defaults to showing first name and last name
+    #: The name of the permission used to evaluate whether auditing of any type can be performed.
+    #: If a user has audit permissions for a model, but not the permission specified here, they will be unable to audit
+    #: models that they have permissions for.
+    CAN_AUDIT_PERM_NAME: str
     USERNAME_FORMAT: Func
     #: The format string to use when displaying timestamps for audit logs. Defaults to '%Y-%m-%d %H:%M:%S'
     DATETIME_FORMAT: str
@@ -59,7 +59,7 @@ class AlliancePlatformAuditSettings(AlliancePlatformSettingsBase):
 
 DEFAULTS = {
     "LIST_PERM_ACTION": "audit",
-    "GLOBAL_AUDIT_PERMISSION_NAME": "alliance_platform_audit.can_audit",
+    "CAN_AUDIT_PERM_NAME": "alliance_platform_audit.can_audit",
     "USERNAME_FORMAT": Concat("first_name", Value(" "), "last_name"),
     "DATETIME_FORMAT": "%Y-%m-%d %H:%M:%S",
     "TRACK_IP_ADDRESS": False,
