@@ -23,7 +23,7 @@ class AuditBackend(ModelBackend):
         return False
 
     def has_perm(self, user_obj, perm: str, obj=None):
-        if perm == ap_audit_settings.GLOBAL_AUDIT_PERMISSION_NAME:
+        if perm == ap_audit_settings.CAN_AUDIT_PERM_NAME:
             return global_audit_enabled()
         if perm.endswith("audit"):
             return self.has_audit_perm(perm)
