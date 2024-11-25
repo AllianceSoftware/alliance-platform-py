@@ -38,7 +38,6 @@ from django.http import HttpRequest
 from django.http import HttpResponse
 from django.http import JsonResponse
 from django.utils.encoding import force_str
-from django.utils.timezone import localtime
 from django.views import View
 
 # TODO - no many to many repr support yet - they'll be shown as ids for the time being. is it possible
@@ -174,7 +173,7 @@ def generate_serialized_audit_log(event_list: Iterable[AuditEventProtocol], cont
             "user": user,
             "hijacker": hijacker,
             "label": registered_event.pgh_label,
-            "created_at": localtime(event.pgh_created_at).strftime(ap_audit_settings.DATETIME_FORMAT),
+            "created_at": event.pgh_created_at.isoformat(),
             "model_data": get_model_data(registered_event, context),
             "model_label": event.model_label,
         }
