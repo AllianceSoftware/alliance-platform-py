@@ -1,3 +1,4 @@
+from datetime import datetime
 import hashlib
 import re
 from typing import TYPE_CHECKING
@@ -43,6 +44,7 @@ if TYPE_CHECKING:
         pgh_tracked_model: type[models.Model]
         pgh_label: str
         pgh_previous: Optional[type[models.Model]]
+        pgh_created_at: datetime
         registration_hash: str
         model_label: Optional[str]
 

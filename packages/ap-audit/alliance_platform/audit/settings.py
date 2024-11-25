@@ -31,8 +31,6 @@ class AlliancePlatformAuditSettingsType(TypedDict, total=False):
     #: If your user model does not include ``first_name`` and ``last_name`` fields, you will need to change
     #: this setting.
     USERNAME_FORMAT: Func | None
-    #: The format string to use when displaying timestamps for audit logs. Defaults to ``"%Y-%m-%d %H:%M:%S"``
-    DATETIME_FORMAT: str | None
     #: Whether to include IP address in context logs. make sure you take GDPR into consideration (recording without disclosure
     #: is a violation; ie. minimal: your site need to have a privacy statement somewhere.). Defaults to ``False``.
     TRACK_IP_ADDRESS: bool | None
@@ -53,8 +51,6 @@ class AlliancePlatformAuditSettings(AlliancePlatformSettingsBase):
     #: If your user model does not include ``first_name`` and ``last_name`` fields, you will need to change
     #: this setting.
     USERNAME_FORMAT: Func
-    #: The format string to use when displaying timestamps for audit logs. Defaults to '%Y-%m-%d %H:%M:%S'
-    DATETIME_FORMAT: str
     #: Whether to include IP address in context logs. make sure you take GDPR into consideration (recording without disclosure
     #: is a violation; ie. minimal: your site need to have a privacy statement somewhere.). Defaults to ``False``.
     TRACK_IP_ADDRESS: bool
@@ -67,7 +63,6 @@ DEFAULTS = {
     "LIST_PERM_ACTION": "audit",
     "CAN_AUDIT_PERM_NAME": "alliance_platform_audit.can_audit",
     "USERNAME_FORMAT": Concat("first_name", Value(" "), "last_name"),
-    "DATETIME_FORMAT": "%Y-%m-%d %H:%M:%S",
     "TRACK_IP_ADDRESS": False,
     "AUDIT_LOG_COMPONENT_PATH": "@allianceplatform/ui-audit/AuditLog",
 }
