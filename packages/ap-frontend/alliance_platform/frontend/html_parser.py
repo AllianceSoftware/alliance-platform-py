@@ -12,6 +12,7 @@ from django.template import Context
 from django.template import Node
 from django.template import NodeList
 from django.template import Origin
+from django.utils.functional import Promise as StrPromise
 
 if TYPE_CHECKING:
     from alliance_platform.frontend.templatetags.react import ComponentNode
@@ -23,6 +24,8 @@ _html_replacement_placeholder_suffix = "$_"
 html_replacement_placeholder_template = (
     _html_replacement_placeholder_prefix + "{0}" + _html_replacement_placeholder_suffix
 )
+
+StrOrPromise = Union[str, StrPromise]
 
 
 @dataclass
@@ -153,7 +156,7 @@ class HtmlAttributeTemplateNodeList:
 
 
 def convert_html_string(
-    html: str, origin: Origin, *, replacements: dict[str, Node] | None = None
+    html: StrOrPromise, origin: Origin, *, replacements: dict[str, Node] | None = None
 ) -> list[Union["ComponentNode", str]]:
     """
     Given a string that may contain HTML, convert it to a tree of ``ComponentNode``s
@@ -173,6 +176,7 @@ def convert_html_string(
     # In general, it's considered very fast, but we don't need most of its features and this simple parser was
     # faster.
     parser = HtmlTreeParser()
+    html = str(html)
     # Parse the HTML
     parser.feed(html)
 
@@ -232,7 +236,7 @@ def convert_html_string(
     return convert_tree(tags)
 
 
-def transform_html_attributes(attrs: dict[str, str | None], original_html: str, origin: Origin):
+def transform_html_attributes(attrs: dict[str, str | NodeList | Node], original_html: str, origin: Origin):
     """Transform the attributes of an HTML tag into the final form we want
 
     This does the following:
