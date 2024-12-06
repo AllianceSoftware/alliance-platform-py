@@ -38,11 +38,11 @@ dev = [
   "django-hijack>=3.0.4",
 ]
 docs = [
-  "sphinx>=7.2.6",
-  "sphinx-autobuild>=2024.2.4",
-  "sphinx-autodoc-typehints>=2.0.0",
-  "sphinx-rtd-theme>=2.0.0",
-  "sphinx-multiproject>=1.0.0rc1",
+  "sphinx>=8.1",
+  "sphinx-autobuild>=2024.10.3",
+  "sphinx-autodoc-typehints>=2.5.0",
+  "sphinx-rtd-theme>=3.0.0",
+  "sphinx-multiproject>=1.0.0",
 ]
 
 [tool.ruff]
