@@ -327,13 +327,18 @@ class BundlerAssetContext:
         # Check all assets will be included in the production build
         unknown_assets = set()
 
-        from ..management.commands.extract_frontend_assets import get_all_templates_files
-
         known_templates = get_all_templates_files()
 
         cleared_cache = False
+        # accumulate all the valid resources as we go. this enables things like a ComponentNode stored as a var, e.g.
+        # {% component "package" "MyComponent" as my_var %}{% endcomponent %}
+        # this will be added to ``valid_resources`` when encountered, so if it's subsequently passed as a prop to
+        # a component it won't cause any issues. It will come through in ``get_dynamic_resources_for_bundling`` for
+        # the component it is passed to, but we can exclude it because we've already encountered it.
+        valid_resources = set()
         for asset in self.assets:
             origin_name = Path(asset.origin.name)
+            asset_resources = set(asset.get_resources_for_bundling())
             if not asset.origin.template_name or origin_name not in known_templates:
                 # handle case where new template has been added without server restart
                 if not cleared_cache and asset.origin.template_name:
@@ -342,11 +347,17 @@ class BundlerAssetContext:
                     cleared_cache = True
                     if Path(asset.origin.name) in known_templates:
                         continue
-                unknown_assets.update(
-                    self.frontend_asset_registry.get_unknown(*asset.get_paths_for_bundling())
+                asset_unknown_resources = self.frontend_resource_registry.get_unknown(
+                    *(asset_resources - valid_resources)
                 )
+                asset_resources = asset_resources - set(asset_unknown_resources)
+                unknown_assets.update(
+                    asset_unknown_resources,
+                )
+            valid_resources.update(asset_resources)
+            dynamic_resources = set(asset.get_dynamic_resources_for_bundling())
             unknown_assets.update(
-                self.frontend_asset_registry.get_unknown(*asset.get_dynamic_paths_for_bundling())
+                self.frontend_resource_registry.get_unknown(*(dynamic_resources - valid_resources))
             )
         if unknown_assets:
             raise UndiscoverableAssetsError(unknown_assets)
