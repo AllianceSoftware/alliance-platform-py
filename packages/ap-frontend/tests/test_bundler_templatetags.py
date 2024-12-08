@@ -29,7 +29,7 @@ from django.utils.timezone import make_aware
 from .test_utils import override_ap_frontend_settings
 from .test_utils.bundler import TestViteBundler
 from .test_utils.bundler import bundler_kwargs
-from .test_utils.bundler import bypass_frontend_asset_registry
+from .test_utils.bundler import bypass_frontend_resource_registry
 from .test_utils.bundler import fixtures_dir
 from .test_utils.bundler import format_code
 from .test_utils.bundler import run_prettier
@@ -74,7 +74,7 @@ class TestBundlerTemplateTags(SimpleTestCase):
             ("test_development_bundler", f"{self.dev_url}components/Button.css"),
             ("test_production_bundler", "/static/assets/Button-abc123.css"),
         ]:
-            with BundlerAssetContext(frontend_asset_registry=bypass_frontend_asset_registry):
+            with BundlerAssetContext(frontend_resource_registry=bypass_frontend_resource_registry):
                 with override_ap_frontend_settings(BUNDLER=getattr(self, bundler_name)):
                     tpl = Template("{% load bundler %}{% bundler_url 'components/Button.css' %}")
                     actual = tpl.render(Context())
@@ -97,7 +97,7 @@ class TestBundlerTemplateTags(SimpleTestCase):
         ]:
             with self.subTest(bundler_name=bundler_name):
                 with BundlerAssetContext(
-                    frontend_asset_registry=bypass_frontend_asset_registry
+                    frontend_resource_registry=bypass_frontend_resource_registry
                 ) as asset_context:
                     with override_ap_frontend_settings(BUNDLER=getattr(self, bundler_name)):
                         tpl = Template(
@@ -117,12 +117,14 @@ class TestBundlerTemplateTags(SimpleTestCase):
             with self.assertRaisesMessage(
                 ValueError, "BundlerAssetContext.post_process() was not called but is required"
             ):
-                with BundlerAssetContext(frontend_asset_registry=bypass_frontend_asset_registry):
+                with BundlerAssetContext(frontend_resource_registry=bypass_frontend_resource_registry):
                     Template("{% load bundler %}{% bundler_embed 'components/Button.tsx' %}").render(
                         Context()
                     )
 
-            with BundlerAssetContext(frontend_asset_registry=bypass_frontend_asset_registry) as asset_context:
+            with BundlerAssetContext(
+                frontend_resource_registry=bypass_frontend_resource_registry
+            ) as asset_context:
                 Template("{% load bundler %}{% bundler_embed 'components/Button.tsx' %}").render(Context())
                 asset_context.post_process(
                     Template("{% load bundler %}{% bundler_embed_collected_assets %}").render(Context())
@@ -131,7 +133,7 @@ class TestBundlerTemplateTags(SimpleTestCase):
     def test_bundler_embed_collected_assets_no_duplicate(self):
         """Check that bundler_embed_collected_assets exists only once"""
         with self.assertRaisesMessage(ValueError, "Duplicate {% bundler_embed_collected_assets %}"):
-            with BundlerAssetContext(frontend_asset_registry=bypass_frontend_asset_registry):
+            with BundlerAssetContext(frontend_resource_registry=bypass_frontend_resource_registry):
                 Template("{% load bundler %}{% bundler_embed_collected_assets %}").render(Context())
                 Template("{% load bundler %}{% bundler_embed_collected_assets %}").render(Context())
 
@@ -147,7 +149,9 @@ class TestBundlerTemplateTags(SimpleTestCase):
                 '<link rel="stylesheet" href="/static/assets/Button-abc123.css">',
             ),
         ]:
-            with BundlerAssetContext(frontend_asset_registry=bypass_frontend_asset_registry) as asset_context:
+            with BundlerAssetContext(
+                frontend_resource_registry=bypass_frontend_resource_registry
+            ) as asset_context:
                 with override_ap_frontend_settings(BUNDLER=bundler):
                     context = Context()
                     Template("{% load bundler %}{% bundler_embed 'components/Button.tsx' %}").render(context)
@@ -181,7 +185,7 @@ class TestBundlerTemplateTags(SimpleTestCase):
         ]:
             with self.subTest(bundler_name=bundler_name):
                 with BundlerAssetContext(
-                    frontend_asset_registry=bypass_frontend_asset_registry
+                    frontend_resource_registry=bypass_frontend_resource_registry
                 ) as asset_context:
                     with override_ap_frontend_settings(BUNDLER=getattr(self, bundler_name)):
                         context = Context()
@@ -212,7 +216,7 @@ class TestBundlerTemplateTags(SimpleTestCase):
         ]:
             with self.subTest(bundler_name=bundler_name):
                 with BundlerAssetContext(
-                    frontend_asset_registry=bypass_frontend_asset_registry
+                    frontend_resource_registry=bypass_frontend_resource_registry
                 ) as asset_context:
                     with override_ap_frontend_settings(BUNDLER=getattr(self, bundler_name)):
                         context = Context()
@@ -237,7 +241,9 @@ class TestBundlerTemplateTags(SimpleTestCase):
                 '<script src="/static/assets/Button-def456.js" type="module"></script>',
             ),
         ]:
-            with BundlerAssetContext(frontend_asset_registry=bypass_frontend_asset_registry) as asset_context:
+            with BundlerAssetContext(
+                frontend_resource_registry=bypass_frontend_resource_registry
+            ) as asset_context:
                 with override_ap_frontend_settings(BUNDLER=getattr(self, bundler_name)):
                     context = Context()
                     Template(
@@ -265,7 +271,7 @@ class TestBundlerTemplateTags(SimpleTestCase):
         ]:
             with self.subTest(bundler_name=bundler_name):
                 with BundlerAssetContext(
-                    frontend_asset_registry=bypass_frontend_asset_registry,
+                    frontend_resource_registry=bypass_frontend_resource_registry,
                     html_target=HtmlGenerationTarget("test", include_scripts=True, inline_css=True),
                 ) as asset_context:
                     with override_ap_frontend_settings(BUNDLER=getattr(self, bundler_name)):
@@ -290,7 +296,7 @@ class TestBundlerTemplateTags(SimpleTestCase):
             ("test_production_bundler", '<link rel="stylesheet" href="/static/assets/Button-abc123.css">'),
         ]:
             with BundlerAssetContext(
-                frontend_asset_registry=bypass_frontend_asset_registry,
+                frontend_resource_registry=bypass_frontend_resource_registry,
                 html_target=HtmlGenerationTarget("test", include_scripts=False, inline_css=False),
             ) as asset_context:
                 with override_ap_frontend_settings(BUNDLER=getattr(self, bundler_name)):
@@ -330,7 +336,7 @@ class TestVanillaExtractTemplateTag(SimpleTestCase):
             ("test_production_bundler", "__abc123"),
         ]:
             with BundlerAssetContext(
-                frontend_asset_registry=bypass_frontend_asset_registry, skip_checks=True
+                frontend_resource_registry=bypass_frontend_resource_registry, skip_checks=True
             ):
                 with override_ap_frontend_settings(BUNDLER=getattr(self, bundler_name)):
                     tpl = Template(
@@ -414,7 +420,7 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
                 container_id = "C1"
                 mock_method.return_value = container_id
                 with BundlerAssetContext(
-                    frontend_asset_registry=bypass_frontend_asset_registry,
+                    frontend_resource_registry=bypass_frontend_resource_registry,
                     skip_checks=True,
                 ) as asset_context:
                     with override_ap_frontend_settings(
@@ -433,7 +439,7 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
         """Test rendering a component with CSS results in the CSS being collected"""
         with override_ap_frontend_settings(BUNDLER=self.test_production_bundler):
             with BundlerAssetContext(
-                frontend_asset_registry=bypass_frontend_asset_registry,
+                frontend_resource_registry=bypass_frontend_resource_registry,
                 skip_checks=True,
             ) as asset_context:
                 tpl = Template(
@@ -444,10 +450,12 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
                 tpl.render(context)
                 self.assertEqual(len(asset_context.embed_item_queue.items), 1)
                 self.assertIsInstance(asset_context.embed_item_queue.items[0], ViteCssEmbed)
-                self.assertEqual(asset_context.embed_item_queue.items[0].path, "assets/Button-abc123.css")
+                self.assertEqual(
+                    str(asset_context.embed_item_queue.items[0].resource.path), "assets/Button-abc123.css"
+                )
 
             with BundlerAssetContext(
-                frontend_asset_registry=bypass_frontend_asset_registry,
+                frontend_resource_registry=bypass_frontend_resource_registry,
                 skip_checks=True,
             ) as asset_context:
                 # Test CSS is queued when the component is nested within another
@@ -461,7 +469,9 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
                 tpl.render(context)
                 self.assertEqual(len(asset_context.embed_item_queue.items), 1)
                 self.assertIsInstance(asset_context.embed_item_queue.items[0], ViteCssEmbed)
-                self.assertEqual(asset_context.embed_item_queue.items[0].path, "assets/Button-abc123.css")
+                self.assertEqual(
+                    str(asset_context.embed_item_queue.items[0].resource.path), "assets/Button-abc123.css"
+                )
 
     def test_component_children(self):
         with override_ap_frontend_settings(
@@ -473,7 +483,7 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
                 container_id = "C1"
                 mock_method.return_value = container_id
                 with BundlerAssetContext(
-                    skip_checks=True, frontend_asset_registry=bypass_frontend_asset_registry
+                    skip_checks=True, frontend_resource_registry=bypass_frontend_resource_registry
                 ) as asset_context:
                     tpl = Template(
                         "{% load react %}"
@@ -564,7 +574,9 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
         with ExitStack() as stack:
             stack.enter_context(override_ap_frontend_settings(BUNDLER=self.test_development_bundler))
             stack.enter_context(
-                BundlerAssetContext(frontend_asset_registry=bypass_frontend_asset_registry, skip_checks=True)
+                BundlerAssetContext(
+                    frontend_resource_registry=bypass_frontend_resource_registry, skip_checks=True
+                )
             )
             mock_method = stack.enter_context(
                 mock.patch("alliance_platform.frontend.bundler.middleware.BundlerAssetContext.generate_id")
@@ -590,7 +602,9 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
         with ExitStack() as stack:
             stack.enter_context(override_ap_frontend_settings(BUNDLER=self.test_development_bundler))
             stack.enter_context(
-                BundlerAssetContext(frontend_asset_registry=bypass_frontend_asset_registry, skip_checks=True)
+                BundlerAssetContext(
+                    frontend_resource_registry=bypass_frontend_resource_registry, skip_checks=True
+                )
             )
             mock_method = stack.enter_context(
                 mock.patch("alliance_platform.frontend.bundler.middleware.BundlerAssetContext.generate_id")
@@ -617,7 +631,7 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
             BUNDLER=self.test_development_bundler,
         ):
             with BundlerAssetContext(
-                frontend_asset_registry=bypass_frontend_asset_registry, skip_checks=True
+                frontend_resource_registry=bypass_frontend_resource_registry, skip_checks=True
             ) as asset_context:
                 tpl = Template(
                     "{% load react %}"
@@ -633,7 +647,7 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
             BUNDLER=self.test_development_bundler,
         ):
             with BundlerAssetContext(
-                frontend_asset_registry=bypass_frontend_asset_registry, skip_checks=True
+                frontend_resource_registry=bypass_frontend_resource_registry, skip_checks=True
             ):
                 with mock.patch(
                     "alliance_platform.frontend.bundler.middleware.BundlerAssetContext.generate_id"
@@ -680,7 +694,9 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
 
     def test_deep_nesting(self):
         """Tests that props passed through as a dict to `props` kwarg work"""
-        with BundlerAssetContext(frontend_asset_registry=bypass_frontend_asset_registry, skip_checks=True):
+        with BundlerAssetContext(
+            frontend_resource_registry=bypass_frontend_resource_registry, skip_checks=True
+        ):
             self.assertSerializedPropsEqual(
                 "{% load react %}"
                 "{% component 'button' disabled=True props=props %}Click "
@@ -736,7 +752,7 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
         with override_ap_frontend_settings(
             BUNDLER=self.test_development_bundler,
         ):
-            with BundlerAssetContext(frontend_asset_registry=bypass_frontend_asset_registry):
+            with BundlerAssetContext(frontend_resource_registry=bypass_frontend_resource_registry):
                 self.assertSerializedPropsEqual(
                     "{% load react %}" "{% component 'DatePicker' date=date %}{% endcomponent %}",
                     {
@@ -771,7 +787,7 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
         with override_ap_frontend_settings(
             BUNDLER=self.test_development_bundler,
         ):
-            with BundlerAssetContext(frontend_asset_registry=bypass_frontend_asset_registry):
+            with BundlerAssetContext(frontend_resource_registry=bypass_frontend_resource_registry):
                 self.assertSerializedPropsEqual(
                     "{% load react %}" "{% component 'Time' time=time %}{% endcomponent %}",
                     {
@@ -794,7 +810,7 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
                 container_id = "C1"
                 mock_method.return_value = container_id
                 with BundlerAssetContext(
-                    skip_checks=True, frontend_asset_registry=bypass_frontend_asset_registry
+                    skip_checks=True, frontend_resource_registry=bypass_frontend_resource_registry
                 ):
                     tpl_str = """
                         {% load react %}
@@ -849,7 +865,7 @@ class TestComponentTemplateTagOutput(SimpleTestCase):
 
     def setUp(self):
         self.bundler_context = BundlerAssetContext(
-            frontend_asset_registry=bypass_frontend_asset_registry, skip_checks=True
+            frontend_resource_registry=bypass_frontend_resource_registry, skip_checks=True
         )
         self.bundler_context.__enter__()
 

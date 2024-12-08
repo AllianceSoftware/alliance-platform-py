@@ -17,6 +17,7 @@ from ..bundler.base import ResolveContext
 from ..bundler.base import html_target_browser
 from ..bundler.context import BundlerAsset
 from ..bundler.context import BundlerAssetContext
+from ..bundler.frontend_resource import FrontendResource
 from ..settings import ap_frontend_settings
 
 register = template.Library()
@@ -32,8 +33,8 @@ class BundlerUrlAssetNode(template.Node, BundlerAsset):
         self.path = path
         self.target_var = target_var
 
-    def get_paths_for_bundling(self):
-        return [self.path]
+    def get_resources_for_bundling(self):
+        return [FrontendResource(self.path)]
 
     def render(self, context):
         url = self.bundler.get_url(self.path)
@@ -65,11 +66,11 @@ class BundlerEmbedAssetNode(template.Node, BundlerAsset):
 
         super().__init__(origin or Origin(UNKNOWN_SOURCE))
 
-    def get_paths_for_bundling(self):
-        return [self.path]
+    def get_resources_for_bundling(self):
+        return [FrontendResource.from_path(self.path)]
 
     def render(self, context):
-        items = self.bundler.get_embed_items(self.get_paths_for_bundling(), self.content_type)
+        items = self.bundler.get_embed_items(self.get_resources_for_bundling(), self.content_type)
         tags = []
         for item in items:
             item.html_attrs = resolve(self.html_attrs, context)
@@ -89,7 +90,7 @@ def bundler_url(parser: template.base.Parser, token: template.base.Token):
     """
     Return the URL from the bundler to a specified asset.
 
-    NOTE: This tag only accepts static values as :class:`extract_frontend_assets <alliance_platform.frontend.management.commands.extract_frontend_assets.Command>` needs to be able to statically generate
+    NOTE: This tag only accepts static values as :djmanage:`extract_frontend_resources` needs to be able to statically generate
     a list of paths that need to be built for production.
 
     Usage::
@@ -187,7 +188,7 @@ def bundler_embed(parser: template.base.Parser, token: template.base.Token):
         parser.origin,
         target_var=target_var,
         content_type=content_type,
-        inline=inline,
+        inline=False if inline is None else inline,
         html_attrs=html_attrs,
     )
 

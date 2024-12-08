@@ -1,4 +1,3 @@
-from pathlib import Path
 from unittest import skip
 from unittest.mock import patch
 
@@ -8,8 +7,9 @@ from alliance_platform.audit.registry import AuditRegistry
 from alliance_platform.audit.registry import _registration_by_model
 from alliance_platform.audit.search import search_audit_by_context
 from alliance_platform.audit.templatetags.alliance_platform.audit import AuditListNode
-from alliance_platform.frontend.bundler.asset_registry import FrontendAssetRegistry
 from alliance_platform.frontend.bundler.context import BundlerAssetContext
+from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
+from alliance_platform.frontend.bundler.resource_registry import FrontendResourceRegistry
 from allianceutils.util import camelize
 from django.db import models
 from django.http import HttpRequest
@@ -54,14 +54,14 @@ def get_audit_list_props(context, **kwargs):
     raise ValueError("expected AuditListNode")
 
 
-class TestFrontendAssetRegistryByPass(FrontendAssetRegistry):
+class TestFrontendResourceRegistryByPass(FrontendResourceRegistry):
     """Bypasses unknown checks by never returning any unknown paths"""
 
-    def get_unknown(self, *filenames: Path) -> list[Path]:
+    def get_unknown(self, *resources: FrontendResource):
         return []
 
 
-bypass_frontend_asset_registry = TestFrontendAssetRegistryByPass()
+bypass_frontend_resource_registry = TestFrontendResourceRegistryByPass()
 
 
 @override_settings(ROOT_URLCONF="test_alliance_platform_audit.urls")
@@ -431,7 +431,7 @@ class TestAuditModule(TestCase):
         self.assertEqual(Profile.AuditEvent.objects.count(), 3)
         self.assertEqual(AuthorProfile.AuditEvent.objects.count(), 2)
 
-        with BundlerAssetContext(frontend_asset_registry=bypass_frontend_asset_registry):
+        with BundlerAssetContext(frontend_resource_registry=bypass_frontend_resource_registry):
             request = HttpRequest()
             request.user = UserFactory.create(is_superuser=True)
             request.session = None
@@ -458,7 +458,7 @@ class TestAuditModule(TestCase):
         self.assertEqual(MemberProfile.AuditEvent.objects.count(), 2)
         self.assertEqual(SuperMemberProfile.AuditEvent.objects.count(), 2)
 
-        with BundlerAssetContext(frontend_asset_registry=bypass_frontend_asset_registry):
+        with BundlerAssetContext(frontend_resource_registry=bypass_frontend_resource_registry):
             request = HttpRequest()
             request.user = UserFactory.create(is_superuser=True)
             request.session = None
@@ -504,7 +504,7 @@ class TestAuditModule(TestCase):
         self.assertEqual(shop.auditevents.latest("pgh_id").pgh_label, "REVIEW")
 
     def test_render_audit_list(self):
-        with BundlerAssetContext(frontend_asset_registry=bypass_frontend_asset_registry):
+        with BundlerAssetContext(frontend_resource_registry=bypass_frontend_resource_registry):
             super_member = SuperMemberProfileFactory()
             super_member_alt = SuperMemberProfileFactory()
             create_audit_event(super_member, "REDEEM")

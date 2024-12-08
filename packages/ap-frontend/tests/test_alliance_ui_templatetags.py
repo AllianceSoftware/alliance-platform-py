@@ -17,7 +17,7 @@ from test_alliance_platform_frontend.models import User
 from .test_utils import override_ap_frontend_settings
 from .test_utils.bundler import TestViteBundler
 from .test_utils.bundler import bundler_kwargs
-from .test_utils.bundler import bypass_frontend_asset_registry
+from .test_utils.bundler import bypass_frontend_resource_registry
 
 
 @override_ap_frontend_settings(
@@ -65,7 +65,7 @@ class UrlFilterPermTemplateTagsTestCase(TestCase):
     def setup_overrides(self):
         with override_ap_frontend_settings(BUNDLER=self.test_development_bundler):
             with BundlerAssetContext(
-                skip_checks=True, frontend_asset_registry=bypass_frontend_asset_registry
+                skip_checks=True, frontend_resource_registry=bypass_frontend_resource_registry
             ):
                 yield
 

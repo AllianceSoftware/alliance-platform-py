@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from django import template
 from django.template import Library
 
@@ -20,15 +18,16 @@ class PaginationNode(ComponentNode):
             resolve_extensions=[".ts", ".tsx", ".js"],
         )
         # This make the component use links so changing page navigates to new URL
-        self.props["renderItem"] = ImportComponentSource(
+        self._component_source = ImportComponentSource(
             self._render_pagination_item_link_path, "renderPaginationItemAsLink", False
         )
+        self.props["renderItem"] = self._component_source
 
-    def get_paths_for_bundling(self) -> list[Path]:
-        paths = super().get_paths_for_bundling()
+    def get_resources_for_bundling(self):
+        resources = super().get_resources_for_bundling()
         # Need to include this in the bundled paths so available in final build
-        paths.append(self._render_pagination_item_link_path)
-        return paths
+        resources.append(self._component_source.create_frontend_resource(self.bundler))
+        return resources
 
 
 def pagination(parser: template.base.Parser, token: template.base.Token):

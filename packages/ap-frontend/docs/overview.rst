@@ -15,7 +15,7 @@ Template Static Paths
 Various template tags accept a path to an asset. For example, :ttag:`bundler_embed` accepts the path to an asset to embed
 and :ttag:`component` accepts the path to a React component. These paths must be static values, i.e. they cannot be
 template variables or expressions. This is because the paths must be known when the frontend build occurs, so that
-the bundler knows which files to include in the build. The :class:`extract_frontend_assets <alliance_platform.frontend.management.commands.extract_frontend_assets.Command>`
+the bundler knows which files to include in the build. The :djmanage:`extract_frontend_resources`
 management command will extract these paths from the templates and generate a list of files to include in the build.
 
 Examples:

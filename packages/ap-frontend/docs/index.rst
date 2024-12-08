@@ -29,6 +29,7 @@ embedded in the template with the :ttag:`component` tag.
    templatetags
    alliance_ui
    settings
+   commands
    api
 
 .. include:: ../../ap-core/docs/_sidebar.rst.inc

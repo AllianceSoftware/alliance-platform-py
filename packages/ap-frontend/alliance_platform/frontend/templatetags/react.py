@@ -53,6 +53,8 @@ from ..bundler.base import BaseBundler
 from ..bundler.base import ResolveContext
 from ..bundler.context import BundlerAsset
 from ..bundler.context import BundlerAssetContext
+from ..bundler.frontend_resource import ESModuleResource
+from ..bundler.frontend_resource import FrontendResource
 from ..bundler.ssr import ImportDefinition
 from ..bundler.ssr import SSRItem
 from ..bundler.ssr import SSRSerializable
@@ -524,7 +526,12 @@ class ComponentSourceCodeGenerator:
         are tracked separated and added to the dynamic dependencies of the component. This allows the ``BundlerContext``
         to check this assets will be available in production and raise an error if not.
         """
-        self.node.add_dynamic_dependency(self.bundler.validate_path(path, resolve_extensions=[".ts", ".tsx"]))
+        validated_path = self.bundler.validate_path(path, resolve_extensions=[".ts", ".tsx"])
+        self.node.add_dynamic_resource(
+            ESModuleResource(
+                validated_path, specifier.local.name, isinstance(specifier, ImportDefaultSpecifier)
+            )
+        )
         return self._writer.resolve_import(path, specifier, import_order_priority=import_order_priority)
 
     def requires_wrapper_component(self):
@@ -791,7 +798,7 @@ class ComponentNode(template.Node, BundlerAsset):
 
     #: Any extra dependencies for this component. This comes from props used that may require imports, for example
     #: DateProp may require the date library be included.
-    dynamic_dependencies: list[Path]
+    dynamic_bundle_resources: list[FrontendResource]
 
     container_tag: str | FilterExpression
     container_props: dict[str, Any]
@@ -827,33 +834,35 @@ class ComponentNode(template.Node, BundlerAsset):
         self.omit_if_empty = omit_if_empty
         # For the case where props=my_dict is passed
         self.extra_props = props.pop("props", None)
-        self.dynamic_dependencies = []
+        self.dynamic_bundle_resources = []
         super().__init__(origin)
 
     def __repr__(self):
         return f"ComponentNode({self.source}, {self.props})"
 
-    def add_dynamic_dependency(self, path: Path):
+    def add_dynamic_resource(self, resource: FrontendResource):
         """Track when a dynamic dependency is used.
 
         A dynamic dependency is JS file that can't be statically analyzed. For example, if a ``ComponentProp`` required
         an import (e.g. ``useViewModelCache`` for ``ViewModelProp``) then that would be a dynamic dependency. This lets
         us identify during dev imports that need to be explicitly included in the created bundle.
         """
-
-        # If path is explicitly included in ``get_paths_for_bundling`` we don't have to worry about it as it
+        # If path is explicitly included in ``get_resources_for_bundling`` we don't have to worry about it as it
         # will always be included
-        if path not in self.get_paths_for_bundling():
-            self.dynamic_dependencies.append(path)
+        if resource not in self.get_resources_for_bundling():
+            self.dynamic_bundle_resources.append(resource)
 
-    def get_dynamic_paths_for_bundling(self) -> list[Path]:
-        return self.dynamic_dependencies
-
-    def get_paths_for_bundling(self) -> list[Path]:
-        paths = [ap_frontend_settings.REACT_RENDER_COMPONENT_FILE]
+    def get_resources_for_bundling(self):
+        resources = [
+            ESModuleResource(ap_frontend_settings.REACT_RENDER_COMPONENT_FILE, "createElement", False),
+            ESModuleResource(ap_frontend_settings.REACT_RENDER_COMPONENT_FILE, "renderComponent", False),
+        ]
         if isinstance(self.source, ImportComponentSource):
-            paths.append(self.source.path)
-        return paths
+            resources.append(self.source.create_frontend_resource(self.bundler))
+        return resources
+
+    def get_dynamic_resources_for_bundling(self) -> list[FrontendResource]:
+        return self.dynamic_bundle_resources
 
     def resolve_prop(self, value, context: Context):
         """Handles resolving values to a type that can be serialized
@@ -937,7 +946,7 @@ class ComponentNode(template.Node, BundlerAsset):
         )
 
     def _queue_css(self):
-        css_items = self.bundler.get_embed_items(self.get_paths_for_bundling(), "text/css")
+        css_items = self.bundler.get_embed_items(self.get_resources_for_bundling(), "text/css")
         for item in css_items:
             self.bundler_asset_context.queue_embed_file(item)
 

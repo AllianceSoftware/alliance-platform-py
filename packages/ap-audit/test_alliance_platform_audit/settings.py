@@ -7,7 +7,7 @@ from typing import TypedDict
 
 from alliance_platform.audit.settings import AlliancePlatformAuditSettingsType
 from alliance_platform.core.settings import AlliancePlatformCoreSettingsType
-from alliance_platform.frontend.bundler.asset_registry import FrontendAssetRegistry
+from alliance_platform.frontend.bundler.resource_registry import FrontendResourceRegistry
 from alliance_platform.frontend.settings import AlliancePlatformFrontendSettingsType
 
 is_ci = os.environ.get("CI_SERVER", "no") == "yes"
@@ -29,14 +29,14 @@ class AlliancePlatformSettings(TypedDict):
     FRONTEND: AlliancePlatformFrontendSettingsType
 
 
-frontend_registry = FrontendAssetRegistry()
+frontend_registry = FrontendResourceRegistry()
 
 ALLIANCE_PLATFORM: AlliancePlatformSettings = {
     "CORE": {
         "PROJECT_DIR": PROJECT_DIR,
     },
     "FRONTEND": {
-        "FRONTEND_ASSET_REGISTRY": frontend_registry,
+        "FRONTEND_RESOURCE_REGISTRY": frontend_registry,
         "REACT_RENDER_COMPONENT_FILE": PROJECT_DIR / "frontend/src/renderComponent.tsx",
         "PRODUCTION_DIR": TEST_DIRECTORY / "frontend/build",
         "DEBUG_COMPONENT_OUTPUT": True,
