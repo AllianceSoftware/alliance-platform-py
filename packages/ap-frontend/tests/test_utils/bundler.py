@@ -1,6 +1,7 @@
 from pathlib import Path
 import subprocess
 
+from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from alliance_platform.frontend.bundler.resource_registry import FrontendResourceRegistry
 from alliance_platform.frontend.bundler.vite import ViteBundler
 from alliance_platform.frontend.settings import ap_frontend_settings
@@ -68,12 +69,8 @@ class TestViteBundler(ViteBundler):
 class TestFrontendResourceRegistryByPass(FrontendResourceRegistry):
     """Bypasses unknown checks by never returning any unknown paths"""
 
-    def get_unknown(self, *filenames: Path) -> list[Path]:
+    def get_unknown(self, *resources: FrontendResource):
         return []
-
-    def add_resource(self, *filenames: Path):
-        for filename in filenames:
-            self._resources.add(filename)
 
 
 bypass_frontend_resource_registry = TestFrontendResourceRegistryByPass()

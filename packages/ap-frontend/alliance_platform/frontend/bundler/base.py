@@ -351,7 +351,7 @@ class AssetFileEmbed:
         self.resource = resource
         self.html_attrs = html_attrs or {}
 
-    def get_content_type(self) -> str:
+    def get_content_type(self) -> str | None:
         """Return the content type of the file to embed
 
         The most common types are text/css and text/javascript. Images will be image/<type>, e.g. image/png
@@ -385,12 +385,11 @@ class AssetFileEmbed:
         # if no content_type specified then we match anything
         if content_type is None:
             return True
-        try:
-            if issubclass(content_type, FrontendResource):
-                return isinstance(self.resource, content_type)
-        except TypeError:
-            # ignore if content_type is not a class
-            pass
+        if isinstance(content_type, type) and issubclass(content_type, FrontendResource):
+            return isinstance(self.resource, content_type)
+        resource_content_type = self.get_content_type()
+        if not resource_content_type:
+            return False
         if isinstance(content_type, re.Pattern):
-            return content_type.match(self.get_content_type())
+            return content_type.match(resource_content_type)
         return self.get_content_type() == content_type

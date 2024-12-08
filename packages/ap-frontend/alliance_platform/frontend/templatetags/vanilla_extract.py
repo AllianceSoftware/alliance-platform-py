@@ -24,7 +24,7 @@ class VanillaExtractStylesheetNode(template.Node, BundlerAsset):
         self.css_modules_target_var = css_modules_target_var
         super().__init__(origin or Origin(UNKNOWN_SOURCE))
 
-    def get_resources_for_bundling(self) -> list[VanillaExtractResource]:
+    def get_resources_for_bundling(self):
         return [VanillaExtractResource(self.filename)]
 
     def render(self, context: Context):
