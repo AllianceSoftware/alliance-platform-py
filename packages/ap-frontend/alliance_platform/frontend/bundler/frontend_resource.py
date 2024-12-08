@@ -32,7 +32,7 @@ class FrontendResource:
     path: Path
 
     @property
-    def content_type(self) -> str:
+    def content_type(self) -> str | None:
         """Get the content type string for this resource"""
         return get_content_type(self.path)
 

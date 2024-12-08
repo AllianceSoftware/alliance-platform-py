@@ -613,7 +613,7 @@ class ViteEmbed(AssetFileEmbed):
         self.resource = resource
         super().__init__(resource, html_attrs)
 
-    def get_content_type(self) -> str:
+    def get_content_type(self) -> str | None:
         return self.resource.content_type
 
     def __eq__(self, other):
