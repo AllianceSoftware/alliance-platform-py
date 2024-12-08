@@ -11,6 +11,7 @@ from django.template.base import UNKNOWN_SOURCE
 from ..bundler import get_bundler
 from ..bundler.base import ResolveContext
 from ..bundler.context import BundlerAsset
+from ..bundler.frontend_resource import VanillaExtractResource
 from ..bundler.vanilla_extract import resolve_vanilla_extract_class_mapping
 
 register = template.Library()
@@ -23,8 +24,8 @@ class VanillaExtractStylesheetNode(template.Node, BundlerAsset):
         self.css_modules_target_var = css_modules_target_var
         super().__init__(origin or Origin(UNKNOWN_SOURCE))
 
-    def get_paths_for_bundling(self) -> list[Path]:
-        return [self.filename]
+    def get_resources_for_bundling(self) -> list[VanillaExtractResource]:
+        return [VanillaExtractResource(self.filename)]
 
     def render(self, context: Context):
         if self.css_modules_target_var:
@@ -35,7 +36,7 @@ class VanillaExtractStylesheetNode(template.Node, BundlerAsset):
         # One solution is to write out a temporary `.ts` file that loads the css file. This sort of worked
         # but was a bit flakey so I've removed it for the time being. Needs further investigation into
         # cause.
-        items = self.bundler.get_embed_items(self.get_paths_for_bundling())
+        items = self.bundler.get_embed_items(self.get_resources_for_bundling())
         for item in items:
             self.bundler_asset_context.queue_embed_file(item)
         # Nothing to render - tags are added to head
