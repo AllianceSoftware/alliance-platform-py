@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+import re
 import threading
 from typing import Type
 import warnings
@@ -9,18 +10,52 @@ import warnings
 from django.conf import settings
 from django.http import HttpRequest
 from django.template import Origin
+from django.template import engines
+from django.template.utils import get_app_template_dirs
 from django.utils.module_loading import import_string
 
 from ..settings import ap_frontend_settings
 from . import get_bundler
-from .asset_registry import FrontendAssetRegistry
 from .base import AssetFileEmbed
 from .base import BaseBundler
 from .base import HtmlGenerationTarget
 from .base import html_target_browser
+from .frontend_resource import FrontendResource
+from .resource_registry import FrontendResourceRegistry
 from .ssr import SSRItem
 
 GLOBAL_BUNDLER_ASSET_CONTEXT = threading.local()
+
+
+frontend_templates_dir = Path(__file__).parent.parent / "templates"
+
+
+@lru_cache
+def get_all_templates_files() -> list[Path]:
+    """Scans all template dirs for template files
+
+    Will exclude any templates the match an entry in :data:`~alliance_platform.frontend.settings.AlliancePlatformFrontendSettingsType.EXTRACT_ASSETS_EXCLUDE_DIRS`
+    """
+    dirs: tuple[str | Path, ...] = get_app_template_dirs("templates")
+    for engine in engines.all():
+        dirs += tuple(engine.template_dirs)
+    files: list[Path] = []
+    for dir in dirs:
+        should_exclude = False
+        for excl in ap_frontend_settings.EXTRACT_ASSETS_EXCLUDE_DIRS:
+            if isinstance(excl, re.Pattern):
+                if excl.match(str(dir)):
+                    should_exclude = True
+                    break
+            elif str(dir).startswith(str(excl)):
+                should_exclude = True
+
+        # always include the frontend templates dir even if would otherwise
+        # be excluded
+        if should_exclude and dir != frontend_templates_dir:
+            continue
+        files.extend(x for x in Path(dir).glob("**/*.html") if x)
+    return files
 
 
 class NoActiveBundlerAssetContext(Exception):
@@ -30,23 +65,23 @@ class NoActiveBundlerAssetContext(Exception):
 
 
 class UndiscoverableAssetsError(Exception):
-    """Thrown if assets are used, but cannot be discovered automatically and aren't registered with the asset registry"""
+    """Thrown if assets are used, but cannot be discovered automatically and aren't registered with the resource registry"""
 
     def __init__(self, paths: set[Path]):
         paths_str = "\n".join(map(str, paths))
         super().__init__(
-            f"The following paths were used but cannot be auto-discovered by `extract_frontend_assets`:\n{paths_str}\n\n"
-            f"To resolve add these paths to the asset registry, e.g. `frontend_asset_registry.add_asset(...paths...)`."
+            f"The following paths were used but cannot be auto-discovered by `extract_frontend_resources`:\n{paths_str}\n\n"
+            f"To resolve add these paths to the resource registry, e.g. `frontend_resource_registry.add_resource(...paths...)`."
         )
         self.undiscoverable_assets = paths
 
 
 class BundlerAsset:
     """
-    A class representing an asset (e.g. script, stylesheet) that needs to be bundled.
+    A class representing a resource (e.g. script, stylesheet), and it's dependencies, that needs to be bundled.
 
-    Each asset could have dependencies that also need to be bundled. All relevant files should be returned by
-    ``get_paths_for_bundling``.
+    Each asset could have dependencies that also need to be bundled. All relevant resources should be returned by
+    ``get_resources_for_bundling``.
 
     All assets must be static so that the files that are required in production can be extracted at build time. This allows
     the bundler to know what files to compile based on usage in templates. For example a Template node must be able to
@@ -56,7 +91,7 @@ class BundlerAsset:
 
     The :class:`~alliance_platform.frontend.bundler.context.BundlerAssetContext` can then be queried to see what assets have been used.
 
-    :class:`extract_frontend_assets <alliance_platform.frontend.management.commands.extract_frontend_assets.Command>` uses this to work out what assets are used anywhere in the app by loading all templates. Any
+    :djmanage:`extract_frontend_resources` uses this to work out what assets are used anywhere in the app by loading all templates. Any
     template nodes that extend ``BundlerAsset`` will be automatically added to the context.
     """
 
@@ -75,15 +110,15 @@ class BundlerAsset:
         self.bundler_asset_context = BundlerAssetContext.get_current()
         self.bundler_asset_context.add_asset(self)
 
-    def get_paths_for_bundling(self) -> list[Path]:
-        """Return a list of paths to files this asset requires
+    def get_resources_for_bundling(self) -> list[FrontendResource]:
+        """Return a list of resources this asset requires
 
-        These will be included in the build process - see :class:`extract_frontend_assets <alliance_platform.frontend.management.commands.extract_frontend_assets.Command>`
+        These will be included in the build process - see :djmanage:`extract_frontend_resources`
         """
         raise NotImplementedError
 
-    def get_dynamic_paths_for_bundling(self) -> list[Path]:
-        """Return a list of paths to files this asset used at runtime.
+    def get_dynamic_resources_for_bundling(self) -> list[FrontendResource]:
+        """Return a list of resources this asset used at runtime.
 
         This is useful for cases where it can't be determined statically what dependencies are required (e.g. based
         on the usage of a component).
@@ -141,13 +176,13 @@ class BundlerAssetContext:
             # Post process contents to handle SSR & embedding the asset tags
             contents = context.post_process(contents)
 
-            # Retrieve the paths for all assets that were added to the context
-            context.get_asset_paths()
+            # Retrieve the resources for all assets that were added to the context
+            context.get_resources_for_bundling()
 
     Usage in a django view when :class:`~alliance_platform.frontend.bundler.middleware.BundlerAssetContextMiddleware` is active::
 
         context = BundlerAssetContext.get_current()
-        context.get_asset_paths()
+        context.get_resources_for_bundling()
     """
 
     #: All the assets that have been added
@@ -156,8 +191,8 @@ class BundlerAssetContext:
     embed_item_queue: AssetEmbedFileQueue
     #: Contains all SSRItem's that have been queued for rendering
     ssr_queue: dict[str, SSRItem]
-    #: The registry to use for assets that can't be discovered automatically.
-    frontend_asset_registry: FrontendAssetRegistry
+    #: The registry to use for resources that can't be discovered automatically.
+    frontend_resource_registry: FrontendResourceRegistry
     #: The target HTML is being generated for. This determines things like whether scripts are required at runtime, and
     #: whether CSS should be inlined in ``style`` tags or linked from an external file. Defaults to
     html_target: HtmlGenerationTarget
@@ -173,17 +208,17 @@ class BundlerAssetContext:
     def __init__(
         self,
         *,
-        frontend_asset_registry: FrontendAssetRegistry | None = None,
+        frontend_resource_registry: FrontendResourceRegistry | None = None,
         html_target=html_target_browser,
         skip_checks=False,
         request: HttpRequest | None = None,
     ):
-        if frontend_asset_registry is None:
-            frontend_asset_registry = ap_frontend_settings.FRONTEND_ASSET_REGISTRY
+        if frontend_resource_registry is None:
+            frontend_resource_registry = ap_frontend_settings.FRONTEND_RESOURCE_REGISTRY
         self.request = request
         self.skip_checks = skip_checks
         self.html_target = html_target
-        self.frontend_asset_registry = frontend_asset_registry
+        self.frontend_resource_registry = frontend_resource_registry
         self.assets = []
         self.ssr_queue = {}
         self.current_id = 0
@@ -212,15 +247,15 @@ class BundlerAssetContext:
         """
         self.embed_item_queue.add(item)
 
-    def get_asset_paths(self, of_type: Type[BundlerAsset] | None = None) -> list[Path]:
+    def get_resources_for_bundling(self, of_type: Type[BundlerAsset] | None = None) -> list[FrontendResource]:
         """Return the paths for assets used by assets added to this context"""
-        asset_paths = []
+        resources = []
         for asset in self.get_assets(of_type):
-            for path in asset.get_paths_for_bundling():
+            for resource in asset.get_resources_for_bundling():
                 # we do it like this rather than Set so order is preserved
-                if path not in asset_paths:
-                    asset_paths.append(path)
-        return asset_paths
+                if resource not in resources:
+                    resources.append(resource)
+        return resources
 
     def get_assets(self, of_type: Type[BundlerAsset] | None = None) -> list[BundlerAsset]:
         """Get assets that have been added to context, optionally filtered by ``of_type``

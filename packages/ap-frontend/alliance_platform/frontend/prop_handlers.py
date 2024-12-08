@@ -13,6 +13,8 @@ from alliance_platform.codegen.typescript import convert_to_node
 from django.template import Context
 from django.utils.timezone import is_aware
 
+from .bundler.frontend_resource import ESModuleResource
+from .bundler.frontend_resource import FrontendResource
 from .bundler.ssr import SSRCustomFormatSerializable
 from .bundler.ssr import SSRSerializerContext
 from .settings import ap_frontend_settings
@@ -80,10 +82,10 @@ class ComponentProp(SSRCustomFormatSerializable, CodeGeneratorNode):
         pass
 
     @classmethod
-    def get_paths_for_bundling(cls):
-        """Return any paths that need to be included in bundling to make use of this prop
+    def get_resources_for_bundling(cls) -> list[FrontendResource]:
+        """Return any resources that need to be included in bundling to make use of this prop
 
-        Note that if this is specified, the paths will _always_ be included in the bundler even if the prop
+        Note that if this is specified, the paths will _always_ be included in the bundle even if the prop
         is not used.
 
         Returns:
@@ -127,8 +129,12 @@ class DateProp(ComponentProp):
         return isinstance(value, datetime.date) and not isinstance(value, datetime.datetime)
 
     @classmethod
-    def get_paths_for_bundling(cls):
-        return [ap_frontend_settings.NODE_MODULES_DIR / "@internationalized/date"]
+    def get_resources_for_bundling(cls):
+        return [
+            ESModuleResource(
+                ap_frontend_settings.NODE_MODULES_DIR / "@internationalized/date", "CalendarDate", False
+            )
+        ]
 
 
 class DateTimeProp(ComponentProp):
@@ -169,8 +175,12 @@ class DateTimeProp(ComponentProp):
         return isinstance(value, datetime.datetime) and not is_aware(value)
 
     @classmethod
-    def get_paths_for_bundling(cls):
-        return [ap_frontend_settings.NODE_MODULES_DIR / "@internationalized/date"]
+    def get_resources_for_bundling(cls):
+        return [
+            ESModuleResource(
+                ap_frontend_settings.NODE_MODULES_DIR / "@internationalized/date", "CalendarDateTime", False
+            )
+        ]
 
 
 class ZonedDateTimeProp(ComponentProp):
@@ -218,8 +228,12 @@ class ZonedDateTimeProp(ComponentProp):
         return isinstance(value, datetime.datetime) and is_aware(value)
 
     @classmethod
-    def get_paths_for_bundling(cls):
-        return [ap_frontend_settings.NODE_MODULES_DIR / "@internationalized/date"]
+    def get_resources_for_bundling(cls):
+        return [
+            ESModuleResource(
+                ap_frontend_settings.NODE_MODULES_DIR / "@internationalized/date", "ZonedDateTime", False
+            )
+        ]
 
 
 class TimeProp(ComponentProp):
@@ -254,8 +268,10 @@ class TimeProp(ComponentProp):
         return isinstance(value, datetime.time)
 
     @classmethod
-    def get_paths_for_bundling(cls):
-        return [ap_frontend_settings.NODE_MODULES_DIR / "@internationalized/date"]
+    def get_resources_for_bundling(cls):
+        return [
+            ESModuleResource(ap_frontend_settings.NODE_MODULES_DIR / "@internationalized/date", "Time", False)
+        ]
 
 
 class SetProp(ComponentProp):

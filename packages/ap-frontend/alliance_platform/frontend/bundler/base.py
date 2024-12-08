@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 from typing import Iterable
 
+from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from django import template
 from django.utils.safestring import SafeString
 
@@ -129,19 +130,21 @@ class BaseBundler:
         return ""
 
     def get_embed_items(
-        self, paths: Path | Iterable[Path], content_type: str | re.Pattern | None = None
+        self,
+        resources: FrontendResource | Iterable[FrontendResource],
+        resource_type: str | type[FrontendResource] | None = None,
     ) -> list[AssetFileEmbed]:
         """
-        Generate the necessary ``AssetFileEmbed`` instances for the specified asset(s) ``paths``.
+        Generate the necessary ``AssetFileEmbed`` instances for the specified resource(s).
 
         For example, a javascript file for a component could return an AssetFileEmbed instance for its javascript content
         plus one for it's CSS content.
 
         Args:
-            paths: The path(s) to the files to embed. If you need to embed multiple assets it's best to do them all together
+            resources: The resource(s) to embed. If you need to embed multiple assets it's best to do them all together
                 so that any necessary de-duplication can occur.
-            content_type: If set only assets of that type will be embedded, otherwise all asset will be. The two common content types
-                are text/css and text/javascript, but other's like image/png are also possible.
+            resource_type: If set only assets of that type will be embedded, otherwise all asset will be. The two common content types
+                are :class:`~JavascriptResource`. but other's like image/png are also possible.
         Returns:
             The list of ``AssetFileEmbed`` instances that will be embedded.
         """
@@ -342,8 +345,10 @@ class AssetFileEmbed:
 
     #: Any HTML attributes to include in the tag
     html_attrs: dict[str, str]
+    resource: FrontendResource
 
-    def __init__(self, html_attrs: dict[str, str] | None = None):
+    def __init__(self, resource: FrontendResource, html_attrs: dict[str, str] | None = None):
+        self.resource = resource
         self.html_attrs = html_attrs or {}
 
     def get_content_type(self) -> str:
@@ -351,7 +356,7 @@ class AssetFileEmbed:
 
         The most common types are text/css and text/javascript. Images will be image/<type>, e.g. image/png
         """
-        raise NotImplementedError
+        return self.resource.content_type
 
     def get_dependencies(self) -> list[AssetFileEmbed]:
         """Return any additional dependencies for this file. For example a JS file may have some CSS associated with it."""
@@ -371,7 +376,7 @@ class AssetFileEmbed:
         """
         return True
 
-    def matches_content_type(self, content_type: str | re.Pattern | None):
+    def matches_content_type(self, content_type: type[FrontendResource] | str | re.Pattern | None):
         """Return ``True`` if this file matches the given content type
 
         If ``content_type`` is ``None`` then it matches anything.
@@ -380,6 +385,12 @@ class AssetFileEmbed:
         # if no content_type specified then we match anything
         if content_type is None:
             return True
+        try:
+            if issubclass(content_type, FrontendResource):
+                return isinstance(self.resource, content_type)
+        except TypeError:
+            # ignore if content_type is not a class
+            pass
         if isinstance(content_type, re.Pattern):
             return content_type.match(self.get_content_type())
         return self.get_content_type() == content_type

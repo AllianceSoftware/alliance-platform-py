@@ -5,7 +5,7 @@ Alliance Platform
 
     The platform itself is in use but has some rough edges, and the documentation is currently a work in progress
     and may not be complete. Please bear with us as we continue to improve the platform and its documentation. If you
-    are unsure about something or need help, please drop into the ``#alliance-platform2`` channel in Slack.
+    are unsure about something or need help, please drop into the ``#alliance-platform`` channel in Slack.
 
 .. contents::
     :local:

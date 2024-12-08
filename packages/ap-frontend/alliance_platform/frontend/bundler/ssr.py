@@ -14,6 +14,7 @@ import requests
 
 from . import get_bundler
 from .base import BaseBundler
+from .frontend_resource import ESModuleResource
 
 logger = logging.getLogger("alliance_platform.frontend")
 
@@ -162,6 +163,10 @@ class ImportDefinition(SSRCustomFormatSerializable):
 
     def get_representation(self, context: SSRSerializerContext) -> str:
         return context.add_import(self)
+
+    def create_frontend_resource(self, bundler: BaseBundler):
+        validated_path = bundler.validate_path(self.path, resolve_extensions=[".ts", ".tsx"])
+        return ESModuleResource(validated_path, self.import_name, self.is_default_import)
 
 
 class SSRItem:
