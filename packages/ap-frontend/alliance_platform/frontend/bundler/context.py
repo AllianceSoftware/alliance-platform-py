@@ -209,10 +209,20 @@ class BundlerAssetContext:
         self,
         *,
         frontend_resource_registry: FrontendResourceRegistry | None = None,
+        # backwards compat only
+        frontend_asset_registry: FrontendResourceRegistry | None = None,
         html_target=html_target_browser,
         skip_checks=False,
         request: HttpRequest | None = None,
     ):
+        if frontend_asset_registry:
+            warnings.warn(
+                "`frontend_asset_registry` is deprecated, use `frontend_resource_registry` instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        if frontend_resource_registry is None and frontend_asset_registry:
+            frontend_resource_registry = frontend_asset_registry
         if frontend_resource_registry is None:
             frontend_resource_registry = ap_frontend_settings.FRONTEND_RESOURCE_REGISTRY
         self.request = request
