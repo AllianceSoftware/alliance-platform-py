@@ -28,6 +28,7 @@ embedded in the template with the :ttag:`component` tag.
    overview
    templatetags
    settings
+   commands
    api
 
 .. include:: ../../ap-core/docs/_sidebar.rst.inc

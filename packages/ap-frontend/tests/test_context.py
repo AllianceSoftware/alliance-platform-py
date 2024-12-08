@@ -5,6 +5,7 @@ from unittest import mock
 
 from alliance_platform.frontend.bundler.context import BundlerAsset
 from alliance_platform.frontend.bundler.context import BundlerAssetContext
+from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from django.template import Origin
 from django.template.base import UNKNOWN_SOURCE
 from django.test import TestCase
@@ -130,17 +131,20 @@ class BundlerAssetContextTestCase(TestCase):
                 response.content.decode().split("\n"),
             )
 
-    def test_asset_context_get_assets(self):
-        my_asset_paths = [Path("/path1")]
+    def test_asset_context_get_resources_for_bundling(self):
+        my_asset_paths = [FrontendResource(Path("/path1"))]
 
         class MyAsset(BundlerAsset):
-            def get_paths_for_bundling(self) -> list[Path]:
+            def get_resources_for_bundling(self) -> list[FrontendResource]:
                 return my_asset_paths
 
-        my_other_asset_paths = [Path("/other/path1"), Path("/other/path2")]
+        my_other_asset_paths = [
+            FrontendResource(Path("/other/path1")),
+            FrontendResource(Path("/other/path2")),
+        ]
 
         class MyOtherAsset(BundlerAsset):
-            def get_paths_for_bundling(self) -> list[Path]:
+            def get_resources_for_bundling(self) -> list[FrontendResource]:
                 return my_other_asset_paths
 
         with BundlerAssetContext(skip_checks=True) as context:
@@ -150,5 +154,7 @@ class BundlerAssetContextTestCase(TestCase):
             self.assertEqual(asset1.bundler_asset_context, context)
             self.assertEqual(set(context.get_assets()), {asset1, asset2})
             self.assertEqual(set(context.get_assets(MyAsset)), {asset1})
-            self.assertEqual(set(context.get_asset_paths()), {*my_asset_paths, *my_other_asset_paths})
-            self.assertEqual(set(context.get_asset_paths(MyOtherAsset)), set(my_other_asset_paths))
+            self.assertEqual(
+                set(context.get_resources_for_bundling()), {*my_asset_paths, *my_other_asset_paths}
+            )
+            self.assertEqual(set(context.get_resources_for_bundling(MyOtherAsset)), set(my_other_asset_paths))
