@@ -34,7 +34,7 @@ frontend_templates_dir = Path(__file__).parent.parent / "templates"
 def get_all_templates_files() -> list[Path]:
     """Scans all template dirs for template files
 
-    Will exclude any templates the match an entry in :data:`~alliance_platform.frontend.settings.AlliancePlatformFrontendSettingsType.EXTRACT_ASSETS_EXCLUDE_DIRS`
+    Will exclude any templates that match an entry in :data:`~alliance_platform.frontend.settings.AlliancePlatformFrontendSettingsType.EXTRACT_ASSETS_EXCLUDE_DIRS`
     """
     dirs: tuple[str | Path, ...] = get_app_template_dirs("templates")
     for engine in engines.all():
@@ -78,7 +78,7 @@ class UndiscoverableAssetsError(Exception):
 
 class BundlerAsset:
     """
-    A class representing a resource (e.g. script, stylesheet), and it's dependencies, that needs to be bundled.
+    A class representing a resource (e.g. script, stylesheet), and its dependencies, that needs to be bundled.
 
     Each asset could have dependencies that also need to be bundled. All relevant resources should be returned by
     ``get_resources_for_bundling``.

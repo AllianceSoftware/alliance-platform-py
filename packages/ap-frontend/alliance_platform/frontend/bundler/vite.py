@@ -464,7 +464,8 @@ class ViteBundler(BaseBundler):
             resources: The resource(s) to embed. If you need to embed multiple assets it's best to do them all together
                 so that any necessary de-duplication can occur.
             resource_type: If set only assets of that type will be embedded, otherwise all asset will be. The two common content types
-                are :class:`~JavascriptResource`. but other's like image/png are also possible.
+                are :class:`~alliance_platform.frontend.bundler.frontend_resource.JavascriptResource` and :class:`~alliance_platform.frontend.bundler.frontend_resource.CssResource`,
+                but others like :class:`~alliance_platform.frontend.bundler.frontend_resource.ImageResource` are also possible.
         Returns:
             The list of ``AssetFileEmbed`` instances that will be embedded.
         """
@@ -702,7 +703,7 @@ class ViteCssEmbed(ViteEmbed):
                 from .vanilla_extract import resolve_vanilla_extract_class_mapping
 
                 mapping = resolve_vanilla_extract_class_mapping(self.bundler, self.resource.path)
-                # In dev we load the styles via an intermediate TS file that imports the CSS file and setups
+                # In dev we load the styles via an intermediate TS file that imports the CSS file and sets
                 # up hot module reloading. Without this intermediate any changes to CSS will cause a full page
                 # reload rather than using HMR. See `vanillaExtractWithExtras.ts` for where this script is
                 # created.

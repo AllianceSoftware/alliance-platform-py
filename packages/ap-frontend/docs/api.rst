@@ -25,7 +25,7 @@ Bundler
 .. autoclass:: alliance_platform.frontend.bundler.frontend_resource.VanillaExtractResource
 
 .. autoclass:: alliance_platform.frontend.bundler.frontend_resource.ImageResource
-/
+
 .. autofunction:: alliance_platform.frontend.bundler.get_bundler
 
 .. autoclass:: alliance_platform.frontend.bundler.base.BaseBundler
