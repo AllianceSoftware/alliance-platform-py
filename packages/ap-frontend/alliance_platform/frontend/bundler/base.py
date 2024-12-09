@@ -144,7 +144,7 @@ class BaseBundler:
             resources: The resource(s) to embed. If you need to embed multiple assets it's best to do them all together
                 so that any necessary de-duplication can occur.
             resource_type: If set only assets of that type will be embedded, otherwise all asset will be. The two common content types
-                are :class:`~JavascriptResource`. but other's like image/png are also possible.
+                are :class:`~JavascriptResource`. but others like image/png are also possible.
         Returns:
             The list of ``AssetFileEmbed`` instances that will be embedded.
         """
