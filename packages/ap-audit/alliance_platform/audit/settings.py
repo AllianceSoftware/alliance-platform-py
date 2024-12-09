@@ -64,7 +64,7 @@ DEFAULTS = {
     "CAN_AUDIT_PERM_NAME": "alliance_platform_audit.can_audit",
     "USERNAME_FORMAT": Concat("first_name", Value(" "), "last_name"),
     "TRACK_IP_ADDRESS": False,
-    "AUDIT_LOG_COMPONENT_PATH": "@allianceplatform/ui-audit/AuditLog",
+    "AUDIT_LOG_COMPONENT_PATH": "@alliancesoftware/ui-audit/AuditLog",
 }
 ap_audit_settings = AlliancePlatformAuditSettings(
     "AUDIT",
