@@ -9,6 +9,7 @@ from alliance_platform.frontend.bundler.base import ResolveContext
 from alliance_platform.frontend.bundler.base import SourceDirResolver
 from alliance_platform.frontend.bundler.base import html_target_browser
 from alliance_platform.frontend.bundler.frontend_resource import CssResource
+from alliance_platform.frontend.bundler.frontend_resource import ESModuleResource
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from alliance_platform.frontend.bundler.frontend_resource import JavascriptResource
 from alliance_platform.frontend.bundler.vite import ViteBundler
@@ -326,6 +327,27 @@ class TestViteBundlerTestCase(TestCase):
         self.assertEqual(
             items[0].generate_code(html_target_browser),
             '<script src="/test-static/assets/TestComponent-47f28fe1.js" type="module"></script>',
+        )
+
+    def test_substitutable_resources(self):
+        resource = JavascriptResource(Path("components/TestComponent.tsx"))
+        self.assertTrue(
+            resource.is_substitutable_for(ESModuleResource(Path("components/TestComponent.tsx"), "A", True))
+        )
+        self.assertTrue(
+            resource.is_substitutable_for(ESModuleResource(Path("components/TestComponent.tsx"), "B", False))
+        )
+
+        another_resource = JavascriptResource(Path("components/TestComponent2.tsx"))
+        self.assertFalse(
+            another_resource.is_substitutable_for(
+                ESModuleResource(Path("components/TestComponent.tsx"), "A", True)
+            )
+        )
+        self.assertFalse(
+            another_resource.is_substitutable_for(
+                ESModuleResource(Path("components/TestComponent.tsx"), "B", False)
+            )
         )
 
     def test_resolve_ssr_import_path(self):

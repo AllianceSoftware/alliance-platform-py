@@ -69,6 +69,10 @@ class FrontendResource:
         """
         raise NotImplementedError()
 
+    def is_substitutable_for(self, other: FrontendResource) -> bool:
+        """Check if this resource can be used in place of another resource."""
+        return self == other
+
 
 class JavascriptResource(FrontendResource):
     """A plain javascript resource.
@@ -84,6 +88,13 @@ class JavascriptResource(FrontendResource):
             "type": "javascript",
             "path": str(self.path),
         }
+
+    def is_substitutable_for(self, other: FrontendResource) -> bool:
+        """
+        A JavascriptResource is a less specific version of ESModuleResource. When JavascriptResource is used the
+        entire path will be bundled, so it covers off all possible exports used by ESModuleResource and so can
+        be used in place of it."""
+        return self == other or isinstance(other, ESModuleResource) and self.path == other.path
 
 
 @dataclass(frozen=True)
