@@ -73,7 +73,12 @@ class FrontendResourceRegistry:
         """From the specified resource(s) return any that aren't in the registry"""
         missing = []
         for resource in resources:
-            if resource not in self._resources:
+            found = False
+            for existing in self._resources:
+                if existing.is_substitutable_for(resource):
+                    found = True
+                    break
+            if not found:
                 missing.append(resource)
         return missing
 
