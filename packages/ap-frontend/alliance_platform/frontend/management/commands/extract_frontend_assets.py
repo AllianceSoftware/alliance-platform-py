@@ -1,53 +1,17 @@
 from contextlib import redirect_stdout
-from functools import lru_cache
 import io
 import json
 from pathlib import Path
-import re
 import sys
 from typing import Any
 from typing import Collection
 
 from django.core.management import BaseCommand
 from django.core.management.base import OutputWrapper
-from django.template import TemplateSyntaxError
-from django.template import engines
-from django.template.loader import get_template
-from django.template.utils import get_app_template_dirs
 
-from ...bundler import get_bundler
-from ...bundler.context import BundlerAssetContext
-from ...settings import ap_frontend_settings
+from .extract_frontend_resources import extract_resources_from_templates
 
 frontend_templates_dir = Path(__file__).parent.parent.parent / "templates"
-
-
-@lru_cache
-def get_all_templates_files() -> list[Path]:
-    """Scans all template dirs for template files
-
-    Will exclude any templates the match an entry in :data:`~alliance_platform.frontend.settings.AlliancePlatformFrontendSettingsType.EXTRACT_ASSETS_EXCLUDE_DIRS`
-    """
-    dirs: tuple[str | Path, ...] = get_app_template_dirs("templates")
-    for engine in engines.all():
-        dirs += tuple(engine.template_dirs)
-    files: list[Path] = []
-    for dir in dirs:
-        should_exclude = False
-        for excl in ap_frontend_settings.EXTRACT_ASSETS_EXCLUDE_DIRS:
-            if isinstance(excl, re.Pattern):
-                if excl.match(str(dir)):
-                    should_exclude = True
-                    break
-            elif str(dir).startswith(str(excl)):
-                should_exclude = True
-
-        # always include the frontend templates dir even if would otherwise
-        # be excluded
-        if should_exclude and dir != frontend_templates_dir:
-            continue
-        files.extend(x for x in Path(dir).glob("**/*.html") if x)
-    return files
 
 
 def extract_asset_filenames() -> tuple[list[Any], dict[str, Collection[str]], list[str], list[str]]:
@@ -55,41 +19,8 @@ def extract_asset_filenames() -> tuple[list[Any], dict[str, Collection[str]], li
 
     Returns a 4-tuple: list of filenames, breakdown dict, errors and warnings
     """
-
-    all_files = {str(f) for f in ap_frontend_settings.FRONTEND_ASSET_REGISTRY.get_asset_paths()}
-    breakdown_templates: dict[str, list[str]] = {}
-    breakdown = {
-        "registry": list(sorted(all_files)),
-        "templates": breakdown_templates,
-    }
-    errors: list[str] = []
-    warnings: list[str] = []
-    with BundlerAssetContext() as asset_context:
-        prev = asset_context.get_asset_paths()
-        for file in get_all_templates_files():
-            # TODO: ability to opt out specific templates?
-            try:
-                get_template(str(file))
-                template_assets = [p for p in asset_context.get_asset_paths() if p not in prev]
-                prev = asset_context.get_asset_paths()
-                if template_assets:
-                    breakdown_templates[str(file)] = [str(p) for p in sorted(template_assets)]
-            except TemplateSyntaxError:
-                warnings.append(
-                    f"Failed to parse {file.relative_to(get_bundler().root_dir)} - any tags in that file will be ignored"
-                )
-        paths = [str(p) for p in asset_context.get_asset_paths()]
-        all_files.update(paths)
-        breakdown["templates"] = dict(sorted(breakdown_templates.items()))
-
-    node_modules_dir = ap_frontend_settings.NODE_MODULES_DIR
-
-    def transform_path(path: Path):
-        if path.is_relative_to(node_modules_dir):
-            return str(path.relative_to(node_modules_dir))
-        return str(path)
-
-    return [transform_path(Path(f)) for f in all_files], breakdown, errors, warnings
+    resources, breakdown, errors, warnings = extract_resources_from_templates()
+    return list(sorted({resource["path"] for resource in resources})), breakdown, errors, warnings
 
 
 class Command(BaseCommand):
@@ -112,7 +43,7 @@ class Command(BaseCommand):
         ./manage extract_frontend_assets --quiet
     """
 
-    help = "Outputs JSON dump of files that need to be bundled for production build"
+    help = "Outputs JSON dump of files that need to be bundled for production build. This is deprecated in favour of `extract_frontend_resources`."
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -126,6 +57,9 @@ class Command(BaseCommand):
     def handle(self, *args, quiet=False, output=None, **kwargs):
         stderr_warn = OutputWrapper(sys.stderr)
         stderr_warn.style_func = self.style.WARNING
+        stderr_warn.write(
+            "`extract_frontend_assets` is deprecated. `extract_frontend_resources` should be used instead, but requires changes to your Vite config - see the upgrade guide."
+        )
         f = io.StringIO()
         with redirect_stdout(f if quiet else self.stdout):
             files, breakdown, errors, warnings = extract_asset_filenames()

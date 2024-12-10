@@ -5,7 +5,6 @@ from functools import lru_cache
 import json
 from json import JSONDecodeError
 import logging
-import mimetypes
 from pathlib import Path
 import re
 from typing import Callable
@@ -25,6 +24,12 @@ from .base import BaseBundler
 from .base import DevServerCheck
 from .base import HtmlGenerationTarget
 from .base import PathResolver
+from .frontend_resource import CssResource
+from .frontend_resource import FrontendResource
+from .frontend_resource import ImageResource
+from .frontend_resource import JavascriptResource
+from .frontend_resource import VanillaExtractResource
+from .frontend_resource import get_content_type
 
 logger = logging.getLogger("alliance_platform.frontend")
 
@@ -37,18 +42,6 @@ def _create_html_tag(tag_name: str, attrs: dict[str, str]):
     if is_void_element:
         return f"{tag}>"
     return f"{tag}></{tag_name}>"
-
-
-def get_content_type(src: str | Path | None) -> str | None:
-    if not src:
-        # If no source assume js, e.g. a common chunk
-        return "text/javascript"
-    ext = "".join(Path(src).suffixes).lstrip(".").lower()
-    if ext in ["js", "jsx", "mjs", "ts", "tsx"]:
-        return "text/javascript"
-    if ext in ["css", "css.ts"]:
-        return "text/css"
-    return mimetypes.guess_type(src)[0]
 
 
 class ViteManifestAssetMissingError(Exception):
@@ -218,7 +211,7 @@ class ViteManifest:
         self.manifest_file = manifest_file
         if not manifest_file.exists():
             # We don't throw as this could happen when doing a build if `manifest.json` doesn't exist
-            # yet, e.g. when calling `extract_frontend_assets`.
+            # yet, e.g. when calling `extract_frontend_resources`.
             warnings.warn(f"Manifest '{manifest_file} does not exist. Have you run `yarn build`?")
             return
         entries = {}
@@ -448,7 +441,9 @@ class ViteBundler(BaseBundler):
             return False
 
     def get_embed_items(
-        self, paths: Path | Iterable[Path] | str, content_type: str | re.Pattern | None = None
+        self,
+        resources: FrontendResource | Iterable[FrontendResource],
+        resource_type: type[FrontendResource] | str | re.Pattern | None = None,
     ):
         """
         Generate the necessary ``AssetFileEmbed`` instances for the specified asset(s) ``paths``.
@@ -466,24 +461,23 @@ class ViteBundler(BaseBundler):
         rel="preload" work or do you have to use rel="modulepreload" (which has poor support)?
 
         Args:
-            paths: The path(s) to the asset to embed. If you need to embed multiple assets it's best to do them all together
+            resources: The resource(s) to embed. If you need to embed multiple assets it's best to do them all together
                 so that any necessary de-duplication can occur.
-            content_type: If set only assets of that type will be embedded, otherwise all asset will be. The two common content types
-                are text/css and text/javascript, but other's like image/png are also possible.
+            resource_type: If set only assets of that type will be embedded, otherwise all asset will be. The two common content types
+                are :class:`~alliance_platform.frontend.bundler.frontend_resource.JavascriptResource` and :class:`~alliance_platform.frontend.bundler.frontend_resource.CssResource`,
+                but others like :class:`~alliance_platform.frontend.bundler.frontend_resource.ImageResource` are also possible.
         Returns:
             The list of ``AssetFileEmbed`` instances that will be embedded.
         """
-        if isinstance(paths, str):
-            paths = Path(paths)
-        paths = [paths] if isinstance(paths, Path) else paths
+        resources = [resources] if isinstance(resources, FrontendResource) else resources
         # don't use a set as we want to preserve ordering
         embed_items = []
-        for path in paths:
-            item = self._create_embed_item(path)
-            if item not in embed_items and item.matches_content_type(content_type):
+        for resource in resources:
+            item = self._create_embed_item(resource)
+            if item not in embed_items and item.matches_content_type(resource_type):
                 embed_items.append(item)
             for dep_item in item.get_dependencies():
-                if dep_item not in embed_items and dep_item.matches_content_type(content_type):
+                if dep_item not in embed_items and dep_item.matches_content_type(resource_type):
                     embed_items.append(dep_item)
         return embed_items
 
@@ -591,21 +585,14 @@ class ViteBundler(BaseBundler):
             return code
         return code
 
-    def _create_embed_item(self, path: Path) -> AssetFileEmbed:
-        content_type = get_content_type(path)
-        if not content_type:
-            # If not specified assume it's javascript (e.g. `core-ui` would be `core-ui/index.tsx`)
-            content_type = "text/javascript"
-        args = [self, path, content_type]
-        for ct, cls in class_by_content_type.items():
-            if isinstance(ct, re.Pattern) and content_type:
-                if ct.match(content_type):
-                    return cls(*args)
-            elif ct == content_type:
-                return cls(*args)
-        # Assume default is jS
-        warnings.warn(f"Unknown content type {content_type} for {path}, assuming javascript")
-        return ViteJavaScriptEmbed(self, path, content_type)
+    def _create_embed_item(self, resource: FrontendResource) -> AssetFileEmbed:
+        if isinstance(resource, JavascriptResource):
+            return ViteJavaScriptEmbed(self, resource)
+        if isinstance(resource, CssResource):
+            return ViteCssEmbed(self, resource)
+        if isinstance(resource, ImageResource):
+            return ViteImageEmbed(self, resource)
+        raise ValueError(f"Don't know how to handle resource {resource.__class__}")
 
 
 class ViteEmbed(AssetFileEmbed):
@@ -613,25 +600,28 @@ class ViteEmbed(AssetFileEmbed):
 
     #: The bundler instance to use to resolve asset paths
     bundler: ViteBundler
-    #: The path to the file to embed. This will be used to resolve the final URL to embed (e.g. bundled files in production, dev server URLs in dev)
-    path: Path
+    #: The resource to embed. This will be used to resolve the final URL to embed (e.g. bundled files in production, dev server URLs in dev)
+    resource: FrontendResource
 
     def __init__(
-        self, bundler: ViteBundler, path: Path, content_type: str, html_attrs: dict[str, str] | None = None
+        self, bundler: ViteBundler, resource: FrontendResource, html_attrs: dict[str, str] | None = None
     ):
+        if not isinstance(resource, FrontendResource):
+            raise ValueError(f"resource should be a FrontendResource, received {type(resource)}")
+        if html_attrs and not isinstance(html_attrs, dict):
+            raise ValueError(f"html_attrs should be a dict, received {type(html_attrs)}")
         self.bundler = bundler
-        self.path = path
-        self.content_type = content_type
-        super().__init__(html_attrs)
+        self.resource = resource
+        super().__init__(resource, html_attrs)
 
-    def get_content_type(self) -> str:
-        return self.content_type
+    def get_content_type(self) -> str | None:
+        return self.resource.content_type
 
     def __eq__(self, other):
-        return self.path == other.path and self.bundler == other.bundler and type(self) is type(other)
+        return self.resource == other.resource and self.bundler == other.bundler and type(self) is type(other)
 
     def __repr__(self):
-        return f"{self.__class__.__name__}({self.path})"
+        return f"{self.__class__.__name__}({self.resource})"
 
 
 class ViteJavaScriptEmbed(ViteEmbed):
@@ -643,10 +633,10 @@ class ViteJavaScriptEmbed(ViteEmbed):
     def get_dependencies(self) -> list[AssetFileEmbed]:
         if self.bundler.is_development():
             return []
-        asset = self.bundler.build_manifest.get_asset(self.path)
+        asset = self.bundler.build_manifest.get_asset(self.resource.path)
         deps = asset.collect_dependencies()
         return [
-            ViteCssEmbed(self.bundler, css_path, "text/css", is_resolved_from_manifest=True)
+            ViteCssEmbed(self.bundler, FrontendResource.from_path(css_path), is_resolved_from_manifest=True)
             for css_path in deps.get_css_dependencies()
         ]
 
@@ -654,8 +644,10 @@ class ViteJavaScriptEmbed(ViteEmbed):
         if not html_target.include_scripts:
             return ""
         if self.bundler.is_development():
-            return _create_html_tag("script", {"src": self.bundler.resolve_url(self.path), "type": "module"})
-        asset = self.bundler.build_manifest.get_asset(self.path)
+            return _create_html_tag(
+                "script", {"src": self.bundler.resolve_url(self.resource.path), "type": "module"}
+            )
+        asset = self.bundler.build_manifest.get_asset(self.resource.path)
         return _create_html_tag(
             "script", {**self.html_attrs, "src": self.bundler.resolve_url(asset.file), "type": "module"}
         )
@@ -676,14 +668,14 @@ class ViteCssEmbed(ViteEmbed):
 
     def __eq__(self, other):
         return (
-            self.path == other.path
+            self.resource == other.resource
             and self.bundler == other.bundler
             and type(self) is type(other)
             and self.is_resolved_from_manifest == other.is_resolved_from_manifest
         )
 
     def is_vanilla_extract_file(self):
-        return self.path.name.lower().endswith(".css.ts")
+        return isinstance(self.resource, VanillaExtractResource)
 
     def get_dependencies(self) -> list[AssetFileEmbed]:
         # In dev we load CSS via JS, so that's handled in ``generate_code`` below. But in production the main
@@ -693,9 +685,9 @@ class ViteCssEmbed(ViteEmbed):
         if self.bundler.is_development():
             return []
         # In production return the CSS files specified in the manifest
-        asset = self.bundler.build_manifest.get_asset(self.path)
+        asset = self.bundler.build_manifest.get_asset(self.resource.path)
         return [
-            ViteCssEmbed(self.bundler, css_file, "text/css", is_resolved_from_manifest=True)
+            ViteCssEmbed(self.bundler, FrontendResource.from_path(css_file), is_resolved_from_manifest=True)
             for css_file in asset.css
         ]
 
@@ -710,15 +702,15 @@ class ViteCssEmbed(ViteEmbed):
             if self.is_vanilla_extract_file():
                 from .vanilla_extract import resolve_vanilla_extract_class_mapping
 
-                mapping = resolve_vanilla_extract_class_mapping(self.bundler, self.path)
-                # In dev we load the styles via an intermediate TS file that imports the CSS file and setups
+                mapping = resolve_vanilla_extract_class_mapping(self.bundler, self.resource.path)
+                # In dev we load the styles via an intermediate TS file that imports the CSS file and sets
                 # up hot module reloading. Without this intermediate any changes to CSS will cause a full page
                 # reload rather than using HMR. See `vanillaExtractWithExtras.ts` for where this script is
                 # created.
                 fn = mapping.import_script_filename
                 if fn is None:
                     warnings.warn(
-                        f"Expected import_script_filename to be set for path {self.path}. Hot loading will not work for this file."
+                        f"Expected import_script_filename to be set for path {self.resource.path}. Hot loading will not work for this file."
                     )
                 else:
                     return _create_html_tag(
@@ -728,7 +720,7 @@ class ViteCssEmbed(ViteEmbed):
                             "src": self.bundler.resolve_url(fn),
                             "type": "module",
                             # This will block rendering until file loaded, which reduces flash of unstyled content a bit
-                            # You will still get it for any components that loads it's own styles however.
+                            # You will still get it for any components that loads its own styles however.
                             "blocking": "render",
                         },
                     )
@@ -736,7 +728,7 @@ class ViteCssEmbed(ViteEmbed):
                 "script",
                 {
                     **self.html_attrs,
-                    "src": self.bundler.resolve_url(self.path),
+                    "src": self.bundler.resolve_url(self.resource.path),
                     "type": "module",
                 },
             )
@@ -748,9 +740,9 @@ class ViteCssEmbed(ViteEmbed):
             # See https://kanban.alliancesoftware.com.au/board/75/card/133462/summary/
             return ""
         file = (
-            self.path
+            self.resource.path
             if self.is_resolved_from_manifest
-            else self.bundler.build_manifest.get_asset(self.path).file
+            else self.bundler.build_manifest.get_asset(self.resource.path).file
         )
         if html_target.inline_css:
             file = self.bundler.build_manifest.manifest_file.parent / file
@@ -773,18 +765,8 @@ class ViteImageEmbed(ViteEmbed):
         return False
 
     def generate_code(self, html_target: HtmlGenerationTarget):
-        file = self.path
+        file = self.resource.path
         if not self.bundler.is_development():
-            asset = self.bundler.build_manifest.get_asset(self.path)
-            if not len(asset.assets) == 1:
-                warnings.warn(f"Expected 1 asset for image {self.path}, got {asset.assets}")
-            if asset.assets:
-                file = asset.assets[0]
+            asset = self.bundler.build_manifest.get_asset(self.resource.path)
+            file = asset.file
         return _create_html_tag("img", {**self.html_attrs, "src": self.bundler.resolve_url(file)})
-
-
-class_by_content_type = {
-    "text/css": ViteCssEmbed,
-    "text/javascript": ViteJavaScriptEmbed,
-    re.compile(r"image/*"): ViteImageEmbed,
-}

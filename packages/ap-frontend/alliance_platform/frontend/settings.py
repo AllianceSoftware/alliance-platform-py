@@ -4,13 +4,16 @@ from typing import Any
 from typing import Pattern
 from typing import TypedDict
 from typing import Union
+import warnings
 
 from alliance_platform.base_settings import AlliancePlatformSettingsBase
 from django.utils.module_loading import import_string
 
+from .bundler.frontend_resource import FrontendResource
+
 if TYPE_CHECKING:
-    from .bundler.asset_registry import FrontendAssetRegistry
     from .bundler.base import BaseBundler
+    from .bundler.resource_registry import FrontendResourceRegistry
     from .prop_handlers import ComponentProp
 
 
@@ -48,16 +51,15 @@ class AlliancePlatformFrontendSettingsType(TypedDict, total=False):
     BUNDLER: Union[str, "BaseBundler"]
     #: If true, the React template tag will include a more readable debug output in the HTML in a comment
     DEBUG_COMPONENT_OUTPUT: bool
-    #: The asset registry for the bundler. This is used to add additional assets to the bundler that are not automatically discovered.
+    #: The resource registry for the bundler. This is used to add additional resources to the bundler that are not automatically discovered.
     #: This can be a string import path to the registry or the registry itself.
-    FRONTEND_ASSET_REGISTRY: Union[str, "FrontendAssetRegistry"]
-    #: A list of either ``re.Pattern`` or a :class:`~pathlib.Path`. If a template directory matches any entry it will be excluded from :class:`extract_frontend_assets <alliance_platform.frontend.management.commands.extract_frontend_assets.Command>`.
-    #:
+    FRONTEND_RESOURCE_REGISTRY: Union[str, "FrontendResourceRegistry"]
+    #: A list of either ``re.Pattern`` or a :class:`~pathlib.Path`. If a template directory matches any entry it will be excluded from :djmanage:`extract_frontend_resources`.
     #: If a :class:`~pathlib.Path` is used it will be checked if the directory starts with that path. Otherwise a ``re.Pattern`` will exclude a directory if it matches.
     EXTRACT_ASSETS_EXCLUDE_DIRS: tuple[Path | str, Pattern[str]]
     #: If set to a truthy value :func:`~alliance_platform.frontend.templatetags.bundler.bundler_dev_checks` will not display any HTML error, the error will only be available in the Django dev console.
     BUNDLER_DISABLE_DEV_CHECK_HTML: bool | None
-    #: The path to the node_modules directory. This is used by ViteBundler to resolve optimized deps, and extract_frontend_assets to determine when an import comes from node_modules directly. It is used
+    #: The path to the node_modules directory. This is used by ViteBundler to resolve optimized deps, and :djmanage:`extract_frontend_resources` to determine when an import comes from node_modules directly. It is used
     #: by some codegen post processors to run node scripts (e.g. prettier or eslint). It is not used in production, so the directory does not need to exist in production.
     NODE_MODULES_DIR: Path | str
     #: The directory production assets exists in. This directory should include the Vanilla Extract mappings.
@@ -104,14 +106,14 @@ class AlliancePlatformFrontendSettings(AlliancePlatformSettingsBase):
 
     #: The directory production assets exists in. This directory should include the Vanilla Extract mappings.
     PRODUCTION_DIR: Path
-    #: The path to the node_modules directory. This is used by ViteBundler to resolve optimized deps, and extract_frontend_assets to determine when an import comes from node_modules directly.
+    #: The path to the node_modules directory. This is used by ViteBundler to resolve optimized deps, and :djmanage:`extract_frontend_resources` to determine when an import comes from node_modules directly.
     NODE_MODULES_DIR: Path
     #: Any custom prop handlers to use for react components
     REACT_PROP_HANDLERS: list[type["ComponentProp"]]
     #: If true, the React template tag will include a more readable debug output in the HTML in a comment
     DEBUG_COMPONENT_OUTPUT: bool
-    #: The asset registry for the bundler. This is used to add additional assets to the bundler that are not automatically discovered.
-    FRONTEND_ASSET_REGISTRY: "FrontendAssetRegistry"
+    #: The resource registry for the bundler. This is used to add additional resources to the bundler that are not automatically discovered.
+    FRONTEND_RESOURCE_REGISTRY: "FrontendResourceRegistry"
     #: The bundler to use
     BUNDLER: "BaseBundler"
     #: Directories to exclude from asset extraction. By default, all directories returned by ``get_app_template_dirs("templates")`` will be inspected.
@@ -129,23 +131,44 @@ class AlliancePlatformFrontendSettings(AlliancePlatformSettingsBase):
     #: tweak this is if you are attempting to debug issues with a large piece of code; in which case you likely need to increase ``DEV_CODE_FORMAT_LIMIT`` as well.
     DEV_CODE_FORMAT_TIMEOUT: int
 
+    def _load_user_settings(self):
+        super()._load_user_settings()
+        if "FRONTEND_ASSET_REGISTRY" in self._user_settings:
+            warnings.warn(
+                "ALLIANCE_PLATFORM['FRONTEND']['FRONTEND_ASSET_REGISTRY'] is deprecated; use 'FRONTEND_RESOURCE_REGISTRY' instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            self._user_settings["FRONTEND_RESOURCE_REGISTRY"] = self._user_settings.pop(
+                "FRONTEND_ASSET_REGISTRY"
+            )
+
     def check_settings(self):
         # TODO: Implement checks on required settings
 
         # Make sure registry is unlocked; this can happen in tests where settings are reloaded
         # Just modify property directly, it's for internal use only - don't want 'unlock' part of the API
-        self.FRONTEND_ASSET_REGISTRY._locked = False
+        self.FRONTEND_RESOURCE_REGISTRY._locked = False
         # lock registry to make sure assets aren't added after startup that would be missed by
-        # extract_frontend_assets
+        # extract_frontend_resources
         for prop_handler in self.REACT_PROP_HANDLERS:
-            self.FRONTEND_ASSET_REGISTRY.add_asset(*prop_handler.get_paths_for_bundling())
-        self.FRONTEND_ASSET_REGISTRY.lock()
+            if hasattr(prop_handler, "get_paths_for_bundling"):
+                warnings.warn(
+                    f"`get_paths_for_bundling` is deprecated - update prop handler `{prop_handler.__module__}.{prop_handler.__name__}` to define `get_resources_for_bundling` instead",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                self.FRONTEND_RESOURCE_REGISTRY.add_resource(
+                    *[FrontendResource.from_path(fn) for fn in prop_handler.get_paths_for_bundling()]
+                )
+            self.FRONTEND_RESOURCE_REGISTRY.add_resource(*prop_handler.get_resources_for_bundling())
+        self.FRONTEND_RESOURCE_REGISTRY.lock()
 
 
 IMPORT_STRINGS = [
     "REACT_PROP_HANDLERS",
     "BUNDLER",
-    "FRONTEND_ASSET_REGISTRY",
+    "FRONTEND_RESOURCE_REGISTRY",
 ]
 
 DEFAULTS = {

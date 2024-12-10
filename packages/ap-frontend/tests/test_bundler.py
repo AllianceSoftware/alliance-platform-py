@@ -1,5 +1,6 @@
 from os.path import dirname
 from pathlib import Path
+import re
 from unittest import mock
 
 from alliance_platform.frontend.bundler.base import RegExAliasResolver
@@ -7,6 +8,10 @@ from alliance_platform.frontend.bundler.base import RelativePathResolver
 from alliance_platform.frontend.bundler.base import ResolveContext
 from alliance_platform.frontend.bundler.base import SourceDirResolver
 from alliance_platform.frontend.bundler.base import html_target_browser
+from alliance_platform.frontend.bundler.frontend_resource import CssResource
+from alliance_platform.frontend.bundler.frontend_resource import ESModuleResource
+from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
+from alliance_platform.frontend.bundler.frontend_resource import JavascriptResource
 from alliance_platform.frontend.bundler.vite import ViteBundler
 from django.conf import settings
 from django.test import TestCase
@@ -246,7 +251,7 @@ class TestViteBundlerTestCase(TestCase):
         ]
         tags = [
             item.generate_code(html_target_browser)
-            for item in bundler.get_embed_items("components/TestComponent.tsx")
+            for item in bundler.get_embed_items(JavascriptResource(Path("components/TestComponent.tsx")))
         ]
         self.assertEqual(
             sorted(tags),
@@ -255,12 +260,16 @@ class TestViteBundlerTestCase(TestCase):
         # TestComponentTwo is a dependency of TestComponent so should have same set of tags
         # except for its javascript file. `get_embed_code` only includes the direct JS file for each
         # asset - it's dependencies are assumed to be load by the main asset script.
+
         self.assertEqual(
             sorted(
                 [
                     item.generate_code(html_target_browser)
                     for item in bundler.get_embed_items(
-                        [Path("components/TestComponent.tsx"), Path("components/TestComponentTwo.tsx")]
+                        [
+                            JavascriptResource(Path("components/TestComponent.tsx")),
+                            JavascriptResource(Path("components/TestComponentTwo.tsx")),
+                        ]
                     )
                 ]
             ),
@@ -271,11 +280,74 @@ class TestViteBundlerTestCase(TestCase):
     @override_settings(STATIC_URL="/test-static/")
     def test_embed_standalone_css(self):
         bundler = self.create_bundler()
-        items = bundler.get_embed_items("styles/normalize.css")
+        items = bundler.get_embed_items([FrontendResource.from_path("styles/normalize.css")])
         self.assertEqual(len(items), 1)
         self.assertEqual(
             items[0].generate_code(html_target_browser),
             '<link rel="stylesheet" href="/test-static/assets/normalize-x1.css">',
+        )
+
+    @override_settings(STATIC_URL="/test-static/")
+    def test_get_embed_items_content_type_resource_class(self):
+        bundler = self.create_bundler()
+        items = bundler.get_embed_items(
+            [FrontendResource.from_path("components/TestComponent.tsx")], CssResource
+        )
+        self.assertEqual(len(items), 3)
+        test_component_tags = [
+            '<link rel="stylesheet" href="/test-static/assets/Button-abc123.css">',
+            '<link rel="stylesheet" href="/test-static/assets/TestComponent-ab23ac31.css">',
+            '<link rel="stylesheet" href="/test-static/assets/TestComponentTwo-b99abbde.css">',
+        ]
+        tags = [item.generate_code(html_target_browser) for item in items]
+        self.assertEqual(
+            sorted(tags),
+            test_component_tags,
+        )
+
+    @override_settings(STATIC_URL="/test-static/")
+    def test_get_embed_items_content_type_string(self):
+        bundler = self.create_bundler()
+        items = bundler.get_embed_items(
+            [FrontendResource.from_path("components/TestComponent.tsx")], "text/javascript"
+        )
+        self.assertEqual(len(items), 1)
+        self.assertEqual(
+            items[0].generate_code(html_target_browser),
+            '<script src="/test-static/assets/TestComponent-47f28fe1.js" type="module"></script>',
+        )
+
+    @override_settings(STATIC_URL="/test-static/")
+    def test_get_embed_items_content_type_pattern(self):
+        bundler = self.create_bundler()
+        items = bundler.get_embed_items(
+            [FrontendResource.from_path("components/TestComponent.tsx")], re.compile(r".*/javascript")
+        )
+        self.assertEqual(len(items), 1)
+        self.assertEqual(
+            items[0].generate_code(html_target_browser),
+            '<script src="/test-static/assets/TestComponent-47f28fe1.js" type="module"></script>',
+        )
+
+    def test_substitutable_resources(self):
+        resource = JavascriptResource(Path("components/TestComponent.tsx"))
+        self.assertTrue(
+            resource.is_substitutable_for(ESModuleResource(Path("components/TestComponent.tsx"), "A", True))
+        )
+        self.assertTrue(
+            resource.is_substitutable_for(ESModuleResource(Path("components/TestComponent.tsx"), "B", False))
+        )
+
+        another_resource = JavascriptResource(Path("components/TestComponent2.tsx"))
+        self.assertFalse(
+            another_resource.is_substitutable_for(
+                ESModuleResource(Path("components/TestComponent.tsx"), "A", True)
+            )
+        )
+        self.assertFalse(
+            another_resource.is_substitutable_for(
+                ESModuleResource(Path("components/TestComponent.tsx"), "B", False)
+            )
         )
 
     def test_resolve_ssr_import_path(self):

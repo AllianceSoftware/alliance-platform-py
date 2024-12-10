@@ -13,6 +13,19 @@ Utils
 Bundler
 -------
 
+.. autoclass:: alliance_platform.frontend.bundler.frontend_resource.FrontendResource
+    :members:
+
+.. autoclass:: alliance_platform.frontend.bundler.frontend_resource.JavascriptResource
+
+.. autoclass:: alliance_platform.frontend.bundler.frontend_resource.CssResource
+
+.. autoclass:: alliance_platform.frontend.bundler.frontend_resource.ESModuleResource
+
+.. autoclass:: alliance_platform.frontend.bundler.frontend_resource.VanillaExtractResource
+
+.. autoclass:: alliance_platform.frontend.bundler.frontend_resource.ImageResource
+
 .. autofunction:: alliance_platform.frontend.bundler.get_bundler
 
 .. autoclass:: alliance_platform.frontend.bundler.base.BaseBundler
@@ -36,12 +49,12 @@ Bundler
 .. autoclass:: alliance_platform.frontend.bundler.base.RelativePathResolver
     :members:
 
-.. autoclass:: alliance_platform.frontend.bundler.asset_registry.FrontendAssetRegistry
+.. autoclass:: alliance_platform.frontend.bundler.resource_registry.FrontendResourceRegistry
     :members:
 
-.. py:data:: alliance_platform.frontend.bundler.asset_registry.frontend_asset_registry
+.. autoclass:: alliance_platform.frontend.bundler.asset_registry.FrontendAssetRegistry
 
-    The default registry that is used throughout the site.
+.. warning:: Deprecated. Use :class:`~alliance_platform.frontend.bundler.resource_registry.FrontendResourceRegistry` directly.
 
 .. autoclass:: alliance_platform.frontend.bundler.base.DevServerCheck
     :members:
