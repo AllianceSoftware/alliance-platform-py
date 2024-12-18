@@ -27,7 +27,6 @@ embedded in the template with the :ttag:`component` tag.
    installation
    overview
    templatetags
-   alliance_ui
    settings
    api
 

@@ -1,0 +1,23 @@
+{
+  "components/Button.tsx": {
+    "file": "Button.mjs",
+    "src": "components/Button.tsx",
+    "isEntry": true,
+    "imports": ["_jsx-runtime-3c07b91b.mjs", "_contract.css-37e12001.mjs"]
+  },
+  "_jsx-runtime-3c07b91b.mjs": {
+    "file": "assets/jsx-runtime-3c07b91b.mjs"
+  },
+  "_contract.css-37e12001.mjs": {
+    "file": "assets/contract.css-37e12001.mjs"
+  },
+  "frontend/src/models/User.ts": {
+    "file": "assets/User-abc123.js",
+    "src": "models/User.ts"
+  },
+  "django-root/common_frontend/bundler/vitePreload.ts": {
+    "file": "vitePreload.js",
+    "isEntry": true,
+    "src": "django-root/common_frontend/bundler/vitePreload.ts"
+  }
+}
