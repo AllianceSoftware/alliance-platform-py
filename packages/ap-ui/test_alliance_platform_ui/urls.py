@@ -1,5 +1,6 @@
 from django.urls import path
 
+from .views import TestFormRenderView
 from .views import TestUrlWithPermGlobalView
 from .views import TestUrlWithPermObjectView
 from .views import bundler_asset_context_view
@@ -24,5 +25,10 @@ urlpatterns = [
         "template-tags/multiple-args/<int:pk>/<int:area_id>/<slug:code>/",
         TestUrlWithPermObjectView.as_view(),
         name="url_with_multiple_args",
+    ),
+    path(
+        "update-user/<int:pk>/",
+        TestFormRenderView.as_view(),
+        name="update_user",
     ),
 ]

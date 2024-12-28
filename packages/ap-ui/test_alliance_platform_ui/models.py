@@ -15,6 +15,10 @@ class User(GenericUserProfile, auth_models.AbstractBaseUser, auth_models.Permiss
     USERNAME_FIELD = "email"
 
     email = models.EmailField(db_collation="case_insensitive", unique=True)
+
+    first_name = models.CharField(max_length=100, blank=True)
+    last_name = models.CharField(max_length=100, blank=True)
+
     objects = UserManager()  # type:ignore[misc,assignment]  # specialising type
     profiles = UserManager(select_related_profiles=True)  # type: ignore[misc,assignment] # specialising type
     # Used in CSV permission to identify which permissions apply. This should be set on subclasses.

@@ -11,6 +11,7 @@ from django.http import HttpResponse
 from django.http import JsonResponse
 from django.views.generic import DetailView
 from django.views.generic import TemplateView
+from django.views.generic import UpdateView
 
 UserModel = get_user_model()
 
@@ -58,3 +59,16 @@ class TestUrlWithPermObjectView(DetailView):
 
     def has_permission(self):
         return self.request.user.has_perm(self.permission_required, self.get_object())
+
+
+class TestFormRenderView(UpdateView):
+    OBJECT_PERM_URL = "url_with_perm_object"
+    permission_required = None
+    template_name = "user_form.html"
+
+    model = UserModel
+
+    fields = [
+        "first_name",
+        "last_name",
+    ]

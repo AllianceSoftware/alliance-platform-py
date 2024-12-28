@@ -16,10 +16,16 @@ class FormInputContextRenderer(TemplatesSetting):
     accept all the values and hope it causes no issues, or filter them out
     which is inconvenient in templates.
 
-    This renderer works with ``form_input`` to pass extra context to widgets
+    This renderer works with :ttag:`form_input` to pass extra context to widgets
     by setting a special key in the ``widget.attrs`` dictionary. The renderer
     then pops this value and adds the contents to the ``context`` that is then
     used to render the template.
+
+    When using this renderer,
+    :class:`~alliance_platform.ui.forms.renderers.form_input_context_key` should be
+    added to
+    :data:`~alliance_platform.frontend.settings.AlliancePlatformFrontendSettingsType.COMPONENT_PROP_EXCLUSION_KEYS`.
+    to ensure that the special key is not mistakenly serialised for the frontend.
     """
 
     form_input_context_key = form_input_context_key

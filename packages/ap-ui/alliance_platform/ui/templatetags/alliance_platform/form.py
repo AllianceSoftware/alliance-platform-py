@@ -377,7 +377,7 @@ def form(parser: template.base.Parser, token: template.base.Token):
 
         Usage of this tag requires the following settings to be set::
 
-            FORM_RENDERER = "alliance_platform.frontend.forms.renderers.FormInputContextRenderer"
+            FORM_RENDERER = "alliance_platform.ui.forms.renderers.FormInputContextRenderer"
 
     """
     tag_name = token.split_contents()[0]

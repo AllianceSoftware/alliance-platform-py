@@ -58,7 +58,6 @@ from ..bundler.ssr import SSRItem
 from ..bundler.ssr import SSRSerializable
 from ..bundler.ssr import SSRSerializerContext
 from ..bundler.vite import ViteBundler
-from ..forms.renderers import form_input_context_key
 from ..html_parser import HtmlAttributeTemplateNodeList
 from ..html_parser import convert_html_string
 from ..html_parser import html_replacement_placeholder_template
@@ -150,10 +149,11 @@ class ComponentProps(SSRSerializable):
     def __init__(self, props: PropsType):
         # Copy as ``add_prop`` modifies
         self.props = props.copy()
-        # Remove form input context key if present - this can't be used beyond this point and exists only as
+        # Remove keys that are specified to only exist for handling in top-level context classes
         # a workaround to pass extra context to widgets, see FormInputContextRenderer
-        if form_input_context_key in self.props:
-            self.props.pop(form_input_context_key)  # type: ignore[call-overload]
+        for key in ap_frontend_settings.COMPONENT_PROP_EXCLUSION_KEYS:
+            if key in self.props:
+                self.props.pop(key)  # type: ignore[call-overload]
 
     def __repr__(self):
         return f"ComponentProps({self.props})"
