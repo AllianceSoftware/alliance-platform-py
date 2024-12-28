@@ -343,7 +343,7 @@ Usage:
 
 .. code-block:: html+django
 
-    {% load form %}
+    {% load alliance_platform.form %}
 
     {% form form auto_focus=True %}
         <form method="post>

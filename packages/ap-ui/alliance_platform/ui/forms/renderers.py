@@ -2,6 +2,11 @@ from django.forms.renderers import TemplatesSetting
 
 
 class form_input_context_key:
+    """This class serves as a unique sentinel value in a form's widget attributes dictionary
+    to set special Alliance Platform context values. It serves no purpose except
+    as a dictionary key with special handling.
+    """
+
     pass
 
 
@@ -24,7 +29,7 @@ class FormInputContextRenderer(TemplatesSetting):
     When using this renderer,
     :class:`~alliance_platform.ui.forms.renderers.form_input_context_key` should be
     added to
-    :data:`~alliance_platform.frontend.settings.AlliancePlatformFrontendSettingsType.COMPONENT_PROP_EXCLUSION_KEYS`.
+    :external:py:attr:`~alliance_platform.frontend.settings.AlliancePlatformFrontendSettingsType.COMPONENT_PROP_EXCLUSION_KEYS`
     to ensure that the special key is not mistakenly serialised for the frontend.
     """
 

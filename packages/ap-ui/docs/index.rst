@@ -15,5 +15,6 @@ configured.
 
    installation
    templatetags
+   form-rendering
 
 .. include:: ../../ap-core/docs/_sidebar.rst.inc

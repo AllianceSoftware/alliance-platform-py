@@ -76,7 +76,7 @@ class AlliancePlatformFrontendSettingsType(TypedDict, total=False):
     #: tweak this is if you are attempting to debug issues with a large piece of code; in which case you likely need to increase ``DEV_CODE_FORMAT_LIMIT`` as well.
     DEV_CODE_FORMAT_TIMEOUT: int | None
     #: A list of keys which may be passed as props to :class:`~alliance_platform.frontend.templatetags.react.ComponentProps` which should be explicitly
-    #: excluded from serialization. This can be used to implement top-level handling of special props, such as in :class:`~alliance_platform.ui.forms.renderers.FormInputContextRenderer`,
+    #: excluded from serialization. This can be used to implement top-level handling of special props, such as in :external:class:`~alliance_platform.ui.forms.renderers.FormInputContextRenderer`,
     #: while ensuring that they are not mistakenly
     #: serialized and passed to the frontend. Defaults to an empty list.
     COMPONENT_PROP_EXCLUSION_KEYS: list[Hashable] | None
@@ -135,7 +135,7 @@ class AlliancePlatformFrontendSettings(AlliancePlatformSettingsBase):
     #: tweak this is if you are attempting to debug issues with a large piece of code; in which case you likely need to increase ``DEV_CODE_FORMAT_LIMIT`` as well.
     DEV_CODE_FORMAT_TIMEOUT: int
     #: A list of keys which may be passed as props to :class:`~alliance_platform.frontend.templatetags.react.ComponentProps` which should be explicitly
-    #: excluded from serialization. This can be used to implement top-level handling of special props, such as in :class:`~alliance_platform.ui.forms.renderers.FormInputContextRenderer`,
+    #: excluded from serialization. This can be used to implement top-level handling of special props, such as in :external:class:`~alliance_platform.ui.forms.renderers.FormInputContextRenderer`,
     #: while ensuring that they are not mistakenly
     #: serialized and passed to the frontend. Defaults to an empty list.
     COMPONENT_PROP_EXCLUSION_KEYS: list[Hashable]
