@@ -1,42 +1,21 @@
 from io import BytesIO
-import os
 from unittest import mock
-from unittest import skipIf
 
-from django.conf import settings
-from django.http import HttpResponse
+from alliance_platform.pdf.render import render_pdf
+from alliance_platform.pdf.request_handlers import CustomRequestHandler
+from alliance_platform.pdf.request_handlers import MediaHttpRequestHandler
+from alliance_platform.pdf.request_handlers import StaticHttpRequestHandler
 from django.template.loader import render_to_string
 from django.test import RequestFactory
 from django.test import TestCase
-from django.test import override_settings
-from django.urls import path
-from django.views import View
-
-try:
-    import playwright  # noqa
-
-    playwright_installed = True
-except ModuleNotFoundError:
-    playwright_installed = False
-
-try:
-    from pypdf import PdfReader
-
-    pypdf_installed = True
-except ImportError:
-    pypdf_installed = False
+from pypdf import PdfReader
+from test_alliance_platform_pdf.views import SAMPLE_HTML
 
 
-if playwright_installed:
-    from alliance_platform.pdf.render import render_pdf
-    from alliance_platform.pdf.request_handlers import CustomRequestHandler
-    from alliance_platform.pdf.request_handlers import MediaHttpRequestHandler
-    from alliance_platform.pdf.request_handlers import StaticHttpRequestHandler
-
-    class HugeLogRequestHandler(CustomRequestHandler):
-        def handle_request(self, request):
-            self.log("debug", "x" * 80000)
-            return super().handle_request(request)
+class HugeLogRequestHandler(CustomRequestHandler):
+    def handle_request(self, request):
+        self.log("debug", "x" * 80000)
+        return super().handle_request(request)
 
 
 def get_page_contents(data):
@@ -45,32 +24,12 @@ def get_page_contents(data):
 
 
 # Only render svg rather than text to avoid differences on platforms in text rendering
-SAMPLE_HTML = """<html><body>
-<svg xmlns="http://www.w3.org/2000/svg" width="467" height="462">
-    <rect x="140" y="120" width="250" height="250" style="fill:#ffffff; stroke:#000000; stroke-width:2px;" />
-</svg>
-</body></html>"""
 # The rendered content of the PDF for SAMPLE_HTML should match this:
 SAMPLE_PDF_CONTENTS = b".23999999 0 0 -.23999999 0 841.91998 cm\nq\n25 25 1459.375 1443.75 re\nW* n\nq\n3.125 0 0 3.125 25 25 cm\n1 1 1 RG 1 1 1 rg\n/G3 gs\n140 120 250 250 re\nf\n0 0 0 RG 0 0 0 rg\n/G4 gs\n140 120 250 250 re\nS\nQ\nQ\n"
 # The rendered content of the test_alliance_platform.pdf/template_<static|media>_file.html should match this:
 TEMPLATE_PDF_CONTENTS = b".23999999 0 0 -.23999999 0 841.91998 cm\nq\n25 25 1459.375 1443.75 re\nW* n\nq\n3.125 0 0 3.125 25 25 cm\n1 1 1 RG 1 1 1 rg\n/G3 gs\n140 120 250 250 re\nf\n0 0 0 RG 0 0 0 rg\n/G4 gs\n140 120 250 250 re\nS\nQ\nQ\n"
 
 
-class SampleView(View):
-    def get(self, request, *args, **kwargs):
-        return HttpResponse(SAMPLE_HTML)
-
-
-urlpatterns = [path("dummy", SampleView.as_view())]
-
-
-@skipIf(not pypdf_installed, "pypdf not installed, skipping")
-@skipIf(not playwright_installed, "playwright not installed, skipping")
-@override_settings(
-    INSTALLED_APPS=["alliance_platform.pdf"],
-    ROOT_URLCONF=__name__,
-    MIDDLEWARE=[x for x in settings.MIDDLEWARE if "silk" not in x and "stronghold" not in x],
-)
 class RendererTestCase(TestCase):
     def setUp(self):
         self.factory = RequestFactory()
@@ -98,7 +57,6 @@ class RendererTestCase(TestCase):
         )
         self.assertEqual(SAMPLE_PDF_CONTENTS, contents)
 
-    @override_settings(STATICFILES_DIRS=[os.path.join(os.path.dirname(__file__), "static_files")])
     def test_pdf_render_handles_static_files(self):
         url = "http://127.0.0.1/dummy"
         static_handler = StaticHttpRequestHandler()
@@ -125,10 +83,6 @@ class RendererTestCase(TestCase):
             spy.assert_called()
             self.assertEqual(TEMPLATE_PDF_CONTENTS, contents)
 
-    @override_settings(
-        MEDIA_ROOT=os.path.join(os.path.dirname(__file__), "static_files"),
-        MEDIA_URL="/custom-media/",
-    )
     def test_pdf_render_handles_media_files(self):
         url = "http://127.0.0.1/dummy"
         media_handler = MediaHttpRequestHandler()

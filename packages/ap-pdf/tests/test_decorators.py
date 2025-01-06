@@ -1,66 +1,5 @@
-from unittest import mock
-from unittest import skipIf
-
-from django.conf import settings
-from django.http import HttpResponse
 from django.test import TestCase
-from django.test import override_settings
-from django.urls import path
-
-try:
-    import playwright  # noqa
-
-    playwright_installed = True
-except ModuleNotFoundError:
-    playwright_installed = False
-    urlpatterns = []
-
-if playwright_installed:
-    from alliance_platform.pdf.decorators import view_as_pdf
-
-    def simple_content_view(_):
-        return HttpResponse("Simple content")
-
-    def header_content_view(request):
-        return HttpResponse(f"Header was: {request.META['X-Custom-Header']}")
-
-    # This exists to spy on the simple_content_view, as I could not find a way
-    # to mock.patch it from within a test case. Each test that needs this should
-    # reset_mock() it
-    simple_content_view_spy = mock.Mock(wraps=simple_content_view)
-
-    urlpatterns = [
-        path(
-            "test-decorator-not-optional/",
-            view_as_pdf(optional=False, page_done_flag=None)(simple_content_view),
-        ),
-        path(
-            "test-decorator-optional-default-query-param/",
-            view_as_pdf(page_done_flag=None)(simple_content_view),
-        ),
-        path(
-            "test-decorator-optional-custom-query-param/",
-            view_as_pdf(query_param_test="custom-pdf", page_done_flag=None)(simple_content_view),
-        ),
-        path(
-            "test-decorator-optional-custom-query-test/",
-            view_as_pdf(query_param_test=lambda r: "X-Custom-Header" in r.META, page_done_flag=None)(
-                simple_content_view
-            ),
-        ),
-        path(
-            "test-decorator-response-uses-header/",
-            view_as_pdf(
-                optional=False, extra_headers={"X-Custom-Header": "custom-value"}, page_done_flag=None
-            )(header_content_view),
-        ),
-        path(
-            "test-decorator-removes-header-set-to-none/",
-            view_as_pdf(optional=False, extra_headers={"X-Custom-Header-Remove": None}, page_done_flag=None)(
-                simple_content_view_spy
-            ),
-        ),
-    ]
+from test_alliance_platform_pdf.views import simple_content_view_spy
 
 
 def pdf_valid(data):
@@ -73,11 +12,6 @@ SAMPLE_HTML = "<html><body><p>Some content</p></body></html>"
 SAMPLE_PDF_CONTENTS = b".23999999 0 0 -.23999999 0 841.91998 cm\nq\n0 0 2479.1665 3507.7236 re\nW* n\nq\n3.1263134 0 0 3.1263134 0 0 cm\n1 1 1 RG 1 1 1 rg\n/G0 gs\n0 0 793 1122 re\nf\n0 0 0 RG 0 0 0 rg\nBT\n/F0 16 Tf\n1 0 0 -1 8 22 Tm\n<003600520050004800030046005200510057004800510057> Tj\nET\nQ\nQ\n"
 
 
-@skipIf(not playwright_installed, "playwright not installed, skipping")
-@override_settings(
-    ROOT_URLCONF=__name__,
-    MIDDLEWARE=[x for x in settings.MIDDLEWARE if "silk" not in x and "stronghold" not in x],
-)
 class DecoratorsTestCase(TestCase):
     def assert_simple_content_raw(self, response):
         self.assertEqual(200, response.status_code)

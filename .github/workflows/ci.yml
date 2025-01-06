@@ -1,6 +1,6 @@
 name: Test CI
 
-on: [push, pull_request]
+on: [pull_request]
 
 jobs:
 
@@ -70,7 +70,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade tox 
+          python -m pip install --upgrade tox
 
       - name: Set python version variable (short)
         id: pyver
