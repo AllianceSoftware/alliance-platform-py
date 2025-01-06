@@ -1,5 +1,11 @@
 # alliance-platform-frontend
 
+## 0.0.18
+
+### Patch Changes
+
+- 8262e04: Split ap frontend into separate packages: alliance_platform_frontend and alliance_platform_ui
+
 ## 0.0.17
 
 ### Patch Changes
