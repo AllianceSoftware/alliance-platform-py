@@ -1,7 +1,8 @@
+from alliance_platform.frontend.util import SSRExclusionMarker
 from django.forms.renderers import TemplatesSetting
 
 
-class form_input_context_key:
+class form_input_context_key(SSRExclusionMarker):
     """This class serves as a unique sentinel value in a form's widget attributes dictionary
     to set special Alliance Platform context values. It serves no purpose except
     as a dictionary key with special handling.
@@ -25,12 +26,6 @@ class FormInputContextRenderer(TemplatesSetting):
     by setting a special key in the ``widget.attrs`` dictionary. The renderer
     then pops this value and adds the contents to the ``context`` that is then
     used to render the template.
-
-    When using this renderer,
-    :class:`~alliance_platform.ui.forms.renderers.form_input_context_key` should be
-    added to
-    :external:py:attr:`~alliance_platform.frontend.settings.AlliancePlatformFrontendSettingsType.COMPONENT_PROP_EXCLUSION_KEYS`
-    to ensure that the special key is not mistakenly serialised for the frontend.
     """
 
     form_input_context_key = form_input_context_key

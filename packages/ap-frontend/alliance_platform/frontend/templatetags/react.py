@@ -64,6 +64,7 @@ from ..html_parser import html_replacement_placeholder_template
 from ..prop_handlers import CodeGeneratorNode
 from ..prop_handlers import ComponentProp
 from ..settings import ap_frontend_settings
+from ..util import SSRExclusionMarker
 from ..util import transform_attribute_names
 
 register = template.Library()
@@ -138,7 +139,11 @@ class NestedComponentProp(ComponentProp):
 
 
 PropType = str | float | int | list["PropType"] | tuple["PropType"] | dict[str, "PropType"] | ComponentProp
+
+
 PropsType = dict[str, PropType]
+
+PropsTypeWithExclusions = dict[str, PropType | type[SSRExclusionMarker] | SSRExclusionMarker]
 
 
 class ComponentProps(SSRSerializable):
@@ -146,14 +151,23 @@ class ComponentProps(SSRSerializable):
 
     props: PropsType
 
-    def __init__(self, props: PropsType):
+    def __init__(self, props: PropsTypeWithExclusions):
         # Copy as ``add_prop`` modifies
-        self.props = props.copy()
+        pruned_props = props.copy()
         # Remove keys that are specified to only exist for handling in top-level context classes
         # a workaround to pass extra context to widgets, see FormInputContextRenderer
-        for key in ap_frontend_settings.COMPONENT_PROP_EXCLUSION_KEYS:
-            if key in self.props:
-                self.props.pop(key)  # type: ignore[call-overload]
+        for key, value in pruned_props.items():
+            if isinstance(value, SSRExclusionMarker) or (
+                # issubclass will throw an error if passed a non-class value
+                isinstance(value, type) and issubclass(value, SSRExclusionMarker)
+            ):
+                if value == SSRExclusionMarker:
+                    raise KeyError(
+                        "SSRExclusionMarker should not be used directly as a dictionary key - create either an instance or a subclass to use as a key"
+                    )
+                pruned_props.pop(key)
+
+        self.props = cast(PropsType, pruned_props)
 
     def __repr__(self):
         return f"ComponentProps({self.props})"

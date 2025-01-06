@@ -9,7 +9,6 @@ from alliance_platform.codegen.settings import AlliancePlatformCodegenSettingsTy
 from alliance_platform.core.settings import AlliancePlatformCoreSettingsType
 from alliance_platform.frontend.bundler.asset_registry import FrontendAssetRegistry
 from alliance_platform.frontend.settings import AlliancePlatformFrontendSettingsType
-from alliance_platform.ui.forms.renderers import form_input_context_key
 
 is_ci = os.environ.get("CI_SERVER", "no") == "yes"
 
@@ -46,7 +45,6 @@ ALLIANCE_PLATFORM: AlliancePlatformSettings = {
         "BUNDLER_DISABLE_DEV_CHECK_HTML": False,
         "SSR_GLOBAL_CONTEXT_RESOLVER": None,
         "NODE_MODULES_DIR": os.environ.get("NODE_MODULES_DIR", BASE_DIR.parent.parent / "node_modules"),
-        "COMPONENT_PROP_EXCLUSION_KEYS": [form_input_context_key],
     },
 }
 

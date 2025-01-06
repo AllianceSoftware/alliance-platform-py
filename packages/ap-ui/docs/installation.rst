@@ -26,11 +26,6 @@ Currently there are no settings specific to ``alliance_platform_ui``. See :doc:`
 and :doc:`alliance_platform.codegen <alliance-platform-codegen:installation>` for details on installing and configuring the packages
 that the UI package depends on.
 
-When setting up ``alliance_platform_frontend``, ensure that the
-:external:py:attr:`~alliance_platform.frontend.settings.AlliancePlatformFrontendSettingsType.COMPONENT_PROP_EXCLUSION_KEYS`
-setting includes ``alliance_platform.ui.forms.renderers.form_input_context_key`` - this setting does not use import strings,
-so make sure you use the actual class.
-
 Ensure that ``FORM_RENDERER`` is be set as follows:
 
 .. code-block:: python
