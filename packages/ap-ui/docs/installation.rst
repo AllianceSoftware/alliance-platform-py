@@ -30,7 +30,7 @@ Ensure that ``FORM_RENDERER`` is be set as follows:
 
 .. code-block:: python
 
-    FORM_RENDERER = "alliance_platform.frontend.forms.renderers.FormInputContextRenderer"
+    FORM_RENDERER = "alliance_platform.ui.forms.renderers.FormInputContextRenderer"
 
 This is used by the :ttag:`form` and :ttag:`form_input` tags.
 
@@ -40,8 +40,8 @@ Migration from Alliance Platform Frontend
 If you were originally using an older version of ``alliance_platform_frontend`` that incorporated all of the elements of ``alliance_platform_ui``,
 you will need to update some settings and templates:
 
-* Change the ``FORM_RENDERER`` Django setting from ``alliance_platform.frontend.forms.renderer.FormInputContextRenderer``
-  to ``alliance_platform.ui.forms.renderer.FormInputContextRenderer``
+* Change the ``FORM_RENDERER`` Django setting from ``alliance_platform.frontend.forms.renderers.FormInputContextRenderer``
+  to ``alliance_platform.ui.forms.renderers.FormInputContextRenderer``
 
 * Find and replace all instances of ``{% load alliance_ui %}`` in your template files with ``{% load alliance_platform.ui %}``
 
