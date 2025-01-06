@@ -15,6 +15,7 @@ from alliance_platform.pdf.request_handlers import PassThroughRequestHandler
 from alliance_platform.pdf.request_handlers import RequestHandler
 from alliance_platform.pdf.request_handlers import StaticHttpRequestHandler
 from alliance_platform.pdf.request_handlers import WhitelistDomainRequestHandler
+from alliance_platform.pdf.settings import ap_pdf_settings
 from django.conf import settings
 
 RENDERER_PROCESS = os.path.abspath(os.path.join(os.path.dirname(__file__), "render_process.py"))
@@ -30,11 +31,11 @@ def get_default_handlers() -> list[RequestHandler]:
     Includes :class:`~alliance_platform.pdf.request_handlers.StaticHttpRequestHandler`, :class:`~alliance_platform.pdf.request_handlers.MediaHttpRequestHandler`,
     :class:`~alliance_platform.pdf.request_handlers.DjangoRequestHandler` and :class:`~alliance_platform.pdf.request_handlers.WhitelistDomainRequestHandler`.
 
-    :class:`~alliance_platform.pdf.request_handlers.WhitelistDomainRequestHandler` will use domains in the :code:`settings.alliance_platform.pdf_WHITELIST_DOMAINS`
+    :class:`~alliance_platform.pdf.request_handlers.WhitelistDomainRequestHandler` will use domains in the :py:attr:`~alliance_platform.pdf.settings.AlliancePlatformPDFSettingsType.WHITELIST_DOMAINS`
     setting and, when ``DEBUG=True``, also include the Vite dev server URL as extracted from the stats file.
     """
 
-    whitelist_domains = [*settings.ALLIANCE_PLATFORM_PDF_WHITELIST_DOMAINS]
+    whitelist_domains = [*ap_pdf_settings.WHITELIST_DOMAINS]
     bundler = get_bundler()
     if isinstance(bundler, ViteBundler) and bundler.is_development():
         whitelist_domains.append(bundler.dev_server_url)
@@ -92,12 +93,14 @@ def render_pdf(
     if not url and not html:
         raise ValueError("One of url or html must be supplied")
 
-    if getattr(settings, "ALLIANCE_PLATFORM_PDF_PROCESS_ACTIVE", False):
+    if getattr(settings, "_ALLIANCE_PLATFORM_PDF_PROCESS_ACTIVE", False):
         # The render_process sets this setting while it is running. A url config like:
         # urlpatterns = [
         #   url('test-pdf', lambda r: render_pdf(r)),
         # ]
         # for example will infinitely recurse if we don't stop this here.
+        # Not set in package settings because it is only defined and used by internally running
+        # processes - we don't want to set or document it in package setup
         raise PDFRendererException(
             "Recursive PDF renderer call detected. Ensure that any requests that are being "
             "handled by DjangoRequestHandler are not recursively calling render_pdf. Aborting."

@@ -54,7 +54,7 @@ class RequestHandler:
         self.media_root = str(settings.MEDIA_ROOT)
         self.static_url = str(settings.STATIC_URL)
         self.static_roots = get_static_roots()
-        self.log = log  # type: ignore[method-assign] # mypy issue #2427
+        self.log = log
 
     def handle_request(self, request: Request) -> RequestHandlerResponse | None:
         """Handle request and return the response"""
@@ -101,7 +101,7 @@ class DjangoHTTPRequest(HttpRequest):
         for key, value in parse_qs(query).items():
             # QueryDicts are immutable during a Request/Response cycle, but not initially - we still can set it
             # in __init__ (`self.GET = QueryDict(mutable=True)`)
-            self.GET.setlist(key, value)  # type: ignore[misc]
+            self.GET.setlist(key, value)
 
     def _get_scheme(self):
         return self._scheme
@@ -146,13 +146,15 @@ class StaticHttpRequestHandler(RequestHandler):
     """
 
     def handle_request(self, request: Request) -> RequestHandlerResponse | None:
+        if self.static_url is None:
+            return None
         request_url = urlparse(request.url)
         source_url = urlparse(self.source_url)
         if source_url.netloc == request_url.netloc:
             if request_url.path.startswith(self.static_url):
                 full_path = get_static_url(
                     self.static_roots, request_url.path[len(cast(str, self.static_url)) :]
-                )  # if startswith, it'd be str
+                )
                 if not full_path:
                     self.log(
                         "error",
@@ -212,13 +214,15 @@ class MediaHttpRequestHandler(RequestHandler):
     """
 
     def handle_request(self, request: Request) -> RequestHandlerResponse | None:
+        if self.media_url is None:
+            return None
         request_url = urlparse(request.url)
         if urlparse(self.media_url).netloc and request.url.startswith(self.media_url):
             return RequestHandlerResponse(RequestHandlerResponseStatus.CONTINUE)
         if request_url.path.startswith(self.media_url):
             response = get_response_from_path(
                 self.media_root, request_url.path[len(cast(str, self.media_url)) :]
-            )  # if startswith, will be str
+            )
             return RequestHandlerResponse(RequestHandlerResponseStatus.SUCCESS, response)
         return None
 

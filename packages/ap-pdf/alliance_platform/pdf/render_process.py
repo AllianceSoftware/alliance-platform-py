@@ -178,7 +178,7 @@ if __name__ == "__main__":
     # Entry point when run as a sub-process
     sys.path.insert(0, "")
     django.setup()
-    setattr(settings, "ALLIANCE_PLATFORM_PDF_PROCESS_ACTIVE", True)
+    setattr(settings, "_ALLIANCE_PLATFORM_PDF_PROCESS_ACTIVE", True)
     context = json.load(sys.stdin)
     data = process_request(context)
     sys.stdout.buffer.write(data)
