@@ -75,11 +75,3 @@ In the ``MIDDLEWARE`` setting, add the ``BundlerAssetContextMiddleware`` middlew
         "alliance_platform.frontend.bundler.middleware.BundlerAssetContextMiddleware",
         ...
     ]
-
-Finally, ``FORM_RENDERER`` should be set as follows:
-
-.. code-block:: python
-
-    FORM_RENDERER = "alliance_platform.frontend.forms.renderers.FormInputContextRenderer"
-
-This is used by the :ttag:`form` and :ttag:`form_input` tags.

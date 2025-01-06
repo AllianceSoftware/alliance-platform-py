@@ -66,6 +66,10 @@ multiproject_projects = {
         "name": "Audit",
         "path": "../packages/ap-audit/docs",
     },
+    "ui": {
+        "name": "UI",
+        "path": "../packages/ap-ui/docs",
+    },
 }
 
 # -- Options for Intersphinx extension ---------------------------------------
@@ -85,6 +89,7 @@ dev_port_map = {
     "codegen": 56677,
     "storage": 56678,
     "audit": 56679,
+    "ui": 56680,
 }
 
 
@@ -106,6 +111,7 @@ intersphinx_mapping = {
     "alliance-platform-codegen": get_project_mapping("codegen"),
     "alliance-platform-storage": get_project_mapping("storage"),
     "alliance-platform-audit": get_project_mapping("audit"),
+    "alliance-platform-ui": get_project_mapping("ui"),
     "django": (
         "https://docs.djangoproject.com/en/stable/",
         ("https://docs.djangoproject.com/en/stable/_objects/"),

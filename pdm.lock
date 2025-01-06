@@ -5,7 +5,7 @@
 groups = ["default", "dev", "docs"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:0ef35ef23ee66515d076d657e358b16ef4ecd8aa81d38b5cab51ee03a501254f"
+content_hash = "sha256:933fbc953c38fd79300505e1cf849ec3537d8c1055d8fe97da4d865c4dc08d2a"
 
 [[metadata.targets]]
 requires_python = ">=3.11"
@@ -90,6 +90,23 @@ dependencies = [
     "Django>=4.2.11",
     "alliance-platform-core",
     "django-allianceutils>=4.0",
+]
+
+[[package]]
+name = "alliance-platform-ui"
+version = "0.0.0"
+requires_python = "<4.0,>=3.11"
+editable = true
+path = "./packages/ap-ui"
+summary = "Django integration for frontend templatetags"
+groups = ["dev"]
+dependencies = [
+    "Django>=4.2.11",
+    "alliance-platform-codegen",
+    "alliance-platform-core",
+    "alliance-platform-frontend",
+    "django-allianceutils>=4.0.1",
+    "typing-extensions>=4.5.0",
 ]
 
 [[package]]

@@ -8,6 +8,7 @@ A collection of Python packages for use in the Alliance Platform Django template
     * [Codegen](packages/ap-codegen/README.md)
     * [Storage](packages/ap-storage/README.md)
     * [Audit](packages/ap-audit/README.md)
+    * [UI](packages/ap-ui/README.md)
 
 ## Contributing
 

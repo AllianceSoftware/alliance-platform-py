@@ -105,3 +105,18 @@ def transform_attribute_names(attrs: dict[str, Any]) -> dict[str, Any]:
         { "className": "item" }
     """
     return {possible_standard_names.get(k, k): v for k, v in attrs.items()}
+
+
+class SSRExclusionMarker:
+    """
+    Marker base class for props that must be excluded from
+    server-side rendering. Extend this class to ensure that
+    any property referencing it (or a subclass) is recognised
+    and omitted during SSR serialization.
+
+    The base class should not be used directly as a prop key, to
+    avoid accidentally overwriting existing properties by using
+    the same dictionary key for both.
+    """
+
+    pass

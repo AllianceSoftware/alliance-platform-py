@@ -1,0 +1,21 @@
+{% load react %}
+{% load alliance_platform.form %}
+{% load alliance_platform.ui %}
+
+
+{% form form auto_focus=True %}
+<form method="post" autocomplete="off" enctype="{% block enctype %}application/x-www-form-urlencoded{% endblock %}">
+  <div>
+    {% csrf_token %}
+
+    {% block form_fields %}
+      {% for field in form.hidden_fields %}
+        {{ field }}
+      {% endfor %}
+      {% for field in form.visible_fields %}
+        {% form_input field %}
+      {% endfor %}
+    {% endblock %}
+  </div>
+</form>
+{% endform %}
