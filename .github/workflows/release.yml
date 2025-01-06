@@ -47,6 +47,7 @@ jobs:
           ALLIANCE_PLATFORM_STORAGE_TOKEN: ${{ secrets.ALLIANCE_PLATFORM_STORAGE_TOKEN }}
           ALLIANCE_PLATFORM_AUDIT_TOKEN: ${{ secrets.ALLIANCE_PLATFORM_AUDIT_TOKEN }}
           ALLIANCE_PLATFORM_UI_TOKEN: ${{ secrets.ALLIANCE_PLATFORM_UI_TOKEN }}
+          ALLIANCE_PLATFORM_PDF_TOKEN: ${{ secrets.ALLIANCE_PLATFORM_PDF_TOKEN }}
 
       - name: Build packages
         id: artifact-upload-step

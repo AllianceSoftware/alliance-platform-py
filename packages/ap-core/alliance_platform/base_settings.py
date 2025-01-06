@@ -21,7 +21,7 @@ def maybe_import_string(val: Any | None):
     return val
 
 
-SettingKey = Literal["CORE", "FRONTEND", "CODEGEN", "STORAGE", "AUDIT", "UI"]
+SettingKey = Literal["CORE", "FRONTEND", "CODEGEN", "STORAGE", "AUDIT", "UI", "PDF"]
 
 
 class AlliancePlatformSettingsBase:
