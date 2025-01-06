@@ -102,35 +102,35 @@ async def render_pdf(
 
     :return: the rendered PDF byte data
     """
-    playwright = await async_playwright().start()
-    browser = await playwright.chromium.launch(executable_path=os.getenv("CHROMIUM_EXECUTABLE_PATH"))
-    context = await browser.new_context()
-    page = await context.new_page()
-    original_headers = HttpHeaders(meta)
-    raw_cookies = original_headers.get("cookie")
-    if raw_cookies:
-        cookies: list[SetCookieParam] = []
-        for name, value in parse_cookie(raw_cookies).items():
-            cookies.append({"url": source_url, "name": name, "value": value})
-        await context.add_cookies(cookies)
-    # This lets us intercept each request and decide what to do with it
-    await page.route("**/*", lambda route: asyncio.ensure_future(handle_route_wrapper(route, handlers)))
-    page.on("console", lambda message: log("debug", "console: %s" % message.text))
+    async with async_playwright() as playwright:
+        browser = await playwright.chromium.launch(executable_path=os.getenv("CHROMIUM_EXECUTABLE_PATH"))
+        context = await browser.new_context()
+        page = await context.new_page()
+        original_headers = HttpHeaders(meta)
+        raw_cookies = original_headers.get("cookie")
+        if raw_cookies:
+            cookies: list[SetCookieParam] = []
+            for name, value in parse_cookie(raw_cookies).items():
+                cookies.append({"url": source_url, "name": name, "value": value})
+            await context.add_cookies(cookies)
+        # This lets us intercept each request and decide what to do with it
+        await page.route("**/*", lambda route: asyncio.ensure_future(handle_route_wrapper(route, handlers)))
+        page.on("console", lambda message: log("debug", "console: %s" % message.text))
 
-    await page.goto(source_url, wait_until="networkidle")
+        await page.goto(source_url, wait_until="networkidle")
 
-    if page_done_flag:
-        try:
-            await page.wait_for_function(page_done_flag, timeout=page_done_timeout_msecs)
-        except TimeoutError:
-            # Try rendering anyway
-            pass
+        if page_done_flag:
+            try:
+                await page.wait_for_function(page_done_flag, timeout=page_done_timeout_msecs)
+            except TimeoutError:
+                # Try rendering anyway
+                pass
 
-    await asyncio.sleep(0.5)
+        await asyncio.sleep(0.5)
 
-    data = await page.pdf(**pdf_options)
-    await browser.close()
-    return data
+        data = await page.pdf(**pdf_options)
+        await browser.close()
+        return data
 
 
 def create_handlers(_context: dict[str, Any]) -> list[RequestHandler]:
