@@ -74,6 +74,10 @@ multiproject_projects = {
         "name": "PDF",
         "path": "../packages/ap-pdf/docs",
     },
+    "server-choices": {
+        "name": "Server Choices",
+        "path": "../packages/ap-server-choices/docs",
+    },
 }
 
 # -- Options for Intersphinx extension ---------------------------------------
@@ -95,6 +99,7 @@ dev_port_map = {
     "audit": 56679,
     "ui": 56680,
     "pdf": 56681,
+    "server-choices": 56682,
 }
 
 
@@ -118,6 +123,7 @@ intersphinx_mapping = {
     "alliance-platform-audit": get_project_mapping("audit"),
     "alliance-platform-ui": get_project_mapping("ui"),
     "alliance-platform-pdf": get_project_mapping("pdf"),
+    "alliance-platform-server-choices": get_project_mapping("server-choices"),
     "django": (
         "https://docs.djangoproject.com/en/stable/",
         ("https://docs.djangoproject.com/en/stable/_objects/"),
