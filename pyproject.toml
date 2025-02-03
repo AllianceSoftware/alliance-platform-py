@@ -16,6 +16,7 @@ dev = [
   "-e alliance-platform-audit @ file:///${PROJECT_ROOT}/packages/ap-audit",
   "-e alliance-platform-ui @ file:///${PROJECT_ROOT}/packages/ap-ui",
   "-e alliance-platform-pdf @ file:///${PROJECT_ROOT}/packages/ap-pdf",
+  "-e alliance-platform-server-choices @ file:///${PROJECT_ROOT}/packages/ap-server-choices",
   "beautifulsoup4<5.0,>=4.11",
   "django-stubs",
   "djangorestframework-stubs",
@@ -83,6 +84,9 @@ ui-mypy = { cmd = "mypy .", working_dir = "packages/ap-ui" }
 pdf-test = { shell = "./manage.py test", working_dir = "packages/ap-pdf" }
 pdf-mypy = { cmd = "mypy .", working_dir = "packages/ap-pdf" }
 
+server-choices-test = { shell = "./manage.py test", working_dir = "packages/ap-server-choices" }
+server-choices-mypy = { cmd = "mypy .", working_dir = "packages/ap-server-choices" }
+
 test = { composite = [
   "frontend-test",
   "codegen-test",
@@ -91,6 +95,7 @@ test = { composite = [
   "audit-test",
   "ui-test",
   "pdf-test",
+  "server-choices-test"
 ], keep_going = true }
 
 mypy = { composite = [
@@ -100,7 +105,7 @@ mypy = { composite = [
   "storage-mypy",
   "audit-mypy",
   "ui-mypy",
-  "pdf-mypy",
+  "server-choices-mypy",
 ], keep_going = true }
 
 build-docs-watch.cmd = "./scripts/build-docs.sh"
