@@ -196,17 +196,33 @@ class UrlFilterPermTemplateTagsTestCase(TestCase):
                 """
             {% load react %}
             {% load alliance_platform.ui %}
-            {% query_params strparam="test" user_id=user.pk as my_params %}
-            {% component "a" href=perm|url_with_perm:user.pk|with_params:my_params|with_perm_obj:user %}{% endcomponent %}
+            {% query_params templateparam="test" user_id=user.pk as my_params %}
+            {% component "a" href=perm|url_with_perm:user.pk|with_params:context_params|with_params:str_params|with_params:my_params|with_perm_obj:user %}{% endcomponent %}
             """
             )
 
-            params_dict = {"strparam": "test", "user_id": user1.pk}
+            context_params_dict = {"contextparam": "test"}
+            context_params_str = "&stringparam=test"
+            template_params_dict = {"templateparam": "test", "user_id": user1.pk}
+
+            params_dict = {
+                **context_params_dict,
+                "stringparam": "test",
+                **template_params_dict,
+            }
 
             request = HttpRequest()
             request.user = user2
             request.session = SessionBase()
-            context = Context({"request": request, "user": user1, "perm": self.OBJECT_PERM_URL})
+            context = Context(
+                {
+                    "request": request,
+                    "user": user1,
+                    "perm": self.OBJECT_PERM_URL,
+                    "context_params": context_params_dict,
+                    "str_params": context_params_str,
+                }
+            )
             output = tpl.render(context)
             self.assertEqual(output.strip(), "")
             request.user = user1

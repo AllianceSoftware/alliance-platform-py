@@ -39,6 +39,8 @@ register_date_picker(register)
 register_time_input(register)
 register_labeled_input(register)
 
+QueryParams = dict[str, Any] | QueryDict | str
+
 
 class NamedUrlDeferredProp(DeferredProp):
     """Used by ``url_with_perm`` and ``url`` filters to defer the resolution of a URL until rendering time.
@@ -50,7 +52,7 @@ class NamedUrlDeferredProp(DeferredProp):
     check_perm: bool
     args: list[Any]
     kwargs: dict[str, Any]
-    params: dict[str, Any] | QueryDict | str
+    params: str
     object: Model | None
 
     def __init__(self, url_name, check_perm=False):
@@ -58,7 +60,7 @@ class NamedUrlDeferredProp(DeferredProp):
         self.check_perm = check_perm
         self.args = []
         self.kwargs = {}
-        self.params = {}
+        self.query_string = ""
         self.object = None
         super().__init__()
 
@@ -71,8 +73,24 @@ class NamedUrlDeferredProp(DeferredProp):
     def add_kwargs(self, kwargs: dict[str, Any]):
         self.kwargs.update(kwargs)
 
-    def add_params(self, params: dict[str, Any]):
-        self.params.update(params)
+    def add_params(self, params: QueryParams):
+        if not params:
+            return
+
+        if isinstance(params, str):
+            query_string = params
+        elif isinstance(params, QueryDict):
+            query_string = params.urlencode()
+        else:
+            query_string = urlencode(params)
+
+        # query string will be blank if no params have been added
+        if not self.query_string:
+            self.query_string = "?"
+        elif query_string and not query_string.startswith("&") and not self.query_string.endswith("&"):
+            self.query_string += "&"
+
+        self.query_string += query_string
 
     def resolve(self, context: Context):
         if self.check_perm:
@@ -88,18 +106,8 @@ class NamedUrlDeferredProp(DeferredProp):
         else:
             url = reverse(self.url_name, args=self.args, kwargs=self.kwargs)
 
-        if self.params:
-            if isinstance(self.params, str):
-                query_string = self.params
-            elif isinstance(self.params, QueryDict):
-                query_string = self.params.urlencode
-            else:
-                query_string = urlencode(self.params)
-
-            if not query_string.startswith("?"):
-                query_string = "?" + query_string
-
-            url += query_string
+        if self.query_string:
+            url += self.query_string
 
         return url
 
