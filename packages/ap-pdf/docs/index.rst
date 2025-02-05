@@ -10,6 +10,7 @@ to provide pdf generation from chromium-rendered html+javascript.
    :caption: Contents:
 
    installation
+   deployment
    settings
    legacy-migration
    usage

@@ -1,30 +1,19 @@
 from functools import wraps
 from typing import Callable
 
-from alliance_platform.frontend.bundler.context import BundlerAssetContext
+from alliance_platform.core.util import strtobool
 from alliance_platform.pdf.render import render_pdf
 from django.http import HttpRequest
 from django.http import HttpResponse
 
 QueryParamPredicate = Callable[[HttpRequest], bool]
 
+try:
+    from alliance_platform.frontend.bundler.context import BundlerAssetContext
 
-# Taken verbatim from distutils source in Python 3.11
-# https://github.com/python/cpython/blob/v3.11.2/Lib/distutils/util.py#L308
-def strtobool(val):
-    """Convert a string representation of truth to true (1) or false (0).
-
-    True values are 'y', 'yes', 't', 'true', 'on', and '1'; false values
-    are 'n', 'no', 'f', 'false', 'off', and '0'.  Raises ValueError if
-    'val' is anything else.
-    """
-    val = val.lower()
-    if val in ("y", "yes", "t", "true", "on", "1"):
-        return 1
-    elif val in ("n", "no", "f", "false", "off", "0"):
-        return 0
-    else:
-        raise ValueError("invalid truth value %r" % (val,))
+    AP_FRONTEND_INSTALLED = True
+except ImportError:
+    AP_FRONTEND_INSTALLED = False
 
 
 def view_as_pdf(
@@ -110,12 +99,14 @@ def view_as_pdf(
                             headers[key] = val
                             request.META[key] = val
 
-            with BundlerAssetContext(request=request) as asset_context:
-                response = func(request, *args, **kwargs)
-                if hasattr(response, "render") and callable(response.render):
-                    response = response.render()
-                if asset_context.requires_post_processing():
-                    response.content = asset_context.post_process(response.content.decode()).encode()
+            response = func(request, *args, **kwargs)
+            if hasattr(response, "render") and callable(response.render):
+                response = response.render()
+
+            if AP_FRONTEND_INSTALLED:
+                with BundlerAssetContext(request=request) as asset_context:
+                    if asset_context.requires_post_processing():
+                        response.content = asset_context.post_process(response.content.decode()).encode()
 
             if render_as_pdf:
                 url = request.build_absolute_uri(request.path if not url_path else url_path)

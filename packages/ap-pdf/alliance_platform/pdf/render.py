@@ -5,8 +5,6 @@ import subprocess
 import sys
 import tempfile
 
-from alliance_platform.frontend.bundler import get_bundler
-from alliance_platform.frontend.bundler.vite import ViteBundler
 from alliance_platform.pdf.render_process import process_request
 from alliance_platform.pdf.request_handlers import CustomRequestHandler
 from alliance_platform.pdf.request_handlers import DjangoRequestHandler
@@ -17,6 +15,15 @@ from alliance_platform.pdf.request_handlers import StaticHttpRequestHandler
 from alliance_platform.pdf.request_handlers import WhitelistDomainRequestHandler
 from alliance_platform.pdf.settings import ap_pdf_settings
 from django.conf import settings
+
+try:
+    from alliance_platform.frontend.bundler import get_bundler
+    from alliance_platform.frontend.bundler.vite import ViteBundler
+
+    AP_FRONTEND_INSTALLED = True
+except ImportError:
+    AP_FRONTEND_INSTALLED = False
+
 
 RENDERER_PROCESS = os.path.abspath(os.path.join(os.path.dirname(__file__), "render_process.py"))
 
@@ -36,9 +43,10 @@ def get_default_handlers() -> list[RequestHandler]:
     """
 
     whitelist_domains = [*ap_pdf_settings.WHITELIST_DOMAINS]
-    bundler = get_bundler()
-    if isinstance(bundler, ViteBundler) and bundler.is_development():
-        whitelist_domains.append(bundler.dev_server_url)
+    if AP_FRONTEND_INSTALLED:
+        bundler = get_bundler()
+        if isinstance(bundler, ViteBundler) and bundler.is_development():
+            whitelist_domains.append(bundler.dev_server_url)
 
     default_request_handlers = [
         StaticHttpRequestHandler(),
@@ -117,7 +125,7 @@ def render_pdf(
 
     context = {
         "source_url": url,
-        "handlers": [handler.serialize() for handler in handlers] if run_as_subprocess else handlers,
+        "handlers": ([handler.serialize() for handler in handlers] if run_as_subprocess else handlers),
         "request_meta": request_headers or {},
         "page_done_flag": page_done_flag,
         "page_done_timeout_msecs": page_done_timeout_msecs,
