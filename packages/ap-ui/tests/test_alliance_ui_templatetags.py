@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from typing import cast
+from urllib.parse import urlencode
 
 from alliance_platform.frontend.bundler.context import BundlerAssetContext
 from allianceutils.auth.permission import AmbiguousGlobalPermissionWarning
@@ -184,6 +185,37 @@ class UrlFilterPermTemplateTagsTestCase(TestCase):
             request.user = user1
             output = tpl.render(context)
             url = reverse(self.MULTIPLE_ARGS_URL, args=[user1.pk, 2, "abc123"])
+            self.assertTrue(f'href: "{url}"' in output)
+
+    def test_with_params(self):
+        user1 = self.get_privileged_user()
+        user2 = self.get_unprivileged_user()
+
+        with self.setup_overrides():
+            tpl = Template(
+                """
+            {% load react %}
+            {% load alliance_platform.ui %}
+            {% query_params strparam="test" user_id=user.pk as my_params %}
+            {% component "a" href=perm|url_with_perm:user.pk|with_params:my_params|with_perm_obj:user %}{% endcomponent %}
+            """
+            )
+
+            params_dict = {"strparam": "test", "user_id": user1.pk}
+
+            request = HttpRequest()
+            request.user = user2
+            request.session = SessionBase()
+            context = Context({"request": request, "user": user1, "perm": self.OBJECT_PERM_URL})
+            output = tpl.render(context)
+            self.assertEqual(output.strip(), "")
+            request.user = user1
+            output = tpl.render(context)
+            url = (
+                reverse(self.OBJECT_PERM_URL, args=[user1.pk]) + "?" + urlencode(params_dict)
+                # "&" is escaped in codegen
+            ).replace("&", r"\u0026")
+
             self.assertTrue(f'href: "{url}"' in output)
 
     def test_url_no_perm_check(self):

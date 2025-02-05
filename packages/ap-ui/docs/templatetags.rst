@@ -449,6 +449,12 @@ this for the props to be passed through:
 
         {% form_input field non_standard_widget=True %}
 
+``query_params``
+----------------
+
+Add a dictionary to the template context with keys set by arbitrary keyword arguments, to pass to the ``with_params`` filter. See :tfilter:`with_params`
+for usage example.
+
 Filters
 -------
 
@@ -538,6 +544,18 @@ Add kwargs to a :tfilter:`url_with_perm` or :tfilter:`url` filter.
 .. code-block:: html+django
 
     {% component "a" href="my_url_name"|url_with_perm|with_kwargs:my_kwargs %}Link{% endcomponent %}
+
+.. templatefilter:: with_params
+
+``with_params``
+--------------------
+
+Add query params to a :tfilter:`url_with_perm` or :tfilter:`url` filter.
+
+.. code-block:: html+django
+
+    {% query_params x=1 id=record.pk as my_query %}
+    {% Button href="my_url"|url_with_perm|with_query:my_query %}
 
 .. templatefilter:: with_perm_object
 

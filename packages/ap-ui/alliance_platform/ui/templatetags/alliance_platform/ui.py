@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import urlencode
 
 from allianceutils.auth.permission import reverse_if_probably_allowed
+from allianceutils.template import parse_tag_arguments
 from django import template
 from django.db.models import Model
 from django.http import HttpRequest
+from django.http import QueryDict
 from django.template import Context
 from django.urls import reverse
 
@@ -40,12 +43,14 @@ register_labeled_input(register)
 class NamedUrlDeferredProp(DeferredProp):
     """Used by ``url_with_perm`` and ``url`` filters to defer the resolution of a URL until rendering time.
 
-    This allows perm checks to occur and to omit the component from rendering if failed"""
+    This allows perm checks to occur and to omit the component from rendering if failed
+    """
 
     url_name: str
     check_perm: bool
     args: list[Any]
     kwargs: dict[str, Any]
+    params: dict[str, Any] | QueryDict | str
     object: Model | None
 
     def __init__(self, url_name, check_perm=False):
@@ -53,6 +58,7 @@ class NamedUrlDeferredProp(DeferredProp):
         self.check_perm = check_perm
         self.args = []
         self.kwargs = {}
+        self.params = {}
         self.object = None
         super().__init__()
 
@@ -65,15 +71,70 @@ class NamedUrlDeferredProp(DeferredProp):
     def add_kwargs(self, kwargs: dict[str, Any]):
         self.kwargs.update(kwargs)
 
+    def add_params(self, params: dict[str, Any]):
+        self.params.update(params)
+
     def resolve(self, context: Context):
         if self.check_perm:
             url = reverse_if_probably_allowed(
-                context["request"], self.url_name, object=self.object, args=self.args, kwargs=self.kwargs
+                context["request"],
+                self.url_name,
+                object=self.object,
+                args=self.args,
+                kwargs=self.kwargs,
             )
             if url is None:
                 raise OmitComponentFromRendering()
-            return url
-        return reverse(self.url_name, args=self.args, kwargs=self.kwargs)
+        else:
+            url = reverse(self.url_name, args=self.args, kwargs=self.kwargs)
+
+        if self.params:
+            if isinstance(self.params, str):
+                query_string = self.params
+            elif isinstance(self.params, QueryDict):
+                query_string = self.params.urlencode
+            else:
+                query_string = urlencode(self.params)
+
+            if not query_string.startswith("?"):
+                query_string = "?" + query_string
+
+            url += query_string
+
+        return url
+
+
+class QueryParamsNode(template.Node):
+    def __init__(
+        self,
+        params: dict[str, Any],
+        target_var=None,
+    ):
+        if not target_var:
+            raise template.TemplateSyntaxError("Specify variable name for query params to be passed as")
+        self.params = params
+        self.target_var = target_var
+
+    def render(self, context):
+        params = {key: value.resolve(context) for key, value in self.params.items()}
+        context[self.target_var] = params
+        return ""
+
+
+@register.tag("query_params")
+def query_params(parser: template.base.Parser, token: template.base.Token):
+    """Pass arbitrary keyword arguments to generate a dictionary with the corresponding keys.
+
+    Needs to be assigned a target var with ``{% query_params as variable %}`` to be
+    passed to a url.
+    """
+    _, kwargs, target_var = parse_tag_arguments(
+        parser,
+        token,
+        supports_as=True,
+    )
+
+    return QueryParamsNode(params=kwargs, target_var=target_var)
 
 
 @register.filter("url_with_perm")
@@ -108,6 +169,13 @@ def with_arg(value: NamedUrlDeferredProp, arg):
 def with_kwargs(value: NamedUrlDeferredProp, kwargs):
     """Add kwargs to a ``url_with_perm`` or ``url`` filter."""
     value.add_kwargs(kwargs)
+    return value
+
+
+@register.filter("with_params")
+def with_params(value: NamedUrlDeferredProp, kwargs):
+    """Add query parameters to a ``url_with_perm`` or ``url`` filter. Accepts a string, dict, or QueryDict."""
+    value.add_params(kwargs)
     return value
 
 
