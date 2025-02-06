@@ -78,8 +78,11 @@ class NamedUrlDeferredProp(DeferredProp):
             return
 
         if isinstance(params, str):
-            query_string = params
-        elif isinstance(params, QueryDict):
+            # converting string to a querydict first will perform basic safety checks (only checking
+            # that max number of fields is not exceeded, but still useful)
+            params = QueryDict(params)
+
+        if isinstance(params, QueryDict):
             query_string = params.urlencode()
         else:
             query_string = urlencode(params)
@@ -112,14 +115,14 @@ class NamedUrlDeferredProp(DeferredProp):
         return url
 
 
-class QueryParamsNode(template.Node):
+class DictNode(template.Node):
     def __init__(
         self,
         params: dict[str, Any],
         target_var=None,
     ):
         if not target_var:
-            raise template.TemplateSyntaxError("Specify variable name for query params to be passed as")
+            raise template.TemplateSyntaxError("Specify variable name for dict to be passed as")
         self.params = params
         self.target_var = target_var
 
@@ -129,12 +132,12 @@ class QueryParamsNode(template.Node):
         return ""
 
 
-@register.tag("query_params")
-def query_params(parser: template.base.Parser, token: template.base.Token):
+@register.tag("create_dict")
+def create_dict(parser: template.base.Parser, token: template.base.Token):
     """Pass arbitrary keyword arguments to generate a dictionary with the corresponding keys.
 
-    Needs to be assigned a target var with ``{% query_params as variable %}`` to be
-    passed to a url.
+    Needs to be assigned a target var with ``{% create_dict as variable %}`` to be
+    passed to another templatetag.
     """
     _, kwargs, target_var = parse_tag_arguments(
         parser,
@@ -142,7 +145,7 @@ def query_params(parser: template.base.Parser, token: template.base.Token):
         supports_as=True,
     )
 
-    return QueryParamsNode(params=kwargs, target_var=target_var)
+    return DictNode(params=kwargs, target_var=target_var)
 
 
 @register.filter("url_with_perm")

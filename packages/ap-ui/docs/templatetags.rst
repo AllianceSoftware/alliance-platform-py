@@ -449,11 +449,18 @@ this for the props to be passed through:
 
         {% form_input field non_standard_widget=True %}
 
-``query_params``
+.. templatetag:: create_dict
+
+``create_dict``
 ----------------
 
-Add a dictionary to the template context with keys set by arbitrary keyword arguments, to pass to the ``with_params`` filter. See :tfilter:`with_params`
-for usage example.
+Add a dictionary to the template context with keys set by arbitrary keyword arguments. Can be used to generate URL kwargs or
+query parameters to :tfilter:`url_with_perm` or :tfilter:`url`.
+
+.. code-block:: html+django
+
+    {% create_dict kwarg=2 id=record.pk as my_kwargs %}
+    {% Button href="my_url"|url_with_perm|with_kwargs:my_kwargs %}
 
 Filters
 -------
@@ -477,21 +484,32 @@ Usage:
 
 The above example will resolve the URL "my_url_name" with the argument ``2``.
 
-If you need multiple arguments you can use the ``with_arg`` filter:
+If you need multiple arguments you can use the :tfilter:`with_arg` filter:
 
 .. code-block:: html+django
 
     {% component "a" href="my_url_name"|url_with_perm:2|with_arg:"another arg" %}Link{% endcomponent %}
 
-To pass kwargs you can use the ``with_kwargs`` filter:
+To pass kwargs you can use the :tfilter:`with_kwargs` filter:
 
 .. code-block:: html+django
 
     {% component "a" href="my_url_name"|url_with_perm|with_kwargs:my_kwargs %}Link{% endcomponent %}
 
-Note that as there's no way to define a dictionary in the standard Django template language, you'll need to
-pass it in context.
+To pass query parameters you can use the :tfilter:`with_params` filter:
 
+.. code-block:: html+django
+
+    {% component "a" href="my_url_name"|url_with_perm|with_params:my_params %}Link{% endcomponent %}
+
+For both kwargs and params, you can either pass a dictionary through context, or generate one in the template
+using the :ttag:`create_dict` templatetag:
+
+.. code-block:: html+django
+
+    {% create_dict param=1 as my_query %}
+    {% create_dict kwarg=2 id=record.pk as my_kwargs %}
+    {% Button href="my_url"|url_with_perm|with_query:my_query|with_kwargs:my_kwargs %}
 
 To do object level permission checks use the ``with_perm_obj`` filter to pass through the object:
 
@@ -552,9 +570,12 @@ Add kwargs to a :tfilter:`url_with_perm` or :tfilter:`url` filter.
 
 Add query params to a :tfilter:`url_with_perm` or :tfilter:`url` filter.
 
+Accepts a dictionary, ``QueryDict``, or a string (which will be parsed as a ``QueryDict``). A dictionary can be generated in the template
+with the :ttag:`create_dict` templatetag, or passed directly to context in the corresponding view.
+
 .. code-block:: html+django
 
-    {% query_params x=1 id=record.pk as my_query %}
+    {% create_dict x=1 id=record.pk as my_query %}
     {% Button href="my_url"|url_with_perm|with_query:my_query %}
 
 .. templatefilter:: with_perm_object
