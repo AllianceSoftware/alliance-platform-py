@@ -70,6 +70,10 @@ multiproject_projects = {
         "name": "UI",
         "path": "../packages/ap-ui/docs",
     },
+    "pdf": {
+        "name": "PDF",
+        "path": "../packages/ap-pdf/docs",
+    },
 }
 
 # -- Options for Intersphinx extension ---------------------------------------
@@ -90,6 +94,7 @@ dev_port_map = {
     "storage": 56678,
     "audit": 56679,
     "ui": 56680,
+    "pdf": 56681,
 }
 
 
@@ -112,6 +117,7 @@ intersphinx_mapping = {
     "alliance-platform-storage": get_project_mapping("storage"),
     "alliance-platform-audit": get_project_mapping("audit"),
     "alliance-platform-ui": get_project_mapping("ui"),
+    "alliance-platform-pdf": get_project_mapping("pdf"),
     "django": (
         "https://docs.djangoproject.com/en/stable/",
         ("https://docs.djangoproject.com/en/stable/_objects/"),

@@ -20,8 +20,10 @@ PROJECT=audit sphinx-autobuild --port=56679 -a --watch packages/ap-audit/ docs _
 pid_audit=$!
 PROJECT=ui sphinx-autobuild --port=56680 -a --watch packages/ap-ui/ docs _docs-build/ui &
 pid_ui=$!
+PROJECT=pdf sphinx-autobuild --port=56681 -a --watch packages/ap-pdf/ docs _docs-build/pdf &
+pid_pdf=$!
 sphinx-autobuild --port=56675 --open-browser -a --watch packages/ap-core/ docs _docs-build/core &
 pid_core=$!
 
 # Wait for all background processes to finish
-wait $pid_core $pid_frontend $pid_codegen $pid_storage $pid_audit $pid_ui
+wait $pid_core $pid_frontend $pid_codegen $pid_storage $pid_audit $pid_ui $pid_pdf
