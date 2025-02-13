@@ -1,11 +1,14 @@
 from contextlib import contextmanager
 from typing import cast
+from urllib.parse import urlencode
 
 from alliance_platform.frontend.bundler.context import BundlerAssetContext
 from allianceutils.auth.permission import AmbiguousGlobalPermissionWarning
 from allianceutils.tests.util import warning_filter
 from django.contrib.sessions.backends.base import SessionBase
+from django.core.exceptions import TooManyFieldsSent
 from django.http import HttpRequest
+from django.http import QueryDict
 from django.template import Context
 from django.template import Template
 from django.test import TestCase
@@ -31,7 +34,7 @@ from .test_utils.bundler import bypass_frontend_asset_registry
         "rules.permissions.ObjectPermissionBackend",
     ),
 )
-@override_settings(ROOT_URLCONF="test_alliance_platform_ui.urls")
+@override_settings(ROOT_URLCONF="test_alliance_platform_ui.urls", DATA_UPLOAD_MAX_NUMBER_FIELDS=10)
 @warning_filter("ignore", category=AmbiguousGlobalPermissionWarning)
 class UrlFilterPermTemplateTagsTestCase(TestCase):
     PERM = "test_utils.link_is_allowed"
@@ -185,6 +188,83 @@ class UrlFilterPermTemplateTagsTestCase(TestCase):
             output = tpl.render(context)
             url = reverse(self.MULTIPLE_ARGS_URL, args=[user1.pk, 2, "abc123"])
             self.assertTrue(f'href: "{url}"' in output)
+
+    def test_with_params(self):
+        user1 = self.get_privileged_user()
+        user2 = self.get_unprivileged_user()
+
+        with self.setup_overrides():
+            tpl = Template(
+                """
+            {% load react %}
+            {% load alliance_platform.ui %}
+            {% create_dict templateparam="test" user_id=user.pk as my_params %}
+            {% component "a" href=perm|url_with_perm:user.pk|with_params:context_params|with_params:str_params|with_params:my_params|with_perm_obj:user %}{% endcomponent %}
+            """
+            )
+
+            context_params_dict = {"contextparam": "test"}
+            context_params_str = "&stringparam=test"
+            template_params_querydict = QueryDict(f"templateparam=test&user_id={user1.pk}")
+
+            params_dict = {
+                **context_params_dict,
+                "stringparam": "test",
+                **template_params_querydict.dict(),
+            }
+
+            request = HttpRequest()
+            request.user = user2
+            request.session = SessionBase()
+            context = Context(
+                {
+                    "request": request,
+                    "user": user1,
+                    "perm": self.OBJECT_PERM_URL,
+                    "context_params": context_params_dict,
+                    "str_params": context_params_str,
+                }
+            )
+            output = tpl.render(context)
+            self.assertEqual(output.strip(), "")
+            request.user = user1
+            output = tpl.render(context)
+            url = (
+                reverse(self.OBJECT_PERM_URL, args=[user1.pk]) + "?" + urlencode(params_dict)
+                # "&" is escaped in codegen
+            ).replace("&", r"\u0026")
+
+            self.assertTrue(f'href: "{url}"' in output)
+
+    def test_reject_incorrect_params(self):
+        user1 = self.get_privileged_user()
+        user2 = self.get_unprivileged_user()
+
+        with self.setup_overrides():
+            tpl = Template(
+                """
+            {% load react %}
+            {% load alliance_platform.ui %}
+            {% create_dict templateparam="test" user_id=user.pk as my_params %}
+            {% component "a" href=perm|url_with_perm:user.pk|with_params:context_params_str|with_perm_obj:user %}{% endcomponent %}
+            """
+            )
+
+            context_params_str = "&".join([f"param{n}=test" for n in range(11)])
+
+            request = HttpRequest()
+            request.user = user2
+            request.session = SessionBase()
+            context = Context(
+                {
+                    "request": request,
+                    "user": user1,
+                    "perm": self.OBJECT_PERM_URL,
+                    "context_params_str": context_params_str,
+                }
+            )
+            with self.assertRaises(TooManyFieldsSent):
+                tpl.render(context)
 
     def test_url_no_perm_check(self):
         user1 = self.get_privileged_user()
