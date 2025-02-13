@@ -487,6 +487,7 @@ class ComponentSourceCodeGenerator:
         self.bundler = node.bundler
         self._writer = TypescriptSourceFileWriter(
             resolve_import_url=self._resolve_import_url,
+            path_base=self.bundler.root_dir,
         )
         self._requires_wrapper_component = False
         self._used_identifiers = []
