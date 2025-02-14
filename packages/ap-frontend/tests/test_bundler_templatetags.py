@@ -260,7 +260,7 @@ class TestBundlerTemplateTags(SimpleTestCase):
             (
                 "test_production_bundler",
                 '<script src="/static/assets/Button-def456.js" type="module"></script>\n'
-                f'<style>{inline_css_prod[fixtures_dir / "build_test/assets/Button-abc123.css"]}</style>',
+                f"<style>{inline_css_prod[fixtures_dir / 'build_test/assets/Button-abc123.css']}</style>",
             ),
         ]:
             with self.subTest(bundler_name=bundler_name):
@@ -573,8 +573,7 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
             mock_method.return_value = container_id
             for context_vars, expected_output in test_strings:
                 tpl = Template(
-                    "{% load react %}"
-                    "{% component 'Component' props=props %}{{ children }}{% endcomponent %}"
+                    "{% load react %}{% component 'Component' props=props %}{{ children }}{% endcomponent %}"
                 )
                 context = Context(context_vars)
                 contents = tpl.render(context)
@@ -598,7 +597,7 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
             container_id = "C1"
             mock_method.return_value = container_id
             tpl = Template(
-                "{% load react %}" "{% component 'Component' description=help_text %}{% endcomponent %}"
+                "{% load react %}{% component 'Component' description=help_text %}{% endcomponent %}"
             )
             context = Context(
                 {
@@ -738,7 +737,7 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
         ):
             with BundlerAssetContext(frontend_asset_registry=bypass_frontend_asset_registry):
                 self.assertSerializedPropsEqual(
-                    "{% load react %}" "{% component 'DatePicker' date=date %}{% endcomponent %}",
+                    "{% load react %}{% component 'DatePicker' date=date %}{% endcomponent %}",
                     {
                         "date": datetime.date(2022, 12, 1),
                     },
@@ -746,7 +745,7 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
                 )
 
                 self.assertSerializedPropsEqual(
-                    "{% load react %}" "{% component 'DateTimePicker' datetime=datetime %}{% endcomponent %}",
+                    "{% load react %}{% component 'DateTimePicker' datetime=datetime %}{% endcomponent %}",
                     {
                         "datetime": datetime.datetime(2022, 12, 1, 12, 10, 10, 213000),
                     },
@@ -754,7 +753,7 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
                 )
 
                 self.assertSerializedPropsEqual(
-                    "{% load react %}" "{% component 'DateTimePicker' datetime=datetime %}{% endcomponent %}",
+                    "{% load react %}{% component 'DateTimePicker' datetime=datetime %}{% endcomponent %}",
                     {
                         "datetime": make_aware(datetime.datetime(2022, 12, 1, 12, 10, 10, 50000)),
                     },
@@ -773,7 +772,7 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
         ):
             with BundlerAssetContext(frontend_asset_registry=bypass_frontend_asset_registry):
                 self.assertSerializedPropsEqual(
-                    "{% load react %}" "{% component 'Time' time=time %}{% endcomponent %}",
+                    "{% load react %}{% component 'Time' time=time %}{% endcomponent %}",
                     {
                         "time": datetime.time(12, 30, 15, 5000),
                     },

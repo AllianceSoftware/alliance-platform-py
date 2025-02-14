@@ -198,7 +198,7 @@ class CodegenRegistry:
         if not cache_key:
             raise ValueError("Registration has no cache key")
         class_id = f"{registration.__class__.__module__}.{registration.__class__.__qualname__}"
-        return f'{class_id}.{cache_key["registration_id"]}'
+        return f"{class_id}.{cache_key['registration_id']}"
 
     def has_dependencies_changed(self, registration: CodegenRegistration, stats: CodegenStats) -> bool:
         cache_key = registration.get_cache_key()
