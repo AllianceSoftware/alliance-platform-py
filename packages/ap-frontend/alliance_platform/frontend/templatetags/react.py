@@ -487,6 +487,7 @@ class ComponentSourceCodeGenerator:
         self.bundler = node.bundler
         self._writer = TypescriptSourceFileWriter(
             resolve_import_url=self._resolve_import_url,
+            path_base=self.bundler.root_dir,
         )
         self._requires_wrapper_component = False
         self._used_identifiers = []
@@ -1059,7 +1060,7 @@ def react_refresh_preamble():
         # Indentation level here chose to generate prettier HTML source ;)
         f"""
     <script type="module">
-      import RefreshRuntime from '{bundler.get_url('@react-refresh')}';
+      import RefreshRuntime from '{bundler.get_url("@react-refresh")}';
 
       RefreshRuntime.injectIntoGlobalHook(window)
       window.$RefreshReg$ = () => {{}}

@@ -570,9 +570,7 @@ class TypescriptPrinterTestCase(SimpleTestCase):
             (None, "<Wrapper element={\n/* Leading comment */\n<Inner />} />"),
             (
                 Identifier("createElement"),
-                'createElement(Wrapper, {"element": createElement(\n'
-                "/* Leading comment */\n"
-                "Inner, {})})",
+                'createElement(Wrapper, {"element": createElement(\n/* Leading comment */\nInner, {})})',
             ),
         ]
         for jsx_transform, expected in tests:
