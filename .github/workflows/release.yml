@@ -19,7 +19,8 @@ jobs:
         with:
           python-version: 3.11
           cache: true
-
+      - name: Install project
+        run: pdm install -d
       - name: Setup Node.js 20.x
         uses: actions/setup-node@v3
         with:
