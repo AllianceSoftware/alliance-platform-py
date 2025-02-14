@@ -23,6 +23,7 @@ dev = [
   "mypy>=1.3",
   "packaging",
   "psycopg2",
+  "requests",
   "rules",
   "types-Werkzeug",
   "types-beautifulsoup4",
@@ -89,7 +90,7 @@ test = { composite = [
   "storage-test",
   "audit-test",
   "ui-test",
-  "pdf-test"
+  "pdf-test",
 ], keep_going = true }
 
 mypy = { composite = [
