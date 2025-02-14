@@ -1,5 +1,11 @@
 # alliance-platform-frontend
 
+## 0.0.19
+
+### Patch Changes
+
+- 6236d24: Fix usages where bundler root directory does not match the default project dir (e.g. in a mono-repo)
+
 ## 0.0.18
 
 ### Patch Changes
