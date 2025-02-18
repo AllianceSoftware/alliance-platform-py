@@ -53,8 +53,14 @@ class AuditLogContext(TypedDict):
     view: AuditLogView
 
 
+# annotate with obscure name to avoid conflicts
+name_annotation = "__audit_log_user_name"
+
+
 def get_audit_user_choices(*args, **kwargs):
-    return get_user_model()._meta.base_manager.annotate(name=ap_audit_settings.USERNAME_FORMAT)
+    return get_user_model()._meta.base_manager.annotate(
+        **{name_annotation: ap_audit_settings.USERNAME_FORMAT}
+    )
 
 
 def get_model_data(event: AuditEventProtocol, context: AuditLogContext):
@@ -145,7 +151,9 @@ def generate_serialized_audit_log(event_list: Iterable[AuditEventProtocol], cont
         event_records_by_id[registration_hash] = by_id
         for record in by_id.values():
             extract_user_id(record)
-    cache_users = dict(list(get_audit_user_choices().filter(pk__in=user_ids).values_list("pk", "name")))
+    cache_users = dict(
+        list(get_audit_user_choices().filter(pk__in=user_ids).values_list("pk", name_annotation))
+    )
 
     def get_user_label(id):
         if id is None:
@@ -282,10 +290,11 @@ def filter_audit_log(request: HttpRequest, queryset: QuerySet, view: AuditLogVie
 
 
 def filter_users(request: HttpRequest, queryset: QuerySet, **kwargs):
-    search_fields = ["first_name", "last_name"]
+    search_fields = [name_annotation]
     name = request.GET.get("name")
     if not name:
         return queryset
+    queryset = queryset.annotate(**{name_annotation: ap_audit_settings.USERNAME_FORMAT})
     qs_filter = Q()
     for name_component in filter(bool, name.split(" ")):
         name_filter = Q()

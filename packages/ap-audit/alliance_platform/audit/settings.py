@@ -1,8 +1,9 @@
 from typing import TypedDict
 
 from alliance_platform.base_settings import AlliancePlatformSettingsBase
+from django.db.models import Expression
+from django.db.models import F
 from django.db.models import Value
-from django.db.models.expressions import Func
 from django.db.models.functions import Concat
 
 
@@ -30,7 +31,7 @@ class AlliancePlatformAuditSettingsType(TypedDict, total=False):
     #: The SQL function used to generate the display name for users in audit logs. Defaults to ``Concat("first_name", Value(" "), "last_name")``.
     #: If your user model does not include ``first_name`` and ``last_name`` fields, you will need to change
     #: this setting.
-    USERNAME_FORMAT: Func | None
+    USERNAME_FORMAT: Expression | F | None
     #: Whether to include IP address in context logs. make sure you take GDPR into consideration (recording without disclosure
     #: is a violation; ie. minimal: your site need to have a privacy statement somewhere.). Defaults to ``False``.
     TRACK_IP_ADDRESS: bool | None
@@ -50,7 +51,7 @@ class AlliancePlatformAuditSettings(AlliancePlatformSettingsBase):
     #: The SQL function used to generate the display name for users in audit logs. Defaults to ``Concat("first_name", Value(" "), "last_name")``.
     #: If your user model does not include ``first_name`` and ``last_name`` fields, you will need to change
     #: this setting.
-    USERNAME_FORMAT: Func
+    USERNAME_FORMAT: Expression | F
     #: Whether to include IP address in context logs. make sure you take GDPR into consideration (recording without disclosure
     #: is a violation; ie. minimal: your site need to have a privacy statement somewhere.). Defaults to ``False``.
     TRACK_IP_ADDRESS: bool
