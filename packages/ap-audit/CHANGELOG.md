@@ -1,5 +1,11 @@
 # alliance-platform-audit
 
+## 0.0.3
+
+### Patch Changes
+
+- 5485ea2: Support User records with a 'name' field and no 'first_name' & 'last_name' fields
+
 ## 0.0.2
 
 ### Patch Changes
