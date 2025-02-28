@@ -23,6 +23,7 @@ Follow these steps:
 * Replace any imports from ``common_audit.templatetags.audit`` with imports from ``alliance_platform.audit.templatetags.alliance_platform.audit``.
 * Replace all other imports from ``common_audit`` with imports from ``alliance_platform.audit``.
 * Replace instances of ``{% load audit %}`` in Django templates with ``{% load alliance_platform.audit %}``
+* Replace ``common_audit`` with ``alliance_platform_audit`` in ``PermissionMatrix.csv``
 
 Frontend
 ~~~~~~~~

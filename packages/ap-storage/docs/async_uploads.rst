@@ -92,7 +92,7 @@ To make it the default for fields set the :setting:`STORAGES <django:STORAGES>` 
 
     STORAGES = {
         "default": {
-            "BACKEND": "alliance_platform.async_uploads.storage.azure.AzureAsyncUploadStorage"
+            "BACKEND": "alliance_platform.storage.async_uploads.storage.azure.AzureAsyncUploadStorage"
         },
     }
 
@@ -108,7 +108,7 @@ To make it the default for fields set the :setting:`STORAGES <django:STORAGES>` 
 
     STORAGES = {
         "default": {
-            "BACKEND": "alliance_platform.async_uploads.storage.filesystem.FileSystemAsyncUploadStorage"
+            "BACKEND": "alliance_platform.storage.async_uploads.storage.filesystem.FileSystemAsyncUploadStorage"
         },
     }
 

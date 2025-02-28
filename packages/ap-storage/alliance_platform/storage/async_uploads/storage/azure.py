@@ -1,3 +1,4 @@
+from datetime import datetime
 from datetime import timedelta
 from typing import Any
 
@@ -55,13 +56,23 @@ class AzureAsyncUploadStorage(AzureStorage, AsyncUploadStorage):
         """
         # fields = fields.copy() if fields else {}
         # conditions = conditions.copy() if conditions else {}
+        generate_blob_kwargs = {}
+        # one of account_key or user_delegation_key must be passed; depending on auth method used will depend
+        # whether `account_key` is set or not
+        if self.account_key:
+            generate_blob_kwargs["account_key"] = self.account_key
+        else:
+            generate_blob_kwargs["user_delegation_key"] = self.get_user_delegation_key(
+                # internally this gets compared to a offset-naive date so we have to pass the same
+                datetime.utcnow() + timedelta(seconds=expire)
+            )
         credential = generate_blob_sas(
             self.account_name,
             self.azure_container,
             name,
-            account_key=self.account_key,
             permission=BlobSasPermissions(create=True),
             expiry=timezone.now() + timedelta(seconds=expire),
+            **generate_blob_kwargs,
         )
         container_blob_url = self.client.get_blob_client(name).url
         return {"url": BlobClient.from_blob_url(container_blob_url, credential=credential).url, "fields": {}}
