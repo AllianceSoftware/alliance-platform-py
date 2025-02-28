@@ -58,7 +58,7 @@ class AzureAsyncUploadStorage(AzureStorage, AsyncUploadStorage):
         # conditions = conditions.copy() if conditions else {}
         generate_blob_kwargs = {}
         # one of account_key or user_delegation_key must be passed; depending on auth method used will depend
-        # whhether `account_key` is set or not
+        # whether `account_key` is set or not
         if self.account_key:
             generate_blob_kwargs["account_key"] = self.account_key
         else:
