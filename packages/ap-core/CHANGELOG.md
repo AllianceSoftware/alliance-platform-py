@@ -1,5 +1,11 @@
 # alliance-platform-core
 
+## 0.0.5
+
+### Patch Changes
+
+- 8085e37: Import strtobool function from deprecated distutils - implemented in [fc199c0](https://github.com/AllianceSoftware/alliance-platform-py/commit/fc199c0ce9f0e5599f740a1ececcc5d3d6c88142)
+
 ## 0.0.4
 
 ### Patch Changes
