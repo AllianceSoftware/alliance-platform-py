@@ -1,8 +1,9 @@
 import json
 
-from alliance_platform.server_choices import server_choices
-from alliance_platform.server_choices.form import ServerChoicesSelectWidget
-from alliance_platform.server_choices.register import ServerChoicesRegistry
+from alliance_platform.server_choices.class_handlers.form import ServerChoicesSelectWidget
+from alliance_platform.server_choices.decorators import server_choices
+from alliance_platform.server_choices.field_registry import ServerChoicesRegistry
+from alliance_platform.server_choices.settings import ap_server_choices_settings
 from alliance_platform.server_choices.views import ServerChoicesView
 from django.core.exceptions import ImproperlyConfigured
 from django.core.exceptions import ObjectDoesNotExist
@@ -12,21 +13,31 @@ from django.forms.widgets import RadioSelect
 from django.http import HttpRequest
 from django.http import QueryDict
 from django.test import TestCase
+from django.test.client import RequestFactory
 from django_filters import FilterSet
 from django_filters import ModelMultipleChoiceFilter
 from django_filters import filters
-from rest_framework.settings import api_settings
-from rest_framework.test import APIRequestFactory
-from rest_framework.test import force_authenticate
+from rest_framework.serializers import ModelSerializer
 from test_alliance_platform_server_choices.factory import AppPaymentMethodFactory
 from test_alliance_platform_server_choices.factory import AppPlazaFactory
 from test_alliance_platform_server_choices.factory import AppShopFactory
+from test_alliance_platform_server_choices.factory import UserProfileFactory
 from test_alliance_platform_server_choices.models import PaymentMethod
 from test_alliance_platform_server_choices.models import Plaza
 from test_alliance_platform_server_choices.models import Shop
 from test_alliance_platform_server_choices.models import ShopCategory
-from xenopus_frog_app.base import XenopusFrogAppModelSerializer
-from xenopus_frog_app.tests.user_type_defs import AppAdminProfileFactory
+
+
+class AuthenticatedRequestFactory(RequestFactory):
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+
+    def get(self, *args, **kwargs):
+        request = super().get(*args, **kwargs)
+        if self.user:
+            request.user = self.user
+        return request
 
 
 def get_choices(registration, request):
@@ -58,7 +69,7 @@ def serialize(registration, item_or_items, request):
 
 
 def filter_choices(registration, choices, request):
-    query = request.query_params.get("query")
+    query = request.GET.get("query")
     matched_choices = []
     query = [keyword.lower() for keyword in filter(bool, query.split(" "))]
     for key, label in choices:
@@ -72,7 +83,7 @@ class TestSerializerServerChoices(TestCase):
         with self.assertRaisesRegex(ImproperlyConfigured, "do not exist on"):
 
             @server_choices(["plaza"], registry=ServerChoicesRegistry("test"))
-            class TestShopSerializer1(XenopusFrogAppModelSerializer):
+            class TestShopSerializer1(ModelSerializer):
                 class Meta:
                     model = Shop
                     fields = ["name"]
@@ -82,7 +93,7 @@ class TestSerializerServerChoices(TestCase):
 
             @server_choices(["plaza"], registry=registry)
             @server_choices(["plaza"], registry=registry)
-            class TestShopSerializer2(XenopusFrogAppModelSerializer):
+            class TestShopSerializer2(ModelSerializer):
                 class Meta:
                     model = Shop
                     fields = ["name", "plaza"]
@@ -92,7 +103,7 @@ class TestSerializerServerChoices(TestCase):
 
         # No fields specified; should extract all related fields
         @server_choices(registry=registry)
-        class TestShopSerializer(XenopusFrogAppModelSerializer):
+        class TestShopSerializer(ModelSerializer):
             class Meta:
                 model = Shop
                 fields = [
@@ -120,7 +131,7 @@ class TestSerializerServerChoices(TestCase):
         registry = ServerChoicesRegistry("test")
 
         @server_choices(search_fields=["name"], registry=registry)
-        class TestShopSerializer(XenopusFrogAppModelSerializer):
+        class TestShopSerializer(ModelSerializer):
             class Meta:
                 model = Shop
                 fields = [
@@ -128,24 +139,30 @@ class TestSerializerServerChoices(TestCase):
                 ]
 
         request = HttpRequest()
-        self.assertEqual(list(registry.server_choices_registry.values())[0].source, TestShopSerializer)
+        self.assertEqual(
+            list(registry.server_choices_registry.values())[0].source,
+            TestShopSerializer,
+        )
         payment_methods_field = list(registry.server_choices_registry.values())[0].fields[
             "payment_methods_accepted"
         ]
-        self.assertEqual(payment_methods_field.perm, "test_alliance_platform_server_choices.shop_create")
+        self.assertEqual(
+            payment_methods_field.perm,
+            "test_alliance_platform_server_choices.shop_create",
+        )
         self.assertEqual(list(payment_methods_field.get_choices(request)), payment_methods)
         payment_method = payment_methods[0]
         self.assertEqual(payment_methods_field.get_record(payment_method.pk, request), payment_method)
         types = payment_methods[:3]
-        self.assertEqual(list(payment_methods_field.get_records([t.pk for t in types], request)), types)
+        self.assertEqual(
+            list(payment_methods_field.get_records([t.pk for t in types], request)),
+            types,
+        )
         self.assertEqual(
             payment_methods_field.serialize(types, request),
             [{"key": record.pk, "label": str(record)} for record in types],
         )
-        # query_params is only on DRF request but can't easily create that... even APIRequestFactory from
-        # DRF doesn't return it (it gets promoted once it goes through the view layer). Just fake it here -
-        # all we care about is query_params
-        request.query_params = QueryDict("keywords=visa")
+        request.GET = QueryDict("keywords=visa")
         self.assertEqual(
             list(payment_methods_field.filter_choices(payment_methods_field.get_choices(request), request)),
             list(PaymentMethod.objects.filter(name__icontains="visa")),
@@ -165,7 +182,7 @@ class TestSerializerServerChoices(TestCase):
         registry = ServerChoicesRegistry("test")
 
         @server_choices(search_fields=["name", "plaza__name"], registry=registry)
-        class TestPaymentMethodSerializer(XenopusFrogAppModelSerializer):
+        class TestPaymentMethodSerializer(ModelSerializer):
             class Meta:
                 model = PaymentMethod
                 fields = [
@@ -178,7 +195,10 @@ class TestSerializerServerChoices(TestCase):
             TestPaymentMethodSerializer,
         )
         shops_field = list(registry.server_choices_registry.values())[0].fields["shops"]
-        self.assertEqual(shops_field.perm, "test_alliance_platform_server_choices.paymentmethod_create")
+        self.assertEqual(
+            shops_field.perm,
+            "test_alliance_platform_server_choices.paymentmethod_create",
+        )
         shops = [shop1, shop2, shop3]
         self.assertEqual(list(shops_field.get_choices(request)), shops)
         self.assertEqual(shops_field.get_record(shop1.pk, request), shop1)
@@ -188,21 +208,18 @@ class TestSerializerServerChoices(TestCase):
             shops_field.serialize(sub_shops, request),
             [{"key": record.pk, "label": str(record)} for record in sub_shops],
         )
-        # query_params is only on DRF request but can't easily create that... even APIRequestFactory from
-        # DRF doesn't return it (it gets promoted once it goes through the view layer). Just fake it here -
-        # all we care about is query_params
-        request.query_params = QueryDict("keywords=blackburn")
+        request.GET = QueryDict("keywords=blackburn")
         self.assertEqual(
             list(shops_field.filter_choices(shops_field.get_choices(request), request)),
             [shop1],
         )
-        request.query_params = QueryDict("keywords=chadstone")
+        request.GET = QueryDict("keywords=chadstone")
         self.assertEqual(
             list(shops_field.filter_choices(shops_field.get_choices(request), request)),
             [shop2, shop3],
         )
         # multiple keywords; this should match plaza title and shop name
-        request.query_params = QueryDict("keywords=chadstone wiley")
+        request.GET = QueryDict("keywords=chadstone wiley")
         self.assertEqual(
             list(shops_field.filter_choices(shops_field.get_choices(request), request)),
             [shop2],
@@ -212,7 +229,7 @@ class TestSerializerServerChoices(TestCase):
         registry = ServerChoicesRegistry("test")
 
         @server_choices(["category"], registry=registry)
-        class TestShopSerializer(XenopusFrogAppModelSerializer):
+        class TestShopSerializer(ModelSerializer):
             class Meta:
                 model = Shop
                 fields = [
@@ -220,7 +237,10 @@ class TestSerializerServerChoices(TestCase):
                 ]
 
         request = HttpRequest()
-        self.assertEqual(list(registry.server_choices_registry.values())[0].source, TestShopSerializer)
+        self.assertEqual(
+            list(registry.server_choices_registry.values())[0].source,
+            TestShopSerializer,
+        )
         category_field = list(registry.server_choices_registry.values())[0].fields["category"]
         self.assertEqual(category_field.perm, "test_alliance_platform_server_choices.shop_create")
         self.assertEqual(category_field.get_choices(request), ShopCategory.choices)
@@ -232,10 +252,7 @@ class TestSerializerServerChoices(TestCase):
             category_field.serialize(choices, request),
             [{"key": key, "label": label} for (key, label) in choices],
         )
-        # query_params is only on DRF request but can't easily create that... even APIRequestFactory from
-        # DRF doesn't return it (it gets promoted once it goes through the view layer). Just fake it here -
-        # all we care about is query_params
-        request.query_params = QueryDict("keywords=grocery")
+        request.GET = QueryDict("keywords=grocery")
         self.assertEqual(
             category_field.filter_choices(category_field.get_choices(request), request),
             [ShopCategory.choices[0]],
@@ -249,16 +266,21 @@ class TestSerializerServerChoices(TestCase):
         AppShopFactory()
 
         @server_choices(
-            ["category"], registry=registry, get_choices=Shop.objects.filter(category=ShopCategory.DEPARTMENT)
+            ["category"],
+            registry=registry,
+            get_choices=Shop.objects.filter(category=ShopCategory.DEPARTMENT),
         )
-        class TestShopSerializer(XenopusFrogAppModelSerializer):
+        class TestShopSerializer(ModelSerializer):
             class Meta:
                 model = Shop
                 fields = [
                     "category",
                 ]
 
-        self.assertEqual(list(registry.server_choices_registry.values())[0].source, TestShopSerializer)
+        self.assertEqual(
+            list(registry.server_choices_registry.values())[0].source,
+            TestShopSerializer,
+        )
         category_field = list(registry.server_choices_registry.values())[0].fields["category"]
         request = HttpRequest()
         self.assertCountEqual(
@@ -278,7 +300,7 @@ class TestSerializerServerChoices(TestCase):
             filter_choices=filter_choices,
             registry=registry,
         )
-        class TestShopSerializer(XenopusFrogAppModelSerializer):
+        class TestShopSerializer(ModelSerializer):
             class Meta:
                 model = Shop
                 fields = [
@@ -287,7 +309,10 @@ class TestSerializerServerChoices(TestCase):
 
         upper_choices = [[f"PK-{key}", label.upper()] for key, label in ShopCategory.choices]
         request = HttpRequest()
-        self.assertEqual(list(registry.server_choices_registry.values())[0].source, TestShopSerializer)
+        self.assertEqual(
+            list(registry.server_choices_registry.values())[0].source,
+            TestShopSerializer,
+        )
         category_field = list(registry.server_choices_registry.values())[0].fields["category"]
         self.assertEqual(
             category_field.get_choices(request),
@@ -298,15 +323,14 @@ class TestSerializerServerChoices(TestCase):
             (f"PK-{ShopCategory.GROCERY.value}", ShopCategory.GROCERY.label.upper()),
         )
         self.assertEqual(
-            category_field.get_records([t[0] for t in ShopCategory.choices], request), upper_choices
+            category_field.get_records([t[0] for t in ShopCategory.choices], request),
+            upper_choices,
         )
         self.assertEqual(
-            category_field.serialize(category_field.get_choices(request), request), upper_choices
+            category_field.serialize(category_field.get_choices(request), request),
+            upper_choices,
         )
-        # query_params is only on DRF request but can't easily create that... even APIRequestFactory from
-        # DRF doesn't return it (it gets promoted once it goes through the view layer). Just fake it here -
-        # all we care about is query_params
-        request.query_params = QueryDict("query=grocery")
+        request.GET = QueryDict("query=grocery")
         self.assertEqual(
             category_field.filter_choices(category_field.get_choices(request), request),
             [upper_choices[0]],
@@ -320,7 +344,7 @@ class TestSerializerServerChoices(TestCase):
             pagination_class=None,
             registry=registry,
         )
-        class TestShopSerializer(XenopusFrogAppModelSerializer):
+        class TestShopSerializer(ModelSerializer):
             class Meta:
                 model = Shop
                 fields = [
@@ -328,14 +352,13 @@ class TestSerializerServerChoices(TestCase):
                 ]
 
         category_field = list(registry.server_choices_registry.values())[0].fields["category"]
-        user = AppAdminProfileFactory(is_superuser=True)
-        factory = APIRequestFactory()
+        user = UserProfileFactory(is_superuser=True)
+        factory = AuthenticatedRequestFactory(user=user)
         request = factory.get(
-            f"/?class_name={list(registry.server_choices_registry.keys())[0]}&field_name=category"
+            f"/?class_name={list(registry.server_choices_registry.keys())[0]}&field_name=category",
         )
-        force_authenticate(request, user=user)
         view = ServerChoicesView.as_view(registry=registry)
-        response = view(request).render()
+        response = view(request)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             json.loads(response.content.decode()),
@@ -345,8 +368,7 @@ class TestSerializerServerChoices(TestCase):
         request = factory.get(
             f"/?class_name={list(registry.server_choices_registry.keys())[0]}&field_name=category&pk={ShopCategory.GROCERY.value}"
         )
-        force_authenticate(request, user=user)
-        response = view(request).render()
+        response = view(request)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             json.loads(response.content.decode()),
@@ -359,8 +381,7 @@ class TestSerializerServerChoices(TestCase):
         request = factory.get(
             f"/?class_name={list(registry.server_choices_registry.keys())[0]}&field_name=category&pks={ShopCategory.GROCERY.value}&pks={ShopCategory.DEPARTMENT.value}"
         )
-        force_authenticate(request, user=user)
-        response = view(request).render()
+        response = view(request)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             json.loads(response.content.decode()),
@@ -386,7 +407,7 @@ class TestSerializerServerChoices(TestCase):
             ["plaza"],
             registry=registry,
         )
-        class TestShopSerializer(XenopusFrogAppModelSerializer):
+        class TestShopSerializer(ModelSerializer):
             class Meta:
                 model = Shop
                 fields = [
@@ -394,19 +415,19 @@ class TestSerializerServerChoices(TestCase):
                 ]
 
         plaza_field = list(registry.server_choices_registry.values())[0].fields["plaza"]
-        user = AppAdminProfileFactory(is_superuser=True)
-        factory = APIRequestFactory()
+        user = UserProfileFactory(is_superuser=True)
+        factory = AuthenticatedRequestFactory(user=user)
         request = factory.get(
-            f"/?class_name={list(registry.server_choices_registry.keys())[0]}&field_name=plaza"
+            f"/?class_name={list(registry.server_choices_registry.keys())[0]}&field_name=plaza",
         )
-        force_authenticate(request, user=user)
         view = ServerChoicesView.as_view(registry=registry)
-        response = view(request).render()
+        response = view(request)
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content.decode())
         self.assertEqual(data["count"], 30)
         self.assertEqual(
-            data["results"], plaza_field.serialize(Plaza.objects.all()[: api_settings.PAGE_SIZE], request)
+            data["results"],
+            plaza_field.serialize(Plaza.objects.all()[: ap_server_choices_settings.PAGE_SIZE], request),
         )
 
     def test_get_label(self):
@@ -418,23 +439,24 @@ class TestSerializerServerChoices(TestCase):
         plaza1, plaza2 = Plaza.objects.all()[:2]
 
         @server_choices(
-            ["plaza"], registry=registry, get_label=lambda registry, item: f"Plaza: {str(item)} {item.pk}"
+            ["plaza"],
+            registry=registry,
+            get_label=lambda registry, item: f"Plaza: {str(item)} {item.pk}",
         )
-        class TestShopSerializer(XenopusFrogAppModelSerializer):
+        class TestShopSerializer(ModelSerializer):
             class Meta:
                 model = Shop
                 fields = [
                     "plaza",
                 ]
 
-        user = AppAdminProfileFactory(is_superuser=True)
-        factory = APIRequestFactory()
+        user = UserProfileFactory(is_superuser=True)
+        factory = AuthenticatedRequestFactory(user=user)
         request = factory.get(
-            f"/?class_name={list(registry.server_choices_registry.keys())[0]}&field_name=plaza"
+            f"/?class_name={list(registry.server_choices_registry.keys())[0]}&field_name=plaza",
         )
-        force_authenticate(request, user=user)
         view = ServerChoicesView.as_view(registry=registry)
-        response = view(request).render()
+        response = view(request)
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content.decode())
         self.assertEqual(data["count"], 30)
@@ -442,7 +464,7 @@ class TestSerializerServerChoices(TestCase):
             data["results"],
             [
                 {"key": p.pk, "label": f"Plaza: {str(p)} {p.pk}"}
-                for p in Plaza.objects.all()[: api_settings.PAGE_SIZE]
+                for p in Plaza.objects.all()[: ap_server_choices_settings.PAGE_SIZE]
             ],
         )
 
@@ -450,8 +472,7 @@ class TestSerializerServerChoices(TestCase):
         request = factory.get(
             f"/?class_name={list(registry.server_choices_registry.keys())[0]}&field_name=plaza&pk={plaza1.pk}"
         )
-        force_authenticate(request, user=user)
-        response = view(request).render()
+        response = view(request)
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content.decode())
         self.assertEqual(data, {"key": plaza1.pk, "label": f"Plaza: {str(plaza1)} {plaza1.pk}"})
@@ -460,8 +481,7 @@ class TestSerializerServerChoices(TestCase):
         request = factory.get(
             f"/?class_name={list(registry.server_choices_registry.keys())[0]}&field_name=plaza&pks={plaza1.pk}&pks={plaza2.pk}"
         )
-        force_authenticate(request, user=user)
-        response = view(request).render()
+        response = view(request)
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content.decode())
         self.assertEqual(
@@ -474,6 +494,8 @@ class TestSerializerServerChoices(TestCase):
 
 
 class TestFormServerChoices(TestCase):
+    maxDiff = None
+
     def test_handles_invalid_fields(self):
         with self.assertRaisesRegex(ImproperlyConfigured, "do not exist on"):
 
@@ -538,20 +560,23 @@ class TestFormServerChoices(TestCase):
         payment_methods_field = list(registry.server_choices_registry.values())[0].fields[
             "payment_methods_accepted"
         ]
-        self.assertEqual(payment_methods_field.perm, "test_alliance_platform_server_choices.shop_create")
+        self.assertEqual(
+            payment_methods_field.perm,
+            "test_alliance_platform_server_choices.shop_create",
+        )
         self.assertEqual(list(payment_methods_field.get_choices(request)), payment_methods)
         payment_method = payment_methods[0]
         self.assertEqual(payment_methods_field.get_record(payment_method.pk, request), payment_method)
         types = payment_methods[:3]
-        self.assertEqual(list(payment_methods_field.get_records([t.pk for t in types], request)), types)
+        self.assertEqual(
+            list(payment_methods_field.get_records([t.pk for t in types], request)),
+            types,
+        )
         self.assertEqual(
             payment_methods_field.serialize(types, request),
             [{"key": str(record.pk), "label": str(record)} for record in types],
         )
-        # query_params is only on DRF request but can't easily create that... even APIRequestFactory from
-        # DRF doesn't return it (it gets promoted once it goes through the view layer). Just fake it here -
-        # all we care about is query_params
-        request.query_params = QueryDict("keywords=visa")
+        request.GET = QueryDict("keywords=visa")
         self.assertEqual(
             list(payment_methods_field.filter_choices(payment_methods_field.get_choices(request), request)),
             list(PaymentMethod.objects.filter(name__icontains="visa")),
@@ -586,7 +611,10 @@ class TestFormServerChoices(TestCase):
             TestPaymentMethodForm,
         )
         shops_field = list(registry.server_choices_registry.values())[0].fields["shops"]
-        self.assertEqual(shops_field.perm, "test_alliance_platform_server_choices.paymentmethod_create")
+        self.assertEqual(
+            shops_field.perm,
+            "test_alliance_platform_server_choices.paymentmethod_create",
+        )
         shops = [shop1, shop2, shop3]
         self.assertEqual(list(shops_field.get_choices(request)), shops)
         self.assertEqual(shops_field.get_record(shop1.pk, request), shop1)
@@ -596,10 +624,7 @@ class TestFormServerChoices(TestCase):
             shops_field.serialize(sub_shops, request),
             [{"key": str(record.pk), "label": str(record)} for record in sub_shops],
         )
-        # query_params is only on DRF request but can't easily create that... even APIRequestFactory from
-        # DRF doesn't return it (it gets promoted once it goes through the view layer). Just fake it here -
-        # all we care about is query_params
-        request.query_params = QueryDict("keywords=blackburn")
+        request.GET = QueryDict("keywords=blackburn")
 
         def sorter(shops):
             return sorted(list(shops), key=lambda shop: shop.pk)
@@ -608,13 +633,13 @@ class TestFormServerChoices(TestCase):
             sorter(shops_field.filter_choices(shops_field.get_choices(request), request)),
             [shop1],
         )
-        request.query_params = QueryDict("keywords=chadstone")
+        request.GET = QueryDict("keywords=chadstone")
         self.assertEqual(
             sorter(shops_field.filter_choices(shops_field.get_choices(request), request)),
             sorter([shop2, shop3]),
         )
         # multiple keywords; this should match plaza title and shop name
-        request.query_params = QueryDict("keywords=chadstone wiley")
+        request.GET = QueryDict("keywords=chadstone wiley")
         self.assertEqual(
             sorter(shops_field.filter_choices(shops_field.get_choices(request), request)),
             [shop2],
@@ -645,10 +670,7 @@ class TestFormServerChoices(TestCase):
             category_field.serialize(choices, request),
             [{"key": key, "label": label} for (key, label) in choices],
         )
-        # query_params is only on DRF request but can't easily create that... even APIRequestFactory from
-        # DRF doesn't return it (it gets promoted once it goes through the view layer). Just fake it here -
-        # all we care about is query_params
-        request.query_params = QueryDict("keywords=grocery")
+        request.GET = QueryDict("keywords=grocery")
         self.assertEqual(
             category_field.filter_choices(category_field.get_choices(request), request),
             [ShopCategory.choices[0]],
@@ -662,7 +684,9 @@ class TestFormServerChoices(TestCase):
         AppShopFactory()
 
         @server_choices(
-            ["category"], registry=registry, get_choices=Shop.objects.filter(category=ShopCategory.DEPARTMENT)
+            ["category"],
+            registry=registry,
+            get_choices=Shop.objects.filter(category=ShopCategory.DEPARTMENT),
         )
         class TestShopForm(ModelForm):
             class Meta:
@@ -715,15 +739,14 @@ class TestFormServerChoices(TestCase):
             (f"PK-{ShopCategory.GROCERY.value}", ShopCategory.GROCERY.label.upper()),
         )
         self.assertEqual(
-            category_field.get_records([t[0] for t in ShopCategory.choices], request), upper_choices
+            category_field.get_records([t[0] for t in ShopCategory.choices], request),
+            upper_choices,
         )
         self.assertEqual(
-            category_field.serialize(category_field.get_choices(request), request), upper_choices
+            category_field.serialize(category_field.get_choices(request), request),
+            upper_choices,
         )
-        # query_params is only on DRF request but can't easily create that... even APIRequestFactory from
-        # DRF doesn't return it (it gets promoted once it goes through the view layer). Just fake it here -
-        # all we care about is query_params
-        request.query_params = QueryDict("query=grocery")
+        request.GET = QueryDict("query=grocery")
         self.assertEqual(
             category_field.filter_choices(category_field.get_choices(request), request),
             [upper_choices[0]],
@@ -745,14 +768,13 @@ class TestFormServerChoices(TestCase):
                 ]
 
         category_field = list(registry.server_choices_registry.values())[0].fields["category"]
-        user = AppAdminProfileFactory(is_superuser=True)
-        factory = APIRequestFactory()
+        user = UserProfileFactory(is_superuser=True)
+        factory = AuthenticatedRequestFactory(user=user)
         request = factory.get(
-            f"/?class_name={list(registry.server_choices_registry.keys())[0]}&field_name=category"
+            f"/?class_name={list(registry.server_choices_registry.keys())[0]}&field_name=category",
         )
-        force_authenticate(request, user=user)
         view = ServerChoicesView.as_view(registry=registry)
-        response = view(request).render()
+        response = view(request)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             json.loads(response.content.decode()),
@@ -762,8 +784,7 @@ class TestFormServerChoices(TestCase):
         request = factory.get(
             f"/?class_name={list(registry.server_choices_registry.keys())[0]}&field_name=category&pk={ShopCategory.GROCERY.value}"
         )
-        force_authenticate(request, user=user)
-        response = view(request).render()
+        response = view(request)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             json.loads(response.content.decode()),
@@ -776,8 +797,7 @@ class TestFormServerChoices(TestCase):
         request = factory.get(
             f"/?class_name={list(registry.server_choices_registry.keys())[0]}&field_name=category&pks={ShopCategory.GROCERY.value}&pks={ShopCategory.DEPARTMENT.value}"
         )
-        force_authenticate(request, user=user)
-        response = view(request).render()
+        response = view(request)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             json.loads(response.content.decode()),
@@ -798,6 +818,8 @@ class TestFormServerChoices(TestCase):
             AppPlazaFactory()
 
         kwargs = {}
+        user = UserProfileFactory(is_superuser=True)
+        factory = AuthenticatedRequestFactory(user=user)
         for empty_label in ["(infer)", None, "Please Select"]:
             with self.subTest(f"empty_label={empty_label}"):
                 registry = ServerChoicesRegistry("test")
@@ -814,23 +836,25 @@ class TestFormServerChoices(TestCase):
                         ]
 
                 plaza_field = list(registry.server_choices_registry.values())[0].fields["plaza"]
-                user = AppAdminProfileFactory(is_superuser=True)
-                factory = APIRequestFactory()
                 request = factory.get(
                     f"/?class_name={list(registry.server_choices_registry.keys())[0]}&field_name=plaza"
                 )
-                force_authenticate(request, user=user)
                 view = ServerChoicesView.as_view(registry=registry)
-                response = view(request).render()
+                response = view(request)
                 self.assertEqual(response.status_code, 200)
                 data = json.loads(response.content.decode())
                 self.assertEqual(data["count"], 30)
-                records = plaza_field.serialize(Plaza.objects.all()[: api_settings.PAGE_SIZE], request)
+                records = plaza_field.serialize(
+                    Plaza.objects.all()[: ap_server_choices_settings.PAGE_SIZE], request
+                )
                 self.assertEqual(
                     data["results"],
                     (
                         [
-                            {"key": "", "label": "---------" if empty_label == "(infer)" else empty_label},
+                            {
+                                "key": "",
+                                "label": ("---------" if empty_label == "(infer)" else empty_label),
+                            },
                             *records,
                         ]
                         if empty_label is not None
@@ -859,14 +883,13 @@ class TestFormServerChoices(TestCase):
                     "plaza",
                 ]
 
-        user = AppAdminProfileFactory(is_superuser=True)
-        factory = APIRequestFactory()
+        user = UserProfileFactory(is_superuser=True)
+        factory = AuthenticatedRequestFactory(user=user)
         request = factory.get(
             f"/?class_name={list(registry.server_choices_registry.keys())[0]}&field_name=plaza"
         )
-        force_authenticate(request, user=user)
         view = ServerChoicesView.as_view(registry=registry)
-        response = view(request).render()
+        response = view(request)
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content.decode())
         self.assertEqual(data["count"], 30)
@@ -874,7 +897,7 @@ class TestFormServerChoices(TestCase):
             data["results"],
             [
                 {"key": str(p.pk), "label": f"Plaza: {str(p)} {p.pk}"}
-                for p in Plaza.objects.all()[: api_settings.PAGE_SIZE]
+                for p in Plaza.objects.all()[: ap_server_choices_settings.PAGE_SIZE]
             ],
         )
 
@@ -882,8 +905,7 @@ class TestFormServerChoices(TestCase):
         request = factory.get(
             f"/?class_name={list(registry.server_choices_registry.keys())[0]}&field_name=plaza&pk={plaza1.pk}"
         )
-        force_authenticate(request, user=user)
-        response = view(request).render()
+        response = view(request)
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content.decode())
         self.assertEqual(data, {"key": str(plaza1.pk), "label": f"Plaza: {str(plaza1)} {plaza1.pk}"})
@@ -892,8 +914,7 @@ class TestFormServerChoices(TestCase):
         request = factory.get(
             f"/?class_name={list(registry.server_choices_registry.keys())[0]}&field_name=plaza&pks={plaza1.pk}&pks={plaza2.pk}"
         )
-        force_authenticate(request, user=user)
-        response = view(request).render()
+        response = view(request)
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content.decode())
         self.assertEqual(
@@ -1000,20 +1021,23 @@ class TestFilterSetServerChoices(TestCase):
         payment_methods_field = list(registry.server_choices_registry.values())[0].fields[
             "payment_methods_accepted"
         ]
-        self.assertEqual(payment_methods_field.perm, "test_alliance_platform_server_choices.shop_create")
+        self.assertEqual(
+            payment_methods_field.perm,
+            "test_alliance_platform_server_choices.shop_create",
+        )
         self.assertEqual(list(payment_methods_field.get_choices(request)), payment_methods)
         payment_method = payment_methods[0]
         self.assertEqual(payment_methods_field.get_record(payment_method.pk, request), payment_method)
         types = payment_methods[:3]
-        self.assertEqual(list(payment_methods_field.get_records([t.pk for t in types], request)), types)
+        self.assertEqual(
+            list(payment_methods_field.get_records([t.pk for t in types], request)),
+            types,
+        )
         self.assertEqual(
             payment_methods_field.serialize(types, request),
             [{"key": str(record.pk), "label": str(record)} for record in types],
         )
-        # query_params is only on DRF request but can't easily create that... even APIRequestFactory from
-        # DRF doesn't return it (it gets promoted once it goes through the view layer). Just fake it here -
-        # all we care about is query_params
-        request.query_params = QueryDict("keywords=visa")
+        request.GET = QueryDict("keywords=visa")
         self.assertEqual(
             list(payment_methods_field.filter_choices(payment_methods_field.get_choices(request), request)),
             list(PaymentMethod.objects.filter(name__icontains="visa")),
@@ -1048,7 +1072,10 @@ class TestFilterSetServerChoices(TestCase):
             TestPaymentMethodFilterSet,
         )
         shops_field = list(registry.server_choices_registry.values())[0].fields["shops"]
-        self.assertEqual(shops_field.perm, "test_alliance_platform_server_choices.paymentmethod_create")
+        self.assertEqual(
+            shops_field.perm,
+            "test_alliance_platform_server_choices.paymentmethod_create",
+        )
         shops = [shop3, shop1, shop2]  # order is alphabetised by name
         self.assertEqual(list(shops_field.get_choices(request)), shops)
         self.assertEqual(shops_field.get_record(shop1.pk, request), shop1)
@@ -1058,21 +1085,18 @@ class TestFilterSetServerChoices(TestCase):
             shops_field.serialize(sub_shops, request),
             [{"key": str(record.pk), "label": str(record)} for record in sub_shops],
         )
-        # query_params is only on DRF request but can't easily create that... even APIRequestFactory from
-        # DRF doesn't return it (it gets promoted once it goes through the view layer). Just fake it here -
-        # all we care about is query_params
-        request.query_params = QueryDict("keywords=blackburn")
+        request.GET = QueryDict("keywords=blackburn")
         self.assertEqual(
             list(shops_field.filter_choices(shops_field.get_choices(request), request)),
             [shop1],
         )
-        request.query_params = QueryDict("keywords=chadstone")
+        request.GET = QueryDict("keywords=chadstone")
         self.assertEqual(
             list(shops_field.filter_choices(shops_field.get_choices(request), request)),
             [shop3, shop2],
         )
         # multiple keywords; this should match plaza title and shop name
-        request.query_params = QueryDict("keywords=chadstone wiley")
+        request.GET = QueryDict("keywords=chadstone wiley")
         self.assertEqual(
             list(shops_field.filter_choices(shops_field.get_choices(request), request)),
             [shop2],
@@ -1094,7 +1118,8 @@ class TestFilterSetServerChoices(TestCase):
         category_field = list(registry.server_choices_registry.values())[0].fields["category"]
         self.assertEqual(category_field.perm, "test_alliance_platform_server_choices.shop_create")
         self.assertEqual(
-            list(category_field.get_choices(request)), [("", "---------"), *ShopCategory.choices]
+            list(category_field.get_choices(request)),
+            [("", "---------"), *ShopCategory.choices],
         )
         (pk, label) = ShopCategory.choices[0]
         self.assertEqual(category_field.get_record(pk, request), (str(pk), label))
@@ -1105,10 +1130,7 @@ class TestFilterSetServerChoices(TestCase):
             category_field.serialize(choices, request),
             [{"key": key, "label": label} for (key, label) in choices],
         )
-        # query_params is only on DRF request but can't easily create that... even APIRequestFactory from
-        # DRF doesn't return it (it gets promoted once it goes through the view layer). Just fake it here -
-        # all we care about is query_params
-        request.query_params = QueryDict("keywords=grocery")
+        request.GET = QueryDict("keywords=grocery")
         self.assertEqual(
             category_field.filter_choices(category_field.get_choices(request), request),
             [ShopCategory.choices[0]],
@@ -1122,7 +1144,9 @@ class TestFilterSetServerChoices(TestCase):
         AppShopFactory()
 
         @server_choices(
-            ["category"], registry=registry, get_choices=Shop.objects.filter(category=ShopCategory.DEPARTMENT)
+            ["category"],
+            registry=registry,
+            get_choices=Shop.objects.filter(category=ShopCategory.DEPARTMENT),
         )
         class TestShopFilterSet(FilterSet):
             class Meta:
@@ -1178,10 +1202,7 @@ class TestFilterSetServerChoices(TestCase):
             category_field.serialize(category_field.get_choices(request), request),
             [["", "---------"], *upper_choices],
         )
-        # query_params is only on DRF request but can't easily create that... even APIRequestFactory from
-        # DRF doesn't return it (it gets promoted once it goes through the view layer). Just fake it here -
-        # all we care about is query_params
-        request.query_params = QueryDict("query=grocery")
+        request.GET = QueryDict("query=grocery")
         self.assertEqual(
             category_field.filter_choices(category_field.get_choices(request), request),
             [upper_choices[0]],
@@ -1203,14 +1224,13 @@ class TestFilterSetServerChoices(TestCase):
                 ]
 
         category_field = list(registry.server_choices_registry.values())[0].fields["category"]
-        user = AppAdminProfileFactory(is_superuser=True)
-        factory = APIRequestFactory()
+        user = UserProfileFactory(is_superuser=True)
+        factory = AuthenticatedRequestFactory(user=user)
         request = factory.get(
             f"/?class_name={list(registry.server_choices_registry.keys())[0]}&field_name=category"
         )
-        force_authenticate(request, user=user)
         view = ServerChoicesView.as_view(registry=registry)
-        response = view(request).render()
+        response = view(request)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             json.loads(response.content.decode()),
@@ -1223,8 +1243,7 @@ class TestFilterSetServerChoices(TestCase):
         request = factory.get(
             f"/?class_name={list(registry.server_choices_registry.keys())[0]}&field_name=category&pk={ShopCategory.GROCERY.value}"
         )
-        force_authenticate(request, user=user)
-        response = view(request).render()
+        response = view(request)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             json.loads(response.content.decode()),
@@ -1237,8 +1256,7 @@ class TestFilterSetServerChoices(TestCase):
         request = factory.get(
             f"/?class_name={list(registry.server_choices_registry.keys())[0]}&field_name=category&pks={ShopCategory.GROCERY.value}&pks={ShopCategory.DEPARTMENT.value}"
         )
-        force_authenticate(request, user=user)
-        response = view(request).render()
+        response = view(request)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             json.loads(response.content.decode()),
@@ -1259,6 +1277,8 @@ class TestFilterSetServerChoices(TestCase):
             AppPlazaFactory()
 
         kwargs = {}
+        user = UserProfileFactory(is_superuser=True)
+        factory = AuthenticatedRequestFactory(user=user)
         for empty_label in ["(infer)", None, "Please Select"]:
             with self.subTest(f"empty_label={empty_label}"):
                 registry = ServerChoicesRegistry("test")
@@ -1275,23 +1295,25 @@ class TestFilterSetServerChoices(TestCase):
                         ]
 
                 plaza_field = list(registry.server_choices_registry.values())[0].fields["plaza"]
-                user = AppAdminProfileFactory(is_superuser=True)
-                factory = APIRequestFactory()
                 request = factory.get(
                     f"/?class_name={list(registry.server_choices_registry.keys())[0]}&field_name=plaza"
                 )
-                force_authenticate(request, user=user)
                 view = ServerChoicesView.as_view(registry=registry)
-                response = view(request).render()
+                response = view(request)
                 self.assertEqual(response.status_code, 200)
                 data = json.loads(response.content.decode())
                 self.assertEqual(data["count"], 30)
-                records = plaza_field.serialize(Plaza.objects.all()[: api_settings.PAGE_SIZE], request)
+                records = plaza_field.serialize(
+                    Plaza.objects.all()[: ap_server_choices_settings.PAGE_SIZE], request
+                )
                 self.assertEqual(
                     data["results"],
                     (
                         [
-                            {"key": "", "label": "---------" if empty_label == "(infer)" else empty_label},
+                            {
+                                "key": "",
+                                "label": ("---------" if empty_label == "(infer)" else empty_label),
+                            },
                             *records,
                         ]
                         if empty_label is not None
@@ -1320,14 +1342,13 @@ class TestFilterSetServerChoices(TestCase):
                     "plaza",
                 ]
 
-        user = AppAdminProfileFactory(is_superuser=True)
-        factory = APIRequestFactory()
+        user = UserProfileFactory(is_superuser=True)
+        factory = AuthenticatedRequestFactory(user=user)
         request = factory.get(
             f"/?class_name={list(registry.server_choices_registry.keys())[0]}&field_name=plaza"
         )
-        force_authenticate(request, user=user)
         view = ServerChoicesView.as_view(registry=registry)
-        response = view(request).render()
+        response = view(request)
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content.decode())
         self.assertEqual(data["count"], 30)
@@ -1335,7 +1356,7 @@ class TestFilterSetServerChoices(TestCase):
             data["results"],
             [
                 {"key": str(p.pk), "label": f"Plaza: {str(p)} {p.pk}"}
-                for p in Plaza.objects.all()[: api_settings.PAGE_SIZE]
+                for p in Plaza.objects.all()[: ap_server_choices_settings.PAGE_SIZE]
             ],
         )
 
@@ -1343,8 +1364,7 @@ class TestFilterSetServerChoices(TestCase):
         request = factory.get(
             f"/?class_name={list(registry.server_choices_registry.keys())[0]}&field_name=plaza&pk={plaza1.pk}"
         )
-        force_authenticate(request, user=user)
-        response = view(request).render()
+        response = view(request)
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content.decode())
         self.assertEqual(data, {"key": str(plaza1.pk), "label": f"Plaza: {str(plaza1)} {plaza1.pk}"})
@@ -1353,8 +1373,7 @@ class TestFilterSetServerChoices(TestCase):
         request = factory.get(
             f"/?class_name={list(registry.server_choices_registry.keys())[0]}&field_name=plaza&pks={plaza1.pk}&pks={plaza2.pk}"
         )
-        force_authenticate(request, user=user)
-        response = view(request).render()
+        response = view(request)
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.content.decode())
         self.assertEqual(
