@@ -35,6 +35,7 @@ In the settings file:
     ALLIANCE_PLATFORM: AlliancePlatformSettings = {
         "CORE": {"PROJECT_DIR": PROJECT_DIR},
         "SERVER_CHOICES": {
-            # TODO
+            "DEFAULT_PAGINATION_CLASS": "alliance_platform.server_choices.pagination.SimplePaginator",
+            "PAGE_SIZE": 20,
         },
     }
