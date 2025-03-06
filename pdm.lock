@@ -5,7 +5,7 @@
 groups = ["default", "dev", "docs"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:6dd14488f020eae4533d0383f899973c78571b57220e6d73b0388884abefe5ef"
+content_hash = "sha256:1ce47123ff16b5cb4fa47a42a34aa690c2f66cd27008489a4f026e9ac5c54c5d"
 
 [[metadata.targets]]
 requires_python = ">=3.11"
@@ -85,6 +85,22 @@ requires_python = ">=3.11"
 editable = true
 path = "./packages/ap-pdf"
 summary = "Alliance Platform PDF"
+groups = ["dev"]
+dependencies = [
+    "Django>=4.2.11",
+    "alliance-platform-core",
+    "alliance-platform-frontend",
+    "django-allianceutils>=4.0",
+    "playwright",
+]
+
+[[package]]
+name = "alliance-platform-server-choices"
+version = "0.0.0"
+requires_python = ">=3.11"
+editable = true
+path = "./packages/ap-server-choices"
+summary = "Alliance Platform Server Choices"
 groups = ["dev"]
 dependencies = [
     "Django>=4.2.11",
@@ -483,6 +499,36 @@ dependencies = [
 files = [
     {file = "django_allianceutils-4.1.1-py3-none-any.whl", hash = "sha256:096c2f47e780b501cae8e644320956a473631bd77572a65d567a4e8d73f1420c"},
     {file = "django_allianceutils-4.1.1.tar.gz", hash = "sha256:c2ce749ae8d701b30f10be264b8b982a25b3039bd21e6bdb5781b7e69a195f15"},
+]
+
+[[package]]
+name = "django-filter"
+version = "25.1"
+requires_python = ">=3.9"
+summary = "Django-filter is a reusable Django application for allowing users to filter querysets dynamically."
+groups = ["dev"]
+dependencies = [
+    "Django>=4.2",
+]
+files = [
+    {file = "django_filter-25.1-py3-none-any.whl", hash = "sha256:4fa48677cf5857b9b1347fed23e355ea792464e0fe07244d1fdfb8a806215b80"},
+    {file = "django_filter-25.1.tar.gz", hash = "sha256:1ec9eef48fa8da1c0ac9b411744b16c3f4c31176c867886e4c48da369c407153"},
+]
+
+[[package]]
+name = "django-filter-stubs"
+version = "0.1.3"
+summary = "PEP-484 stubs for django-filter"
+groups = ["dev"]
+dependencies = [
+    "django-stubs>=1.3.0",
+    "djangorestframework-stubs>=0.4.0",
+    "mypy>=0.750",
+    "typing-extensions>=3.7.4",
+]
+files = [
+    {file = "django-filter-stubs-0.1.3.tar.gz", hash = "sha256:8b03ef8c304024672c3ebc99b72b59fb6f9d6c1a2b3b16a5100bf11a1577bc8b"},
+    {file = "django_filter_stubs-0.1.3-py3-none-any.whl", hash = "sha256:b683e8ddb92a1e1456a53dc299963ae4a5768f8d3cc3318dbef06c4b7d943336"},
 ]
 
 [[package]]

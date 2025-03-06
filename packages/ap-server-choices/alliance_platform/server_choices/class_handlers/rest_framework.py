@@ -4,15 +4,15 @@ from collections.abc import Iterable
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import QuerySet
+from django.http import HttpRequest
 from rest_framework import serializers
 from rest_framework.relations import ManyRelatedField
 from rest_framework.relations import RelatedField
-from rest_framework.request import Request
 
-from ..register import ServerChoiceFieldRegistration
-from ..register import ServerChoiceRecordsType
-from ..register import ServerChoiceRecordType
-from ..register import ServerChoicesType
+from ..field_registry import ServerChoiceFieldRegistration
+from ..field_registry import ServerChoiceRecordsType
+from ..field_registry import ServerChoiceRecordType
+from ..field_registry import ServerChoicesType
 
 
 class SerializerServerChoiceFieldRegistration(ServerChoiceFieldRegistration):
@@ -31,19 +31,19 @@ class SerializerServerChoiceFieldRegistration(ServerChoiceFieldRegistration):
     def __init__(
         self,
         *,
-        serializer: type[serializers.Serializer],
+        decorated_class: type[serializers.Serializer],
         perm=None,
         **kwargs,
     ):
         model = None
-        if issubclass(serializer, serializers.ModelSerializer):
-            model = serializer.Meta.model
+        if issubclass(decorated_class, serializers.ModelSerializer):
+            model = decorated_class.Meta.model
         elif perm is None:
             raise ValueError("You must specify 'perm' when not using a ModelSerializer")
 
-        super().__init__(perm=perm, model=model, **kwargs)
+        super().__init__(perm=perm, model=model, decorated_class=decorated_class, **kwargs)
 
-    def get_choices(self, request: Request) -> ServerChoicesType:
+    def get_choices(self, request: HttpRequest) -> ServerChoicesType:
         """Return the available choices for this field. Can return a queryset or list of key/label tuples."""
         if isinstance(self.field, ManyRelatedField):
             return self.field.child_relation.get_queryset()
@@ -53,7 +53,7 @@ class SerializerServerChoiceFieldRegistration(ServerChoiceFieldRegistration):
             return list(self.field.choices.items())
         raise ValueError("Cannot work out choices for field - pass get_choices")
 
-    def get_record(self, pk: str, request: Request) -> ServerChoiceRecordType:
+    def get_record(self, pk: str, request: HttpRequest) -> ServerChoiceRecordType:
         """Return the matching record for the specified primary key.
 
         Raises ObjectDoesNotExist if not found
@@ -66,7 +66,7 @@ class SerializerServerChoiceFieldRegistration(ServerChoiceFieldRegistration):
                 return (key, value)
         raise ObjectDoesNotExist()
 
-    def get_records(self, pks: list[str], request: Request) -> ServerChoiceRecordsType:
+    def get_records(self, pks: list[str], request: HttpRequest) -> ServerChoiceRecordsType:
         """Return the matching records for the specified primary keys.
 
         If any record is not found it is omitted from the return value.
@@ -91,3 +91,7 @@ class SerializerServerChoiceFieldRegistration(ServerChoiceFieldRegistration):
         for field_name, field in field_mapping.items():
             if isinstance(field, (RelatedField, ManyRelatedField)):
                 yield field_name
+
+    @classmethod
+    def should_handle_class_for_registration(cls, decorated_class):
+        return issubclass(decorated_class, serializers.Serializer)
