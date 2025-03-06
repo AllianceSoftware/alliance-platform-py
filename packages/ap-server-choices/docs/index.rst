@@ -2,7 +2,9 @@
 Alliance Platform Server choices
 ===========================================================
 
-TODO
+This package adds a decorator which can be used to expose API endpoints to easily look up field choices.
+
+The most common use case for this is to provide AJAX lookups for autocomplete widgets.
 
 .. toctree::
    :maxdepth: 2
@@ -11,7 +13,6 @@ TODO
    installation
    settings
    legacy-migration
-   usage
    api
 
 .. include:: ../../ap-core/docs/_sidebar.rst.inc
