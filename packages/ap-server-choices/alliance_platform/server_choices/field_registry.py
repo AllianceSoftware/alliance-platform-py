@@ -6,25 +6,23 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from dataclasses import field
 import types
+from typing import Any
 from typing import Generic
 from typing import TypeVar
 from typing import cast
 
 from alliance_platform.core.auth import resolve_perm_name
-from django import forms
+from alliance_platform.server_choices.pagination import SimplePaginator
 from django.conf import settings
 from django.db.models import Model
 from django.db.models import Q
 from django.db.models import QuerySet
+from django.http import HttpRequest
 from django.views import View
-from rest_framework import serializers
-from rest_framework.request import Request
-from rest_framework.settings import api_settings
 
 # Class currently is anything that can be registered; Serializer, Form, FilterSet
 
 ClassType = TypeVar("ClassType")
-FieldType = serializers.Field | forms.Field
 
 
 @dataclass
@@ -69,7 +67,7 @@ class ServerChoiceFieldRegistration(Generic[ClassType]):
     # The permission to check when returning choices for this backend. This is either a single permission
     # that is checked without access to a record or a list of similar permissions checkable the same way.
     # If you have more complicated use cases override has_perm.
-    perm: str | Iterable[str] | Callable[[Request], bool]
+    perm: str | Iterable[str] | Callable[[HttpRequest], bool]
     # Name of the label field returned to the frontend. Used in codegen to tell AsyncChoices what to do
     # Only a single field is supported. This should match what is returned by ``serialize``
     label_field: str
@@ -94,11 +92,12 @@ class ServerChoiceFieldRegistration(Generic[ClassType]):
         self,
         *,
         field,
+        decorated_class: ClassType,
         class_name: str,
         field_name: str,
         search_fields: list[str] | None = None,
         perm=None,
-        pagination_class=api_settings.DEFAULT_PAGINATION_CLASS,
+        pagination_class=SimplePaginator,
         get_choices=None,
         get_record=None,
         get_records=None,
@@ -149,8 +148,7 @@ class ServerChoiceFieldRegistration(Generic[ClassType]):
             # has create permission then we assume they have permission to list related
             # records for the model
             perm = resolve_perm_name(
-                app_config=model._meta.app_config,
-                model=model,
+                entity=model,
                 action="create",
                 is_global=True,
             )
@@ -165,23 +163,28 @@ class ServerChoiceFieldRegistration(Generic[ClassType]):
         self.label_field = label_field
         self.value_field = value_field
 
-    def has_perm(self, request: Request):
-        if isinstance(self.perm, str):
-            return request.user.has_perm(self.perm)
-        elif isinstance(self.perm, Iterable):
-            return request.user.has_perms(self.perm)
-        elif callable(self.perm):
+    def has_perm(self, request: HttpRequest):
+        if callable(self.perm):
             return self.perm(request)
-
-        raise ValueError(
-            "'perm' passed to ServerChoiceFieldRegistration must be either a string, "
-            "an iterable of strings, or a function that takes a request and returns a bool"
-        )
+        elif hasattr(request, "user"):
+            if isinstance(self.perm, str):
+                return request.user.has_perm(self.perm)
+            elif isinstance(self.perm, Iterable):
+                return request.user.has_perms(self.perm)
+            else:
+                raise ValueError(
+                    "'perm' passed to ServerChoiceFieldRegistration must be either a string, "
+                    "an iterable of strings, or a function that takes a request and returns a bool"
+                )
+        else:
+            raise AttributeError(
+                "'perm' is not a callable and there is no user associated with the request - can't check permissions"
+            )
 
     def serialize(
         self,
         item_or_items: ServerChoiceRecordsType | ServerChoiceRecordType,
-        request: Request,
+        request: HttpRequest,
     ) -> list | dict:
         """Serialize the specified item(s)
 
@@ -194,7 +197,10 @@ class ServerChoiceFieldRegistration(Generic[ClassType]):
         - If an iterable of 2-tuples is passed then the first element is used as key and second as label (eg. standard field choices in django)
         """
         if isinstance(item_or_items, Model):
-            return {self.value_field: item_or_items.pk, self.label_field: self.get_label(item_or_items)}
+            return {
+                self.value_field: item_or_items.pk,
+                self.label_field: self.get_label(item_or_items),
+            }
 
         if len(item_or_items) == 0:
             return []
@@ -220,13 +226,13 @@ class ServerChoiceFieldRegistration(Generic[ClassType]):
             for record in cast(Iterable[Model], item_or_items)
         ]
 
-    def get_choices(self, request: Request) -> ServerChoicesType:
+    def get_choices(self, request: HttpRequest) -> ServerChoicesType:
         raise NotImplementedError
 
-    def get_record(self, pk: str, request: Request) -> ServerChoiceRecordType:
+    def get_record(self, pk: str, request: HttpRequest) -> ServerChoiceRecordType:
         raise NotImplementedError
 
-    def get_records(self, pks: list[str], request: Request) -> ServerChoiceRecordsType:
+    def get_records(self, pks: list[str], request: HttpRequest) -> ServerChoiceRecordsType:
         raise NotImplementedError
 
     def get_label(self, record: ServerChoiceRecordType) -> str:
@@ -235,7 +241,7 @@ class ServerChoiceFieldRegistration(Generic[ClassType]):
             return record[1]
         return str(record)
 
-    def filter_choices(self, choices: ServerChoicesType, request: Request) -> ServerChoicesType:
+    def filter_choices(self, choices: ServerChoicesType, request: HttpRequest) -> ServerChoicesType:
         """Give some choices returned by ``get_choices`` filter then based on current request.
 
         Default implementation works as follows
@@ -246,7 +252,7 @@ class ServerChoiceFieldRegistration(Generic[ClassType]):
         3) If choices is a QuerySet and ``search_fields`` is not set then it is an error
         4) If choices is a list of key/label tuples then each label is searched with the keywords
         """
-        keywords = request.query_params.get("keywords")
+        keywords = request.GET.get("keywords")
         if keywords:
             if isinstance(choices, QuerySet):
                 if not self.search_fields:
@@ -270,13 +276,21 @@ class ServerChoiceFieldRegistration(Generic[ClassType]):
         return choices
 
     @classmethod
-    def get_available_fields(cls, decorated_cls: ClassType) -> dict[str, FieldType]:
+    def get_available_fields(cls, decorated_cls: ClassType) -> dict[str, Any]:
         """Return the available fields on :code:`decorated_cls`. Should return a dict mapping field_name to field instance"""
         raise NotImplementedError
 
     @classmethod
-    def infer_fields(cls, field_mapping: dict[str, FieldType]) -> Iterable[str]:
+    def infer_fields(cls, field_mapping: dict[str, Any]) -> Iterable[str]:
         """Given :code:`field_mapping` return the names of the fields that should have choices generated for them
 
         This is only used when no explicit list of fields is provided"""
+        raise NotImplementedError
+
+    @classmethod
+    def should_handle_class_for_registration(cls, decorated_class: ClassType) -> bool:
+        """Given the class to which the server_choices decorator is applied, determine
+        whether this registration class should be used to handle it. Will be called
+        by :class:`~alliance_platform.server_choices.class_handlers.registry.ClassHandlersRegistry`
+        """
         raise NotImplementedError

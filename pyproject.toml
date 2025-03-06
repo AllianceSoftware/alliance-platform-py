@@ -41,6 +41,8 @@ dev = [
   "Django>=5.1",
   "django-hijack>=3.0.4",
   "pypdf>=4.1.0",
+  "django-filter",
+  "django-filter-stubs",
 ]
 docs = [
   "sphinx>=8.1",
