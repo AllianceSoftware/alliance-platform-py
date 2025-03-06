@@ -1,3 +1,4 @@
+from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.db.models import CASCADE
 from django.db.models import QuerySet
@@ -44,3 +45,10 @@ class Shop(models.Model):
 
     def __str__(self):
         return f"{self.plaza} - {self.name} ({dict(ShopCategory.choices)[self.category]})"
+
+
+class User(AbstractUser):
+    user_type = "user"
+
+    class Meta:
+        db_table = "test_alliance_platform_server_choices_custom_user"
