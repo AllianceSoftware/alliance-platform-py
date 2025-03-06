@@ -6,6 +6,7 @@ from allianceutils.middleware import CurrentRequestMiddleware
 from allianceutils.util import camelize
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import QuerySet
+from django.forms import BaseForm
 from django.forms import Field
 from django.forms import Form
 from django.forms import ModelChoiceField
@@ -14,16 +15,16 @@ from django.forms import Select
 from django.forms import SelectMultiple
 from django.forms.models import ModelChoiceIterator
 from django.forms.widgets import ChoiceWidget
+from django.http import HttpRequest
 from django.urls import NoReverseMatch
 from django.urls import reverse_lazy
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.relations import ManyRelatedField
-from rest_framework.request import Request
 
-from ..register import ServerChoiceFieldRegistration
-from ..register import ServerChoiceRecordsType
-from ..register import ServerChoiceRecordType
-from ..register import ServerChoicesType
+from ..field_registry import ServerChoiceFieldRegistration
+from ..field_registry import ServerChoiceRecordsType
+from ..field_registry import ServerChoiceRecordType
+from ..field_registry import ServerChoicesType
 
 
 def get_form_field_widget(field: Field, registration: ServerChoiceFieldRegistration):
@@ -67,7 +68,7 @@ class FormFieldServerChoiceRegistration(ServerChoiceFieldRegistration):
         super().__init__(field=field, **kwargs)
         field.widget = get_form_field_widget(field, self)
 
-    def get_choices(self, request: Request) -> ServerChoicesType:
+    def get_choices(self, request: HttpRequest) -> ServerChoicesType:
         """Return the available choices for this field. Can return a queryset or list of key/label tuples."""
         if hasattr(self.field, "choices"):
             if isinstance(self.field.choices, ModelChoiceIterator):
@@ -75,7 +76,7 @@ class FormFieldServerChoiceRegistration(ServerChoiceFieldRegistration):
             return self.field.choices
         raise ValueError("Cannot work out choices for field - pass get_choices")
 
-    def get_record(self, pk: str, request: Request) -> ServerChoiceRecordType:
+    def get_record(self, pk: str, request: HttpRequest) -> ServerChoiceRecordType:
         """Return the matching record for the specified primary key.
 
         Raises ObjectDoesNotExist if not found
@@ -88,7 +89,7 @@ class FormFieldServerChoiceRegistration(ServerChoiceFieldRegistration):
                 return (str(key), value)
         raise ObjectDoesNotExist()
 
-    def get_records(self, pks: list[str], request: Request) -> ServerChoiceRecordsType:
+    def get_records(self, pks: list[str], request: HttpRequest) -> ServerChoiceRecordsType:
         """Return the matching records for the specified primary keys.
 
         If any record is not found it is omitted from the return value.
@@ -104,7 +105,7 @@ class FormFieldServerChoiceRegistration(ServerChoiceFieldRegistration):
                 matches.append((str(key), value))
         return matches
 
-    def serialize(self, item_or_items, request: Request):
+    def serialize(self, item_or_items, request: HttpRequest):
         """Forms always serialize data as strings (eg. from query string)
 
         Forcing this avoids type mismatches when dealing with data on page load (which is a string)
@@ -139,17 +140,21 @@ class FormServerChoiceFieldRegistration(FormFieldServerChoiceRegistration):
         **kwargs: See :class:`~alliance_platform.server_choices.register.ServerChoiceFieldRegistration`
     """
 
-    def __init__(self, *, form_cls: type[Form], perm=None, model=None, **kwargs):
+    def __init__(self, *, decorated_class: type[Form], perm=None, model=None, **kwargs):
         if model is None:
-            if issubclass(form_cls, ModelForm):
-                model = form_cls._meta.model
+            if issubclass(decorated_class, ModelForm):
+                model = decorated_class._meta.model
             elif perm is None:
                 raise ValueError("You must specify 'perm' or 'model' when not using a ModelForm")
-        super().__init__(perm=perm, model=model, **kwargs)
+        super().__init__(perm=perm, model=model, decorated_class=decorated_class, **kwargs)
 
     @classmethod
     def get_available_fields(cls, form_cls: Form):
         return form_cls.base_fields
+
+    @classmethod
+    def should_handle_class_for_registration(cls, decorated_class):
+        return issubclass(decorated_class, BaseForm)
 
 
 class ServerChoicesSelectWidget(Select):
@@ -187,7 +192,7 @@ class ServerChoicesSelectWidget(Select):
         frontend_paginator = "PageNumberPaginator" if pagination_class else None
         request = CurrentRequestMiddleware.get_request()
         if value and request:
-            request = Request(request)
+            request = HttpRequest(request)
             # If we have value work out the items for it so the frontend UI can render the labels on load
             # This is then handled by the AsyncChoicesInput.tsx which expects a `initialSelectedItems` prop.
             if isinstance(value, list):
