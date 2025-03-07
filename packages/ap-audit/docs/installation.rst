@@ -6,7 +6,8 @@ Install the ``alliance_platform.audit`` package:
 .. code-block:: bash
     poetry add alliance_platform.audit
 
-Add ``pgtrigger``, ``pghistory``, and ``alliance_platform.audit`` to your ``INSTALLED_APPS``.
+Add ``pgtrigger``, ``pghistory``, and ``alliance_platform.audit`` to your ``INSTALLED_APPS``. If migrating from ``common_audit``, ``pgtrigger`` and
+``pghistory`` will already be in ``installed_apps``, and ``alliance_platform.audit`` should replace ``common_audit``.
 
 .. code-block:: python
 
