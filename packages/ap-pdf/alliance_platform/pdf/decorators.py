@@ -99,14 +99,18 @@ def view_as_pdf(
                             headers[key] = val
                             request.META[key] = val
 
-            response = func(request, *args, **kwargs)
-            if hasattr(response, "render") and callable(response.render):
-                response = response.render()
-
             if AP_FRONTEND_INSTALLED:
                 with BundlerAssetContext(request=request) as asset_context:
+                    response = func(request, *args, **kwargs)
+                    if hasattr(response, "render") and callable(response.render):
+                        response = response.render()
+
                     if asset_context.requires_post_processing():
                         response.content = asset_context.post_process(response.content.decode()).encode()
+            else:
+                response = func(request, *args, **kwargs)
+                if hasattr(response, "render") and callable(response.render):
+                    response = response.render()
 
             if render_as_pdf:
                 url = request.build_absolute_uri(request.path if not url_path else url_path)
