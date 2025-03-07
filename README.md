@@ -3,12 +3,13 @@
 A collection of Python packages for use in the Alliance Platform Django template.
 
 * [Packages](#packages)
-    * [Core](packages/ap-core/README.md)
-    * [Frontend](packages/ap-frontend/README.md)
-    * [Codegen](packages/ap-codegen/README.md)
-    * [Storage](packages/ap-storage/README.md)
-    * [Audit](packages/ap-audit/README.md)
-    * [UI](packages/ap-ui/README.md)
+    * [Core](packages/ap-core) ([Documentation](https://alliance-platform.readthedocs.io/en/latest/core.html))
+    * [Frontend](packages/ap-frontend) ([Documentation](https://alliance-platform.readthedocs.io/projects/frontend/latest/))
+    * [Codegen](packages/ap-codegen) ([Documentation](https://alliance-platform.readthedocs.io/projects/codegen/latest/))
+    * [Storage](packages/ap-storage) ([Documentation](https://alliance-platform.readthedocs.io/projects/storage/latest/))
+    * [Audit](packages/ap-audit) ([Documentation](https://alliance-platform.readthedocs.io/projects/audit/latest/))
+    * [UI](packages/ap-ui) ([Documentation](https://alliance-platform.readthedocs.io/projects/ui/latest/))
+    * [PDF](packages/ap-pdf) ([Documentation](https://alliance-platform.readthedocs.io/projects/pdf/latest/))
 
 ## Contributing
 
@@ -86,7 +87,7 @@ a `package.json` file; base these off the existing packages.
    you must re-create it after the initial publish and limit it to the specific package scope. Note that the PyPi Trusted Publishers
    would be good for this but I couldn't work out how to re-purpose it for our publishing workflow.
    1. Update `.github/workflows/release.yml` and add the token under the `env` for the `Create Release Pull Request or Publish to pypi` step.
-7. Create a `docs` dir, see existing package for an example. 
+7. Create a `docs` dir, see existing package for an example.
    1. Create an entry in `docs/conf.py` under `multiproject_projects` for the new package.
    2. In readthedocs.org, a new project needs to be created. To do this, import the https://github.com/AllianceSoftware/alliance-platform-py repo
       again, but name it according to the package name (`alliance-platform-<name>`).
