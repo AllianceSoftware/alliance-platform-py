@@ -1,5 +1,11 @@
 # alliance-platform-pdf
 
+## 0.0.2
+
+### Patch Changes
+
+- 91b8ecb: Fix PDF rendering with AP frontend by moving render block back into context
+
 ## 0.0.1
 
 ### Patch Changes
