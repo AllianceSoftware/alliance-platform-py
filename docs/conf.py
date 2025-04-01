@@ -78,6 +78,10 @@ multiproject_projects = {
         "name": "Server Choices",
         "path": "../packages/ap-server-choices/docs",
     },
+    "ordered-model": {
+        "name": "Ordered Model",
+        "path": "../packages/ap-ordered-model/docs",
+    },
 }
 
 # -- Options for Intersphinx extension ---------------------------------------
@@ -100,6 +104,7 @@ dev_port_map = {
     "ui": 56680,
     "pdf": 56681,
     "server-choices": 56682,
+    "ordered-model": 56683,
 }
 
 
@@ -124,6 +129,7 @@ intersphinx_mapping = {
     "alliance-platform-ui": get_project_mapping("ui"),
     "alliance-platform-pdf": get_project_mapping("pdf"),
     "alliance-platform-server-choices": get_project_mapping("server-choices"),
+    "alliance-platform-ordered-model": get_project_mapping("ordered-model"),
     "django": (
         "https://docs.djangoproject.com/en/stable/",
         ("https://docs.djangoproject.com/en/stable/_objects/"),
