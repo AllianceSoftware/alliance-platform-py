@@ -17,6 +17,7 @@ dev = [
   "-e alliance-platform-ui @ file:///${PROJECT_ROOT}/packages/ap-ui",
   "-e alliance-platform-pdf @ file:///${PROJECT_ROOT}/packages/ap-pdf",
   "-e alliance-platform-server-choices @ file:///${PROJECT_ROOT}/packages/ap-server-choices",
+  "-e alliance-platform-ordered-model @ file:///${PROJECT_ROOT}/packages/ap-ordered-model",
   "beautifulsoup4<5.0,>=4.11",
   "django-stubs",
   "djangorestframework-stubs",
@@ -89,6 +90,9 @@ pdf-mypy = { cmd = "mypy .", working_dir = "packages/ap-pdf" }
 server-choices-test = { shell = "./manage.py test", working_dir = "packages/ap-server-choices" }
 server-choices-mypy = { cmd = "mypy .", working_dir = "packages/ap-server-choices" }
 
+ordered-model-test = { shell = "./manage.py test", working_dir = "packages/ap-ordered-model" }
+ordered-model-mypy = { cmd = "mypy .", working_dir = "packages/ap-ordered-model" }
+
 test = { composite = [
   "frontend-test",
   "codegen-test",
@@ -97,7 +101,8 @@ test = { composite = [
   "audit-test",
   "ui-test",
   "pdf-test",
-  "server-choices-test"
+  "server-choices-test",
+  "ordered-model-test",
 ], keep_going = true }
 
 mypy = { composite = [
@@ -108,6 +113,7 @@ mypy = { composite = [
   "audit-mypy",
   "ui-mypy",
   "server-choices-mypy",
+  "ordered-model-mypy",
 ], keep_going = true }
 
 build-docs-watch.cmd = "./scripts/build-docs.sh"
