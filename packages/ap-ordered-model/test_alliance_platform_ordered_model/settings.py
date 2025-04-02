@@ -14,14 +14,6 @@ BASE_DIR = Path(__file__).parent.parent
 PROJECT_DIR = BASE_DIR
 TEST_DIRECTORY = PROJECT_DIR / "test_alliance_platform_ordered_model"
 
-STATIC_URL = "/static/"
-
-ROOT_URLCONF = "test_alliance_platform_ordered_model.urls"
-
-MEDIA_ROOT = os.path.join(os.path.dirname(__file__), "static_files")
-MEDIA_URL = "/custom-media/"
-STATICFILES_DIRS = [MEDIA_ROOT]
-
 AUTH_USER_MODEL = "test_alliance_platform_ordered_model.User"
 
 
@@ -53,12 +45,12 @@ DATABASES = {
 }
 
 INSTALLED_APPS = (
-    "allianceutils",
     "alliance_platform.ordered_model",
     "test_alliance_platform_ordered_model",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
+    "pgtrigger",
 )
 
 MIDDLEWARE = (

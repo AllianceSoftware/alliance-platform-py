@@ -46,6 +46,6 @@ warn_unused_ignores = true
 [tool.pdm.dev-dependencies]
 dev = [
     "-e alliance-platform-core @ file:///${PROJECT_ROOT}/../ap-core",
-    "psycopg2",
+    "psycopg",
     "rules"
 ]
