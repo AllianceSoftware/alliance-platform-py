@@ -2,11 +2,6 @@ import hashlib
 import os
 from pathlib import Path
 import random
-from typing import TypedDict
-
-from alliance_platform.core.settings import AlliancePlatformCoreSettingsType
-from alliance_platform.frontend.bundler.asset_registry import FrontendAssetRegistry
-from alliance_platform.ordered_model.settings import AlliancePlatformOrderedModelSettingsType
 
 is_ci = os.environ.get("CI_SERVER", "no") == "yes"
 
@@ -15,21 +10,6 @@ PROJECT_DIR = BASE_DIR
 TEST_DIRECTORY = PROJECT_DIR / "test_alliance_platform_ordered_model"
 
 AUTH_USER_MODEL = "test_alliance_platform_ordered_model.User"
-
-
-class AlliancePlatformSettings(TypedDict):
-    CORE: AlliancePlatformCoreSettingsType
-    ORDERED_MODEL: AlliancePlatformOrderedModelSettingsType
-
-
-frontend_registry = FrontendAssetRegistry()
-
-ALLIANCE_PLATFORM: AlliancePlatformSettings = {
-    "CORE": {
-        "PROJECT_DIR": PROJECT_DIR,
-    },
-    "ORDERED_MODEL": {},
-}
 
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 
