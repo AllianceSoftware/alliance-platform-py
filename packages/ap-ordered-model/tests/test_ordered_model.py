@@ -18,8 +18,8 @@ from test_alliance_platform_ordered_model.models import Shop
 
 class TestOrderedModel(TransactionTestCase):
     def test_ordered(self):
-        plaza1: Plaza = cast(Plaza, AppPlazaFactory())
-        plaza2: Plaza = cast(Plaza, AppPlazaFactory())
+        plaza1 = cast(Plaza, AppPlazaFactory())
+        plaza2 = cast(Plaza, AppPlazaFactory())
         plaza1.refresh_from_db()
         plaza2.refresh_from_db()
         self.assertEqual(plaza1.sort_key, 2)
@@ -35,8 +35,8 @@ class TestOrderedModel(TransactionTestCase):
         self.assertEqual(Plaza.objects.get(pk=plaza2.pk).sort_key, 2)
 
     def test_ordered_with_respect_to(self):
-        plaza1: Plaza = AppPlazaFactory()
-        plaza2: Plaza = AppPlazaFactory()
+        plaza1 = cast(Plaza, AppPlazaFactory())
+        plaza2 = cast(Plaza, AppPlazaFactory())
 
         plaza1_shops = [AppShopFactory(plaza=plaza1, name=f"P1-{i}") for i in range(5)]
         plaza2_shops = [AppShopFactory(plaza=plaza2, name=f"P2-{i}") for i in range(5)]
@@ -70,7 +70,7 @@ class TestOrderedModel(TransactionTestCase):
         )
 
     def test_move_between(self):
-        plaza1: Plaza = AppPlazaFactory()
+        plaza1 = cast(Plaza, AppPlazaFactory())
         shops = [AppShopFactory(plaza=plaza1, name=f"P1-{i}") for i in range(5)]
         first_shop = shops[0]
         self.assertEqual(
@@ -109,8 +109,8 @@ class TestOrderedModel(TransactionTestCase):
 
     def test_move_between_with_respect_to(self):
         """Moves a shop between two other shows in a different plaza"""
-        plaza1: Plaza = AppPlazaFactory(name="plaza1")
-        plaza2: Plaza = AppPlazaFactory(name="plaza2")
+        plaza1 = cast(Plaza, AppPlazaFactory(name="plaza1"))
+        plaza2 = cast(Plaza, AppPlazaFactory(name="plaza2"))
         for i in range(5):
             AppShopFactory(plaza=plaza1, name=f"P1-{i}")
             AppShopFactory(plaza=plaza2, name=f"P2-{i}")
@@ -166,7 +166,7 @@ class TestOrderedModel(TransactionTestCase):
         )
 
     def test_move_before(self):
-        plaza1: Plaza = AppPlazaFactory()
+        plaza1 = cast(Plaza, AppPlazaFactory())
         shops = [AppShopFactory(plaza=plaza1, name=f"P1-{i}") for i in range(5)]
         first_shop = shops[0]
         self.assertEqual(
@@ -185,7 +185,7 @@ class TestOrderedModel(TransactionTestCase):
         )
 
     def test_move_after(self):
-        plaza1: Plaza = AppPlazaFactory()
+        plaza1 = cast(Plaza, AppPlazaFactory())
         shops = [AppShopFactory(plaza=plaza1, name=f"P1-{i}") for i in range(5)]
         first_shop = shops[0]
         self.assertEqual(
@@ -204,7 +204,7 @@ class TestOrderedModel(TransactionTestCase):
         )
 
     def test_move_start(self):
-        plaza1: Plaza = AppPlazaFactory()
+        plaza1 = cast(Plaza, AppPlazaFactory())
         shops = [AppShopFactory(plaza=plaza1, name=f"P1-{i}") for i in range(5)]
         last_shop = shops[-1]
         self.assertEqual(
@@ -218,7 +218,7 @@ class TestOrderedModel(TransactionTestCase):
         )
 
     def test_move_end(self):
-        plaza1: Plaza = AppPlazaFactory()
+        plaza1 = cast(Plaza, AppPlazaFactory())
         shops = [AppShopFactory(plaza=plaza1, name=f"P1-{i}") for i in range(5)]
         first_shop = shops[0]
         self.assertEqual(
@@ -232,9 +232,9 @@ class TestOrderedModel(TransactionTestCase):
         )
 
     def test_change_with_respect_to(self):
-        plaza1: Plaza = AppPlazaFactory()
+        plaza1 = cast(Plaza, AppPlazaFactory())
         plaza1_shops = [AppShopFactory(plaza=plaza1, name=f"P1-{i}") for i in range(5)]
-        plaza2: Plaza = AppPlazaFactory()
+        plaza2 = cast(Plaza, AppPlazaFactory())
         for i in range(5):
             AppShopFactory(plaza=plaza2, name=f"P2-{i}")
         self.assertEqual(
@@ -260,9 +260,9 @@ class TestOrderedModel(TransactionTestCase):
     def test_bulk_update(self):
         for batch_size in [2, None]:
             with self.subTest(f"bulk_update batch_sized={batch_size}"):
-                plaza1: Plaza = AppPlazaFactory()
+                plaza1 = cast(Plaza, AppPlazaFactory())
                 plaza1_shops = [AppShopFactory(plaza=plaza1, name=f"P1-{i}") for i in range(5)]
-                plaza2: Plaza = AppPlazaFactory()
+                plaza2 = cast(Plaza, AppPlazaFactory())
                 plaza2_shops = [AppShopFactory(plaza=plaza2, name=f"P2-{i}") for i in range(5)]
                 self.assertEqual(
                     list(plaza1.shop_set.all().order_by("sort_key").values_list("name", "sort_key")),
@@ -280,7 +280,7 @@ class TestOrderedModel(TransactionTestCase):
                         notifications.append(n)
 
                     conn.add_notify_handler(notify_handler)
-                    curs.execute("LISTEN test_common_lib_notifications;")
+                    curs.execute("LISTEN test_alliance_platform_ordered_model_notifications;")
                     if batch_size is None:
                         Shop.objects.bulk_update(plaza1_shops + plaza2_shops, ["sort_key"])
                     else:
@@ -318,13 +318,16 @@ class TestOrderedModel(TransactionTestCase):
                     plaza1_shops[0].save()
                     self.assertFalse(notifications)
                     conn.remove_notify_handler(notify_handler)
-                    curs.execute("UNLISTEN test_common_lib_notifications;")
+                    curs.execute("UNLISTEN test_alliance_platform_ordered_model_notifications;")
 
     def test_validate_unique_constraint(self):
         with self.assertRaisesMessage(ValueError, "sort_key should not have a unique constraint"):
 
             class TestOrderedModel1(OrderedModel):
                 sort_key = models.IntegerField(unique=True)
+
+                class Meta:
+                    app_label = "test_alliance_platform_ordered_model"
 
         with self.assertRaisesMessage(ValueError, "sort_key should not have a unique constraint"):
 
@@ -336,6 +339,7 @@ class TestOrderedModel(TransactionTestCase):
 
                 class Meta:
                     unique_together = ("column1", "column2", "sort_key")
+                    app_label = "test_alliance_platform_ordered_model"
 
     def test_notifications(self):
         with connections["default"].cursor() as curs:
@@ -346,7 +350,7 @@ class TestOrderedModel(TransactionTestCase):
                 notifications.append(n)
 
             conn.add_notify_handler(notify_handler)
-            curs.execute("LISTEN test_common_lib_notifications;")
+            curs.execute("LISTEN test_alliance_platform_ordered_model_notifications;")
             plaza = AppPlazaFactory()
             shop1 = AppShopFactory(plaza=plaza)
             self.assertTrue(notifications)
@@ -459,9 +463,9 @@ class TestOrderedModel(TransactionTestCase):
             )
 
     def test_defer_triggers(self):
-        plaza1: Plaza = AppPlazaFactory()
+        plaza1 = cast(Plaza, AppPlazaFactory())
         plaza1_shops = [AppShopFactory(plaza=plaza1, name=f"P1-{i}") for i in range(5)]
-        plaza2: Plaza = AppPlazaFactory()
+        plaza2 = cast(Plaza, AppPlazaFactory())
         for i in range(5):
             AppShopFactory(plaza=plaza2, name=f"P2-{i}")
         self.assertEqual(
@@ -481,7 +485,7 @@ class TestOrderedModel(TransactionTestCase):
                 notifications.append(n)
 
             conn.add_notify_handler(notify_handler)
-            curs.execute("LISTEN test_common_lib_notifications;")
+            curs.execute("LISTEN test_alliance_platform_ordered_model_notifications;")
 
             with Shop.defer_triggers():
                 for i, shop in enumerate(reversed(plaza1_shops)):
@@ -516,7 +520,7 @@ class TestOrderedModel(TransactionTestCase):
             )
 
     def test_queryset_move_between(self):
-        plaza1: Plaza = AppPlazaFactory()
+        plaza1 = cast(Plaza, AppPlazaFactory())
         shops = [AppShopFactory(plaza=plaza1, name=f"P1-{i}") for i in range(5)]
         self.assertEqual(
             list(plaza1.shop_set.all().order_by("sort_key").values_list("name", "sort_key")),
@@ -575,8 +579,8 @@ class TestOrderedModel(TransactionTestCase):
 
     def test_queryset_move_between_with_respect_to(self):
         """Moves multiple shops between plazas"""
-        plaza1: Plaza = AppPlazaFactory()
-        plaza2: Plaza = AppPlazaFactory()
+        plaza1 = cast(Plaza, AppPlazaFactory())
+        plaza2 = cast(Plaza, AppPlazaFactory())
         plaza1_shops = [AppShopFactory(plaza=plaza1, name=f"P1-{i}") for i in range(5)]
         plaza2_shops = [AppShopFactory(plaza=plaza2, name=f"P2-{i}") for i in range(5)]
 
@@ -645,11 +649,11 @@ class TestOrderedModel(TransactionTestCase):
         )
 
     def test_multiple_order_with_respect_to(self):
-        plaza1: Plaza = AppPlazaFactory()
-        plaza2: Plaza = AppPlazaFactory()
+        plaza1 = cast(Plaza, AppPlazaFactory())
+        plaza2 = cast(Plaza, AppPlazaFactory())
 
-        franchise1: Franchise = AppFranchiseFactory()
-        franchise2: Franchise = AppFranchiseFactory()
+        franchise1 = cast(Franchise, AppFranchiseFactory())
+        franchise2 = cast(Franchise, AppFranchiseFactory())
 
         plaza_1_franchise_1_locations = [
             AppFranchiseLocationFactory(plaza=plaza1, franchise=franchise1, name=f"p1-f1-{i}")
