@@ -24,7 +24,7 @@ PROJECT=pdf sphinx-autobuild --port=56681 -a --watch packages/ap-pdf/ docs _docs
 pid_pdf=$!
 PROJECT=server-choices sphinx-autobuild --port=56682 -a --watch packages/ap-server-choices/ docs _docs-build/server-choices &
 pid_server_choices=$!
-PROJECT=ordered_model sphinx-autobuild --port=56683 -a --watch packages/ap-ordered-model/ docs _docs-build/ordered-model &
+PROJECT=ordered-model sphinx-autobuild --port=56683 -a --watch packages/ap-ordered-model/ docs _docs-build/ordered-model &
 pid_ordered_model=$!
 sphinx-autobuild --port=56675 --open-browser -a --watch packages/ap-core/ docs _docs-build/core &
 pid_core=$!
