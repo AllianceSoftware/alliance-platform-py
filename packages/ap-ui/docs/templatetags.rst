@@ -509,7 +509,7 @@ using the :ttag:`create_dict` templatetag:
 
     {% create_dict param=1 as my_query %}
     {% create_dict kwarg=2 id=record.pk as my_kwargs %}
-    {% Button href="my_url"|url_with_perm|with_query:my_query|with_kwargs:my_kwargs %}
+    {% Button href="my_url"|url_with_perm|with_params:my_query|with_kwargs:my_kwargs %}
 
 To do object level permission checks use the ``with_perm_obj`` filter to pass through the object:
 
@@ -576,7 +576,7 @@ with the :ttag:`create_dict` templatetag, or passed directly to context in the c
 .. code-block:: html+django
 
     {% create_dict x=1 id=record.pk as my_query %}
-    {% Button href="my_url"|url_with_perm|with_query:my_query %}
+    {% Button href="my_url"|url_with_perm|with_params:my_query %}
 
 .. templatefilter:: with_perm_object
 
