@@ -6,7 +6,6 @@ import math
 from pathlib import Path
 from typing import Any
 from typing import cast
-import warnings
 
 from alliance_platform.codegen.printer import TypescriptPrinter
 from alliance_platform.codegen.printer import TypescriptSourceFileWriter
@@ -341,6 +340,13 @@ class NestedComponentPropAccumulator:
         self.context = context
         self.props = {}
 
+    @classmethod
+    def acquire(cls, context: Context, origin_node: ComponentNode):
+        accumulator = cls.get_current(context)
+        if not accumulator:
+            accumulator = cls(context, origin_node)
+        return accumulator
+
     def __enter__(self):
         # push current context; matching pop is in ``__exit__``
         self.context.push()
@@ -350,10 +356,6 @@ class NestedComponentPropAccumulator:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.context.pop()
-
-        # make sure apply was called
-        if self.props:
-            warnings.warn("NestedComponentPropAccumulator context exited without calling 'apply'")
 
     def add(self, prop: NestedComponentProp):
         """Add a prop to the accumulator
@@ -389,16 +391,13 @@ class NestedComponentPropAccumulator:
                 NestedComponentProp(...),
             ]
         """
-
-        # TODO: Not 100% sure about the behaviour below of stripping & excluding empty string - see how it goes.
-        # There were definitely issues in _not_ doing this, but it's not clear if this is the right solution.
         children: list[NestedComponentProp | str] = []
         if self.props:
             prev_index = 0
+            found_placeholders = set()
             for placeholder, prop in self.props.items():
                 index = value.find(placeholder)
                 if index == -1:
-                    warnings.warn(f"Unexpected: didn't find {placeholder} in string {value}")
                     continue
                 if index > prev_index:
                     part = value[prev_index:index]
@@ -406,10 +405,12 @@ class NestedComponentPropAccumulator:
                         children.append(part)
                 children.append(prop)
                 prev_index = index + len(placeholder)
+                found_placeholders.add(placeholder)
+            for placeholder in found_placeholders:
+                self.props.pop(placeholder)
             value = value[prev_index:]
         if value:
             children += self.transform_string(value)
-        self.props = {}
 
         return children
 
@@ -887,11 +888,20 @@ class ComponentNode(template.Node, BundlerAsset):
         if isinstance(value, DeferredProp):
             value = value.resolve(context)
         if isinstance(value, (ChildrenList, NodeList)):
+            children: list[str | NestedComponentProp] = []
+            # First, pre-process any non-component, non-string children. This allows handling of things like
+            # {% component "div" %}{% if 1 %}<strong>{% component "span" %}test{% endcomponent %}</strong>{% endif %}{% endcomponent %}
+            # Where the compiled nodes will include an `IfNode` that contains HTML.
+            pre_processed_nodes = []
             # This needs to wrap all children, otherwise any context that is modified won't available in following
             # child nodes as `NestedComponentPropAccumulator` pushes/pops context as we enter/leave it
-            with NestedComponentPropAccumulator(context, self) as accumulator:
-                children: list[str | NestedComponentProp] = []
+            with NestedComponentPropAccumulator.acquire(context, self) as accumulator:
                 for child in value:
+                    if not isinstance(child, (str, ComponentNode)):
+                        pre_processed_nodes += convert_html_string(child.render(context), self.origin)
+                    else:
+                        pre_processed_nodes.append(child)
+                for child in pre_processed_nodes:
                     if isinstance(child, ComponentNode):
                         # We could remove this branch - it's an optimisation of the below. We know the node type here
                         # directly so can avoid the extra work + string replacement that happens below.
