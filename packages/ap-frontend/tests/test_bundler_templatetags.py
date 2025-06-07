@@ -1111,6 +1111,26 @@ class TestComponentTemplateTagOutput(SimpleTestCase):
             """<div><input disabled={true} /></div>""",
         )
 
+    def test_html_input_attribute_name_conversion(self):
+        self.assertComponentEqual(
+            """
+            {% component "div" %}<input value="test" checked="true" >{% endcomponent %}""",
+            """<div><input defaultValue="test" defaultChecked="true" /></div>""",
+        )
+
+    def test_html_attribute_name_conversion(self):
+        self.assertComponentEqual(
+            """
+            {% component "div" %}<input autocomplete="default" />{% endcomponent %}""",
+            """<div><input autoComplete="default" /></div>""",
+        )
+
+        self.assertComponentEqual(
+            """
+            {% component "div" %}<label for="default" />{% endcomponent %}""",
+            """<div><label htmlFor="default" /></div>""",
+        )
+
     def test_html_bad_attributes(self):
         with self.assertWarnsRegex(Warning, "contained invalid HTML"):
             self.assertComponentEqual(
