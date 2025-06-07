@@ -1159,3 +1159,72 @@ class TestComponentTemplateTagOutput(SimpleTestCase):
             """<MyComponent camelCase={{CAMEL_KEY: { NESTED_CAMEL_KEY: "value"}}} />""",
             obj={"CAMEL_KEY": {"NESTED_CAMEL_KEY": "value"}},
         )
+
+    def test_component_html_component_nesting(self):
+        """component => html => component"""
+        self.assertComponentEqual(
+            """
+            {% component "div" %}<strong>{% component "span" %}test{% endcomponent %}</strong>{% endcomponent %}""",
+            """<div><strong><span>test</span></strong></div>""",
+        )
+
+    def test_if_node(self):
+        """if => html"""
+        self.assertComponentEqual(
+            """
+            {% component "div" %}{% if 1 %}<strong>test</strong>{% endif %}{% endcomponent %}""",
+            """<div><strong>test</strong></div>""",
+        )
+
+    def test_component_if_component_html(self):
+        """component => if => component => html"""
+        self.assertComponentEqual(
+            """
+            {% component "div" %}{% if 1 %}{% component "span" %}<strong>test</strong>{% endcomponent %}{% endif %}{% endcomponent %}""",
+            """<div><span><strong>test</strong></span></div>""",
+        )
+
+    def test_component_if_html_component(self):
+        """component => if => html => component"""
+        self.assertComponentEqual(
+            """
+            {% component "div" %}{% if 1 %}<strong>{% component "span" %}test{% endcomponent %}</strong>{% endif %}{% endcomponent %}""",
+            """<div><strong><span>test</span></strong></div>""",
+        )
+
+    def test_component_if_component_if_html(self):
+        self.assertComponentEqual(
+            """
+            {% component "div" %}{% if 1 %}<strong>{% component "span" %}test{% if 1 %}<i>?</i>{% endif %}{% endcomponent %}</strong>{% endif %}{% endcomponent %}""",
+            """<div><strong><span>test<i>?</i></span></strong></div>""",
+        )
+
+    def test_component_if_html_component_if_html_component_html(self):
+        self.assertComponentEqual(
+            """
+            {% component "div" %}{% if 1 %}<strong>{% component "span" %}test{% if 1 %}<i>{% component "b" %}<em>?</em>{% endcomponent %}</i>{% endif %}{% endcomponent %}</strong>{% endif %}{% endcomponent %}""",
+            """<div><strong><span>test<i><b><em>?</em></b></i></span></strong></div>""",
+        )
+
+    def test_if_component_html_component_if_html_component_html(self):
+        self.assertComponentEqual(
+            """
+            {% if 1 %}{% component "div" %}<strong>{% component "span" %}test{% if 1 %}<i>{% component "b" %}<em>?</em>{% endcomponent %}</i>{% endif %}{% endcomponent %}</strong>{% endcomponent %}{% endif %}""",
+            """<div><strong><span>test<i><b><em>?</em></b></i></span></strong></div>""",
+        )
+
+    def test_if_node_nested_component_within_html_escaping(self):
+        self.assertComponentEqual(
+            """
+            {% component "div" %}{% if 1 %}<strong>{% component "span" %}{{ value }}{% endcomponent %}</strong>{% endif %}{% endcomponent %}""",
+            """<div><strong><span>{"<em>test</em>"}</span></strong></div>""",
+            value="<em>test</em>",
+        )
+
+    def test_if_node_nested_component_within_html_safe_var(self):
+        self.assertComponentEqual(
+            """
+            {% component "div" %}{% if 1 %}<strong>{% component "span" %}{{ value }}{% endcomponent %}</strong>{% endif %}{% endcomponent %}""",
+            """<div><strong><span><em>test</em></span></strong></div>""",
+            value=mark_safe("<em>test</em>"),
+        )
