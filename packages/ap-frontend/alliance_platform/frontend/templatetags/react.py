@@ -887,20 +887,22 @@ class ComponentNode(template.Node, BundlerAsset):
         if isinstance(value, DeferredProp):
             value = value.resolve(context)
         if isinstance(value, (ChildrenList, NodeList)):
-            children: list[str | NestedComponentProp] = []
-            for child in value:
-                if isinstance(child, ComponentNode):
-                    # We could remove this branch - it's an optimisation of the below. We know the node type here
-                    # directly so can avoid the extra work + string replacement that happens below.
+            # This needs to wrap all children, otherwise any context that is modified won't available in following
+            # child nodes as `NestedComponentPropAccumulator` pushes/pops context as we enter/leave it
+            with NestedComponentPropAccumulator(context, self) as accumulator:
+                children: list[str | NestedComponentProp] = []
+                for child in value:
+                    if isinstance(child, ComponentNode):
+                        # We could remove this branch - it's an optimisation of the below. We know the node type here
+                        # directly so can avoid the extra work + string replacement that happens below.
 
-                    # css has to be queued here as we won't be rendering the component directly
-                    child._queue_css()
-                    try:
-                        children.append(NestedComponentProp(child, self, context))
-                    except OmitComponentFromRendering:
-                        pass
-                else:
-                    with NestedComponentPropAccumulator(context, self) as accumulator:
+                        # css has to be queued here as we won't be rendering the component directly
+                        child._queue_css()
+                        try:
+                            children.append(NestedComponentProp(child, self, context))
+                        except OmitComponentFromRendering:
+                            pass
+                    else:
                         # This will be a string but there may have been components that render (e.g. within
                         # other django tags like {% if %}, or from template inheritance and rendering into a
                         # block contained within a component).

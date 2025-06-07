@@ -236,6 +236,51 @@ class UrlFilterPermTemplateTagsTestCase(TestCase):
 
             self.assertTrue(f'href: "{url}"' in output)
 
+    def test_with_params_within_component_tag(self):
+        user1 = self.get_privileged_user()
+
+        with self.setup_overrides():
+            tpl = Template(
+                """
+            {% load react %}
+            {% load alliance_platform.ui %}
+            {% component "div" %}
+            {% create_dict templateparam="test" user_id=user.pk as my_params %}
+            {% component "a" href=perm|url_with_perm:user.pk|with_params:context_params|with_params:str_params|with_params:my_params|with_perm_obj:user %}{% endcomponent %}
+            {% endcomponent %}
+            """
+            )
+
+            context_params_dict = {"contextparam": "test"}
+            context_params_str = "&stringparam=test"
+            template_params_querydict = QueryDict(f"templateparam=test&user_id={user1.pk}")
+
+            params_dict = {
+                **context_params_dict,
+                "stringparam": "test",
+                **template_params_querydict.dict(),
+            }
+
+            request = HttpRequest()
+            request.user = user1
+            request.session = SessionBase()
+            context = Context(
+                {
+                    "request": request,
+                    "user": user1,
+                    "perm": self.OBJECT_PERM_URL,
+                    "context_params": context_params_dict,
+                    "str_params": context_params_str,
+                }
+            )
+            output = tpl.render(context)
+            url = (
+                reverse(self.OBJECT_PERM_URL, args=[user1.pk]) + "?" + urlencode(params_dict)
+                # "&" is escaped in codegen
+            ).replace("&", r"\u0026")
+
+            self.assertTrue(f'href: "{url}"' in output)
+
     def test_reject_incorrect_params(self):
         user1 = self.get_privileged_user()
         user2 = self.get_unprivileged_user()
