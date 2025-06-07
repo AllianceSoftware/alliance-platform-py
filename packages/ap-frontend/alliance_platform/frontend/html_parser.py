@@ -151,8 +151,13 @@ class HtmlAttributeTemplateNodeList:
         parser.feed(f"<div {attr_str}></div>")
         tags = parser.root.children
         if tags:
-            return transform_html_attributes(tags[0].attributes, self.original_html, self.origin)
+            return transform_html_attributes(tags[0].tag, tags[0].attributes, self.original_html, self.origin)
         return {}
+
+
+ELEMENT_ATTRIBUTE_MAPPING = {
+    "input": {"checked": "defaultChecked", "value": "defaultValue", "autofocus": "autoFocus"}
+}
 
 
 def convert_html_string(
@@ -199,7 +204,7 @@ def convert_html_string(
                 children.append(extra)
         return children
 
-    def convert_attributes(attrs: dict[str, str | Any]):
+    def convert_attributes(tag: str, attrs: dict[str, str | Any]):
         html_attribute_template_nodes = []
         transformed = {}
         for key, value in attrs.items():
@@ -208,7 +213,7 @@ def convert_html_string(
             else:
                 parts = handle_placeholders(value)
                 transformed[key] = parts[0] if len(parts) == 1 else NodeList(parts)
-        return transform_html_attributes(transformed, html, origin), html_attribute_template_nodes
+        return transform_html_attributes(tag, transformed, html, origin), html_attribute_template_nodes
 
     def convert_tree(tree):
         from alliance_platform.frontend.templatetags.react import CommonComponentSource
@@ -220,7 +225,7 @@ def convert_html_string(
                 parts = handle_placeholders(el)
                 children += parts
             else:
-                attrs, html_attribute_template_nodes = convert_attributes(el.attributes)
+                attrs, html_attribute_template_nodes = convert_attributes(el.tag, el.attributes)
                 children.append(
                     ComponentNode(
                         origin,
@@ -236,7 +241,9 @@ def convert_html_string(
     return convert_tree(tags)
 
 
-def transform_html_attributes(attrs: dict[str, str | NodeList | Node], original_html: str, origin: Origin):
+def transform_html_attributes(
+    tag: str, attrs: dict[str, str | NodeList | Node], original_html: str, origin: Origin
+):
     """Transform the attributes of an HTML tag into the final form we want
 
     This does the following:
@@ -247,7 +254,10 @@ def transform_html_attributes(attrs: dict[str, str | NodeList | Node], original_
 
     bad_keys: list[str] = []
     final_attrs = {}
+    element_mapping = ELEMENT_ATTRIBUTE_MAPPING.get(tag, {})
     for key, value in attrs.items():
+        if key in element_mapping:
+            key = element_mapping[key]
         if not is_valid_html_attribute_name(key):
             bad_keys.append(key)
         elif value is None:
