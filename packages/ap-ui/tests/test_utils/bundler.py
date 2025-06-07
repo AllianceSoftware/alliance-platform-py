@@ -1,7 +1,9 @@
 from pathlib import Path
+import subprocess
 
 from alliance_platform.frontend.bundler.asset_registry import FrontendAssetRegistry
 from alliance_platform.frontend.bundler.vite import ViteBundler
+from alliance_platform.frontend.settings import ap_frontend_settings
 from django.conf import settings
 
 fixtures_dir = Path(__file__).parent.parent / "fixtures"
@@ -44,3 +46,19 @@ class TestFrontendAssetRegistryByPass(FrontendAssetRegistry):
 
 
 bypass_frontend_asset_registry = TestFrontendAssetRegistryByPass()
+
+
+def run_prettier(code):
+    p = subprocess.run(
+        [
+            str(ap_frontend_settings.NODE_MODULES_DIR / ".bin/prettier"),
+            "--stdin-filepath",
+            "test.tsx",
+        ],
+        input=code,
+        capture_output=True,
+        text=True,
+    )
+    if p.returncode != 0:
+        raise ValueError(f"Failed to format code: {p.stderr}")
+    return p.stdout

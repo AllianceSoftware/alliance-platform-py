@@ -340,6 +340,10 @@ class FormNode(template.Node):
     nodelist: NodeList
     auto_focus: FilterExpression | bool
 
+    # This is an optimisation used with ``parse_component_tag`` - it tells it that this node has a ``nodelist`` that can
+    # be pre-processed when the tag is parsed rather than at render time.
+    should_process_child_nodelist = True
+
     def __init__(self, form: FilterExpression, nodelist: NodeList, origin: Origin | None, auto_focus=False):
         self.origin = origin or Origin(UNKNOWN_SOURCE)
         self.form = form

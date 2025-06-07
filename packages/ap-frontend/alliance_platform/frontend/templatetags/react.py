@@ -919,7 +919,6 @@ class ComponentNode(template.Node, BundlerAsset):
                         child_value: str = child if isinstance(child, str) else child.render(context)
                         if child_value:
                             children += accumulator.apply(child_value)
-
             children = process_component_children(children)
 
             if self.omit_if_empty and not children:
@@ -1347,14 +1346,29 @@ def parse_component_tag(
         i = 0
         html = ""
         replacements: dict[str, Node] = {}
-        for node in nodelist:
-            if isinstance(node, TextNode):
-                html += node.s
-            else:
-                placeholder = html_replacement_placeholder_template.format(i)
-                html += placeholder
-                replacements[str(i)] = node
-                i += 1
+
+        def process_nodes(nodes):
+            nonlocal i
+            nonlocal html
+            for node in nodes:
+                if isinstance(node, TextNode):
+                    html += node.s
+                # Nodes can set this flag to indicate that they have a ``nodelist`` that can be safely pre-processed
+                # when the tag is loaded. This should be used for nodes that always render, so you would not use it
+                # on something like an ``IfNode``. The current use case is ``FormNode`` in ``alliance_platform.ui``.
+                elif (
+                    isinstance(node, Node)
+                    and getattr(node, "should_process_child_nodelist", False)
+                    and hasattr(node, "nodelist")
+                ):
+                    process_nodes(node.nodelist)
+                else:
+                    placeholder = html_replacement_placeholder_template.format(i)
+                    html += placeholder
+                    replacements[str(i)] = node
+                    i += 1
+
+        process_nodes(nodelist)
         props["children"] = convert_html_string(html, origin, replacements=replacements)
     if asset_source is None:
         asset_source = get_component_source_from_tag_args(args, tag_name, origin)
