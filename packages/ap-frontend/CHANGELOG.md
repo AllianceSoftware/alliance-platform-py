@@ -1,5 +1,13 @@
 # alliance-platform-frontend
 
+## 0.0.20
+
+### Patch Changes
+
+- c0efb6d: Handle converting attributes on `input` from html => React correctly. Specifically `value` => `defaultValue`, `checked` => `defaultChecked` and `autofocus` => `autoFocus`.
+- 2571492: Correctly handle context modifying child nodes of a {% component %} tag. Previously, if context was modified by a tag within a {% component %} tag it would not be available in subsequent nodes. For example using `create_dict`.
+- a9e9600: Handle some edge cases in HTML parsing when using tags like {% if %} or {% form %} from `alliance_platform.ui`
+
 ## 0.0.19
 
 ### Patch Changes
