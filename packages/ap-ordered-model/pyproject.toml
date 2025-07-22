@@ -1,0 +1,47 @@
+[tool.pdm]
+
+[project]
+name = "alliance-platform-ordered-model"
+dynamic = ["version"]
+description = "Alliance Platform Ordered Model"
+authors = [
+    {name = "Alliance Software", email = "support@alliancesoftware.com.au"},
+]
+dependencies = [
+    "django-pgtrigger",
+    "Django>=4.2.11",
+]
+requires-python = ">=3.11"
+readme = "README.md"
+license = {text = "BSD-2-Clause"}
+include = [
+    "alliance_platform/ordered_model/py.typed",
+]
+[project.optional-dependencies]
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm.build]
+includes = ["alliance_platform"]
+
+[tool.pdm.version]
+source = "call"
+getter = "extract_version:get_version()"
+
+[tool.django-stubs]
+django_settings_module = "test_alliance_platform_ordered_model.settings"
+
+[tool.mypy]
+python_version = "3.11"
+plugins = [
+    "mypy_django_plugin.main",
+]
+explicit_package_bases = true
+warn_unused_ignores = true
+
+[tool.pdm.dev-dependencies]
+dev = [
+    "psycopg",
+]
