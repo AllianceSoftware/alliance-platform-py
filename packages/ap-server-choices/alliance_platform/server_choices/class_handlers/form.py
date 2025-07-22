@@ -19,7 +19,6 @@ from django.http import HttpRequest
 from django.urls import NoReverseMatch
 from django.urls import reverse_lazy
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.relations import ManyRelatedField
 
 from ..field_registry import ServerChoiceFieldRegistration
 from ..field_registry import ServerChoiceRecordsType
@@ -94,8 +93,6 @@ class FormFieldServerChoiceRegistration(ServerChoiceFieldRegistration):
 
         If any record is not found it is omitted from the return value.
         """
-        if isinstance(self.field, ManyRelatedField):
-            return self.field.child_relation.get_queryset().filter(pk__in=pks)
         choices = self.get_choices(request)
         if isinstance(choices, QuerySet):
             return choices.filter(pk__in=pks)
