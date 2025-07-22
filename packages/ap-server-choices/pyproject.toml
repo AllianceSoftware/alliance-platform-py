@@ -9,7 +9,6 @@ authors = [
 ]
 dependencies = [
     "alliance-platform-core",
-    "alliance-platform-frontend",
     "playwright",
     "Django>=4.2.11",
     "django-allianceutils>=4.0"
