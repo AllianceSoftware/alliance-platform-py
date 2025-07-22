@@ -16,32 +16,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.db.models import QuerySet
 from django.http import HttpRequest
 
-from .pagination import PaginationHandler
-from .settings import ap_server_choices_settings
-
 GetChoicesCallableType = Callable[[ServerChoiceFieldRegistration, HttpRequest], ServerChoicesType]
-
-
-class DefaultPaginationSentinel:
-    """
-    The default pagination class can't be defined from the package settings directly in the ``server_choices``
-    decorator function definition, because that breaks the settings when exporting ``server_choices`` from
-    ``__init__.py`` - the init file is read when initialising settings, meaning the code in this module is
-    run and Python attempts to access ``ap_server_choices_settings`` when defining the function while the
-    settings are in the process of being defined.
-
-    Unfortunately we also can't just default the paginator to ``None``, because explicitly defining the
-    paginator as ``None`` is actually a special case meaning "no pagination".
-
-    The (slightly clunky) solution is to just default to a special sentinel value instead of ``None``,
-    allowing us to only access ``ap_server_choices_settings`` inside the function body, meaning the
-    decorator can still be imported from the ``__init__.py`` file.
-    """
-
-    pass
-
-
-use_default_paginator = DefaultPaginationSentinel()
 
 
 def server_choices(
@@ -52,10 +27,7 @@ def server_choices(
     class_handler_registry: ClassHandlerRegistry = default_class_handler_registry,
     search_fields: list[str] | None = None,
     perm: str | Iterable[str] | Callable[[HttpRequest], bool] | None = None,
-    pagination_class: str
-    | type[PaginationHandler]
-    | DefaultPaginationSentinel
-    | None = use_default_paginator,
+    page_size: int | None = None,
     get_choices: QuerySet | GetChoicesCallableType | None = None,
     get_record: Callable[[ServerChoiceFieldRegistration, str, HttpRequest], ServerChoiceRecordType]
     | None = None,
@@ -149,7 +121,7 @@ def server_choices(
         # Register 2 fields and use the ``name`` field on them all when doing filtering
         @server_choices(["trading_entity", "waste_types"], search_fields=["name"])
         # Register project_status but don't do pagination
-        @server_choices(["project_status"], pagination_class=None)
+        @server_choices(["project_status"], page_size=0)
         # Register project_manager but override how choices are returned
         @server_choices(["project_manager", get_choices=get_project_manager_choices]
         class ProjectSerializer(ModelSerializer):
@@ -167,7 +139,7 @@ def server_choices(
             default to 'create' on the model the relation is _from_ as otherwise you'd be prevented from saving the record at all). The ``perm`` can only be inferred when using
             a ``ModelSerializer``, ``ModelForm`` or ``FilterSet``. If using a plain ``Serializer`` or ``Form`` you must provide ``perm``.
             A list can also be provided in which case all perms listed would be checked (ie. like ``permission_required``)
-        pagination_class: The pagination class to use. Defaults to the DRF default. Set to ``None`` to disable pagination.
+        page_size: The number of results to return in each API call. Defaults to 20. If set to ``0`` then no pagination is used.
         get_choices: Override how choices are generated. Passed this instance and the current DRF request. This can return any iterable (eg. a queryset, list of key/value tuples)
         get_record: Override how a single record is looked up. Passed this instance, the pk of record to return and the current DRF request. Note that no individual permission checks are done - ``perm`` is checked once by default.
         get_records: Override how a multiple records are looked up. Passed this instance, a list of pks to return and the current DRF request. Note that no individual permission checks are done - ``perm`` is checked once by default.
@@ -180,9 +152,6 @@ def server_choices(
         empty_label: Label to use for empty option. Specify ``None`` to disable the empty option. This will be inferred from the field if possible otherwise will be ``None``.
         **kwargs: Any extra kwargs are passed through directly to :code:`registration_class`
     """
-
-    if pagination_class == use_default_paginator:
-        pagination_class = ap_server_choices_settings.DEFAULT_PAGINATION_CLASS
 
     def wrapper(cls):
         _registration_class = registration_class
@@ -221,7 +190,7 @@ def server_choices(
                 field_name=field_name,
                 search_fields=search_fields,
                 perm=perm,
-                pagination_class=pagination_class,
+                page_size=page_size,
                 get_choices=get_choices,
                 get_record=get_record,
                 get_records=get_records,

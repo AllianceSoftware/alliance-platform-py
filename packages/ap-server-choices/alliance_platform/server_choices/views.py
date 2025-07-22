@@ -5,11 +5,13 @@ from typing import Protocol
 from allianceutils.util import underscoreize
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.exceptions import ValidationError
+from django.core.paginator import InvalidPage
 from django.http import HttpResponse
 from django.http import JsonResponse
 from django.views.generic import View
 
 from .field_registry import default_server_choices_registry
+from .pagination import SimplePaginator
 
 
 class APIViewProtocol(Protocol):
@@ -135,9 +137,13 @@ class ServerChoicesView(View):
                     )
             return data
 
-        if field_reg.pagination_class:
-            paginator = field_reg.pagination_class()
-            page = paginator.paginate_queryset(choices, request, view=self)
+        if field_reg.page_size != 0:
+            paginator = SimplePaginator(field_reg.page_size)
+            try:
+                page = paginator.paginate_queryset(choices, request, view=self)
+            except InvalidPage:
+                return HttpResponse("Invalid page", status=404)
+
             if page is not None:
                 return paginator.get_paginated_response(serialize_with_empty_label(page, page.has_previous()))
         return JsonResponse(serialize_with_empty_label(choices), safe=False)
