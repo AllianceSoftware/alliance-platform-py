@@ -18,7 +18,6 @@ from django.forms.widgets import ChoiceWidget
 from django.http import HttpRequest
 from django.urls import NoReverseMatch
 from django.urls import reverse_lazy
-from rest_framework.pagination import PageNumberPagination
 
 from ..field_registry import ServerChoiceFieldRegistration
 from ..field_registry import ServerChoiceRecordsType
@@ -182,14 +181,8 @@ class ServerChoicesSelectWidget(Select):
                 f"ServerChoicesView has not been added for {self.server_choice_registration.registry}. "
                 f"Either add the URL or check if the existing URL is namespaced. Namespaced URLs are not supported."
             )
-        pagination_class = self.server_choice_registration.pagination_class
-        if pagination_class and not issubclass(pagination_class, PageNumberPagination):
-            raise ValueError("ServerChoicesSelectWidget currently only supports PageNumberPaginator")
-
-        frontend_paginator = "PageNumberPaginator" if pagination_class else None
         request = CurrentRequestMiddleware.get_request()
         if value and request:
-            request = HttpRequest(request)
             # If we have value work out the items for it so the frontend UI can render the labels on load
             # This is then handled by the AsyncChoicesInput.tsx which expects a `initialSelectedItems` prop.
             if isinstance(value, list):
@@ -209,7 +202,7 @@ class ServerChoicesSelectWidget(Select):
                 value_field=self.server_choice_registration.value_field,
                 class_name=self.server_choice_registration.class_name,
                 field_name=self.server_choice_registration.field_name,
-                pagination_class=frontend_paginator,
+                is_paginated=self.server_choice_registration.is_paginated(),
                 multiple=self.allow_multiple_selected,
                 supports_server_search=self.server_choice_registration.supports_server_search,
                 source_class_name=self.server_choice_registration.source_class_name,

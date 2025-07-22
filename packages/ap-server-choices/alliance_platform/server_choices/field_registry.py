@@ -12,7 +12,7 @@ from typing import TypeVar
 from typing import cast
 
 from alliance_platform.core.auth import resolve_perm_name
-from alliance_platform.server_choices.pagination import SimplePaginator
+from alliance_platform.server_choices.settings import ap_server_choices_settings
 from django.conf import settings
 from django.db.models import Model
 from django.db.models import Q
@@ -87,6 +87,8 @@ class ServerChoiceFieldRegistration(Generic[ClassType]):
     supports_server_search: bool
     # The class that this field is attached to. Used in debugging.
     source_class_name: str | None
+    #: The number of results returned by the API at a time. Set to 0 to disable pagination (not recommended).
+    page_size: int
 
     def __init__(
         self,
@@ -97,7 +99,7 @@ class ServerChoiceFieldRegistration(Generic[ClassType]):
         field_name: str,
         search_fields: list[str] | None = None,
         perm=None,
-        pagination_class=SimplePaginator,
+        page_size=None,
         get_choices=None,
         get_record=None,
         get_records=None,
@@ -119,7 +121,6 @@ class ServerChoiceFieldRegistration(Generic[ClassType]):
         # implementation details such as the module or class name - so just expose the generated name
         # that could be used for debugging with a bit more effort.
         self.source_class_name = source_class_name if settings.DEBUG else class_name
-
         # Note: mypy doesn't like shadowing methods on an object so there are a lot of ignores here
         # see discussion here: https://github.com/python/mypy/issues/2427
         if (
@@ -156,12 +157,15 @@ class ServerChoiceFieldRegistration(Generic[ClassType]):
             raise ValueError(
                 "You must specify 'perm' when 'model' is not passed for Server Choices %s" % class_name
             )
-        self.pagination_class = pagination_class
+        self.page_size = ap_server_choices_settings.PAGE_SIZE if page_size is None else page_size
         self.perm = perm
         self.class_name = class_name
         self.field_name = field_name
         self.label_field = label_field
         self.value_field = value_field
+
+    def is_paginated(self):
+        return self.page_size != 0
 
     def has_perm(self, request: HttpRequest):
         if callable(self.perm):
