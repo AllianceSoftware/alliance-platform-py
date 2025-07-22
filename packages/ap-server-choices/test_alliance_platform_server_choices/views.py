@@ -1,28 +1,25 @@
-from allianceutils.middleware import CurrentRequestMiddleware
-from django.contrib.auth import get_user_model
-from django.contrib.auth.mixins import PermissionRequiredMixin
-from django.views.generic import TemplateView
+from alliance_platform.server_choices import server_choices
+from alliance_platform.server_choices.class_handlers.django_filters import FilterSet
 
-UserModel = get_user_model()
+from test_alliance_platform_server_choices.models import Shop
 
 
-class TestCurrentRequest(TemplateView):
-    template_name = "test_server_choices/test_current_request.html"
-
-    def get_context_data(self, **kwargs):
-        return {
-            "self_request": self.request,
-            "current_request": CurrentRequestMiddleware.get_request(),
-        }
-
-
-class TestLinkRootView(TemplateView):
-    """Should be publicly accessible"""
-
-    permission_required: None = None
-    template_name = "test_server_choices/test_current_request.html"
+# We don't actually need a view for this currently, we just want to register it once for use in test cases
+@server_choices()
+class TestShopFilterSet(FilterSet):
+    class Meta:
+        model = Shop
+        fields = [
+            "plaza",
+            "payment_methods_accepted",
+        ]
 
 
-class TestLinkSubView(PermissionRequiredMixin, TemplateView):
-    permission_required = "test_server_choices.link_is_allowed"
-    template_name = "test_server_choices/test_current_request.html"
+@server_choices(search_fields=["name"], page_size=0)
+class TestShopFilterSetWithSearchNoPagination(FilterSet):
+    class Meta:
+        model = Shop
+        fields = [
+            "plaza",
+            "payment_methods_accepted",
+        ]
