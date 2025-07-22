@@ -16,6 +16,19 @@ Add ``alliance_platform.server_choices`` to your ``INSTALLED_APPS``.
         ...
     ]
 
+Register the URL for :class:`~alliance_platform.server_choices.views.ServerChoicesView`. The actual URL path can
+be anything you want.
+
+.. code-block:: python
+
+    from alliance_platform.server_choices.views import ServerChoicesView
+
+    urlpatterns = [
+        # any other URL patterns
+        path("js-api/server-choices/", ServerChoicesView.as_view()),
+    ]
+
+To use the default widget you will also need to have `alliance_platform_frontend` installed and setup.
 
 Settings
 ~~~~~~~~
@@ -35,7 +48,6 @@ In the settings file:
     ALLIANCE_PLATFORM: AlliancePlatformSettings = {
         "CORE": {"PROJECT_DIR": PROJECT_DIR},
         "SERVER_CHOICES": {
-            "DEFAULT_PAGINATION_CLASS": "alliance_platform.server_choices.pagination.SimplePaginator",
             "PAGE_SIZE": 20,
         },
     }

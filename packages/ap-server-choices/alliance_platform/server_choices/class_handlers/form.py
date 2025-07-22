@@ -162,7 +162,7 @@ class ServerChoicesSelectWidget(Select):
     See ServerChoicesSelectWidget.tsx for frontend implementation.
     """
 
-    template_name = "django/forms/widgets/server_choices_select_widget.html"
+    template_name = "alliance_platform/server_choices/widgets/server_choices_select_widget.html"
     server_choice_registration: ServerChoiceFieldRegistration
     input_type = "server-choices"
 

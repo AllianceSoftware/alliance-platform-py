@@ -20,6 +20,7 @@ Follow these steps:
 
 * Delete the ``server_choices`` submodule entirely from ``django-root/common_lib``
 * Replace any imports from ``common_lib.server_choices.register`` with imports from ``alliance_platform.server_choices.field_registry``
+* Replace import ``from common_lib.server_choices.form import ServerChoicesSelectWidget`` with ``from alliance_platform.server_choices.class_handlers.form import ServerChoicesSelectWidget``
 
 Custom registration class handlers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
