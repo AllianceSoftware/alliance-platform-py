@@ -7,6 +7,8 @@ from alliance_platform.server_choices.settings import ap_server_choices_settings
 from alliance_platform.server_choices.views import ServerChoicesView
 from django.core.exceptions import ImproperlyConfigured
 from django.core.exceptions import ObjectDoesNotExist
+from django.forms import ChoiceField
+from django.forms import Form
 from django.forms import ModelForm
 from django.forms import ModelMultipleChoiceField
 from django.forms.widgets import RadioSelect
@@ -1516,4 +1518,209 @@ class TestFormWidget(TestCase):
                 "supportsServerSearch": True,
                 "sourceClassName": registration.source_class_name,
             },
+        )
+
+
+class TestQuerysetChoicesServerView(TestCase):
+    def setUp(self):
+        self.user = UserProfileFactory(is_superuser=True)
+        for i in range(30):
+            AppPlazaFactory()
+
+    def _get_response(self, server_choices_kwargs, query_params=None, status=200):
+        registry = ServerChoicesRegistry("test")
+
+        @server_choices(["plaza"], registry=registry, **server_choices_kwargs)
+        class TestShopSerializer(ModelSerializer):
+            class Meta:
+                model = Shop
+                fields = [
+                    "plaza",
+                ]
+
+        factory = AuthenticatedRequestFactory(user=self.user)
+        query_params = query_params or {}
+        query_string = "&".join(
+            [
+                f"{k}={v}"
+                for k, v in {
+                    "class_name": list(registry.server_choices_registry.keys())[0],
+                    "field_name": "plaza",
+                    **query_params,
+                }.items()
+            ]
+        )
+        request = factory.get(f"/?{query_string}")
+        view = ServerChoicesView.as_view(registry=registry)
+        response = view(request)
+        self.assertEqual(response.status_code, status)
+        if status == 200:
+            data = json.loads(response.content.decode())
+            return data
+        return response
+
+    def test_server_choices_view_default_pagination(self):
+        data = self._get_response(dict(page_size=ap_server_choices_settings.PAGE_SIZE))
+        self.assertEqual(data["count"], 30)
+        self.assertEqual(
+            data["results"],
+            [
+                {"key": p.pk, "label": str(p)}
+                for p in Plaza.objects.all()[: ap_server_choices_settings.PAGE_SIZE]
+            ],
+        )
+
+    def test_server_choices_view_customise_pagination(self):
+        data = self._get_response(dict(page_size=5))
+        self.assertEqual(data["count"], 30)
+        self.assertEqual(
+            data["results"],
+            [{"key": p.pk, "label": str(p)} for p in Plaza.objects.all()[:5]],
+        )
+
+    def test_server_choices_view_each_page(self):
+        for page in range(1, 4):
+            data = self._get_response(dict(page_size=10), query_params=dict(page=page))
+            self.assertEqual(data["count"], 30)
+            self.assertEqual(
+                data["results"],
+                [{"key": p.pk, "label": str(p)} for p in Plaza.objects.all()[(page - 1) * 10 : page * 10]],
+            )
+        # out of range page
+        self._get_response(dict(page_size=10), query_params=dict(page=4), status=404)
+
+    def test_get_label(self):
+        def get_label(registry, item):
+            return f"Plaza: {str(item)}"
+
+        page_size = 5
+        data = self._get_response(dict(page_size=page_size, get_label=get_label))
+        self.assertEqual(data["count"], 30)
+        self.assertEqual(
+            data["results"],
+            [{"key": p.pk, "label": f"Plaza: {str(p)}"} for p in Plaza.objects.all()[:page_size]],
+        )
+
+    def test_serialize_fields(self):
+        page_size = 5
+        data = self._get_response(dict(page_size=page_size, label_field="name", value_field="pk"))
+        self.assertEqual(data["count"], 30)
+        self.assertEqual(
+            data["results"],
+            [{"pk": p.pk, "name": str(p)} for p in Plaza.objects.all()[:page_size]],
+        )
+
+    def test_custom_serialize(self):
+        page_size = 5
+
+        def serialize(registry, item, request):
+            if isinstance(item, Plaza):
+                return {"id": item.pk, "name": str(item), "len": len(str(item))}
+            return [serialize(registry, item, request) for item in item]
+
+        data = self._get_response(dict(page_size=page_size, serialize=serialize))
+        self.assertEqual(data["count"], 30)
+        self.assertEqual(
+            data["results"],
+            [{"id": p.pk, "name": str(p), "len": len(str(p))} for p in Plaza.objects.all()[:page_size]],
+        )
+
+
+class TestTupleChoicesServerView(TestCase):
+    def setUp(self):
+        self.user = UserProfileFactory(is_superuser=True)
+        self.choices = [("{i}", f"Choice {i}") for i in range(1, 31)]
+
+    def _get_response(self, server_choices_kwargs, query_params=None, status=200):
+        registry = ServerChoicesRegistry("test")
+
+        @server_choices(["simple"], registry=registry, perm="some_perm", **server_choices_kwargs)
+        class TestForm(Form):
+            simple = ChoiceField(choices=self.choices)
+
+        factory = AuthenticatedRequestFactory(user=self.user)
+        query_params = query_params or {}
+        query_string = "&".join(
+            [
+                f"{k}={v}"
+                for k, v in {
+                    "class_name": list(registry.server_choices_registry.keys())[0],
+                    "field_name": "simple",
+                    **query_params,
+                }.items()
+            ]
+        )
+        request = factory.get(f"/?{query_string}")
+        view = ServerChoicesView.as_view(registry=registry)
+        response = view(request)
+        self.assertEqual(response.status_code, status)
+        if status == 200:
+            data = json.loads(response.content.decode())
+            return data
+        return response
+
+    def test_server_choices_view_default_pagination(self):
+        data = self._get_response(dict(page_size=ap_server_choices_settings.PAGE_SIZE))
+        self.assertEqual(data["count"], 30)
+        self.assertEqual(
+            data["results"],
+            [
+                {"key": key, "label": label}
+                for (key, label) in self.choices[: ap_server_choices_settings.PAGE_SIZE]
+            ],
+        )
+
+    def test_server_choices_view_customise_pagination(self):
+        data = self._get_response(dict(page_size=5))
+        self.assertEqual(data["count"], 30)
+        self.assertEqual(
+            data["results"],
+            [{"key": key, "label": label} for (key, label) in self.choices[:5]],
+        )
+
+    def test_server_choices_view_each_page(self):
+        for page in range(1, 4):
+            data = self._get_response(dict(page_size=10), query_params=dict(page=page))
+            self.assertEqual(data["count"], 30)
+            self.assertEqual(
+                data["results"],
+                [{"key": key, "label": label} for (key, label) in self.choices[(page - 1) * 10 : page * 10]],
+            )
+        # out of range page
+        self._get_response(dict(page_size=10), query_params=dict(page=4), status=404)
+
+    def test_get_label(self):
+        def get_label(registry, item):
+            return f"Choice: {item[1]}"
+
+        page_size = 5
+        data = self._get_response(dict(page_size=page_size, get_label=get_label))
+        self.assertEqual(data["count"], 30)
+        self.assertEqual(
+            data["results"],
+            [{"key": key, "label": f"Choice: {label}"} for (key, label) in self.choices[:page_size]],
+        )
+
+    def test_serialize_fields(self):
+        page_size = 5
+        data = self._get_response(dict(page_size=page_size, label_field="name", value_field="pk"))
+        self.assertEqual(data["count"], 30)
+        self.assertEqual(
+            data["results"],
+            [{"pk": key, "name": label} for (key, label) in self.choices[:page_size]],
+        )
+
+    def test_custom_serialize(self):
+        page_size = 5
+
+        def serialize(registry, item, request):
+            if isinstance(item, tuple):
+                return {"id": item[0], "name": item[1], "len": len(str(item[1]))}
+            return [serialize(registry, item, request) for item in item]
+
+        data = self._get_response(dict(page_size=page_size, serialize=serialize))
+        self.assertEqual(data["count"], 30)
+        self.assertEqual(
+            data["results"],
+            [{"id": key, "name": label, "len": len(str(label))} for key, label in self.choices[:page_size]],
         )

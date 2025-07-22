@@ -11,6 +11,8 @@ API
   :members:
   :inherited-members:
 
+.. autoclass:: alliance_platform.server_choices.class_handlers.form.ServerChoicesSelectWidget
+
 .. autoclass:: alliance_platform.server_choices.class_handlers.django_filters.FilterSetServerChoiceFieldRegistration
   :members:
   :inherited-members:
