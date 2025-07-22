@@ -63,55 +63,9 @@ def server_choices(
     of options that you wanted to serve dynamically with backend filtering & pagination ``server_choices``
     can be used.
 
-    **Data Returned**
+    See the :doc:`usage documentation </usage>` for more details and examples.
 
-    :class:`~alliance_platform.server_choices.views.ServerChoicesView` (see **API Endpoint** below) will return only the key
-    and a label for each record that is returned. The label, by default, is the string representation of the object.
-    To change this you can pass :code:`get_label`. Note that if choices is not a queryset then the item passed to
-    ``get_label`` will be a 2-tuple of ``key`` and ``label``. eg. The default ``get_label`` looks like:
-
-    .. code:: python
-
-        def get_label(registration, record):
-            if isinstance(record, (list, tuple)):
-                return record[1]
-            return str(record)
-
-    **Permissions**
-
-    When the endpoint is used to get the available choices permission checks apply. You can control what permission is
-    used by passing the :code:`perm` kwarg. If not specified and the django Model can be inferred from the decorated
-    class (eg. when using a :class:`~rest_framework.serializers.ModelSerializer`, :class:`~django.forms.ModelForm` or
-    :class:`~django_filters.filterset.FilterSet`) then the :code:`create` permission for that model as returned by
-    :meth:`~django_site_core.auth.resolve_perm_name` will be used.
-
-    For example if you had a :code:`ModelForm` for the model :code:`User` which had foreign keys to :code:`Address`
-    and :code:`Group` then the choices for both models would be the :code:`create` permission on :code:`User`. The
-    rationale for this is if you weren't using server_choices and rendering the form directly there would be no specific
-    check on the foreign key form fields - all the options would be embedded directly in the returned HTML. Using
-    :code:`create` means if you can create the main record you can see the options for each field you need to save on
-    that record. Note that the only information exposed about the related is the :code:`pk` and a label for it - you
-    can't access all the data from it.
-
-
-    **API Endpoint**
-
-    Once decorated the the following applies:
-
-    1. :class:`~alliance_platform.server_choices.views.ServerChoicesView` will serve up the choices for this registration based on the registered name and field.
-       Permissions are checked according to the ``perm`` property. See :class:`~alliance_platform.server_choices.register.ServerChoiceFieldRegistration` for
-       more details.
-
-    2. Presto codegen will use this registrations when creating the base ViewModel classes for classes decorated with
-       :meth:`~codegen.presto.decorator.view_model_codegen`
-
-    In order for :class:`~alliance_platform.server_choices.views.ServerChoicesView` to know what to return a unique name is
-    generated as part of the registration for the class being registered. This is hashed to avoid exposing application
-    structure to the frontend. This name, along with the specific field name on that class, is passed when calling
-    :class:`~alliance_platform.server_choices.views.ServerChoicesView` which it then uses to look up in the global registry to
-    get the relevant registration instance.
-
-    **Usage**
+    **Base Usage**
 
     .. code:: python
 
@@ -140,13 +94,13 @@ def server_choices(
             a ``ModelSerializer``, ``ModelForm`` or ``FilterSet``. If using a plain ``Serializer`` or ``Form`` you must provide ``perm``.
             A list can also be provided in which case all perms listed would be checked (ie. like ``permission_required``)
         page_size: The number of results to return in each API call. Defaults to 20. If set to ``0`` then no pagination is used.
-        get_choices: Override how choices are generated. Passed this instance and the current DRF request. This can return any iterable (eg. a queryset, list of key/value tuples)
-        get_record: Override how a single record is looked up. Passed this instance, the pk of record to return and the current DRF request. Note that no individual permission checks are done - ``perm`` is checked once by default.
-        get_records: Override how a multiple records are looked up. Passed this instance, a list of pks to return and the current DRF request. Note that no individual permission checks are done - ``perm`` is checked once by default.
+        get_choices: Override how choices are generated. Passed this instance and the current request. This can return any iterable (eg. a queryset, list of key/value tuples)
+        get_record: Override how a single record is looked up. Passed this instance, the pk of record to return and the current request. Note that no individual permission checks are done - ``perm`` is checked once by default.
+        get_records: Override how a multiple records are looked up. Passed this instance, a list of pks to return and the current request. Note that no individual permission checks are done - ``perm`` is checked once by default.
         get_label: Override how the label for a record is returned. By default just calls ``str`` on the record. Note that this will also be called
             if the choices is a list of tuple and will receive the tuple representation of a choice (eg. :code:`(key, label)`)
-        filter_choices: Override how choices are filtered. Passed this instance, the choices to filter and the current DRF request.
-        serialize: Override how record(s) are serialized. Passed this instance, the item or items to serialize, and the current DRF request. Where possible use
+        filter_choices: Override how choices are filtered. Passed this instance, the choices to filter and the current request.
+        serialize: Override how record(s) are serialized. Passed this instance, the item or items to serialize, and the current request. Where possible use
             self.label_field and self.value_field as the name of the fields on returned data (if applicable - if using a complete custom return shape then ignore). This
             allows codegen to generate frontend code that knows what to expect from :class:`~alliance_platform.server_choices.views.ServerChoicesView`.
         empty_label: Label to use for empty option. Specify ``None`` to disable the empty option. This will be inferred from the field if possible otherwise will be ``None``.

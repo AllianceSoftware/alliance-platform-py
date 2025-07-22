@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from factory import Faker
 from factory import SubFactory
 from factory.django import DjangoModelFactory
 
@@ -15,6 +16,8 @@ class AppPaymentMethodFactory(DjangoModelFactory):
 
 
 class AppPlazaFactory(DjangoModelFactory):
+    name: Faker[str, str] = Faker("name")
+
     class Meta:
         model = Plaza
 

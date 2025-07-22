@@ -246,7 +246,7 @@ class ServerChoiceFieldRegistration(Generic[ClassType]):
         return str(record)
 
     def filter_choices(self, choices: ServerChoicesType, request: HttpRequest) -> ServerChoicesType:
-        """Give some choices returned by ``get_choices`` filter then based on current request.
+        """Given some choices returned by ``get_choices``, filter then based on current request.
 
         Default implementation works as follows
 
