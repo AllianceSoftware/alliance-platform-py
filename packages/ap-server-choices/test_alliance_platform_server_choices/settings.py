@@ -5,7 +5,6 @@ import random
 from typing import TypedDict
 
 from alliance_platform.core.settings import AlliancePlatformCoreSettingsType
-from alliance_platform.frontend.bundler.asset_registry import FrontendAssetRegistry
 from alliance_platform.server_choices.settings import AlliancePlatformServerChoicesSettingsType
 
 is_ci = os.environ.get("CI_SERVER", "no") == "yes"
@@ -29,8 +28,6 @@ class AlliancePlatformSettings(TypedDict):
     CORE: AlliancePlatformCoreSettingsType
     SERVER_CHOICES: AlliancePlatformServerChoicesSettingsType
 
-
-frontend_registry = FrontendAssetRegistry()
 
 ALLIANCE_PLATFORM: AlliancePlatformSettings = {
     "CORE": {

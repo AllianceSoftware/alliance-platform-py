@@ -26,6 +26,8 @@ from test_alliance_platform_server_choices.models import PaymentMethod
 from test_alliance_platform_server_choices.models import Plaza
 from test_alliance_platform_server_choices.models import Shop
 from test_alliance_platform_server_choices.models import ShopCategory
+from test_alliance_platform_server_choices.views import TestShopFilterSet
+from test_alliance_platform_server_choices.views import TestShopFilterSetWithSearchNoPagination
 
 
 class AuthenticatedRequestFactory(RequestFactory):
@@ -341,7 +343,7 @@ class TestSerializerServerChoices(TestCase):
 
         @server_choices(
             ["category"],
-            pagination_class=None,
+            page_size=0,
             registry=registry,
         )
         class TestShopSerializer(ModelSerializer):
@@ -757,7 +759,7 @@ class TestFormServerChoices(TestCase):
 
         @server_choices(
             ["category"],
-            pagination_class=None,
+            page_size=0,
             registry=registry,
         )
         class TestShopForm(ModelForm):
@@ -1213,7 +1215,7 @@ class TestFilterSetServerChoices(TestCase):
 
         @server_choices(
             ["category"],
-            pagination_class=None,
+            page_size=0,
             registry=registry,
         )
         class TestShopFilterSet(FilterSet):
@@ -1433,3 +1435,85 @@ class TestFilterSetServerChoices(TestCase):
                     fields = [
                         "shops",
                     ]
+
+
+class TestFormWidget(TestCase):
+    def setUp(self):
+        self.filterset = TestShopFilterSet()
+        self.filterset_search_no_pagination = TestShopFilterSetWithSearchNoPagination()
+
+    def test_single_select(self):
+        widget = self.filterset.filters["plaza"].field.widget
+        registration = widget.server_choice_registration
+        self.assertIsInstance(widget, ServerChoicesSelectWidget)
+        self.assertDictEqual(
+            widget.get_context("plaza", 5, {})["server_choices"],
+            {
+                "apiUrl": "/test-server-choices/",
+                "labelField": "label",
+                "valueField": "key",
+                "className": registration.class_name,
+                "fieldName": registration.field_name,
+                "isPaginated": True,
+                "multiple": False,
+                "supportsServerSearch": False,
+                "sourceClassName": registration.source_class_name,
+            },
+        )
+
+    def test_multi_select(self):
+        widget = self.filterset.filters["payment_methods_accepted"].field.widget
+        registration = widget.server_choice_registration
+        self.assertIsInstance(widget, ServerChoicesSelectWidget)
+        self.assertDictEqual(
+            widget.get_context("plaza", 5, {})["server_choices"],
+            {
+                "apiUrl": "/test-server-choices/",
+                "labelField": "label",
+                "valueField": "key",
+                "className": registration.class_name,
+                "fieldName": registration.field_name,
+                "isPaginated": True,
+                "multiple": True,
+                "supportsServerSearch": False,
+                "sourceClassName": registration.source_class_name,
+            },
+        )
+
+    def test_single_select_search_pagination(self):
+        widget = self.filterset_search_no_pagination.filters["plaza"].field.widget
+        registration = widget.server_choice_registration
+        self.assertIsInstance(widget, ServerChoicesSelectWidget)
+        self.assertDictEqual(
+            widget.get_context("plaza", 5, {})["server_choices"],
+            {
+                "apiUrl": "/test-server-choices/",
+                "labelField": "label",
+                "valueField": "key",
+                "className": registration.class_name,
+                "fieldName": registration.field_name,
+                "isPaginated": False,
+                "multiple": False,
+                "supportsServerSearch": True,
+                "sourceClassName": registration.source_class_name,
+            },
+        )
+
+    def test_multi_select_search_pagination(self):
+        widget = self.filterset_search_no_pagination.filters["payment_methods_accepted"].field.widget
+        registration = widget.server_choice_registration
+        self.assertIsInstance(widget, ServerChoicesSelectWidget)
+        self.assertDictEqual(
+            widget.get_context("payment_methods_accepted", 5, {})["server_choices"],
+            {
+                "apiUrl": "/test-server-choices/",
+                "labelField": "label",
+                "valueField": "key",
+                "className": registration.class_name,
+                "fieldName": registration.field_name,
+                "isPaginated": False,
+                "multiple": True,
+                "supportsServerSearch": True,
+                "sourceClassName": registration.source_class_name,
+            },
+        )
