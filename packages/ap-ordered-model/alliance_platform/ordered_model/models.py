@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from typing import TypeAlias
 from typing import cast
 
 from alliance_platform.ordered_model.triggers import generate_model_trigger_name
@@ -148,13 +149,13 @@ class OrderedModelMetaClass(ModelBase):
                 """,
             ),
         ]
-        new_class._trigger_uris = [trigger.get_uri(new_class) for trigger in triggers]  # type: ignore[arg-type] # get_uri should accept type[Model]
+        new_class._trigger_uris = [trigger.get_uri(new_class) for trigger in triggers]
 
         pgtrigger.register(*triggers)(new_class)
         return new_class
 
 
-PkOrModel = models.Model | str | int
+PkOrModel: TypeAlias = models.Model | str | int
 
 
 class UnexpectedOrderError(Exception):
@@ -381,7 +382,7 @@ class OrderedModel(models.Model, metaclass=OrderedModelMetaClass):
             # By default exclude sort field name from being updated on save as it may
             # have changed if other records where added since this instance was loaded
             update_fields = []
-            concrete_fields: list[Field] = self._meta.concrete_fields  # type: ignore[attr-defined]
+            concrete_fields: list[Field] = self._meta.concrete_fields
             for field in concrete_fields:
                 if (
                     not field.primary_key

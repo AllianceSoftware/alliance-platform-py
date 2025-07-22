@@ -30,7 +30,6 @@ dev = [
   "types-Werkzeug",
   "types-beautifulsoup4",
   "types-factory-boy",
-  "types-psycopg",
   "types-requests",
   "types-setuptools",
   "tox",
