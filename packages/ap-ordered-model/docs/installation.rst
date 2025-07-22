@@ -19,7 +19,16 @@ be in ``installed_apps``.
     ]
 
 
+.. warning::
+
+  Only ``psycopg`` is supported - if you are using ``psycopg2`` you will need to upgrade.
+
 Settings
 ~~~~~~~~
 
 The ordered model package has no settings.
+
+Usage
+~~~~~
+
+For usage see the :class:`~alliance_platform.ordered_model.models.OrderedModel` documentation.
