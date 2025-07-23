@@ -262,6 +262,9 @@ class CodegenRegistry:
             for intermediate_file in files_to_write:
                 intermediate_file.temp_file_path.unlink(missing_ok=True)
 
+        if files_to_write:
+            post_process_artifacts([f.temp_file_path for f in files_to_write])
+
         abort_reason = should_abort()
         if abort_reason:
             if isinstance(abort_reason, str):
@@ -269,9 +272,6 @@ class CodegenRegistry:
             stats.aborted = True
             cleanup()
             return stats
-
-        if files_to_write:
-            post_process_artifacts([f.temp_file_path for f in files_to_write])
 
         for intermediate_file in files_to_write:
             contents = intermediate_file.temp_file_path.read_text("utf8")
