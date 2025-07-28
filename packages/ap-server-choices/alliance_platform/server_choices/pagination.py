@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import Protocol
 from urllib import parse
 
 from allianceutils.util import camelize
@@ -10,20 +9,6 @@ from django.db.models import QuerySet
 from django.http import HttpRequest
 from django.http import JsonResponse
 from django.utils.encoding import force_str
-from django.views.generic import View
-
-
-class PaginationHandler(Protocol):
-    """
-    Implements some of the basic DRF functionality for pagination, but stripped down
-    for our specific use case. Designed so that a DRF paginator can be used instead.
-    """
-
-    def paginate_queryset(
-        self, queryset: QuerySet, request: HttpRequest, view: View | None = None
-    ) -> Page: ...
-
-    def get_paginated_response(self, result: list) -> JsonResponse: ...
 
 
 # these are just copied straight from rest_framework.utils.urls, currently without modification
@@ -51,7 +36,7 @@ def remove_query_param(url, key):
     return parse.urlunsplit((scheme, netloc, path, query, fragment))
 
 
-class SimplePaginator(PaginationHandler):
+class SimplePaginator:
     """
     Implements some of the basic DRF functionality for pagination, but stripped down
     for our specific use case
