@@ -176,33 +176,41 @@ This is used when decorating a Django form or filterset.
 
   To change the default input you can override the template ``alliance_platform/server_choices/widgets/server_choices_select_widget.html``
 
-You can pass through extra arguments via the widget. For example, say you want to further refine choices based on a
-query parameter - we can pass that as an attribute to the widget.
+You can pass extra arguments via the widget to refine choices. For example, to show only the rooms in a given building
+once a room has been selected, we can pass that as a query parameter.
 
 .. code-block:: python
 
-    def get_pizza_choices(registration, request):
-        current_instance_id = request.query_params.get("currentInstanceId")
-        if current_instance_id:
-            return Pizza.objects.filter(name__icontains=query, pk=current_instance_id)
-        return Pizza.objects.filter(name__icontains=query)
+    def get_room_choices(registration, request):
+        building_id = request.query_params.get("buildingId")
+        if building_id:
+            return Room.objects.filter(building_id=building_id)
+        return Room.objects.all()
 
-    @server_choices(["pizza"], search_fields=["name"], get_choices=get_pizza_choices)
-    class PizzaItemForm(ModelForm):
+    @server_choices(
+        ["room"],
+        search_fields=["name"],
+        get_choices=get_room_choices
+    )
+    class BookingForm(ModelForm):
         class Meta:
-            model = PizzaItem
+            model = Booking
             fields = [
-                "pizza",
-                "restaurant",
-                "price",
+                "building",
+                "room",
+                "start_time",
+                "end_time",
             ]
 
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
-            if self.instance:
-                self_fields["pizza"].widget_attrs_update(query={"currentInstanceId": self_instance_pk})
+            if self.instance and self.instance.pk:
+                # Filter room choices to the building of this booking
+                self.fields["room"].widget_attrs_update(
+                    query={"buildingId": self.instance.room.building_id}
+                )
 
-Here ``currentInstanceId`` will come through as a query parameter. The ``get_choices`` method can retrieve this from the request
+Here ``buildingId`` will come through as a query parameter. The ``get_choices`` method can retrieve this from the request
 and do whatever is needed with it.
 
 The widget is assigned automatically when the decorator is used, but you can also instantiate it directly to pass different attributes to it:
