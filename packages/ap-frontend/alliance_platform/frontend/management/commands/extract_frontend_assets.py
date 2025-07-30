@@ -34,13 +34,16 @@ def get_all_templates_files() -> list[Path]:
     files: list[Path] = []
     for dir in dirs:
         should_exclude = False
-        for excl in ap_frontend_settings.EXTRACT_ASSETS_EXCLUDE_DIRS:
-            if isinstance(excl, re.Pattern):
-                if excl.match(str(dir)):
+        # Never exclude alliance platform templates - we need them included to handle
+        # usages of template tags
+        if "alliance_platform" not in str(dir):
+            for excl in ap_frontend_settings.EXTRACT_ASSETS_EXCLUDE_DIRS:
+                if isinstance(excl, re.Pattern):
+                    if excl.match(str(dir)):
+                        should_exclude = True
+                        break
+                elif str(dir).startswith(str(excl)):
                     should_exclude = True
-                    break
-            elif str(dir).startswith(str(excl)):
-                should_exclude = True
 
         # always include the frontend templates dir even if would otherwise
         # be excluded
