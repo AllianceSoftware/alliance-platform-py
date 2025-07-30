@@ -1,5 +1,11 @@
 # alliance-platform-frontend
 
+## 0.0.21
+
+### Patch Changes
+
+- 3d2a3b5: Don't allow alliance_platform package templates to be excluded from discovery with the `EXTRACT_ASSETS_EXCLUDE_DIRS` option.
+
 ## 0.0.20
 
 ### Patch Changes
