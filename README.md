@@ -2,14 +2,16 @@
 
 A collection of Python packages for use in the Alliance Platform Django template.
 
-* [Packages](#packages)
-    * [Core](packages/ap-core) ([Documentation](https://alliance-platform.readthedocs.io/en/latest/core.html))
-    * [Frontend](packages/ap-frontend) ([Documentation](https://alliance-platform.readthedocs.io/projects/frontend/latest/))
-    * [Codegen](packages/ap-codegen) ([Documentation](https://alliance-platform.readthedocs.io/projects/codegen/latest/))
-    * [Storage](packages/ap-storage) ([Documentation](https://alliance-platform.readthedocs.io/projects/storage/latest/))
-    * [Audit](packages/ap-audit) ([Documentation](https://alliance-platform.readthedocs.io/projects/audit/latest/))
-    * [UI](packages/ap-ui) ([Documentation](https://alliance-platform.readthedocs.io/projects/ui/latest/))
-    * [PDF](packages/ap-pdf) ([Documentation](https://alliance-platform.readthedocs.io/projects/pdf/latest/))
+- [Packages](#packages)
+  - [Core](packages/ap-core) ([Documentation](https://alliance-platform.readthedocs.io/en/latest/core.html))
+  - [Frontend](packages/ap-frontend) ([Documentation](https://alliance-platform.readthedocs.io/projects/frontend/latest/))
+  - [Codegen](packages/ap-codegen) ([Documentation](https://alliance-platform.readthedocs.io/projects/codegen/latest/))
+  - [Storage](packages/ap-storage) ([Documentation](https://alliance-platform.readthedocs.io/projects/storage/latest/))
+  - [Audit](packages/ap-audit) ([Documentation](https://alliance-platform.readthedocs.io/projects/audit/latest/))
+  - [UI](packages/ap-ui) ([Documentation](https://alliance-platform.readthedocs.io/projects/ui/latest/))
+  - [PDF](packages/ap-pdf) ([Documentation](https://alliance-platform.readthedocs.io/projects/pdf/latest/))
+  - [Server Choices](packages/ap-server-choices) ([Documentation](https://alliance-platform.readthedocs.io/projects/server-choices/latest/))
+  - [Ordered Model](packages/ap-ordered-model) ([Documentation](https://alliance-platform.readthedocs.io/projects/ordered-model/latest/))
 
 ## Contributing
 
@@ -89,10 +91,10 @@ a `package.json` file; base these off the existing packages.
    1. Update `.github/workflows/release.yml` and add the token under the `env` for the `Create Release Pull Request or Publish to pypi` step.
 7. Create a `docs` dir, see existing package for an example.
    1. Create an entry in `docs/conf.py` under `multiproject_projects` for the new package.
-   2. In readthedocs.org, a new project needs to be created. To do this, import the https://github.com/AllianceSoftware/alliance-platform-py repo
+   2. In readthedocs.org, a new project needs to be created. To do this, import the <https://github.com/AllianceSoftware/alliance-platform-py> repo
       again, but name it according to the package name (`alliance-platform-<name>`).
    3. Under the new project, go to Settings and Environment Variables. Add a new variable `PROJECT` and name it the same as
-      what the key in `multiple_projects` is.
+      what the key in `multiple_projects` is. Check the 'Public' checkbox so it can be used in pull requests.
    4. Go to Automation Rules and add a rule for detecting version tags. Set it to a custom match on tags with the pattern `alliance-platform-NAME@\d\.\d\.\d` (where NAME is replaced with the package name)
-   5. Under settings check the `Build pull requests for this project:` option
+   5. Under settings check the `Build pull requests for this project:` option. Set the `URL versioning scheme` to `Multiple versions without translations`
    6. Then, under the main `alliance-platform` settings you can add it as a subproject.
