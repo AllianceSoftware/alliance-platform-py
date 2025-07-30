@@ -1,5 +1,11 @@
 # alliance-platform-codegen
 
+## 0.0.8
+
+### Patch Changes
+
+- 2844c8a: Make codegen detection of when to abort more robust. This helps avoid cases where codegen runs mid server restart and the git head changes which can produce incorrect changes.
+
 ## 0.0.7
 
 ### Patch Changes
