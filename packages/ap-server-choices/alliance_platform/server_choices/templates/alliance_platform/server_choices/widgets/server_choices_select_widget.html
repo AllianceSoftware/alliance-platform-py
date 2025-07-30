@@ -1,4 +1,4 @@
 {% load react %}
 
-{% component "@alliancesoftware/ui" "ServerChoicesInput" props=widget.attrs|merge_props:extra_widget_props|html_attr_to_jsx name=widget.name default_selected_key=widget.value server_choices=server_choices initial_selected_items=initial_selected_items %}
+{% component "@alliancesoftware/ui/hook-form" "ServerChoicesInput" props=widget.attrs|merge_props:extra_widget_props|html_attr_to_jsx name=widget.name default_selected_key=widget.value server_choices=server_choices initial_selected_items=initial_selected_items %}
 {% endcomponent %}
