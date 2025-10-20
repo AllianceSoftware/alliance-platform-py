@@ -201,4 +201,6 @@ class DownloadRedirectView(View):
         value = getattr(obj, field.name)
         if not value:
             return HttpResponseNotFound(f"No value set for {field.name}")
-        return HttpResponseRedirect(field.storage.generate_download_url(value.name, field_id))
+        return HttpResponseRedirect(
+            field.storage.generate_download_url(value.name, field_id, **field.download_params)
+        )

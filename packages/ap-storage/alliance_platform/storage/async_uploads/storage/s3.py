@@ -65,8 +65,11 @@ class S3AsyncUploadStorage(S3Storage, AsyncUploadStorage):
     def generate_download_url(
         self, key: str, field_id: str, expire=ap_storage_settings.DOWNLOAD_URL_EXPIRY, **kwargs
     ):
-        """Generates a signed URL to download the file"""
-        return super().url(key, expire=expire)  # type: ignore[call-arg] # Not sure why this is an error... S3Storage definitely supports expire
+        """
+        Generates a signed URL to download the file.
+        """
+
+        return super().url(key, expire=expire, **kwargs)  # type: ignore[call-arg] # Not sure why this is an error... S3Storage definitely supports expire
 
     def move_file(self, from_key, to_key):
         """Moves file by copying :code:`from_key` to :code:`to_key` and then deletes :code:`from_key`"""

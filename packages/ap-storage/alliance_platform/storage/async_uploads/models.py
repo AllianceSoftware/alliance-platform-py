@@ -256,6 +256,17 @@ class AsyncFileMixin(AsyncFileMixinProtocol):
     they can download the file). This view will then redirect to the URL provided by
     :meth:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage.generate_download_url`.
 
+    You can specify ``download_params`` on fields to control what arguments are passed through to :meth:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage.generate_download_url`. For example::
+
+        expire_in_seconds = 60 * 60 * 6
+        download_params = {
+            "expire": expire_in_seconds,
+            "parameters": {"cache_control": f"public,max-age={expire_in_seconds}"},
+        }
+
+        # pass to a field on the model
+        image_file = AsyncFileField(download_params=download_params)
+
     .. note:: You must you this with a storage class that implements :class:`~alliance_platform.storage.async_uploads.storage.base.AsyncUploadStorage`.
         Either set DEFAULT_FILE_STORAGE to a class (eg. :class:`~alliance_platform.storage.s3.S3AsyncUploadStorage`) or pass an
         instance in the ``storage`` kwarg.
@@ -305,9 +316,10 @@ class AsyncFileMixin(AsyncFileMixinProtocol):
         file_restrictions=None,
         async_field_registry=default_async_field_registry,
         max_length=default_max_length,
+        download_params: dict | None = None,
         **kwargs,
     ):
-        super().__init__(*args, max_length=max_length, **kwargs)
+        super().__init__(*args, max_length=max_length, **kwargs)  # type: ignore[safe-super]
         if not isinstance(self.storage, AsyncUploadStorage):
             raise ValueError(
                 "When using AsyncFileMixin the file storage class must extend AsyncUploadStorage. Either set DEFAULT_FILE_STORAGE or pass the 'storage' kwarg"
@@ -322,6 +334,11 @@ class AsyncFileMixin(AsyncFileMixinProtocol):
             file_restrictions = []
         self.file_restrictions = file_restrictions
         self.async_field_registry = async_field_registry
+
+        if download_params is None:
+            self._download_params = {}
+        else:
+            self._download_params = download_params
 
     def contribute_to_class(self, cls, name: str, private_only: bool = False):
         super().contribute_to_class(cls, name, private_only=private_only)  # type: ignore[safe-super]
@@ -364,6 +381,10 @@ class AsyncFileMixin(AsyncFileMixinProtocol):
             elif mimetype == restriction:
                 return True
         return False
+
+    @property
+    def download_params(self):
+        return self._download_params
 
     def before_process_file(self, instance):
         """Hook to do something before file is processed."""
