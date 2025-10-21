@@ -1,5 +1,11 @@
 # alliance-platform-storage
 
+## 0.0.4
+
+### Patch Changes
+
+- c7266ea: Add support for `download_params` to AsyncFileField & AsyncImageField
+
 ## 0.0.3
 
 ### Patch Changes
