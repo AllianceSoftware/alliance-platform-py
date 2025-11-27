@@ -478,6 +478,23 @@ For more information on how paths are resolved, refer to the documentation on :r
 The CSS file is not embedded inline where the tag is used, rather it is added by the :ttag:`bundler_embed_collected_assets`
 tag.
 
+.. warning::
+
+    Be aware that, due to how ``{% block %}`` works, using this tag *outside* a ``block`` and attempting to read class
+    names *inside* the block will not work. For example, this will fail::
+
+        {% stylesheet "./styles.css.ts" as styles %}
+        {% block body %}
+            <main class="{{ styles.section }}">...</main>
+        {% endblock %}
+
+    Instead you must move it inside the block::
+
+        {% block body %}
+            {% stylesheet "./styles.css.ts" as styles %}
+            <main class="{{ styles.section }}">...</main>
+        {% endblock %}
+
 Example:
 
 .. code-block:: html+django
