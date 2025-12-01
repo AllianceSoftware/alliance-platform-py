@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from pathlib import Path
 import subprocess
 
@@ -81,8 +82,13 @@ class PrettierPostProcessor(JsPostProcessor):
         return True
 
 
-class EslintFixPostProcessor(JsPostProcessor):
-    """Post processor that runs eslint --fix on typescript, JS, TSX and JSX files.
+class LegacyEslintFixPostProcessor(JsPostProcessor):
+    """Legacy post processor that runs eslint --fix on typescript, JS, TSX and JSX files.
+
+    .. warning::
+
+        This post processor works only for Eslint 7 & 8. Due to significant changes introduced in version 9 a
+        separate class is used for newer versions. See :class:`~alliance_platform.codegen.post_processors.js.EslintFixPostProcessor`
 
     Args:
         node_path: Path to node executable
@@ -132,6 +138,87 @@ class EslintFixPostProcessor(JsPostProcessor):
             stderr=subprocess.PIPE,
         )
         if eslint.returncode != 0:
-            logger.error("eslint --fix failed:")
+            logger.error(f"{self.__class__.__name__} eslint --fix failed:")
             logger.error(eslint.stderr.decode())
             return False
+
+
+class EslintFixPostProcessor(JsPostProcessor):
+    """Post processor that runs eslint --fix on typescript, JS, TSX and JSX files.
+
+    Requires Eslint 9 or newer.
+
+    Note that this intentionally does not use the project eslint config due to speed concerns. A subset of rules
+    should instead be passed to handle the main formatting concerns, e.g. import sorting.
+
+    Args:
+        node_path: Path to node executable
+        node_modules_dir: Path to the node modules directory
+        plugins: Any eslint plugins to use
+        rules: Any eslint rules to apply
+    """
+
+    file_extensions = [".js", ".ts", ".tsx", ".jsx"]
+
+    #: List of eslint plugins to use
+    plugins: list[str]
+    #: Any eslint rules to apply
+    rules: dict | None
+
+    def __init__(
+        self,
+        node_path: Path | str,
+        node_modules_dir: Path | str,
+        *,
+        plugins: list[str] | None = None,
+        rules: dict | None,
+    ):
+        super().__init__(node_path, node_modules_dir)
+        self.plugins = plugins or []
+        self.rules = rules
+
+    def post_process(self, paths):
+        eslint_path = self.node_modules_dir / ".bin/eslint"
+
+        abs_paths = [str(Path(p).resolve()) for p in paths]
+        # work out the common base directory so we can run eslint from there
+        base_dir = os.path.commonpath(abs_paths)
+        rel_paths = [os.path.relpath(p, base_dir) for p in abs_paths]
+
+        plugins: list[str] = []
+        for plugin in self.plugins:
+            plugins += ["--plugin", plugin]
+
+        rules: list[str] = []
+        if self.rules:
+            rules = ["--rule", json.dumps(self.rules)]
+
+        # ensure Node can resolve modules from your project node_modules. This is necessary because `cwd` is set to
+        # base_dir below so node_modules won't be in the same directory.
+        env = os.environ.copy()
+        env["NODE_PATH"] = str(self.node_modules_dir)
+        extensions = [arg for ext in self.file_extensions for arg in ("--ext", ext)]
+
+        eslint = subprocess.run(
+            [
+                str(self.node_path),
+                str(eslint_path),
+                *rel_paths,
+                "--parser",
+                "@typescript-eslint/parser",
+                *extensions,
+                "--no-config-lookup",
+                *plugins,
+                *rules,
+                "--fix",
+            ],
+            cwd=base_dir,
+            env=env,
+            stdin=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+        )
+        if eslint.returncode != 0:
+            logger.error(f"{self.__class__.__name__} eslint --fix failed:")
+            logger.error(eslint.stderr.decode())
+            return False
+        return True

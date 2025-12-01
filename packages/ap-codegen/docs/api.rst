@@ -28,7 +28,7 @@ Here is an example of how to use the Prettier and Eslint post processors:
         EslintFixPostProcessor(
             NODE_PATH,
             NODE_MODULES_DIR,
-            plugins=["simple-import-sort"],
+            plugins=["eslint-plugin-simple-import-sort"],
             rules={
                 "simple-import-sort/imports": [
                     "error",
