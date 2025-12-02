@@ -1,5 +1,11 @@
 # alliance-platform-codegen
 
+## 0.0.9
+
+### Patch Changes
+
+- b36101c: Add support for eslint 9. This is a BREAKING change - for existing projects using eslint < 9 change the class used from `EslintFixPostProcessor` to `LegacyEslintFixPostProcessor`.
+
 ## 0.0.8
 
 ### Patch Changes
