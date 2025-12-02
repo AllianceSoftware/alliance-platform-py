@@ -29,8 +29,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        python-version: ['3.11', '3.12']
+        python-version: ['3.11', '3.12', '3.13', '3.14']
+        django-version: ['django52', 'django42']
         os: [ubuntu-latest]
+        exclude:
+          - python-version: '3.14'
+            django-version: 'django42'
 
     services:
       postgres:
@@ -79,7 +83,7 @@ jobs:
 
       - name: Run Tests with py${{ matrix.python-version }}
         run: |
-          tox -f test-py${{ steps.pyver.outputs.VER }}
+          tox -f test-py${{ steps.pyver.outputs.VER }}-${{ matrix.django-version }}
         env:
           CI_SERVER: yes
           DB_HOST: localhost
