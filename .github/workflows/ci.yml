@@ -100,6 +100,9 @@ jobs:
           PACKAGE_NAME="alliance-platform-${PKG#ap-}"
           uv sync --frozen --python ${{ matrix.python-version }} --package "$PACKAGE_NAME"
 
+      - name: Install test tools
+        run: uv pip install 'coverage[toml]>=7.0'
+
       - name: Check if Playwright is needed
         id: check-playwright
         run: |
