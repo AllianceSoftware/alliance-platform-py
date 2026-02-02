@@ -38,9 +38,8 @@ plugins = [
 explicit_package_bases = true
 warn_unused_ignores = true
 
-[tool.pdm.dev-dependencies]
+[dependency-groups]
 dev = [
-    "-e alliance-platform-core @ file:///${PROJECT_ROOT}/../ap-core",
     "psycopg2",
     "rules"
 ]

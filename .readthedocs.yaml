@@ -8,10 +8,12 @@ build:
     python: "3.11"
   jobs:
     post_create_environment:
-      # Install PDM
-      - pip install -U pdm
+      # Install uv
+      - pip install -U uv
     post_install:
-      - VIRTUAL_ENV=$READTHEDOCS_VIRTUALENV_PATH pdm install -G:all
+      # Export dependencies and install into ReadTheDocs virtualenv
+      - uv export --frozen --all-groups --no-hashes -o requirements.txt
+      - pip install -r requirements.txt
 
 sphinx:
   configuration: docs/conf.py

@@ -27,38 +27,70 @@ to be imported from `alliance_platform` while being released and versioned indep
 
 ### Development environment
 
-1. You will need to have [PDM](https://pdm-project.org/latest/) installed to manage the dependencies for this project.
+1. You will need to have [uv](https://docs.astral.sh/uv/) installed to manage the dependencies for this project.
 
-```bash
-brew install pdm
-```
-
-2. Run `pdm install`; this should create a virtual environment and install the dependencies.
+2. Run `uv sync`; this should create a virtual environment and install the dependencies.
 
 3. Run `yarn`; this will setup git hooks and is required for some tests in `alliance-platform-frontend`, and is also
    used for change release management via [changesets](https://github.com/changesets/changesets) (see release process below).
 
-NOTE: Currently, a single virtual env is used for all packages. See this [issue](https://github.com/AllianceSoftware/alliance-platform-py/issues/7).
+4. (Optional) Install [just](https://github.com/casey/just) for convenient task running:
+
+```bash
+brew install just
+```
+
+**Notes:**
+- This project uses **uv** for dependency management and **uv workspaces** with a single shared virtual environment for all packages during development. CI testing enforces true package isolation by testing each package separately.
+- Package building uses **pdm-backend** as the build backend. This is a standalone PEP 517-compliant build backend that works with any build tool (including uv) and does not require PDM to be installed. The `[tool.pdm.*]` sections in package `pyproject.toml` files are configuration for pdm-backend, not the PDM tool itself.
 
 #### Linting & code formatting
 
 This is handled by `ruff`, and should automatically be run on commit. You can run it manually:
 
 ```bash
-pdm run ruff check
-pdm run ruff check --fix
-pdm run ruff format
+uv run ruff check
+uv run ruff check --fix
+uv run ruff format
+
+# Or with just:
+just lint
+just format
 ```
 
 #### Running tests & type checking
 
-You can run `pdm test` to run the tests for all packages.
+You can run tests for all packages:
 
-You can run `pdm mypy` to run the type checking for all packages.
+```bash
+just test-all
+```
+
+Or for a specific package:
+
+```bash
+just test-package ap-frontend
+```
+
+You can run type checking for all packages:
+
+```bash
+just mypy-all
+```
+
+Or for a specific package:
+
+```bash
+just mypy-package ap-core
+```
 
 #### Documentation
 
-You can run `pdm build-docs-watch` to build the documentation for all packages, serve it locally, and watch for changes.
+You can build the documentation for all packages, serve it locally, and watch for changes:
+
+```bash
+just docs-watch
+```
 
 ### Release process
 

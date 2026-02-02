@@ -4,7 +4,6 @@ import argparse
 import logging
 import os
 from pathlib import Path
-import re
 import subprocess
 import sys
 
@@ -26,13 +25,16 @@ def build_required(output_dir: Path, repository: str | None = None, verbose=Fals
     for package in get_packages(root / "packages"):
         if force_build or not is_published(package, repository == "testpypi"):
             args = [
-                "pdm",
+                "uv",
                 "build",
-                "-p",
-                str(package.path.relative_to(root)),
+                "--package",
+                package.name,
+                "--out-dir",
+                str(output_dir),
             ]
             if verbose:
-                args.append("-vv")
+                args.append("--verbose")
+            logger.info(f"Building {package.name}@{package.version}")
             result = subprocess.run(args, capture_output=True)
             output = result.stdout.decode("utf8")
             if result.returncode != 0:
@@ -41,16 +43,7 @@ def build_required(output_dir: Path, repository: str | None = None, verbose=Fals
                 logger.error(output)
                 logger.error(result.stderr.decode("utf8"))
                 continue
-            try:
-                wheel_file = Path(re.findall(r".*Built wheel at (.*.whl)", output)[0])
-                (output_dir / wheel_file.name).write_bytes(wheel_file.read_bytes())
-            except IndexError:
-                logger.warning(f"Failed to find wheel file in output:\n{output}")
-            try:
-                sdist_file = Path(re.findall(r".*Built sdist at (.*.tar.gz)", output)[0])
-                (output_dir / sdist_file.name).write_bytes(sdist_file.read_bytes())
-            except IndexError:
-                logger.warning(f"Failed to find sdist archive in output:\n{output}")
+            # uv build outputs files directly to the output directory, no need to copy
     return success
 
 
@@ -72,7 +65,7 @@ if __name__ == "__main__":
         exit_code = (
             0
             if build_required(
-                output_dir, repository, os.environ.get("PDM_VERBOSE", 0) == "1", force_build=args.force_build
+                output_dir, repository, os.environ.get("VERBOSE", 0) == "1", force_build=args.force_build
             )
             else 1
         )

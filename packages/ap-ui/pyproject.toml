@@ -85,12 +85,9 @@ includes = ["alliance_platform"]
 source = "call"
 getter = "extract_version:get_version()"
 
-[tool.pdm.dev-dependencies]
+[dependency-groups]
 dev = [
     "rules",
-    "-e alliance-platform-frontend @ file:///${PROJECT_ROOT}/../ap-frontend",
-    "-e alliance-platform-codegen @ file:///${PROJECT_ROOT}/../ap-codegen",
-    "-e alliance-platform-core @ file:///${PROJECT_ROOT}/../ap-core",
     "psycopg2",
     "types-factory-boy",
     "pytest-django>=4.8.0",
