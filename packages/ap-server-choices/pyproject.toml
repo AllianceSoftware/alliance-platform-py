@@ -51,3 +51,6 @@ dev = [
     "djangorestframework",
     "rules"
 ]
+test = [
+    "factory-boy",
+]

@@ -38,7 +38,6 @@ DATABASES = {
 }
 
 INSTALLED_APPS = (
-    "allianceutils",
     "test_alliance_platform_core",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -74,9 +73,7 @@ TEMPLATES = (
 
 STATIC_ROOT = Path(BASE_DIR, "static")
 
-SERIALIZATION_MODULES = {
-    "json_ordered": "allianceutils.serializers.json_ordered",
-}
+SERIALIZATION_MODULES = {}
 
 
 SECRET_KEY = hashlib.sha256(str(random.SystemRandom().getrandbits(256)).encode("ascii")).hexdigest()

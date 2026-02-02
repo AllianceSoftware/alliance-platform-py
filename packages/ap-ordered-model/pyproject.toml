@@ -45,3 +45,6 @@ warn_unused_ignores = true
 dev = [
     "psycopg",
 ]
+test = [
+    "factory-boy",
+]
