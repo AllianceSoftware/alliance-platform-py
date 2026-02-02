@@ -45,10 +45,8 @@ plugins = [
 explicit_package_bases = true
 warn_unused_ignores = true
 
-[tool.pdm.dev-dependencies]
+[dependency-groups]
 dev = [
-    "-e alliance-platform-core @ file:///${PROJECT_ROOT}/../ap-core",
-    "-e alliance-platform-frontend @ file:///${PROJECT_ROOT}/../ap-frontend",
     "pypdf>=4.1.0",
     "psycopg2",
     "rules",

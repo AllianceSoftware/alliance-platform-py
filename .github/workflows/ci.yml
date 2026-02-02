@@ -13,17 +13,19 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Setup PDM
-        uses: pdm-project/setup-pdm@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
         with:
-          python-version: ${{ matrix.python-version }}
-          cache: true
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - name: Set up Python
+        run: uv python install ${{ matrix.python-version }}
       - name: Install project
-        run: pdm install -d
+        run: uv sync
       - name: Run linter
-        run: pdm run ruff check
+        run: uv run ruff check
       - name: Run format check
-        run: pdm run ruff format --check
+        run: uv run ruff format --check
 
   testing:
     runs-on: ${{ matrix.os }}
@@ -56,13 +58,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Setup PDM
-        uses: pdm-project/setup-pdm@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
         with:
-          python-version: ${{ matrix.python-version }}
-          cache: true
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
 
-      - uses: actions/checkout@v4
       - name: Use Node.js 20
         uses: actions/setup-node@v4
         with:
@@ -74,7 +75,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade tox
+          uv python install ${{ matrix.python-version }}
+          uv tool install tox --with tox-uv
 
       - name: Set python version variable (short)
         id: pyver
@@ -83,7 +85,7 @@ jobs:
 
       - name: Run Tests with py${{ matrix.python-version }}
         run: |
-          tox -f test-py${{ steps.pyver.outputs.VER }}-${{ matrix.django-version }}
+          uvx --with tox-uv tox -f test-py${{ steps.pyver.outputs.VER }}-${{ matrix.django-version }}
         env:
           CI_SERVER: yes
           DB_HOST: localhost

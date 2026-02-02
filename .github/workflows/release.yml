@@ -14,13 +14,15 @@ jobs:
     environment: release
     steps:
       - uses: actions/checkout@v4
-      - name: Setup PDM
-        uses: pdm-project/setup-pdm@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
         with:
-          python-version: 3.11
-          cache: true
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - name: Set up Python
+        run: uv python install 3.11
       - name: Install project
-        run: pdm install -d
+        run: uv sync
       - name: Setup Node.js 20.x
         uses: actions/setup-node@v3
         with:
@@ -36,7 +38,7 @@ jobs:
           version: ./scripts/run_script.sh scripts/version.py
           publish: ./scripts/run_script.sh scripts/publish.py
         env:
-          PDM_VERBOSE: ${{ vars.PDM_VERBOSE }}
+          VERBOSE: ${{ vars.VERBOSE }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Can set this to test publish to test.pypi instead
           # PYPI_PUBLISH_REPO: testpypi

@@ -7,17 +7,17 @@ requires-python = ">=3.11"
 [tool.setuptools]
 py-modules = []
 
-[tool.pdm.dev-dependencies]
+[dependency-groups]
 dev = [
-  "-e alliance-platform-frontend @ file:///${PROJECT_ROOT}/packages/ap-frontend",
-  "-e alliance-platform-codegen @ file:///${PROJECT_ROOT}/packages/ap-codegen",
-  "-e alliance-platform-core @ file:///${PROJECT_ROOT}/packages/ap-core",
-  "-e alliance-platform-storage @ file:///${PROJECT_ROOT}/packages/ap-storage",
-  "-e alliance-platform-audit @ file:///${PROJECT_ROOT}/packages/ap-audit",
-  "-e alliance-platform-ui @ file:///${PROJECT_ROOT}/packages/ap-ui",
-  "-e alliance-platform-pdf @ file:///${PROJECT_ROOT}/packages/ap-pdf",
-  "-e alliance-platform-server-choices @ file:///${PROJECT_ROOT}/packages/ap-server-choices",
-  "-e alliance-platform-ordered-model @ file:///${PROJECT_ROOT}/packages/ap-ordered-model",
+  "alliance-platform-frontend",
+  "alliance-platform-codegen",
+  "alliance-platform-core",
+  "alliance-platform-storage",
+  "alliance-platform-audit",
+  "alliance-platform-ui",
+  "alliance-platform-pdf",
+  "alliance-platform-server-choices",
+  "alliance-platform-ordered-model",
   "beautifulsoup4<5.0,>=4.11",
   "django-stubs",
   "djangorestframework-stubs",
@@ -32,8 +32,6 @@ dev = [
   "types-factory-boy",
   "types-requests",
   "types-setuptools",
-  "tox",
-  "tox-pdm>=0.7.2",
   "ruff",
   "Pillow",
   "django-storages[s3]",
@@ -45,12 +43,26 @@ dev = [
   "django-filter-stubs",
 ]
 docs = [
-  "sphinx>=8.1",
+  "sphinx>=8.1,<9.0",
   "sphinx-autobuild>=2024.10.3",
   "sphinx-autodoc-typehints>=2.5.0",
   "sphinx-rtd-theme>=3.0.0",
   "sphinx-multiproject>=1.0.0",
 ]
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+alliance-platform-core = { workspace = true }
+alliance-platform-codegen = { workspace = true }
+alliance-platform-frontend = { workspace = true }
+alliance-platform-storage = { workspace = true }
+alliance-platform-audit = { workspace = true }
+alliance-platform-ui = { workspace = true }
+alliance-platform-pdf = { workspace = true }
+alliance-platform-server-choices = { workspace = true }
+alliance-platform-ordered-model = { workspace = true }
 
 [tool.ruff]
 line-length = 110
@@ -64,55 +76,3 @@ order-by-type = true
 force-single-line = true
 force-sort-within-sections = true
 
-[tool.pdm.scripts]
-frontend-test = { shell = "./manage.py test", working_dir = "packages/ap-frontend" }
-frontend-mypy = { cmd = "mypy .", working_dir = "packages/ap-frontend" }
-
-codegen-test = { shell = "./manage.py test", working_dir = "packages/ap-codegen" }
-codegen-mypy = { cmd = "mypy .", working_dir = "packages/ap-codegen" }
-
-core-test = { shell = "./manage.py test", working_dir = "packages/ap-core" }
-core-mypy = { cmd = "mypy .", working_dir = "packages/ap-core" }
-
-storage-test = { shell = "./manage.py test", working_dir = "packages/ap-storage" }
-storage-mypy = { cmd = "mypy .", working_dir = "packages/ap-storage" }
-
-audit-test = { shell = "./manage.py test", working_dir = "packages/ap-audit" }
-audit-mypy = { cmd = "mypy .", working_dir = "packages/ap-audit" }
-
-ui-test = { shell = "./manage.py test", working_dir = "packages/ap-ui" }
-ui-mypy = { cmd = "mypy .", working_dir = "packages/ap-ui" }
-
-pdf-test = { shell = "./manage.py test", working_dir = "packages/ap-pdf" }
-pdf-mypy = { cmd = "mypy .", working_dir = "packages/ap-pdf" }
-
-server-choices-test = { shell = "./manage.py test", working_dir = "packages/ap-server-choices" }
-server-choices-mypy = { cmd = "mypy .", working_dir = "packages/ap-server-choices" }
-
-ordered-model-test = { shell = "./manage.py test", working_dir = "packages/ap-ordered-model" }
-ordered-model-mypy = { cmd = "mypy .", working_dir = "packages/ap-ordered-model" }
-
-test = { composite = [
-  "frontend-test",
-  "codegen-test",
-  "core-test",
-  "storage-test",
-  "audit-test",
-  "ui-test",
-  "pdf-test",
-  "server-choices-test",
-  "ordered-model-test",
-], keep_going = true }
-
-mypy = { composite = [
-  "codegen-mypy",
-  "frontend-mypy",
-  "core-mypy",
-  "storage-mypy",
-  "audit-mypy",
-  "ui-mypy",
-  "server-choices-mypy",
-  "ordered-model-mypy",
-], keep_going = true }
-
-build-docs-watch.cmd = "./scripts/build-docs.sh"

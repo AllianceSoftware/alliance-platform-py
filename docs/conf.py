@@ -114,7 +114,7 @@ def get_project_mapping(project_name: str):
             return (f"{base_url}/en/{rtd_version}/", None)
         return (f"{base_url}/projects/{project_name}/{rtd_version}/", None)
     port = dev_port_map[project_name]
-    # In dev load from the local dev server started by pdm build-docs-watch. Load the objects.inv from the filesystem;
+    # In dev load from the local dev server started by build-docs-watch. Load the objects.inv from the filesystem;
     # this only works after the first build. We can't load from the dev server because it's not running yet (sphinx
     # reads it immediately on startup)
     return (f"http://127.0.0.1:{port}/", str(current_dir / f"../_docs-build/{project_name}/objects.inv"))
