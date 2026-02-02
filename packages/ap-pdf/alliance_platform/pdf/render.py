@@ -137,19 +137,23 @@ def render_pdf(
             json.dump(context, temp)
             temp.seek(0)
 
-            pdf = subprocess.run(
+            # Use Popen + communicate() to avoid deadlock with large stderr output
+            # capture_output=True with subprocess.run() can deadlock when output exceeds pipe buffer (~64KB)
+            process = subprocess.Popen(
                 [sys.executable, RENDERER_PROCESS],
                 stdin=temp,
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
             )
+            stdout, stderr = process.communicate()
 
-            if pdf.returncode:
-                raise PDFRendererException(pdf.stderr.decode("utf-8"))
+            if process.returncode:
+                raise PDFRendererException(stderr.decode("utf-8"))
             else:
                 # Output any collected logging from the sub-process
-                logging.getLogger("alliance_platform.pdf").debug(pdf.stderr.decode("utf-8"))
+                logging.getLogger("alliance_platform.pdf").debug(stderr.decode("utf-8"))
 
-            return pdf.stdout
+            return stdout
 
     # Not running as a sub-process
     return process_request(context)

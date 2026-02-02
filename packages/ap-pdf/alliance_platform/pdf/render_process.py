@@ -32,7 +32,22 @@ def logger():
 
 def log(level, message):
     if __name__ == "__main__":
-        sys.stderr.write(str(message).rstrip("\n") + "\n")
+        # Write to stderr in chunks to avoid BlockingIOError with large output
+        # sys.stderr.write() can block if the pipe buffer is full
+        data = (str(message).rstrip("\n") + "\n").encode("utf-8")
+        fd = sys.stderr.fileno()
+        written = 0
+        while written < len(data):
+            try:
+                # os.write() may write less than requested if buffer is full
+                n = os.write(fd, data[written:])
+                written += n
+            except BlockingIOError:
+                # Shouldn't happen with blocking I/O, but handle it just in case
+                import time
+
+                time.sleep(0.001)
+                continue
     else:
         getattr(logger(), level)(message)
 

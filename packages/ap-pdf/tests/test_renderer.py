@@ -12,9 +12,13 @@ from pypdf import PdfReader
 from test_alliance_platform_pdf.views import SAMPLE_HTML
 
 
+def _generate_large_log_str():
+    return "x" * 80000
+
+
 class HugeLogRequestHandler(CustomRequestHandler):
     def handle_request(self, request):
-        self.log("debug", "x" * 80000)
+        self.log("debug", _generate_large_log_str())
         return super().handle_request(request)
 
 
@@ -121,8 +125,8 @@ class RendererTestCase(TestCase):
             contents = get_page_contents(data)
             self.assertEqual(SAMPLE_PDF_CONTENTS, contents)
 
-        log_size = len("".join(cm.output).encode("utf-8")) / 1024
-        self.assertTrue(log_size > 64)
+        log_output = "".join(cm.output)
+        self.assertTrue(_generate_large_log_str() in log_output)
 
     def test_default_handlers(self):
         url = "http://127.0.0.1/dummy"
