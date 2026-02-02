@@ -93,17 +93,34 @@ jobs:
       - name: Install node dependencies (required for prettier formatting in tests)
         run: yarn install
 
+      - name: Install dependencies for ${{ matrix.package }}
+        run: |
+          # Convert directory name (ap-core) to package name (alliance-platform-core)
+          PKG="${{ matrix.package }}"
+          PACKAGE_NAME="alliance-platform-${PKG#ap-}"
+          uv sync --frozen --python ${{ matrix.python-version }} --package "$PACKAGE_NAME"
+
+      - name: Check if Playwright is needed
+        id: check-playwright
+        run: |
+          if uv pip list | grep -q "^playwright "; then
+            echo "needed=true" >> $GITHUB_OUTPUT
+            echo "Playwright detected in dependencies"
+          else
+            echo "needed=false" >> $GITHUB_OUTPUT
+            echo "Playwright not needed for this package"
+          fi
+
       - name: Cache Playwright browsers
+        if: steps.check-playwright.outputs.needed == 'true'
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('uv.lock') }}
 
-      - name: Install dependencies
-        run: uv sync --frozen
-
-      - name: Install Playwright
-        run: playwright install --with-deps
+      - name: Install Playwright browsers
+        if: steps.check-playwright.outputs.needed == 'true'
+        run: uv run playwright install --with-deps
 
       - name: Install Django ${{ matrix.django-version }}
         run: |
