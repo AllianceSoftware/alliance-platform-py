@@ -1,6 +1,10 @@
 name: Test CI
 
-on: [pull_request]
+on:
+  pull_request:
+  push:
+    branches:
+      - main
 
 jobs:
 
@@ -28,12 +32,25 @@ jobs:
         run: uv run ruff format --check
 
   testing:
-    runs-on: ${{ matrix.os }}
+    needs: linter
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
+      fail-fast: false
       matrix:
         python-version: ['3.11', '3.12', '3.13', '3.14']
         django-version: ['django52', 'django42']
-        os: [ubuntu-latest]
+        package: [
+          'ap-core',
+          'ap-codegen',
+          'ap-frontend',
+          'ap-storage',
+          'ap-audit',
+          'ap-ui',
+          'ap-pdf',
+          'ap-server-choices',
+          'ap-ordered-model'
+        ]
         exclude:
           - python-version: '3.14'
             django-version: 'django42'
@@ -64,33 +81,67 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
 
+      - name: Set up Python
+        run: uv python install ${{ matrix.python-version }}
+
       - name: Use Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: 'yarn'
 
       - name: Install node dependencies (required for prettier formatting in tests)
         run: yarn install
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+
       - name: Install dependencies
-        run: |
-          uv python install ${{ matrix.python-version }}
-          uv tool install tox --with tox-uv
+        run: uv sync --frozen
 
-      - name: Set python version variable (short)
-        id: pyver
-        run: |
-          echo "VER=${{ matrix.python-version }}" | sed -E 's/[.]//' >> $GITHUB_OUTPUT
+      - name: Install Playwright
+        run: playwright install --with-deps
 
-      - name: Run Tests with py${{ matrix.python-version }}
+      - name: Install Django ${{ matrix.django-version }}
         run: |
-          uvx --with tox-uv tox -f test-py${{ steps.pyver.outputs.VER }}-${{ matrix.django-version }}
+          if [ "${{ matrix.django-version }}" = "django52" ]; then
+            uv pip install "Django==5.2.*"
+          else
+            uv pip install "Django==4.2.*"
+          fi
+
+      - name: Test ${{ matrix.package }}
+        working-directory: packages/${{ matrix.package }}
+        run: |
+          uv run coverage run --source=alliance_platform ./manage.py test
+          uv run coverage report
+          uv run coverage xml
         env:
           CI_SERVER: yes
           DB_HOST: localhost
           DB_PORT: ${{ job.services.postgres.ports[5432] }}
           DB_USER: postgres
           DB_PASSWORD: postgres
-          DB_NAME: postgres
+          DB_NAME: postgres_${{ matrix.package }}_py${{ matrix.python-version }}_${{ matrix.django-version }}
           NODE_MODULES_DIR: ${{ github.workspace }}/node_modules
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: packages/${{ matrix.package }}/coverage.xml
+          flags: ${{ matrix.package }},py${{ matrix.python-version }},${{ matrix.django-version }}
+          name: ${{ matrix.package }}-py${{ matrix.python-version }}-${{ matrix.django-version }}
+          fail_ci_if_error: false
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.package }}-py${{ matrix.python-version }}-${{ matrix.django-version }}
+          path: |
+            packages/${{ matrix.package }}/**/*.log
+            packages/${{ matrix.package }}/coverage.xml
+          if-no-files-found: ignore

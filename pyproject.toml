@@ -41,6 +41,7 @@ dev = [
   "pypdf>=4.1.0",
   "django-filter",
   "django-filter-stubs",
+  "coverage[toml]>=7.0",
 ]
 docs = [
   "sphinx>=8.1,<9.0",
@@ -75,4 +76,18 @@ select = ["E4", "E7", "E9", "F", "I"]
 order-by-type = true
 force-single-line = true
 force-sort-within-sections = true
+
+[tool.coverage.run]
+source = ["alliance_platform"]
+omit = [
+  "*/migrations/*",
+  "*/tests/*",
+  "*/__pycache__/*",
+  "*/test_*.py",
+]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
 
