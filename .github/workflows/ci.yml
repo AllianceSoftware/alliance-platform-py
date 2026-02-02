@@ -98,6 +98,8 @@ jobs:
           # Convert directory name (ap-core) to package name (alliance-platform-core)
           PKG="${{ matrix.package }}"
           PACKAGE_NAME="alliance-platform-${PKG#ap-}"
+          # Install package with test dependencies (if defined)
+          uv sync --frozen --python ${{ matrix.python-version }} --package "$PACKAGE_NAME" --group test || \
           uv sync --frozen --python ${{ matrix.python-version }} --package "$PACKAGE_NAME"
 
       - name: Install test tools

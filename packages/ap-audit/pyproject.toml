@@ -51,3 +51,6 @@ dev = [
     "django-hijack>=3.0.4",
     "rules",
 ]
+test = [
+    "alliance-platform-frontend",
+]
