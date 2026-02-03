@@ -49,8 +49,6 @@ dev = [
     "django-filter",
     "django-filter-stubs",
     "djangorestframework",
-    "rules"
-]
-test = [
+    "rules",
     "factory-boy",
 ]

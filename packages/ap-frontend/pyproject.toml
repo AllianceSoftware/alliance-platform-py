@@ -11,7 +11,8 @@ dependencies = [
     "djangorestframework",
     "django-allianceutils>=4.0.1",
     "requests",
-    "typing-extensions>=4.5.0"
+    "typing-extensions>=4.5.0",
+    "packaging"
 ]
 name = "alliance-platform-frontend"
 dynamic = ["version"]
@@ -94,4 +95,5 @@ dev = [
     "types-factory-boy",
     "pytest-django>=4.8.0",
     "pytest-benchmark>=4.0.0",
+    "beautifulsoup4<5.0,>=4.11",
 ]

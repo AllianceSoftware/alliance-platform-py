@@ -138,12 +138,11 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "alliance-platform-frontend" },
     { name = "django-hijack" },
+    { name = "factory-boy" },
     { name = "psycopg2" },
     { name = "rules" },
-]
-test = [
-    { name = "alliance-platform-frontend" },
 ]
 
 [package.metadata]
@@ -157,11 +156,12 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "alliance-platform-frontend", editable = "packages/ap-frontend" },
     { name = "django-hijack", specifier = ">=3.0.4" },
+    { name = "factory-boy" },
     { name = "psycopg2" },
     { name = "rules" },
 ]
-test = [{ name = "alliance-platform-frontend", editable = "packages/ap-frontend" }]
 
 [[package]]
 name = "alliance-platform-codegen"
@@ -206,12 +206,14 @@ dependencies = [
     { name = "django", version = "6.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "django-allianceutils" },
     { name = "djangorestframework" },
+    { name = "packaging" },
     { name = "requests" },
     { name = "typing-extensions" },
 ]
 
 [package.dev-dependencies]
 dev = [
+    { name = "beautifulsoup4" },
     { name = "psycopg2" },
     { name = "pytest-benchmark" },
     { name = "pytest-django" },
@@ -226,12 +228,14 @@ requires-dist = [
     { name = "django", specifier = ">=4.2.11" },
     { name = "django-allianceutils", specifier = ">=4.0.1" },
     { name = "djangorestframework" },
+    { name = "packaging" },
     { name = "requests" },
     { name = "typing-extensions", specifier = ">=4.5.0" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "beautifulsoup4", specifier = ">=4.11,<5.0" },
     { name = "psycopg2" },
     { name = "pytest-benchmark", specifier = ">=4.0.0" },
     { name = "pytest-django", specifier = ">=4.8.0" },
@@ -250,10 +254,8 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "psycopg" },
-]
-test = [
     { name = "factory-boy" },
+    { name = "psycopg" },
 ]
 
 [package.metadata]
@@ -263,8 +265,10 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "psycopg" }]
-test = [{ name = "factory-boy" }]
+dev = [
+    { name = "factory-boy" },
+    { name = "psycopg" },
+]
 
 [[package]]
 name = "alliance-platform-pdf"
@@ -316,11 +320,9 @@ dev = [
     { name = "django-filter" },
     { name = "django-filter-stubs" },
     { name = "djangorestframework" },
+    { name = "factory-boy" },
     { name = "psycopg2" },
     { name = "rules" },
-]
-test = [
-    { name = "factory-boy" },
 ]
 
 [package.metadata]
@@ -335,10 +337,10 @@ dev = [
     { name = "django-filter" },
     { name = "django-filter-stubs" },
     { name = "djangorestframework" },
+    { name = "factory-boy" },
     { name = "psycopg2" },
     { name = "rules" },
 ]
-test = [{ name = "factory-boy" }]
 
 [[package]]
 name = "alliance-platform-storage"

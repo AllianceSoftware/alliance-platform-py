@@ -44,7 +44,5 @@ warn_unused_ignores = true
 [dependency-groups]
 dev = [
     "psycopg",
-]
-test = [
     "factory-boy",
 ]

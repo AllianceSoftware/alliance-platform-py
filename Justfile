@@ -6,7 +6,12 @@ install:
 
 # Run tests for specific package
 test-package package:
+    #!/usr/bin/env bash
+    PKG="{{package}}"
+    PACKAGE_NAME="alliance-platform-${PKG#ap-}"
+    uv sync --frozen --package "$PACKAGE_NAME"
     cd packages/{{package}} && uv run ./manage.py test
+    uv sync
 
 # Run tests for all packages
 test-all:
@@ -14,9 +19,12 @@ test-all:
     set -e
     for pkg in ap-core ap-codegen ap-frontend ap-storage ap-audit ap-ui ap-pdf ap-server-choices ap-ordered-model; do
         echo "Testing $pkg..."
-        cd packages/$pkg && uv run ./manage.py test
+        PACKAGE_NAME="alliance-platform-${pkg#ap-}"
+        uv sync --frozen --package "$PACKAGE_NAME"
+        cd packages/$pkg && uv run ./manage.py test --package "$PACKAGE_NAME"
         cd ../..
     done
+    uv sync
 
 # Run mypy for specific package
 mypy-package package:
