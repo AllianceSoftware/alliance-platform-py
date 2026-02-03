@@ -57,6 +57,8 @@ jobs:
 
     env:
       UV_PYTHON: ${{ matrix.python-version }}
+      UV_OVERRIDE: constraints/${{ matrix.django-version }}.txt
+      UV_NO_SYNC: 1
 
     services:
       postgres:
@@ -98,13 +100,12 @@ jobs:
 
       - name: Install dependencies for ${{ matrix.package }}
         run: |
-          # Convert directory name (ap-core) to package name (alliance-platform-core)
           PKG="${{ matrix.package }}"
           PACKAGE_NAME="alliance-platform-${PKG#ap-}"
-          uv sync --frozen --package "$PACKAGE_NAME"
-
-      - name: Install test tools
-        run: uv pip install 'coverage[toml]>=7.0'
+          # Install package and all dependencies including dev group (Django version controlled by UV_OVERRIDE)
+          uv export --no-hashes --package "$PACKAGE_NAME" | uv pip install -r -
+          # Install coverage for test reporting
+          uv pip install 'coverage[toml]>=7.0'
 
       - name: Check if Playwright is needed
         id: check-playwright
@@ -127,14 +128,6 @@ jobs:
       - name: Install Playwright browsers
         if: steps.check-playwright.outputs.needed == 'true'
         run: uv run playwright install --with-deps
-
-      - name: Install Django ${{ matrix.django-version }}
-        run: |
-          if [ "${{ matrix.django-version }}" = "django52" ]; then
-            uv pip install "Django==5.2.*"
-          else
-            uv pip install "Django==4.2.*"
-          fi
 
       - name: Test ${{ matrix.package }}
         working-directory: packages/${{ matrix.package }}

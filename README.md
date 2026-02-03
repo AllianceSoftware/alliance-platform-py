@@ -56,6 +56,10 @@ just test-package ap-pdf
 
 # Specific Python version
 just test-package ap-pdf 3.12
+
+# With Django constraint (matches CI behavior)
+just test-package ap-pdf 3.12 django42  # Django 4.2.x
+just test-package ap-pdf 3.12 django52  # Django 5.2.x
 ```
 
 ### Test All Packages
@@ -66,7 +70,13 @@ just test-all
 
 # Specific Python version
 just test-all 3.13
+
+# With Django constraint (matches CI behavior)
+just test-all 3.12 django42  # Test all packages with Python 3.12 + Django 4.2
+just test-all 3.12 django52  # Test all packages with Python 3.12 + Django 5.2
 ```
+
+**Tip:** Use the constraint parameter to test locally with the same Django versions as CI!
 
 ### Run Tests with Coverage
 
