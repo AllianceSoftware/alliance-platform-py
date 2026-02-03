@@ -1,7 +1,9 @@
 import os
 import shutil
 import tempfile
+import unittest
 
+import django
 from django.conf import STATICFILES_STORAGE_ALIAS
 from django.conf import settings
 from django.contrib.staticfiles import storage
@@ -12,6 +14,32 @@ from django.test import SimpleTestCase
 from django.test import override_settings
 
 
+# This specifically relates to this block of code in django/core/files/storage/handler.py:
+#
+#   @cached_property
+#   def backends(self):
+#       if self._backends is None:
+#           self._backends = settings.STORAGES.copy()
+#           # RemovedInDjango51Warning.
+#           if settings.is_overridden("DEFAULT_FILE_STORAGE"):
+#               self._backends[DEFAULT_STORAGE_ALIAS] = {
+#                   "BACKEND": settings.DEFAULT_FILE_STORAGE
+#               }
+#           if settings.is_overridden("STATICFILES_STORAGE"):
+#               self._backends[STATICFILES_STORAGE_ALIAS] = { # <---- this breaks tests
+#                   "BACKEND": settings.STATICFILES_STORAGE
+#               }
+#       return self._backends
+#
+# See https://code.djangoproject.com/ticket/35397
+# Legacy version anyway so just skip
+@unittest.skipIf(
+    django.VERSION[:2] == (4, 2),
+    "Django 4.2 has a bug where override_settings(STORAGES={...}) causes "
+    "is_overridden('STATICFILES_STORAGE') to return True, which triggers "
+    "StorageHandler code that overwrites STORAGES['staticfiles'] and loses OPTIONS. "
+    "This is fixed in Django 5.0+.",
+)
 @override_settings(
     STORAGES={
         **settings.STORAGES,
