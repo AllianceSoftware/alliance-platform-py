@@ -113,6 +113,12 @@ class FormRenderingTestCase(TestCase):
                 ):
                     self.client.get(reverse("update_user", kwargs={"pk": user.pk}), follow=True)
 
+        # IMPORTANT: Clear the form renderer cache after overriding settings
+        # Django 4.2+ caches the renderer with @lru_cache which persists across tests
+        from django.forms.renderers import get_default_renderer
+
+        get_default_renderer.cache_clear()
+
     def test_renderer_handles_context_key(self):
         user = self.get_user()
         response = self.client.get(reverse("update_user", kwargs={"pk": user.pk}), follow=True)
