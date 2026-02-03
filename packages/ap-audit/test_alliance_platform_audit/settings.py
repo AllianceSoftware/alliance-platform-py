@@ -18,7 +18,7 @@ TEST_DIRECTORY = PROJECT_DIR / "test_alliance_platform_audit"
 
 STATIC_URL = "/static/"
 
-ROOT_URLCONF = "test_alliance_platform_storage.urls"
+ROOT_URLCONF = "test_alliance_platform_audit.urls"
 
 AUTH_USER_MODEL = "test_alliance_platform_audit.User"
 
