@@ -154,6 +154,7 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: packages/${{ matrix.package }}/coverage.xml
           flags: ${{ matrix.package }},py${{ matrix.python-version }},${{ matrix.django-version }}
           name: ${{ matrix.package }}-py${{ matrix.python-version }}-${{ matrix.django-version }}
