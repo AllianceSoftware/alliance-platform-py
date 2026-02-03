@@ -1,5 +1,11 @@
 # alliance-platform-pdf
 
+## 0.0.3
+
+### Patch Changes
+
+- 9f43526: Better handle large log outputs in rendering processes
+
 ## 0.0.2
 
 ### Patch Changes
