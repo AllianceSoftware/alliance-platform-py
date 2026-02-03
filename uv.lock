@@ -196,6 +196,27 @@ dev = [
 name = "alliance-platform-core"
 source = { editable = "packages/ap-core" }
 
+[package.dev-dependencies]
+dev = [
+    { name = "django", version = "5.2.10", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "django", version = "6.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "psycopg", marker = "python_full_version >= '3.12'" },
+    { name = "psycopg2", marker = "python_full_version < '3.12'" },
+    { name = "rules" },
+    { name = "typing-extensions" },
+]
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "django", specifier = ">=5.2" },
+    { name = "psycopg", marker = "python_full_version >= '3.12'" },
+    { name = "psycopg2", marker = "python_full_version < '3.12'" },
+    { name = "rules" },
+    { name = "typing-extensions", specifier = ">=4.5.0" },
+]
+
 [[package]]
 name = "alliance-platform-frontend"
 source = { editable = "packages/ap-frontend" }
