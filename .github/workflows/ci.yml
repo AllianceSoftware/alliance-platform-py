@@ -55,6 +55,9 @@ jobs:
           - python-version: '3.14'
             django-version: 'django42'
 
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
+
     services:
       postgres:
         # Docker Hub image
@@ -98,7 +101,7 @@ jobs:
           # Convert directory name (ap-core) to package name (alliance-platform-core)
           PKG="${{ matrix.package }}"
           PACKAGE_NAME="alliance-platform-${PKG#ap-}"
-          uv sync --frozen --python ${{ matrix.python-version }} --package "$PACKAGE_NAME"
+          uv sync --frozen --package "$PACKAGE_NAME"
 
       - name: Install test tools
         run: uv pip install 'coverage[toml]>=7.0'
