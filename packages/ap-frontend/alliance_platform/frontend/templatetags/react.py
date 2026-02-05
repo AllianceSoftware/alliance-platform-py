@@ -958,9 +958,14 @@ class ComponentNode(template.Node, BundlerAsset):
                 props.update(extra_props)
         if self.html_attribute_template_nodes:
             props.update(self.html_attribute_template_nodes.resolve(context))
-        return ComponentProps(
-            {underscore_to_camel(key): self.resolve_prop(value, context) for key, value in props.items()}
-        )
+        resolved_props = {}
+        for key, value in props.items():
+            resolved_key = underscore_to_camel(key)
+            resolved_value = self.resolve_prop(value, context)
+            if resolved_key == "style" and isinstance(resolved_value, str):
+                resolved_value = transform_attribute_names({"style": resolved_value})["style"]
+            resolved_props[resolved_key] = resolved_value
+        return ComponentProps(resolved_props)
 
     def _queue_css(self):
         css_items = self.bundler.get_embed_items(self.get_paths_for_bundling(), "text/css")
