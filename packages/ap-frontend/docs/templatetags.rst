@@ -546,6 +546,9 @@ Convert html attributes to casing expected by JSX
 
 Calls :meth:`~alliance_platform.frontend.util.transform_attribute_names`
 
+If a ``style`` attribute is passed as a CSS string (e.g. ``"margin-right: 5px"``), it will be converted to
+the object form React expects (e.g. ``{"marginRight": "5px"}``).
+
 Usage:
 
 .. code-block:: html+django

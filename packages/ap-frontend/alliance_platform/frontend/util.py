@@ -13,6 +13,13 @@ from .dom_possible_standard_names import possible_standard_names
 
 logger = logging.getLogger("alliance_platform.frontend")
 
+_VENDOR_PREFIX_MAPPING = {
+    "webkit": "Webkit",
+    "moz": "Moz",
+    "o": "O",
+    "ms": "ms",
+}
+
 
 def get_node_ver(node_path: str) -> Version | None:
     """
@@ -104,7 +111,132 @@ def transform_attribute_names(attrs: dict[str, Any]) -> dict[str, Any]:
 
         { "className": "item" }
     """
-    return {possible_standard_names.get(k, k): v for k, v in attrs.items()}
+    transformed = {}
+    for key, value in attrs.items():
+        transformed_key = possible_standard_names.get(key, key)
+        if transformed_key == "style" and isinstance(value, str):
+            transformed[transformed_key] = _convert_inline_style_string(value)
+        else:
+            transformed[transformed_key] = value
+    return transformed
+
+
+def _split_css_declarations(style: str) -> list[str]:
+    declarations = []
+    current = []
+    quote: str | None = None
+    escaped = False
+    paren_depth = 0
+
+    for char in style:
+        if quote:
+            current.append(char)
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+            continue
+
+        if char in {"'", '"'}:
+            quote = char
+            current.append(char)
+            continue
+        if char == "(":
+            paren_depth += 1
+            current.append(char)
+            continue
+        if char == ")" and paren_depth > 0:
+            paren_depth -= 1
+            current.append(char)
+            continue
+        if char == ";" and paren_depth == 0:
+            declarations.append("".join(current))
+            current = []
+            continue
+        current.append(char)
+
+    declarations.append("".join(current))
+    return declarations
+
+
+def _split_css_property_and_value(declaration: str) -> tuple[str, str] | None:
+    quote: str | None = None
+    escaped = False
+    paren_depth = 0
+    split_index: int | None = None
+
+    for index, char in enumerate(declaration):
+        if quote:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+            continue
+
+        if char in {"'", '"'}:
+            quote = char
+            continue
+        if char == "(":
+            paren_depth += 1
+            continue
+        if char == ")" and paren_depth > 0:
+            paren_depth -= 1
+            continue
+        if char == ":" and paren_depth == 0 and split_index is None:
+            split_index = index
+
+    if split_index is None:
+        return None
+    if quote is not None or paren_depth != 0:
+        return None
+    return declaration[:split_index], declaration[split_index + 1 :]
+
+
+def _to_react_style_property_name(name: str) -> str:
+    name = name.strip()
+    if not name:
+        return ""
+    if name.startswith("--"):
+        return name
+    if "-" not in name:
+        return name
+
+    parts = [part for part in name.split("-") if part]
+    if not parts:
+        return ""
+
+    first = parts[0].lower()
+    if name.startswith("-"):
+        first = _VENDOR_PREFIX_MAPPING.get(first, first)
+    others = [part[:1].upper() + part[1:] for part in parts[1:]]
+    camel_name = first + "".join(others)
+    return camel_name
+
+
+def _convert_inline_style_string(style: str) -> dict[str, str]:
+    """Convert CSS inline style string to the object shape React expects.
+
+    The returned values are plain strings, and will be escaped by normal codegen.
+    """
+    declarations = _split_css_declarations(style)
+    output: dict[str, str] = {}
+    for declaration in declarations:
+        declaration = declaration.strip()
+        if not declaration:
+            continue
+        split = _split_css_property_and_value(declaration)
+        if not split:
+            continue
+        key, value = split
+        normalized_key = _to_react_style_property_name(key)
+        if not normalized_key:
+            continue
+        output[normalized_key] = value.strip()
+    return output
 
 
 class SSRExclusionMarker:
