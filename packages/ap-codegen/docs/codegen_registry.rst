@@ -22,6 +22,19 @@ in dev as required and can then be committed to the repository.
 
     codegen_registry.run_codegen()
 
+You can also run codegen via the management command:
+
+.. code-block:: bash
+
+    # Option 1: pass registry explicitly
+    ./manage.py codegen --registry my_site.codegen.codegen_registry
+
+    # Option 2: set ALLIANCE_PLATFORM["CODEGEN"]["REGISTRY"] and omit --registry
+    ./manage.py codegen
+
+    # CI-friendly check: exit non-zero if codegen would write files
+    ./manage.py codegen --check
+
 .. admonition:: Template project
 
     In the template project this is done currently in the ``presto/codegen.py`` file. See the ``run_codegen`` function.
