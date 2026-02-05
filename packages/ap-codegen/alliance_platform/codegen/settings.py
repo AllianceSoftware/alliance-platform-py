@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from pathlib import Path
 from typing import TYPE_CHECKING
+from typing import Callable
 from typing import TypedDict
 from typing import cast
 
@@ -9,6 +12,7 @@ from alliance_platform.core.settings import ap_core_settings
 
 if TYPE_CHECKING:
     from .registry import ArtifactPostProcessor
+    from .registry import CodegenRegistry
 
 
 class AlliancePlatformCodegenSettingsType(TypedDict, total=False):
@@ -18,14 +22,18 @@ class AlliancePlatformCodegenSettingsType(TypedDict, total=False):
     TEMP_DIR: Path | str | None
     #: List of post processors to run on generated artifacts. Alternatively, this can be a string import path to a list of processors.
     POST_PROCESSORS: str | list["ArtifactPostProcessor"] | None
+    #: Codegen registry to run with the management command. Can be a CodegenRegistry instance, a callable returning one,
+    #: or a string import path to either.
+    REGISTRY: str | "CodegenRegistry" | Callable[[], "CodegenRegistry"] | None
 
 
-IMPORT_STRINGS = ["POST_PROCESSORS"]
+IMPORT_STRINGS = ["POST_PROCESSORS", "REGISTRY"]
 
 DEFAULTS = {
     "TEMP_DIR": None,
     "POST_PROCESSORS": cast(list["ArtifactPostProcessor"], []),
     "JS_ROOT_DIR": LazySetting(lambda: ap_core_settings.PROJECT_DIR),
+    "REGISTRY": None,
 }
 
 
@@ -36,6 +44,9 @@ class AlliancePlatformCodegenSettings(AlliancePlatformSettingsBase):
     TEMP_DIR: Path | None
     #: List of post processors to run on generated artifacts. Can be a string import path to a list of processors.
     POST_PROCESSORS: list["ArtifactPostProcessor"]
+    #: Codegen registry to run with the management command. Can be a CodegenRegistry instance, a callable returning one,
+    #: or a string import path to either.
+    REGISTRY: "CodegenRegistry" | Callable[[], "CodegenRegistry"] | None
 
 
 ap_codegen_settings = AlliancePlatformCodegenSettings(

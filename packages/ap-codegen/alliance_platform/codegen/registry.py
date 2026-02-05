@@ -164,6 +164,7 @@ class CodegenStats:
     abort_reason: None | str = None
     warnings: list[str] = field(default_factory=list)
     files_written: list[Path] = field(default_factory=list)
+    files_pending: list[Path] = field(default_factory=list)
 
     def add_warning(self, warning: str):
         self.warnings.append(warning)
@@ -200,7 +201,9 @@ class CodegenRegistry:
         class_id = f"{registration.__class__.__module__}.{registration.__class__.__qualname__}"
         return f"{class_id}.{cache_key['registration_id']}"
 
-    def has_dependencies_changed(self, registration: CodegenRegistration, stats: CodegenStats) -> bool:
+    def has_dependencies_changed(
+        self, registration: CodegenRegistration, stats: CodegenStats, update_cache: bool = True
+    ) -> bool:
         cache_key = registration.get_cache_key()
         if not cache_key:
             return True
@@ -220,12 +223,13 @@ class CodegenRegistry:
             mtime = dependency.stat().st_mtime
             timestamps[str(dependency)] = mtime
         if entry != timestamps:
-            self.cache["entries"][registration_id] = timestamps
-            self.cache_path.write_text(json.dumps(self.cache, indent=2))
+            if update_cache:
+                self.cache["entries"][registration_id] = timestamps
+                self.cache_path.write_text(json.dumps(self.cache, indent=2))
             return True
         return False
 
-    def run_codegen(self, should_abort: Callable[[], str | bool] | None = None):
+    def run_codegen(self, should_abort: Callable[[], str | bool] | None = None, dry_run: bool = False):
         start = time.time()
         if should_abort is None:
 
@@ -235,13 +239,14 @@ class CodegenRegistry:
         files_to_write = []
         stats = CodegenStats(len(self.registrations))
         for registration in self.registrations:
-            if not self.has_dependencies_changed(registration, stats):
+            if not self.has_dependencies_changed(registration, stats, update_cache=not dry_run):
                 continue
             try:
                 artifacts = registration.generate_artifacts()
             except Exception:
                 stats.add_warning(f"Error generating artifacts for {registration}: {traceback.format_exc()}")
-                self.invalidate_cache(registration)
+                if not dry_run:
+                    self.invalidate_cache(registration)
                 continue
             else:
                 if not isinstance(artifacts, list):
@@ -279,9 +284,12 @@ class CodegenRegistry:
                 not intermediate_file.target_path.exists()
                 or intermediate_file.target_path.read_text("utf8") != contents
             ):
-                intermediate_file.target_path.parent.mkdir(parents=True, exist_ok=True)
-                intermediate_file.target_path.write_text(contents, "utf8")
-                stats.files_written.append(intermediate_file.target_path)
+                if dry_run:
+                    stats.files_pending.append(intermediate_file.target_path)
+                else:
+                    intermediate_file.target_path.parent.mkdir(parents=True, exist_ok=True)
+                    intermediate_file.target_path.write_text(contents, "utf8")
+                    stats.files_written.append(intermediate_file.target_path)
         cleanup()
         stats.time_taken = time.time() - start
         return stats
