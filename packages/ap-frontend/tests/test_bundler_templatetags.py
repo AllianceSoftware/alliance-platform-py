@@ -584,6 +584,31 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
                     % expected_output,
                 )
 
+    def test_html_style_attribute_escaping(self):
+        script_tag = "</script><script>alert(1)</script>"
+        script_tag_encoded = "\\u003C/script\\u003E\\u003Cscript\\u003Ealert(1)\\u003C/script\\u003E"
+        with ExitStack() as stack:
+            stack.enter_context(override_ap_frontend_settings(BUNDLER=self.test_development_bundler))
+            stack.enter_context(
+                BundlerAssetContext(frontend_asset_registry=bypass_frontend_asset_registry, skip_checks=True)
+            )
+            mock_method = stack.enter_context(
+                mock.patch("alliance_platform.frontend.bundler.middleware.BundlerAssetContext.generate_id")
+            )
+            container_id = "C1"
+            mock_method.return_value = container_id
+            tpl = Template(
+                "{% load react %}{% component 'div' %}<span style=\"background-image: url('"
+                + script_tag
+                + "')\"></span>{% endcomponent %}"
+            )
+            context = Context()
+            contents = tpl.render(context)
+            render_line = contents[contents.find("renderComponent(") :].split("\n")[0]
+            self.assertIn("backgroundImage", render_line)
+            self.assertIn(script_tag_encoded, render_line)
+            self.assertNotIn(script_tag, render_line)
+
     def test_component_as_prop(self):
         """Tests that a component node is resolved when used as a prop"""
         with ExitStack() as stack:
@@ -1129,6 +1154,35 @@ class TestComponentTemplateTagOutput(SimpleTestCase):
             """
             {% component "div" %}<label for="default" />{% endcomponent %}""",
             """<div><label htmlFor="default" /></div>""",
+        )
+
+    def test_html_style_attribute_conversion(self):
+        self.assertComponentEqual(
+            """
+            {% component "div" %}<span style="margin-right: 5px" />{% endcomponent %}""",
+            """<div><span style={{marginRight: "5px"}} /></div>""",
+        )
+
+    def test_html_style_attribute_complex_values(self):
+        self.assertComponentEqual(
+            """
+            {% component "div" %}<span style='background-image: url("data:image/svg+xml;base64,abc;def"); margin-right: 5px' />{% endcomponent %}""",
+            """<div><span style={{backgroundImage: "url(\\\"data:image/svg+xml;base64,abc;def\\\")", marginRight: "5px"}} /></div>""",
+        )
+
+    def test_html_attr_to_jsx_style_conversion(self):
+        self.assertComponentEqual(
+            """
+            {% component "div" props=attrs|html_attr_to_jsx %}{% endcomponent %}""",
+            """<div style={{marginRight: "5px"}} />""",
+            attrs={"style": "margin-right: 5px"},
+        )
+
+    def test_style_prop_string_conversion(self):
+        self.assertComponentEqual(
+            """
+            {% component "div" style="margin-right: 5px" %}{% endcomponent %}""",
+            """<div style={{marginRight: "5px"}} />""",
         )
 
     def test_html_bad_attributes(self):
