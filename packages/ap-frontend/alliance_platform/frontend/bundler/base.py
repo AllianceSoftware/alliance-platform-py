@@ -219,7 +219,7 @@ class BaseBundler:
             filename = Path(filename)
         if not filename.is_absolute():
             filename = self.root_dir / filename
-        if not filename.exists():
+        if not self.does_asset_exist(filename):
             attempted = []
             if resolve_extensions and not filename.suffixes:
                 for ext in resolve_extensions:
@@ -227,8 +227,10 @@ class BaseBundler:
                     if self.does_asset_exist(p):
                         filename = p
                         break
+                    self._maybe_raise_case_mismatch_error(p)
                     attempted.append(str(p.relative_to(self.root_dir)))
             if not self.does_asset_exist(filename):
+                self._maybe_raise_case_mismatch_error(filename)
                 message = f"'{filename}' does not exist."
                 if attempted:
                     message += f" Tried the following paths: {', '.join(attempted)}"
@@ -236,12 +238,64 @@ class BaseBundler:
                     message += " You must include the file extension unless referring to a directory with an index file."
                 raise template.TemplateSyntaxError(message)
 
+        self._maybe_raise_case_mismatch_error(filename)
+
         if suffix_whitelist and "".join(filename.suffixes) not in suffix_whitelist:
             message = f"file must have one of the extension(s): {', '.join(suffix_whitelist)}. Received: '{filename}'."
             if suffix_hint:
                 message = f"{message} {suffix_hint}"
             raise template.TemplateSyntaxError(message)
         return filename
+
+    def _maybe_raise_case_mismatch_error(self, filename: Path):
+        """Raise a template error when path casing differs from filesystem casing.
+
+        This check only runs in development mode.
+
+        On macos the filesystem is case insensitive, so referencing a file by incorrect case will still
+        work. When you deploy it to a different environment, e.g. Linux in CI, it will then break trying
+        to resolve the file. Highlight these cases in dev to force correct case to be used.
+        """
+        if not self.is_development():
+            return
+        actual_case_filename = self._resolve_case_insensitive_path(filename)
+        if (
+            actual_case_filename
+            and actual_case_filename != filename
+            and self.does_asset_exist(actual_case_filename)
+        ):
+            raise template.TemplateSyntaxError(
+                f"Asset path casing mismatch for '{filename}'. Found '{actual_case_filename}'. "
+                "Update the asset path casing so it works on case-sensitive filesystems."
+            )
+
+    def _resolve_case_insensitive_path(self, filename: Path) -> Path | None:
+        """Resolve a path by matching each segment case-insensitively on disk.
+
+        Returns the best match with actual filesystem casing, or ``None`` if no
+        full path can be resolved.
+        """
+        if not filename.is_absolute():
+            filename = self.root_dir / filename
+        parts = filename.parts
+        if not parts:
+            return filename
+        current = Path(parts[0]) if filename.is_absolute() else Path()
+        start_index = 1 if filename.is_absolute() else 0
+        for part in parts[start_index:]:
+            try:
+                child_names = [child.name for child in current.iterdir()]
+            except OSError:
+                return None
+            if part in child_names:
+                matched_part = part
+            else:
+                matches = [name for name in child_names if name.lower() == part.lower()]
+                if len(matches) != 1:
+                    return None
+                matched_part = matches[0]
+            current = current / matched_part
+        return current
 
     def does_asset_exist(self, filename: Path):
         """Check if asset exists. By default, looks to filesystem.
