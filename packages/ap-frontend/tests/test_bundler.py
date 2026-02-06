@@ -1,14 +1,19 @@
 from os.path import dirname
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest import mock
 
+from alliance_platform.frontend.bundler.base import BaseBundler
+from alliance_platform.frontend.bundler.base import DevServerCheck
 from alliance_platform.frontend.bundler.base import RegExAliasResolver
 from alliance_platform.frontend.bundler.base import RelativePathResolver
 from alliance_platform.frontend.bundler.base import ResolveContext
 from alliance_platform.frontend.bundler.base import SourceDirResolver
 from alliance_platform.frontend.bundler.base import html_target_browser
 from alliance_platform.frontend.bundler.vite import ViteBundler
+from django import template
 from django.conf import settings
+from django.test import SimpleTestCase
 from django.test import TestCase
 from django.test import override_settings
 
@@ -79,6 +84,81 @@ class TestViteBundler(ViteBundler):
     ) -> Path:
         """For test case don't validate the paths exist"""
         return Path(filename)
+
+
+class TestBaseBundler(BaseBundler):
+    def is_development(self) -> bool:
+        return True
+
+    def get_url(self, path: Path | str):
+        return str(path)
+
+    def get_embed_items(self, paths, content_type=None):
+        return []
+
+    def resolve_ssr_import_path(self, path: Path | str):
+        return path
+
+    def get_ssr_url(self):
+        return "http://localhost/ssr"
+
+    def check_dev_server(self):
+        return DevServerCheck(is_running=False)
+
+
+class TestNonDevCaseInsensitiveExistBundler(TestBaseBundler):
+    def is_development(self) -> bool:
+        return False
+
+    def does_asset_exist(self, filename: Path):
+        return self._resolve_case_insensitive_path(filename) is not None
+
+
+class TestCaseSensitiveAssetPathValidation(SimpleTestCase):
+    def test_validate_path_raises_on_case_mismatch(self):
+        with TemporaryDirectory() as temp_dir:
+            root_dir = Path(temp_dir)
+            actual_path = root_dir / "frontend/src/app/views/Myview.tsx"
+            actual_path.parent.mkdir(parents=True, exist_ok=True)
+            actual_path.write_text("export default {};\n", "utf8")
+
+            bundler = TestBaseBundler(root_dir=root_dir, path_resolvers=[])
+            bad_path = root_dir / "frontend/src/app/views/MyView.tsx"
+            with self.assertRaisesRegex(template.TemplateSyntaxError, "casing mismatch|requested casing"):
+                bundler.validate_path(bad_path)
+
+    def test_validate_path_raises_on_case_mismatch_with_extension_resolution(self):
+        with TemporaryDirectory() as temp_dir:
+            root_dir = Path(temp_dir)
+            actual_path = root_dir / "frontend/src/app/views/Myview.tsx"
+            actual_path.parent.mkdir(parents=True, exist_ok=True)
+            actual_path.write_text("export default {};\n", "utf8")
+
+            bundler = TestBaseBundler(root_dir=root_dir, path_resolvers=[])
+            bad_path_without_extension = root_dir / "frontend/src/app/views/MyView"
+            with self.assertRaisesRegex(template.TemplateSyntaxError, "Myview.tsx"):
+                bundler.validate_path(bad_path_without_extension, resolve_extensions=[".ts", ".tsx", ".js"])
+
+    def test_validate_path_allows_correct_case(self):
+        with TemporaryDirectory() as temp_dir:
+            root_dir = Path(temp_dir)
+            actual_path = root_dir / "frontend/src/app/views/Myview.tsx"
+            actual_path.parent.mkdir(parents=True, exist_ok=True)
+            actual_path.write_text("export default {};\n", "utf8")
+
+            bundler = TestBaseBundler(root_dir=root_dir, path_resolvers=[])
+            self.assertEqual(actual_path, bundler.validate_path(actual_path))
+
+    def test_validate_path_skips_case_mismatch_check_outside_development(self):
+        with TemporaryDirectory() as temp_dir:
+            root_dir = Path(temp_dir)
+            actual_path = root_dir / "frontend/src/app/views/Myview.tsx"
+            actual_path.parent.mkdir(parents=True, exist_ok=True)
+            actual_path.write_text("export default {};\n", "utf8")
+
+            bundler = TestNonDevCaseInsensitiveExistBundler(root_dir=root_dir, path_resolvers=[])
+            bad_path = root_dir / "frontend/src/app/views/MyView.tsx"
+            self.assertEqual(bad_path, bundler.validate_path(bad_path))
 
 
 class TestViteBundlerTestCase(TestCase):
