@@ -14,6 +14,11 @@ sys.path.append(str(current_dir / "_doc_utils"))
 
 from ap_doc_utils import generate_sidebar  # noqa
 
+try:
+    from sphinx_markdown_builder.translator import MarkdownTranslator
+except ImportError:  # pragma: no cover - markdown export dependency is optional in some environments
+    MarkdownTranslator = None
+
 # Configuration file for the Sphinx documentation builder.
 #
 # For the full list of built-in configuration values, see the documentation:
@@ -134,6 +139,7 @@ intersphinx_mapping = {
         "https://docs.djangoproject.com/en/stable/",
         ("https://docs.djangoproject.com/en/stable/_objects/"),
     ),
+    "pghistory": ("https://django-pghistory.readthedocs.io/en/latest/", None),
     "python": ("https://docs.python.org/3", None),
 }
 
@@ -170,6 +176,21 @@ def parse_management_command(env, sig, signode):
     return command
 
 
+def patch_markdown_translator():
+    """Add support for abbreviation nodes when exporting Markdown docs."""
+    if MarkdownTranslator is None or hasattr(MarkdownTranslator, "visit_abbreviation"):
+        return
+
+    def visit_abbreviation(self, node):
+        return None
+
+    def depart_abbreviation(self, node):
+        return None
+
+    MarkdownTranslator.visit_abbreviation = visit_abbreviation
+    MarkdownTranslator.depart_abbreviation = depart_abbreviation
+
+
 def setup(app):
     # Allows using `:ttag:` and `:tfilter:` roles in the documentation to link to template tags and filters.
     app.add_crossref_type(
@@ -195,6 +216,7 @@ def setup(app):
         parse_node=parse_management_command,
     )
     app.add_directive("django-manage-option", Cmdoption)
+    patch_markdown_translator()
 
 
 generate_sidebar(current_dir, globals())

@@ -34,3 +34,6 @@ build_artifacts/
 
 # needs to be generated in each env
 _sidebar.rst.inc
+
+# generated docs used by the alliance-platform-docs skill
+skills/alliance-platform-docs/references/generated/
