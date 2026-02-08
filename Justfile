@@ -194,6 +194,10 @@ manage package *args:
 docs-watch:
     ./scripts/build-docs.sh
 
+# Build docs as Markdown and sync into the Codex skill references directory
+docs-build-skill:
+    ./scripts/build-skill-docs.sh
+
 # Clean build artifacts
 clean:
     rm -rf build_artifacts/

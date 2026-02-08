@@ -47,6 +47,7 @@ docs = [
   "sphinx>=8.1,<9.0",
   "sphinx-autobuild>=2024.10.3",
   "sphinx-autodoc-typehints>=2.5.0",
+  "sphinx-markdown-builder>=0.6.8",
   "sphinx-rtd-theme>=3.0.0",
   "sphinx-multiproject>=1.0.0",
 ]
@@ -90,4 +91,3 @@ omit = [
 precision = 2
 show_missing = true
 skip_covered = false
-
