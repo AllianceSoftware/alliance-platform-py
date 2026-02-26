@@ -421,9 +421,9 @@ this for the props to be passed through:
     {% component "@alliancesoftware/ui" "TextInput" props=widget.attrs|merge_props:extra_widget_props|html_attr_to_jsx type=widget.type name=widget.name default_value=widget.value %}
     {% endcomponent %}
 
-.. admonition:: Usage with other widgets
+.. note::
 
-    This tag only provides the extra template variables described above - it does not change the rendering itself. The
+    **Usage with other widgets.** This tag only provides the extra template variables described above - it does not change the rendering itself. The
     tag will render :meth:`~django:django.forms.BoundField.as_widget`, it is then up to the selected widget to make
     use of the provided values as shown above.
 

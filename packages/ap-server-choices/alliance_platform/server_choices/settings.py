@@ -8,9 +8,12 @@ if TYPE_CHECKING:
 
 
 class AlliancePlatformServerChoicesSettingsType(TypedDict, total=False):
-    """Settings for the Server Choices package of the Alliance Platform
+    """Settings for the Server Choices package of the Alliance Platform.
+
     These can be set in the Django settings file under the ``ALLIANCE_PLATFORM`` key:
+
     .. code-block:: python
+
         ALLIANCE_PLATFORM = {
             "SERVER_CHOICES": {
                 # settings go here

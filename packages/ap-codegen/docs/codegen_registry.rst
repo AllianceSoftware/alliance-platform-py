@@ -35,9 +35,9 @@ You can also run codegen via the management command:
     # CI-friendly check: exit non-zero if codegen would write files
     ./manage.py codegen --check
 
-.. admonition:: Template project
+.. note::
 
-    In the template project this is done currently in the ``presto/codegen.py`` file. See the ``run_codegen`` function.
+    **Template project.** In the template project this is done currently in the ``presto/codegen.py`` file. See the ``run_codegen`` function.
 
 You can then register a handler for a specific artifact type:
 

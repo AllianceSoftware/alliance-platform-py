@@ -10,7 +10,6 @@ ordering at the database level, using postgres triggers.
    :caption: Contents:
 
    installation
-   settings
    legacy-migration
    api
 

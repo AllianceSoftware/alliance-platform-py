@@ -181,9 +181,9 @@ Currently, the only thing that gets rendered on the server is React components. 
 is used to describe the component that needs to be rendered. See its documentation for details on how each component
 is serialized.
 
-.. admonition:: Disabling SSR
+.. note::
 
-    To disable SSR entirely you can pass ``disable_ssr=True`` to :class:`~alliance_platform.frontend.bundler.vite.ViteBundler`.
+    **Disabling SSR.** To disable SSR entirely you can pass ``disable_ssr=True`` to :class:`~alliance_platform.frontend.bundler.vite.ViteBundler`.
 
 .. note::
 

@@ -52,7 +52,7 @@ To use the manual events call :func:`~alliance_platform.audit.create_audit_event
     def track_login(sender, user, **kwargs):
         create_audit_event(user, "LOGIN")
 
-Any audit events that occur within a non-GET request will automatically be wrapped in pghistory :external:class:`~pghistory.context`. :code:`GET`
+Any audit events that occur within a non-GET request will automatically be wrapped in pghistory :external:py:class:`~pghistory.context`. :code:`GET`
 requests shouldn't generally modify anything and so the default :class:`~alliance_platform.audit.middleware.AuditMiddleware` doesn't
 wrap these in :code:`context`. You can do it manually however:
 
