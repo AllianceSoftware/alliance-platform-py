@@ -27,7 +27,9 @@ Documentation: https://alliance-platform.readthedocs.io/
 ### Installation
 
 ```bash
-uv sync
+
+# sync all groups to include doc generation deps
+uv sync --all-groups
 # Setup git hooks and changesets, node_modules used for some tests
 yarn
 ```

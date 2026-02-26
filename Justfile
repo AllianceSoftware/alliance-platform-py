@@ -2,7 +2,7 @@
 
 # Install dependencies
 install:
-    uv sync
+    uv sync --all-groups
 
 # Run tests for specific package
 # Usage: just test-package ap-pdf [python-version] [django-constraint]
