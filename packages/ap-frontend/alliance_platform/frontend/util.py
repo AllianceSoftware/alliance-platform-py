@@ -183,7 +183,9 @@ def _split_css_property_and_value(declaration: str) -> tuple[str, str] | None:
         if char == "(":
             paren_depth += 1
             continue
-        if char == ")" and paren_depth > 0:
+        if char == ")":
+            if paren_depth == 0:
+                return None
             paren_depth -= 1
             continue
         if char == ":" and paren_depth == 0 and split_index is None:
