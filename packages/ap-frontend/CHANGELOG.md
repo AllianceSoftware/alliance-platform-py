@@ -1,5 +1,11 @@
 # alliance-platform-frontend
 
+## 0.0.22
+
+### Patch Changes
+
+- b0624ed: Improve frontend asset path validation to detect case mismatches in template-included assets during development. When an asset path matches only by case (for example `MyView.tsx` vs `Myview.tsx`), Alliance Platform now raises a `TemplateSyntaxError` with the actual filesystem path so the mismatch is fixed before CI fails on case-sensitive filesystems.
+
 ## 0.0.21
 
 ### Patch Changes
