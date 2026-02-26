@@ -76,6 +76,20 @@ class TestTransformAttributeNames(SimpleTestCase):
         attrs = transform_attribute_names({"style": "color: 'red; font-size: 12px"})
         self.assertEqual(attrs["style"], {})
 
+    def test_style_parser_ignores_unmatched_open_parenthesis(self):
+        attrs = transform_attribute_names({"style": "color: red; transform: translate(10px"})
+        self.assertEqual(attrs["style"], {"color": "red"})
+
+    def test_style_parser_ignores_unmatched_close_parenthesis(self):
+        attrs = transform_attribute_names({"style": "color: red; transform: translateX(10px)); width: 5px"})
+        self.assertEqual(
+            attrs["style"],
+            {
+                "color": "red",
+                "width": "5px",
+            },
+        )
+
     def test_style_parser_ignores_trailing_colon(self):
         attrs = transform_attribute_names({"style": "color: red; width:"})
         self.assertEqual(attrs["style"], {"color": "red", "width": ""})
