@@ -73,9 +73,6 @@ TEMPLATES = (
 
 STATIC_ROOT = Path(BASE_DIR, "static")
 
-SERIALIZATION_MODULES = {}
-
-
 SECRET_KEY = hashlib.sha256(str(random.SystemRandom().getrandbits(256)).encode("ascii")).hexdigest()
 
 USE_TZ = True
