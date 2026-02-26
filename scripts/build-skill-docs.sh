@@ -8,6 +8,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 OUTPUT_ROOT="${OUTPUT_ROOT:-$REPO_ROOT/_docs-build/skill-md}"
 SKILL_GENERATED_ROOT="${SKILL_GENERATED_ROOT:-$REPO_ROOT/skills/alliance-platform-docs/references/generated}"
 SPHINX_SOURCE_DIR="${SPHINX_SOURCE_DIR:-$REPO_ROOT/docs}"
+USE_UV_RUN="${USE_UV_RUN:-1}"
 
 PROJECTS=(
     core
@@ -47,8 +48,15 @@ mkdir -p "$SKILL_GENERATED_ROOT"
 for project in "${PROJECTS[@]}"; do
     build_dir="$OUTPUT_ROOT/$project"
     echo "  - $project"
-    READTHEDOCS=True READTHEDOCS_VERSION=latest PROJECT="$project" \
-        uv run sphinx-build -b markdown "$SPHINX_SOURCE_DIR" "$build_dir"
+    if [[ "$USE_UV_RUN" == "1" ]]; then
+        LC_ALL=C LANG=C READTHEDOCS=True READTHEDOCS_VERSION=latest PROJECT="$project" \
+            uv run sphinx-build -b markdown "$SPHINX_SOURCE_DIR" "$build_dir"
+    else
+        LC_ALL=C LANG=C READTHEDOCS=True READTHEDOCS_VERSION=latest PROJECT="$project" \
+            sphinx-build -b markdown "$SPHINX_SOURCE_DIR" "$build_dir"
+    fi
+    find "$build_dir" -type f ! -name "*.md" -delete
+    find "$build_dir" -type d -empty -delete
     while IFS= read -r -d '' markdown_file; do
         strip_package_docs_sidebar "$markdown_file"
     done < <(find "$build_dir" -type f -name "*.md" -print0)

@@ -198,6 +198,10 @@ docs-watch:
 docs-build-skill:
     ./scripts/build-skill-docs.sh
 
+# Build docs skill and publish it into a .well-known path in a local site root
+docs-publish-skill:
+    ./scripts/publish-skill-well-known.sh
+
 # Clean build artifacts
 clean:
     rm -rf build_artifacts/

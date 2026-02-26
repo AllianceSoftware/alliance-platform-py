@@ -14,6 +14,9 @@ build:
       # Export dependencies and install into ReadTheDocs virtualenv
       - uv export --frozen --all-groups --no-hashes -o requirements.txt
       - pip install -r requirements.txt
+    post_build:
+      # Build and publish the agent skill bundle into the rendered docs output.
+      - USE_UV_RUN=0 ./scripts/publish-skill-well-known.sh
 
 sphinx:
   configuration: docs/conf.py
