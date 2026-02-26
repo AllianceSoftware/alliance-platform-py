@@ -4,6 +4,7 @@ Installation
 Install the ``alliance_platform_server_choices`` package:
 
 .. code-block:: bash
+
     poetry add alliance_platform.server_choices
 
 Add ``alliance_platform.server_choices`` to your ``INSTALLED_APPS``.
@@ -42,7 +43,7 @@ In the settings file:
 
     class AlliancePlatformSettings(TypedDict):
         CORE: AlliancePlatformCoreSettingsType
-        SERVER_CHOICES: AlliancePlatformAuditSettingsType
+        SERVER_CHOICES: AlliancePlatformServerChoicesSettingsType
         # Any other settings for alliance_platform packages, e.g. FRONTEND
 
     ALLIANCE_PLATFORM: AlliancePlatformSettings = {

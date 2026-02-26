@@ -4,6 +4,7 @@ Installation
 Install the ``alliance_platform.audit`` package:
 
 .. code-block:: bash
+
     poetry add alliance_platform.audit
 
 Add ``pgtrigger``, ``pghistory``, and ``alliance_platform.audit`` to your ``INSTALLED_APPS``. If migrating from ``common_audit``, ``pgtrigger`` and

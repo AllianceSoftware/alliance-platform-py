@@ -1,9 +1,9 @@
 Alliance Platform
 =============================================
 
-.. admonition:: Work in progress
+.. note::
 
-    The platform itself is in use but has some rough edges, and the documentation is currently a work in progress
+    **Work in progress.** The platform itself is in use but has some rough edges, and the documentation is currently a work in progress
     and may not be complete. Please bear with us as we continue to improve the platform and its documentation. If you
     are unsure about something or need help, please drop into the ``#alliance-platform2`` channel in Slack.
 

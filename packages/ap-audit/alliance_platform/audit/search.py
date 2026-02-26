@@ -13,34 +13,34 @@ def search_audit_by_context(
     models: list[type[_models.Model]] | None = None,
 ) -> dict[type[_models.Model], type[_models.QuerySet]]:
     """
-    Given `search` , returns all audit histories from all registered models with context matching
+    Given ``search``, returns all audit histories from all registered models with context matching
     the search dict.
 
-    The search is partial: `{"user": 1}` will return all entries with context value containing
-    `user=1` regardless of what other values may be set.
+    The search is partial: ``{"user": 1}`` will return all entries with context value containing
+    ``user=1`` regardless of what other values may be set.
 
     A created_between can be passed in to restrict to only find contexts created between two datetime
-    points; passing None in either of them resulted in the relevant side to be open ended.
+    points; passing ``None`` in either value results in the relevant side being open ended.
 
     You can also pass in models to restrict what kind of source models the search should look for,
     by default it searches across all registered models.
 
-    By default context is populated by `AuditMiddleware` and includes
+    By default context is populated by ``AuditMiddleware`` and includes
 
     * **user** - the user (or hijacked user) who triggered the changed
-    * **hijacker** - the original user in the case `user` is hijacked
+    * **hijacker** - the original user in the case ``user`` is hijacked
     * **url** - the current URL
-    * **ip** - the users IP address (only if ``TRACK_IP_ADDRESS` enabled)
+    * **ip** - the users IP address (only if ``TRACK_IP_ADDRESS`` is enabled)
 
-    Extra context can be added with [pghistory.context](https://django-pghistory.readthedocs.io/en/latest/package.html#pghistory.context).
+    Extra context can be added with `pghistory.context <https://django-pghistory.readthedocs.io/en/latest/package.html#pghistory.context>`_.
 
-    For changes that occur outside of a request no context will be set unless explicitly wrapped in `pghistory.context`.
+    For changes that occur outside of a request no context will be set unless explicitly wrapped in ``pghistory.context``.
 
-    Returns a dict indexed by models with values being the queryset, eg: `{PaymentRecord: qs}` where
-    `qs` is a PaymentRecordAuditEvent queryset containing all hits, which can then be queried upon
-    further depending on your need (eg, `qs.filter(payment_method="cash")`).
-    WARNING: all searched models are returned in the dict regardless of whether their `qs.count() == 0`
-    for performance reasons. Do not rely on keys of returned dict to direvtly decide which model contained
+    Returns a dict indexed by models with values being the queryset, e.g. ``{PaymentRecord: qs}`` where
+    ``qs`` is a PaymentRecordAuditEvent queryset containing all hits, which can then be queried further
+    depending on your need (e.g. ``qs.filter(payment_method="cash")``).
+    WARNING: all searched models are returned in the dict regardless of whether their ``qs.count() == 0``
+    for performance reasons. Do not rely on keys of returned dict to directly decide which model contained
     a hit.
 
     usage:

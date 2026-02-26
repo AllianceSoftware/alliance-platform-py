@@ -514,9 +514,9 @@ Example:
 
 .. note:: If you need to include a plain CSS file use the :ttag:`bundler_embed` tag instead.
 
-.. admonition:: Vite plugin required
+.. note::
 
-    This functionality relies on the plugin defined by in ``frontend/vite/plugins/vanillaExtractWithExtras.ts``
+    **Vite plugin required.** This functionality relies on the plugin defined by in ``frontend/vite/plugins/vanillaExtractWithExtras.ts``
     in the template proejct.
 
 

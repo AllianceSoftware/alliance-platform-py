@@ -4,6 +4,7 @@ Installation
 Install the ``alliance_platform_ordered_model`` package:
 
 .. code-block:: bash
+
     poetry add alliance_platform.ordered_model
 
 Add ``pgtrigger`` and ``alliance_platform.ordered_model`` to your ``INSTALLED_APPS``. If migrating from ``common_lib``, ``pgtrigger`` will already

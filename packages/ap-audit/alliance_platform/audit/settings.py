@@ -22,7 +22,7 @@ class AlliancePlatformAuditSettingsType(TypedDict, total=False):
     """
 
     #: The name of the action used to evaluate permissions for auditing a model. Defaults to 'audit'.
-    #: The action name is passed through :external:func:`~alliance_platform.core.auth.resolve_perm_name` to generate the permission.
+    #: The action name is passed through :func:`~alliance_platform.core.auth.resolve_perm_name` to generate the permission.
     LIST_PERM_ACTION: str | None
     #: The name of the permission used to evaluate whether auditing of any type can be performed.
     #: If a user has audit permissions for a model, but not the permission specified here, they will be unable to audit

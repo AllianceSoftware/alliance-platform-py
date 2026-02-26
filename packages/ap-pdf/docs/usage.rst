@@ -221,7 +221,7 @@ Knowing when the rendered page is 'finished'
 The pdf render script is configured by default to consider a page 'finished' when two conditions are met:
 
 * when there are no more than 0 network connections for at least 500 ms
-* and ``window.__PAGE_RENDERING_FINISHED`` is truthy (see :repolink:`pageRenderingObserver.ts <frontend/src/core/pageRenderingObserver.ts>`)
+* and ``window.__PAGE_RENDERING_FINISHED`` is truthy (see `pageRenderingObserver.ts <https://github.com/AllianceSoftware/alliance-platform-js/blob/main/frontend/src/core/pageRenderingObserver.ts>`_)
 
 For this second condition, it will wait (by default) up to 10 seconds for this to become true. After that
 time (if the condition is not met) it will continue to render to PDF regardless.

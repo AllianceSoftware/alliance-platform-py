@@ -4,6 +4,7 @@ Installation
 Install the ``alliance_platform_pdf`` package:
 
 .. code-block:: bash
+
     poetry add alliance_platform.pdf
 
 Add ``alliance_platform.pdf``, ``alliance_platform.frontend``, and ``alliance_platform.core`` to your ``INSTALLED_APPS``.
@@ -27,11 +28,11 @@ In the settings file:
 .. code-block:: python
 
     from alliance_platform.core.settings import AlliancePlatformCoreSettingsType
-    from alliance_platform.audit.settings import AlliancePlatformAuditSettingsType
+    from alliance_platform.pdf.settings import AlliancePlatformPDFSettingsType
 
     class AlliancePlatformSettings(TypedDict):
         CORE: AlliancePlatformCoreSettingsType
-        AUDIT: AlliancePlatformAuditSettingsType
+        PDF: AlliancePlatformPDFSettingsType
         # Any other settings for alliance_platform packages, e.g. FRONTEND
 
     ALLIANCE_PLATFORM: AlliancePlatformSettings = {
