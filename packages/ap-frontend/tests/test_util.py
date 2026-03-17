@@ -6,7 +6,7 @@ from django.template import Context
 from django.template import Origin
 from django.test import SimpleTestCase
 
-from tests.test_utils.bundler import bypass_frontend_asset_registry
+from tests.test_utils.bundler import bypass_frontend_resource_registry
 
 
 class TestTransformAttributeNames(SimpleTestCase):
@@ -99,7 +99,9 @@ class TestTransformAttributeNames(SimpleTestCase):
         self.assertEqual(attrs["style"], {"--primary-color": "blue", "--spacing": "4px"})
 
     def test_component_node_converts_style_prop_string(self):
-        with BundlerAssetContext(frontend_asset_registry=bypass_frontend_asset_registry, skip_checks=True):
+        with BundlerAssetContext(
+            frontend_resource_registry=bypass_frontend_resource_registry, skip_checks=True
+        ):
             node = ComponentNode(
                 Origin("test"),
                 CommonComponentSource("div"),

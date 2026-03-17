@@ -652,7 +652,9 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
         with ExitStack() as stack:
             stack.enter_context(override_ap_frontend_settings(BUNDLER=self.test_development_bundler))
             stack.enter_context(
-                BundlerAssetContext(frontend_asset_registry=bypass_frontend_asset_registry, skip_checks=True)
+                BundlerAssetContext(
+                    frontend_resource_registry=bypass_frontend_resource_registry, skip_checks=True
+                )
             )
             mock_method = stack.enter_context(
                 mock.patch("alliance_platform.frontend.bundler.middleware.BundlerAssetContext.generate_id")
