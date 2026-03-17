@@ -61,7 +61,8 @@
     "css": ["assets/login.css-a9690449.css"],
     "file": "assets/login.css-669fd56c.js",
     "isEntry": true,
-    "src": "login.css.ts"
+    "src": "login.css.ts",
+    "vanillaExtractMappingFile": "assets/login.css-669fd56c.js.json"
   },
   "frontend/src/renderComponent.tsx": {
     "file": "assets/renderComponent-e1.js",

@@ -197,7 +197,7 @@ class BundlerAssetContext:
     #: The registry to use for resources that can't be discovered automatically.
     frontend_resource_registry: FrontendResourceRegistry
     #: The target HTML is being generated for. This determines things like whether scripts are required at runtime, and
-    #: whether CSS should be inlined in ``style`` tags or linked from an external file. Defaults to
+    #: whether CSS should be inlined in ``style`` tags or linked from an external file. Defaults to ``html_target_browser``.
     html_target: HtmlGenerationTarget
     #: If specified, no checks will be done on context exit to ensure all assets have been embedded or post processed. Useful for tests.
     skip_checks: bool

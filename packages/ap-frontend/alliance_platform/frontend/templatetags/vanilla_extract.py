@@ -32,10 +32,8 @@ class VanillaExtractStylesheetNode(template.Node, BundlerAsset):
             context[self.css_modules_target_var] = resolve_vanilla_extract_class_mapping(
                 self.bundler, self.filename
             )
-        # TODO: Currently HMR works but it forces a full refresh of the page always. Not clear why.
-        # One solution is to write out a temporary `.ts` file that loads the css file. This sort of worked
-        # but was a bit flakey so I've removed it for the time being. Needs further investigation into
-        # cause.
+        # HMR is handled by the vite-plugin-django-vanilla-extract plugin which creates intermediate
+        # cache .ts files with import.meta.hot.accept() and a custom WebSocket listener for mapping changes.
         items = self.bundler.get_embed_items(self.get_resources_for_bundling())
         for item in items:
             self.bundler_asset_context.queue_embed_file(item)
@@ -49,7 +47,7 @@ def stylesheet(parser: template.base.Parser, token: template.base.Token):
     Add a vanilla extract CSS file the page, optionally exposing class name mapping in a template variable.
 
     If the CSS file includes exported class names, you can access the mapping by specifying a variable with the syntax
-    ``as <var name>``. This functionality relies on the plugin defined by in ``vanillaExtractWithExtras.ts``.
+    ``as <var name>``. This functionality relies on the ``@alliancesoftware/vite-plugin-django-vanilla-extract`` plugin.
 
     If you do not specify a variable using the ``as <var name>`` syntax, the styles will only be available globally,
     and any specified variables will be ignored.
