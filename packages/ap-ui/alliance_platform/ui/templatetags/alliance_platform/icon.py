@@ -35,27 +35,21 @@ def icon(parser: template.base.Parser, token: template.base.Token):
     bundler = get_bundler()
     origin = parser.origin
     resolver_context = ResolveContext(bundler.root_dir, origin.name if origin else None)
-    # This was previous approach to avoid cascading requests for every icon included in the barrel file. This approach
-    # proves to be unnecessary when using the Vite metadata to extract optimised deps - see ViteBundler.get_vite_dev_metadata
-    # and it's usage in that file. The optimised file doesn't cause the cascade of requests.
-    # sub_dir = "outlined"
-    # if icon_name.endswith("Solid"):
-    #     sub_dir = "solid"
-    # elif icon_name.endswith("DuoTone"):
-    #     sub_dir = "duotone"
-    # elif icon_name.endswith("DuoColor"):
-    #     sub_dir = "duocolor"
-    # source_path = get_bundler().resolve_path(
-    #     f"@alliancesoftware/icons/{sub_dir}/{icon_name}",
-    #     resolver_context,
-    #     resolve_extensions=[".ts", ".tsx", ".js"],
-    # )
+    # Avoid imports from barrel file which causes worse performance in dev. Import direct
+    # icon file instead.
+    sub_dir = "outlined"
+    if icon_name.endswith("Solid"):
+        sub_dir = "solid"
+    elif icon_name.endswith("DuoTone"):
+        sub_dir = "duotone"
+    elif icon_name.endswith("DuoColor"):
+        sub_dir = "duocolor"
     source_path = get_bundler().resolve_path(
-        "@alliancesoftware/icons",
+        f"@alliancesoftware/icons/{sub_dir}/{icon_name}",
         resolver_context,
         resolve_extensions=[".ts", ".tsx", ".js"],
     )
-    asset_source = ImportComponentSource(source_path, icon_name, False)
+    asset_source = ImportComponentSource(source_path, icon_name, True)
     return parse_component_tag(parser, token, asset_source=asset_source, no_end_tag=True)
 
 
