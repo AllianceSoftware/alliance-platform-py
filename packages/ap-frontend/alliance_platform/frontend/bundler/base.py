@@ -340,6 +340,13 @@ class BaseBundler:
         """
         raise NotImplementedError
 
+    def get_ssr_cancel_url(self) -> str | None:
+        """Return URL for canceling an in-flight SSR request.
+
+        Implementations may return ``None`` if cancellation is not supported.
+        """
+        return None
+
     def get_ssr_headers(self) -> dict[str, str]:
         """Return any headers to add to the SSR request"""
         return {}

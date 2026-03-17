@@ -58,7 +58,7 @@ class ComponentProp(SSRCustomFormatSerializable, CodeGeneratorNode):
 
     such that the prop passed to the component is a ``Date`` instance. The ``get_representation`` method will return
     the string representation `"2020-01-01"` and ``get_tag`` returns ``"Date"``. This gets serialized to
-    ``["@@CUSTOM", "Date", "2020-01-01"]``. The ``@@CUSTOM`` tag is used to indicate that the prop needs special "reviving"
+    ``["@@AP_SSR_V2", "Date", "2020-01-01"]``. The ``@@AP_SSR_V2`` tag is used to indicate that the prop needs special "reviving"
     on the frontend which is detected by ``processSSRRequest`` in ``ssr.ts``, and will call the appropriate "reviver"
     defined in ``ssrJsonRevivers.tsx``.
     """

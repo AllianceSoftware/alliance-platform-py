@@ -70,6 +70,12 @@ class AlliancePlatformFrontendSettingsType(TypedDict, total=False):
     REACT_RENDER_COMPONENT_FILE: Path | str
     #: Set to a dotted path to a function that will be called to resolve the global context for SSR. This function should return a dictionary of values to be passed to the SSR renderer under the `globalContext` key.
     SSR_GLOBAL_CONTEXT_RESOLVER: str | None
+    #: Timeout (seconds) for SSR requests made to the JS SSR server.
+    SSR_REQUEST_TIMEOUT: float | int | None
+    #: If true and an SSR request times out, attempt to cancel the in-flight request on the SSR server.
+    SSR_CANCEL_ON_TIMEOUT: bool | None
+    #: Timeout (seconds) for the best-effort SSR cancel request.
+    SSR_CANCEL_TIMEOUT: float | int | None
     #: The limit to apply for code format requests in development mode. This is limited to 1mb by default; anything above that will not be formatted. This is only
     #: applicable to dev mode where code is formatted to make debugging easier when viewing the source.
     DEV_CODE_FORMAT_LIMIT: int | None
@@ -122,6 +128,12 @@ class AlliancePlatformFrontendSettings(AlliancePlatformSettingsBase):
     BUNDLER_DISABLE_DEV_CHECK_HTML: bool
     #: Set to a dotted path to a function that will be called to resolve the global context for SSR. This function should return a dictionary of values to be passed to the SSR renderer under the `globalContext` key.
     SSR_GLOBAL_CONTEXT_RESOLVER: str | None
+    #: Timeout (seconds) for SSR requests made to the JS SSR server.
+    SSR_REQUEST_TIMEOUT: float
+    #: If true and an SSR request times out, attempt to cancel the in-flight request on the SSR server.
+    SSR_CANCEL_ON_TIMEOUT: bool
+    #: Timeout (seconds) for the best-effort SSR cancel request.
+    SSR_CANCEL_TIMEOUT: float
     #: File that is used to render React components using the ``react`` tag. This file should export a function named ``renderComponent`` and a function ``createElement`` (this can just be re-exported from React).
     REACT_RENDER_COMPONENT_FILE: Path
     #: The limit to apply for code format requests in development mode. This is limited to 1mb by default; anything above that will not be formatted. This is only
@@ -177,6 +189,9 @@ DEFAULTS = {
     "EXTRACT_ASSETS_EXCLUDE_DIRS": tuple(),
     "BUNDLER_DISABLE_DEV_CHECK_HTML": True,
     "SSR_GLOBAL_CONTEXT_RESOLVER": None,
+    "SSR_REQUEST_TIMEOUT": 1.0,
+    "SSR_CANCEL_ON_TIMEOUT": True,
+    "SSR_CANCEL_TIMEOUT": 0.1,
     "REACT_RENDER_COMPONENT_FILE": None,
     "DEV_CODE_FORMAT_LIMIT": 1 * 1024 * 1024,
     "DEV_CODE_FORMAT_TIMEOUT": 1,

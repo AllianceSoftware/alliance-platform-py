@@ -206,6 +206,7 @@ class TestViteBundlerTestCase(TestCase):
             )
 
             self.assertEqual("http://localhost:5273/ssr", bundler.get_development_ssr_url())
+            self.assertEqual("http://localhost:5273/ssr/cancel", bundler.get_ssr_cancel_url())
 
     @override_settings(STATIC_URL="/test-static/")
     def test_preview_url(self):
