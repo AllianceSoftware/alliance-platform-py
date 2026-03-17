@@ -34,7 +34,7 @@ class BundlerUrlAssetNode(template.Node, BundlerAsset):
         self.target_var = target_var
 
     def get_resources_for_bundling(self):
-        return [FrontendResource(self.path)]
+        return [FrontendResource.from_path(self.path)]
 
     def render(self, context):
         url = self.bundler.get_url(self.path)

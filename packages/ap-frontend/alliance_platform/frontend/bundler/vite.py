@@ -132,6 +132,8 @@ class ViteManifestAsset:
     imports: tuple[str]
     #: Any other assets this asset imports dynamically (i.e. using ``import()``
     dynamic_imports: tuple[str]
+    #: File that contains class mappings for a vanilla extract file
+    vanilla_extract_mapping_file: str | None
 
     def collect_dependencies(self) -> AssetDependencies:
         """
@@ -229,6 +231,7 @@ class ViteManifest:
                 assets=cast(tuple[str], tuple(value.get("assets", []))),
                 imports=cast(tuple[str], tuple(value.get("imports", []))),
                 dynamic_imports=cast(tuple[str], tuple(value.get("dynamicImports", []))),
+                vanilla_extract_mapping_file=value.get("vanillaExtractMappingFile", None),
             )
             # for index files add a mapping for the directory as well, e.g. both of these:
             #  components/table/index.tsx
@@ -705,19 +708,20 @@ class ViteCssEmbed(ViteEmbed):
                 mapping = resolve_vanilla_extract_class_mapping(self.bundler, self.resource.path)
                 # In dev we load the styles via an intermediate TS file that imports the CSS file and sets
                 # up hot module reloading. Without this intermediate any changes to CSS will cause a full page
-                # reload rather than using HMR. See `vanillaExtractWithExtras.ts` for where this script is
-                # created.
+                # reload rather than using HMR. See `@alliancesoftware/vite-plugin-django-vanilla-extract`
+                # for where this script is created.
                 fn = mapping.import_script_filename
                 if fn is None:
                     warnings.warn(
                         f"Expected import_script_filename to be set for path {self.resource.path}. Hot loading will not work for this file."
                     )
                 else:
+                    src_url = urljoin(self.bundler.dev_server_url_base, f"vanilla-extract-transform/{fn}")
                     return _create_html_tag(
                         "script",
                         {
                             **self.html_attrs,
-                            "src": self.bundler.resolve_url(fn),
+                            "src": src_url,
                             "type": "module",
                             # This will block rendering until file loaded, which reduces flash of unstyled content a bit
                             # You will still get it for any components that loads its own styles however.

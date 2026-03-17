@@ -47,7 +47,7 @@ See the :doc:`settings` documentation for details about each of the available se
             # Omitted for brevity. See codegen docs.
         },
         "FRONTEND": {
-            "FRONTEND_ASSET_REGISTRY": "django_site.asset_registry.frontend_asset_registry",
+            "FRONTEND_RESOURCE_REGISTRY": "django_site.resource_registry.resource_registry",
             "REACT_RENDER_COMPONENT_FILE": PROJECT_DIR / "frontend/src/renderComponent.tsx",
             "NODE_MODULES_DIR": NODE_MODULES_DIR,
             "EXTRACT_ASSETS_EXCLUDE_DIRS": (BASE_DIR / "codegen", re.compile(r".*/site-packages/.*")),

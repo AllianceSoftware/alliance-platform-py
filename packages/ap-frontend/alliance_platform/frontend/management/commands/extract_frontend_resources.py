@@ -107,6 +107,8 @@ class Command(BaseCommand):
                 sys.exit(1)
             data = json.dumps({"resources": resources, "breakdown": breakdown})
             if output:
-                Path(output).write_text(data)
+                output_path = Path(output)
+                output_path.parent.mkdir(exist_ok=True, parents=True)
+                output_path.write_text(data)
             else:
                 self.stdout.write(data)

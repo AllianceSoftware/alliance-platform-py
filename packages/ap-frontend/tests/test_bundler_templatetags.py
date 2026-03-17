@@ -1,21 +1,22 @@
 from contextlib import ExitStack
 import datetime
 import json
+from types import SimpleNamespace
 from typing import cast
 from unittest import mock
+from urllib.parse import urljoin
 
 from alliance_platform.codegen.printer import TypescriptPrinter
 from alliance_platform.frontend.bundler.base import HtmlGenerationTarget
 from alliance_platform.frontend.bundler.context import BundlerAssetContext
 from alliance_platform.frontend.bundler.ssr import SSRJsonEncoder
 from alliance_platform.frontend.bundler.ssr import SSRSerializerContext
-from alliance_platform.frontend.bundler.vanilla_extract import resolve_vanilla_extract_cache_names
+from alliance_platform.frontend.bundler.vanilla_extract import VanillaExtractClassMapping
 from alliance_platform.frontend.bundler.vite import ViteCssEmbed
 from alliance_platform.frontend.html_parser import convert_html_string
 from alliance_platform.frontend.templatetags.react import ComponentNode
 from alliance_platform.frontend.templatetags.react import ComponentProps
 from alliance_platform.frontend.templatetags.react import ComponentSourceCodeGenerator
-from django.conf import settings
 from django.template import Context
 from django.template import Origin
 from django.template import Template
@@ -48,7 +49,17 @@ def mock_read_text(path):
 def mock_create_mapping(self):
     # Bypass the requests to the dev server VanillaExtractMapping does. They still work
     # but will log warnings because dev server won't be running
-    self._load_mapping()
+    if self.cache_filename.exists():
+        self._load_mapping()
+        return
+    # In the new integration the dev cache filename includes an absolute-path stem.
+    # Test fixtures keep stable, relative names, so load directly when needed.
+    if self.bundler.is_development():
+        self.mapping = json.loads(
+            (fixtures_dir / "vanilla-extract-integration/login_css_ts.json").read_text()
+        )
+        return
+    self.mapping = None
 
 
 @override_settings(STATIC_URL="/static/")
@@ -164,13 +175,17 @@ class TestBundlerTemplateTags(SimpleTestCase):
 
     def test_bundler_embed_collected_assets_order(self):
         """Test ordering is preserved as it might be important"""
+        login_transform_url = urljoin(
+            self.test_development_bundler.dev_server_url_base,
+            f"vanilla-extract-transform/{self.test_development_bundler.root_dir / 'login.css.ts'}",
+        )
         for bundler_name, expected in [
             (
                 "test_development_bundler",
                 # yes, in dev css is loaded via <script>
                 f'<script src="{self.dev_url}styles/normalize.css" type="module"></script>\n'
                 f'<script src="{self.dev_url}components/Button.tsx" type="module"></script>\n'
-                f'<script src="{self.dev_url}{resolve_vanilla_extract_cache_names(self.test_development_bundler, "login.css.ts")[1].relative_to(settings.PROJECT_DIR)}" type="module" blocking="render"></script>',
+                f'<script src="{login_transform_url}" type="module" blocking="render"></script>',
             ),
             (
                 "test_production_bundler",
@@ -310,7 +325,7 @@ class TestBundlerTemplateTags(SimpleTestCase):
                     )
 
 
-# Set these so resolving css-mappings directories
+# Set these so resolving vanilla-extract mapping file paths works for tests.
 @override_ap_frontend_settings(CACHE_DIR=fixtures_dir, PRODUCTION_DIR=fixtures_dir)
 @mock.patch(
     "alliance_platform.frontend.bundler.vanilla_extract.VanillaExtractClassMapping._create_mapping",
@@ -330,9 +345,9 @@ class TestVanillaExtractTemplateTag(SimpleTestCase):
 
     def test_stylesheet(self):
         for bundler_name, expected in [
-            # Resolved from fixtures dir / development-css-mappings
+            # Resolved from fixtures dir / vanilla-extract-integration
             ("test_development_bundler", "LoginView__abc123"),
-            # Resolved from fixtures dir / production-css-mappings
+            # Resolved from fixtures dir / assets/<compiled-js>.json
             ("test_production_bundler", "__abc123"),
         ]:
             with BundlerAssetContext(
@@ -350,6 +365,41 @@ class TestVanillaExtractTemplateTag(SimpleTestCase):
                         expected,
                         actual,
                     )
+
+    def test_stylesheet_raises_if_manifest_missing_mapping_file(self):
+        with BundlerAssetContext(
+            frontend_resource_registry=bypass_frontend_resource_registry, skip_checks=True
+        ):
+            with override_ap_frontend_settings(BUNDLER=self.test_production_bundler):
+                with mock.patch.object(
+                    self.test_production_bundler.build_manifest,
+                    "get_asset",
+                    return_value=SimpleNamespace(vanilla_extract_mapping_file=None),
+                ):
+                    with self.assertRaisesMessage(
+                        ValueError,
+                        "has no 'vanillaExtractMappingFile' entry in Vite manifest",
+                    ):
+                        Template(
+                            "{% load vanilla_extract %}"
+                            "{% stylesheet 'login.css.ts' as styles %}\n"
+                            "{{ styles.LoginView }}"
+                        ).render(Context())
+
+    def test_warning_throttle_logs_once_per_request(self):
+        mapping = VanillaExtractClassMapping.__new__(VanillaExtractClassMapping)
+        mapping._last_map_load_request = None
+
+        request_1 = object()
+        request_2 = object()
+        with mock.patch(
+            "alliance_platform.frontend.bundler.vanilla_extract.CurrentRequestMiddleware.get_request",
+            side_effect=[request_1, request_1, request_2, request_2],
+        ):
+            self.assertFalse(mapping._should_log_mapping_warning())
+            self.assertFalse(mapping._should_log_mapping_warning())
+            self.assertTrue(mapping._should_log_mapping_warning())
+            self.assertFalse(mapping._should_log_mapping_warning())
 
 
 @override_ap_frontend_settings(DEBUG_COMPONENT_OUTPUT=False)
@@ -379,7 +429,7 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
     @override_settings(STATIC_URL="/static/")
     def test_component_simple_render(self):
         for bundler_name, expected in [
-            # Resolved from fixtures dir / development-css-mappings
+            # Resolved from development fixture manifests/asset URLs
             (
                 "test_development_bundler",
                 f"""
@@ -396,7 +446,7 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
                     </script>
                 """,
             ),
-            # Resolved from fixtures dir / production-css-mappings
+            # Resolved from production fixture manifests/asset URLs
             (
                 "test_production_bundler",
                 """

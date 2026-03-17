@@ -516,8 +516,7 @@ Example:
 
 .. note::
 
-    **Vite plugin required.** This functionality relies on the plugin defined by in ``frontend/vite/plugins/vanillaExtractWithExtras.ts``
-    in the template proejct.
+    This functionality relies on the ``@alliancesoftware/vite-plugin-django-vanilla-extract`` package.
 
 
 Filters

@@ -21,7 +21,7 @@ from test_alliance_platform_ui.models import User
 from .test_utils import override_ap_frontend_settings
 from .test_utils.bundler import TestViteBundler
 from .test_utils.bundler import bundler_kwargs
-from .test_utils.bundler import bypass_frontend_asset_registry
+from .test_utils.bundler import bypass_frontend_resource_registry
 from .test_utils.bundler import run_prettier
 
 
@@ -48,7 +48,7 @@ class FormRenderingTestCase(TestCase):
 
     def setUp(self) -> None:
         self.bundler_context = BundlerAssetContext(
-            frontend_asset_registry=bypass_frontend_asset_registry, skip_checks=True
+            frontend_resource_registry=bypass_frontend_resource_registry, skip_checks=True
         )
         self.bundler_context.__enter__()
         self.test_production_bundler = TestViteBundler(
@@ -98,7 +98,7 @@ class FormRenderingTestCase(TestCase):
     def setup_overrides(self):
         with override_ap_frontend_settings(BUNDLER=self.test_development_bundler):
             with BundlerAssetContext(
-                skip_checks=True, frontend_asset_registry=bypass_frontend_asset_registry
+                skip_checks=True, frontend_resource_registry=bypass_frontend_resource_registry
             ):
                 yield
 
