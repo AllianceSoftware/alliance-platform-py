@@ -12,6 +12,7 @@ from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
 import requests
 
+from ..settings import ap_frontend_settings
 from . import get_bundler
 from .base import BaseBundler
 from .frontend_resource import ESModuleResource
@@ -19,6 +20,8 @@ from .frontend_resource import ESModuleResource
 logger = logging.getLogger("alliance_platform.frontend")
 
 SSR_FAILURE_PLACEHOLDER = "<!-- SSR_FAILED -->"
+SSR_CUSTOM_MARKER = "@@AP_SSR_V2"
+SSR_PROTOCOL_VERSION = 2
 
 
 class SSRJsonEncoder(DjangoJSONEncoder):
@@ -60,11 +63,11 @@ class SSRSerializerContext:
 
         For example, an import will be serialized as:
 
-            ['@@CUSTOM', 'ModuleImport', 'abc123']
+            ['@@AP_SSR_V2', 'ModuleImport', 'abc123']
 
         ``abc123`` is the key returned by ``add_import``. In ``processSSRRequest``, the required
         imports will be loaded first, then the JSON will be parsed with a custom reviver. This
-        reviver will replace any ``['@@CUSTOM', 'ModuleImport', 'abc123']`` with the actual resolved
+        reviver will replace any ``['@@AP_SSR_V2', 'ModuleImport', 'abc123']`` with the actual resolved
         import.
 
         This turns out to be a lot faster than traversing the object after JSON parsing and loading any
@@ -96,8 +99,8 @@ class SSRSerializable:
 
     :class:`~alliance_platform.frontend.bundler.ssr.SSRJsonEncoder` can be used to serialize objects that implement this
 
-    The frontend handler, currently ``processSSRRequest`` in ``ssr.ts``, will use ``JSON.parse`` with a custom reviver
-    to convert the serialized objects back into their original form. If it encounters an object with the tag ``@@CUSTOM``,
+    The frontend handler, currently ``processSSRRequest`` in ``ssr.ts``, will use a custom reviver
+    to convert the serialized objects back into their original form. If it encounters an object with the tag ``@@AP_SSR_V2``,
     it will trigger custom conversions that allow non-standard JSON objects (e.g. a ``Date`` or ``Set``, or any arbitrary
     object you may define). See :class:`~alliance_platform.frontend.bundler.ssr.SSRCustomFormatSerializable` for a base
     class to implement custom serialization.
@@ -117,11 +120,11 @@ class SSRCustomFormatSerializable(SSRSerializable):
 
     ``serializer`` converting the object to the form::
 
-        ["@@CUSTOM", <tag name>, <serialized representation>]
+        ["@@AP_SSR_V2", <tag name>, <serialized representation>]
 
     For example, a date object might look like:
 
-        ["@@CUSTOM", "date", "2023-01-01"]
+        ["@@AP_SSR_V2", "date", "2023-01-01"]
 
     The frontend will then have a matching reviver to convert this into a date object.
 
@@ -141,7 +144,7 @@ class SSRCustomFormatSerializable(SSRSerializable):
 
     def serialize(self, context: SSRSerializerContext) -> list:
         tag = self.get_tag()
-        return ["@@CUSTOM", tag, self.get_representation(context)]
+        return [SSR_CUSTOM_MARKER, tag, self.get_representation(context)]
 
 
 @dataclass(frozen=True)
@@ -221,6 +224,20 @@ class BundlerAssetServerSideRenderer:
     def __init__(self, ssr_queue: dict[str, SSRItem]):
         self.ssr_queue = ssr_queue
 
+    def _cancel_ssr_request(self, bundler: BaseBundler, request_id: str):
+        cancel_url = bundler.get_ssr_cancel_url()
+        if not cancel_url:
+            return
+        try:
+            requests.post(
+                cancel_url,
+                data=json.dumps({"requestId": request_id}),
+                headers={"Content-Type": "application/json", **bundler.get_ssr_headers()},
+                timeout=ap_frontend_settings.SSR_CANCEL_TIMEOUT,
+            )
+        except requests.RequestException:
+            logger.debug("Failed to cancel timed out SSR request", exc_info=True)
+
     def process_ssr(self, payload: dict) -> dict | None:
         """Process an SSR request
 
@@ -236,13 +253,14 @@ class BundlerAssetServerSideRenderer:
         if not ssr_url:
             logger.error("Can not perform SSR, no SSR URL defined. Set `production_ssr_url` on the bundler.")
             return None
+        request_id = payload.get("requestId")
         try:
             json_payload = json.dumps(payload, cls=DjangoJSONEncoder)
             ssr_response = requests.post(
                 ssr_url,
                 data=json_payload,
                 headers={"Content-Type": "application/json", **bundler.get_ssr_headers()},
-                timeout=1,
+                timeout=ap_frontend_settings.SSR_REQUEST_TIMEOUT,
             )
             if ssr_response.status_code != 200:
                 try:
@@ -268,6 +286,12 @@ class BundlerAssetServerSideRenderer:
             logger.exception(f"Failed to encode JSON for server rendering. Payload was: {payload}")
         except requests.exceptions.Timeout:
             logger.error("Timed out connecting to SSR server for rendering")
+            if (
+                ap_frontend_settings.SSR_CANCEL_ON_TIMEOUT
+                and isinstance(request_id, str)
+                and request_id != ""
+            ):
+                self._cancel_ssr_request(bundler, request_id)
         except requests.exceptions.ConnectionError:
             logger.error("Failed to connect to SSR server for rendering - is it running?")
         return None
@@ -276,20 +300,34 @@ class BundlerAssetServerSideRenderer:
         if not self.ssr_queue:
             return content
         ssr_context = SSRSerializerContext(get_bundler())
+        bundler = ssr_context.bundler
         # items are serialized first so that `ssr_context` can be populated with the required imports
         serialized_items = {
             placeholder: ssr_item.serialize(ssr_context) for placeholder, ssr_item in self.ssr_queue.items()
         }
-        items = json.dumps(
-            serialized_items,
-            ssr_context=ssr_context,
-            cls=SSRJsonEncoder,
+        items = json.loads(
+            json.dumps(
+                serialized_items,
+                ssr_context=ssr_context,
+                cls=SSRJsonEncoder,
+            )
         )
-        # This should match `ServerRenderRequest` in `ssr.ts`
+        request_id = uuid.uuid4().hex
+        request_meta: dict[str, str | int] = {}
+        if bundler.is_development():
+            current_url = global_context.get("currentUrl")
+            if isinstance(current_url, str) and current_url:
+                request_meta["pageKey"] = current_url
+        timeout_seconds = ap_frontend_settings.SSR_REQUEST_TIMEOUT
+        if isinstance(timeout_seconds, (int, float)) and timeout_seconds > 0:
+            request_meta["timeoutMs"] = int(timeout_seconds * 1000)
         payload = {
-            "itemsJson": items,
+            "version": SSR_PROTOCOL_VERSION,
+            "requestId": request_id,
+            "items": items,
             "requiredImports": ssr_context.get_required_imports(),
             "globalContext": global_context,
+            "meta": request_meta,
         }
         # See ssr.ts `renderItems` for more details on what the return value is
         # All requested items will be in either the `renderedItems` Dict or the `errors` Dict.
@@ -312,7 +350,21 @@ class BundlerAssetServerSideRenderer:
             return content.replace(placeholder, value)
 
         if data:
-            for placeholder, value in data["renderedItems"].items():
+            rendered_items = data.get("renderedItems")
+            errors = data.get("errors")
+
+            if not isinstance(rendered_items, dict) or not isinstance(errors, dict):
+                if data.get("cancelled") is True:
+                    logger.warning("SSR request was cancelled before completion; using client-side fallback.")
+                else:
+                    logger.error(
+                        "Invalid SSR response payload shape (expected 'renderedItems' and 'errors'). "
+                        f"Payload was: {data}"
+                    )
+                rendered_items = {}
+                errors = {}
+
+            for placeholder, value in rendered_items.items():
                 content = replace_content(placeholder, value["html"])
                 if value.get("renderErrors"):
                     try:
@@ -332,8 +384,14 @@ class BundlerAssetServerSideRenderer:
                         logger.warning(
                             f"SSR succeeded with errors for item {debug_component_name}: {value['renderErrors']}"
                         )
-            for placeholder, value in data["errors"].items():
+            for placeholder, value in errors.items():
                 logger.error(f"Server rendering failed for {self.ssr_queue[placeholder]}: {value}")
+                content = replace_content(placeholder, SSR_FAILURE_PLACEHOLDER)
+
+            missing_placeholders = [
+                placeholder for placeholder in serialized_items.keys() if placeholder not in rendered_items
+            ]
+            for placeholder in missing_placeholders:
                 content = replace_content(placeholder, SSR_FAILURE_PLACEHOLDER)
         else:
             for placeholder in serialized_items.keys():

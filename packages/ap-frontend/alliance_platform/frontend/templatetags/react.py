@@ -1136,7 +1136,7 @@ class ComponentSSRItem(SSRItem):
 
             // {% component "components/Input" value=5 %}{% endcomponent %}
             {
-              "component": ["@@CUSTOM", "ComponentImport", {"import": "<generated string>", "propertyName": null}],
+              "component": ["@@AP_SSR_V2", "ComponentImport", {"import": "<generated string>", "propertyName": null}],
               "props": {
                 "value": 5
               },

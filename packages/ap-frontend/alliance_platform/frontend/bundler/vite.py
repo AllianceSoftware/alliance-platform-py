@@ -528,6 +528,15 @@ class ViteBundler(BaseBundler):
             return urljoin(self.production_ssr_url, "ssr")
         return None
 
+    def get_ssr_cancel_url(self):
+        if self.is_development():
+            return urljoin(self.dev_server_url_base, "ssr/cancel")
+        if self.mode == "preview":
+            return urljoin(self.preview_url, "ssr/cancel")
+        if self.production_ssr_url:
+            return urljoin(self.production_ssr_url, "ssr/cancel")
+        return None
+
     def get_ssr_headers(self):
         """In development add an X-SSR-ROOT-DIR header to the request to the dev server.
 

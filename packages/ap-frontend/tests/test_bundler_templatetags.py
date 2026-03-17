@@ -583,7 +583,7 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
                                 "ssrType": "Component",
                                 "payload": {
                                     "component": [
-                                        "@@CUSTOM",
+                                        "@@AP_SSR_V2",
                                         "ComponentImport",
                                         {
                                             "import": import_id,
@@ -594,7 +594,7 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
                                         "children": [
                                             "Click ",
                                             [
-                                                "@@CUSTOM",
+                                                "@@AP_SSR_V2",
                                                 "Component",
                                                 {"component": "strong", "props": {"children": "Me"}},
                                             ],
@@ -789,7 +789,7 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
                     "children": [
                         "Click ",
                         [
-                            "@@CUSTOM",
+                            "@@AP_SSR_V2",
                             "Component",
                             {
                                 "component": "div",
@@ -797,7 +797,7 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
                                     "children": [
                                         "Me ",
                                         [
-                                            "@@CUSTOM",
+                                            "@@AP_SSR_V2",
                                             "Component",
                                             {
                                                 "component": "span",
@@ -810,7 +810,7 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
                         ],
                         " Please, ",
                         [
-                            "@@CUSTOM",
+                            "@@AP_SSR_V2",
                             "Component",
                             {
                                 "component": "strong",
@@ -832,7 +832,7 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
                     {
                         "date": datetime.date(2022, 12, 1),
                     },
-                    {"date": ["@@CUSTOM", "Date", [2022, 12, 1]]},
+                    {"date": ["@@AP_SSR_V2", "Date", [2022, 12, 1]]},
                 )
 
                 self.assertSerializedPropsEqual(
@@ -840,7 +840,7 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
                     {
                         "datetime": datetime.datetime(2022, 12, 1, 12, 10, 10, 213000),
                     },
-                    {"datetime": ["@@CUSTOM", "DateTime", [2022, 12, 1, 12, 10, 10, 213]]},
+                    {"datetime": ["@@AP_SSR_V2", "DateTime", [2022, 12, 1, 12, 10, 10, 213]]},
                 )
 
                 self.assertSerializedPropsEqual(
@@ -850,7 +850,7 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
                     },
                     {
                         "datetime": [
-                            "@@CUSTOM",
+                            "@@AP_SSR_V2",
                             "ZonedDateTime",
                             [2022, 12, 1, "Australia/Melbourne", 39600000, 12, 10, 10, 50],
                         ]
@@ -869,7 +869,7 @@ class TestComponentTemplateTagCodeGen(SimpleTestCase):
                     },
                     {
                         "time": [
-                            "@@CUSTOM",
+                            "@@AP_SSR_V2",
                             "Time",
                             [12, 30, 15, 5],
                         ]
@@ -905,13 +905,13 @@ Some               space
                             "children": [
                                 "Click ",
                                 [
-                                    "@@CUSTOM",
+                                    "@@AP_SSR_V2",
                                     "Component",
                                     {"component": "strong", "props": {"children": " Me  "}},
                                 ],
                                 "Ok then Some               space",
                                 [
-                                    "@@CUSTOM",
+                                    "@@AP_SSR_V2",
                                     "Component",
                                     {"component": "b", "props": {"children": "Test True 5   "}},
                                 ],
