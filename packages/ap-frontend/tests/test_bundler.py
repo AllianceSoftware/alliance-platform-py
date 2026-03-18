@@ -95,6 +95,9 @@ class TestBaseBundler(BaseBundler):
     def is_development(self) -> bool:
         return True
 
+    def should_check_case_sensitive(self) -> bool:
+        return True
+
     def get_url(self, path: Path | str):
         return str(path)
 
@@ -111,8 +114,8 @@ class TestBaseBundler(BaseBundler):
         return DevServerCheck(is_running=False)
 
 
-class TestNonDevCaseInsensitiveExistBundler(TestBaseBundler):
-    def is_development(self) -> bool:
+class TestCaseCheckDisabledBundler(TestBaseBundler):
+    def should_check_case_sensitive(self) -> bool:
         return False
 
     def does_asset_exist(self, filename: Path):
@@ -154,14 +157,14 @@ class TestCaseSensitiveAssetPathValidation(SimpleTestCase):
             bundler = TestBaseBundler(root_dir=root_dir, path_resolvers=[])
             self.assertEqual(actual_path, bundler.validate_path(actual_path))
 
-    def test_validate_path_skips_case_mismatch_check_outside_development(self):
+    def test_validate_path_skips_case_mismatch_check_when_disabled(self):
         with TemporaryDirectory() as temp_dir:
             root_dir = Path(temp_dir)
             actual_path = root_dir / "frontend/src/app/views/Myview.tsx"
             actual_path.parent.mkdir(parents=True, exist_ok=True)
             actual_path.write_text("export default {};\n", "utf8")
 
-            bundler = TestNonDevCaseInsensitiveExistBundler(root_dir=root_dir, path_resolvers=[])
+            bundler = TestCaseCheckDisabledBundler(root_dir=root_dir, path_resolvers=[])
             bad_path = root_dir / "frontend/src/app/views/MyView.tsx"
             self.assertEqual(bad_path, bundler.validate_path(bad_path))
 

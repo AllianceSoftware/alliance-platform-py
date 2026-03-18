@@ -82,6 +82,10 @@ class AlliancePlatformFrontendSettingsType(TypedDict, total=False):
     #: This is the timeout to apply for code format requests in development mode. This is limited to 1 seconds by default. The only time you should need to
     #: tweak this is if you are attempting to debug issues with a large piece of code; in which case you likely need to increase ``DEV_CODE_FORMAT_LIMIT`` as well.
     DEV_CODE_FORMAT_TIMEOUT: int | None
+    #: If true, the bundler will check that asset paths match the filesystem casing. This is useful on case-insensitive
+    #: filesystems (e.g. macOS) to catch mismatches before deploying to case-sensitive systems (e.g. Linux CI).
+    #: Disabled by default as it is slow. Recommended to enable in CI.
+    BUNDLER_CHECK_CASE_SENSITIVE: bool
 
 
 def maybe_import_string(val: Any | None):
@@ -142,6 +146,8 @@ class AlliancePlatformFrontendSettings(AlliancePlatformSettingsBase):
     #: This is the timeout to apply for code format requests in development mode. This is limited to 1 seconds by default. The only time you should need to
     #: tweak this is if you are attempting to debug issues with a large piece of code; in which case you likely need to increase ``DEV_CODE_FORMAT_LIMIT`` as well.
     DEV_CODE_FORMAT_TIMEOUT: int
+    #: If true, the bundler will check that asset paths match the filesystem casing.
+    BUNDLER_CHECK_CASE_SENSITIVE: bool
 
     def _load_user_settings(self):
         super()._load_user_settings()
@@ -195,6 +201,7 @@ DEFAULTS = {
     "REACT_RENDER_COMPONENT_FILE": None,
     "DEV_CODE_FORMAT_LIMIT": 1 * 1024 * 1024,
     "DEV_CODE_FORMAT_TIMEOUT": 1,
+    "BUNDLER_CHECK_CASE_SENSITIVE": False,
 }
 
 
