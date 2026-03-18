@@ -413,9 +413,6 @@ class ViteBundler(BaseBundler):
             path = path.relative_to(self.root_dir)
         return urljoin(self.dev_server_url, str(path))
 
-    _vite_dev_metadata: dict | None = None
-    _vite_dev_last_modified: float | None = None
-
     def get_url(self, path: Path | str):
         """Get the URL to load asset as ``path``
 
