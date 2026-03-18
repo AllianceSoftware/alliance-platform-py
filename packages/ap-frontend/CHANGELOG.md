@@ -1,5 +1,21 @@
 # alliance-platform-frontend
 
+## 0.0.22
+
+### Patch Changes
+
+- b0624ed: Add support to detect case mismatches in template-included assets during development. When an asset path matches only by case (for example `MyView.tsx` vs `Myview.tsx`), Alliance Platform can raise a `TemplateSyntaxError` with the actual filesystem path so the mismatch is fixed before CI fails on case-sensitive filesystems. This can be enabled with the `BUNDLER_CHECK_CASE_SENSITIVE` option. This introduces a noticeable overhead per file and so is disabled by default.
+- 8f82c94: Support defining frontend resources more explicitly to facilitate better bundling. For example, ES module usage is now supported such that Vite can bundle the exports you use, rather than all exports for a given file/module. In the template project this reduces bundle size by about 75%.
+
+  `FrontendAssetRegistry` has been deprecated in favour of [FrontendResourceRegistry](https://alliance-platform.readthedocs.io/projects/frontend/latest/api.htmlapi.html#alliance_platform.frontend.bundler.resource_registry.FrontendResourceRegistry). In addition, the `FRONTEND_ASSET_REGISTRY` setting
+  has been renamed to [FRONTEND_RESOURCE_REGISTRY](https://alliance-platform.readthedocs.io/projects/frontend/latest/settings.html#alliance_platform.frontend.settings.AlliancePlatformFrontendSettingsType.FRONTEND_RESOURCE_REGISTRY) but will continue to work with a deprecation warning. Migration is straightforward -
+  use the new class and call `add_resource` rather than `add_asset`. You can still pass a `Path` to `add_resource`, but
+  can be more specific and pass resource instances instead like [ESModuleResource](https://alliance-platform.readthedocs.io/projects/frontend/latest/api.html#alliance_platform.frontend.bundler.frontend_resource.ESModuleResource)
+
+- eb257d4: Support inline style props in component tags
+- f8910b1: SSR integration now requires @alliancesoftware/vite-plugin-django-ssr
+- 84c0119: Fix case where passing a component as a prop could incorrectly trigger the 'undiscoverable asset' error
+
 ## 0.0.21
 
 ### Patch Changes
