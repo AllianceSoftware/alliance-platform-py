@@ -116,6 +116,16 @@ class BaseBundler:
         """Should return true if running in development mode"""
         raise NotImplementedError
 
+    def should_check_case_sensitive(self) -> bool:
+        """Should return true if the bundler should check for case-sensitive filesystems
+
+        Reads from the :data:`~alliance_platform.frontend.settings.AlliancePlatformFrontendSettingsType.BUNDLER_CHECK_CASE_SENSITIVE`
+        setting. Disabled by default as it is slow. Recommended to enable in CI.
+        """
+        from alliance_platform.frontend.settings import ap_frontend_settings
+
+        return ap_frontend_settings.BUNDLER_CHECK_CASE_SENSITIVE
+
     def get_url(self, path: Path | str):
         """Return the URL to load the specified asset at ``path``"""
         raise NotImplementedError
@@ -259,7 +269,7 @@ class BaseBundler:
         work. When you deploy it to a different environment, e.g. Linux in CI, it will then break trying
         to resolve the file. Highlight these cases in dev to force correct case to be used.
         """
-        if not self.is_development():
+        if not self.should_check_case_sensitive():
             return
         actual_case_filename = self._resolve_case_insensitive_path(filename)
         if (
