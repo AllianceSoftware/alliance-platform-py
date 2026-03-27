@@ -47,7 +47,13 @@ class FileSystemAsyncUploadStorage(FileSystemStorage, AsyncUploadStorage):
         signed_path = self.signer.sign(name)
         query_params = urlencode({"path": signed_path, "field_id": field_id})
         upload_url = reverse("file_system_async_storage_upload") + f"?{query_params}"
-        return {"url": upload_url, "fields": {}}
+        return {
+            "url": upload_url,
+            "fields": {},
+            "method": "POST",
+            "provider": "filesystem",
+            "fileFieldName": "file",
+        }
 
     def generate_download_url(self, key: str, field_id: str, **kwargs):
         signed_path = self.signer.sign(key)

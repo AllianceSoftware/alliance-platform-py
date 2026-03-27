@@ -5,6 +5,7 @@ import os
 from typing import Literal
 from typing import cast
 from unittest import mock
+from unittest.mock import ANY
 from unittest.mock import patch
 from urllib.parse import urlencode
 
@@ -506,6 +507,22 @@ class AsyncFileFormTestCase(TestCase):
             ),
         )
 
+    def test_file_input_context_sets_generate_upload_url(self):
+        input = AsyncFileInput()
+        field = AsyncFileTestModel._meta.get_field("file1")
+        context = input.get_context(
+            "file1",
+            None,
+            {
+                "async_field_registry": field.async_field_registry,
+            },
+        )
+        self.assertEqual(
+            context["widget"]["attrs"]["generate_upload_url"],
+            reverse(field.async_field_registry.attached_view),
+        )
+        self.assertNotIn("async_field_registry", context["widget"]["attrs"])
+
     def test_file_input_max_len(self):
         class AsyncFileTestModelForm(ModelForm):
             class Meta:
@@ -637,7 +654,9 @@ class GenerateUploadUrlViewTestCase(TestCase):
             assert async_temp_file is not None
             self.assertEqual(async_temp_file.original_filename, "abc.jpg")
             self.assertEqual(data["key"], async_temp_file.key)
-            self.assertEqual(data["uploadUrl"], f"http://signme.com/{async_temp_file.key}")
+            self.assertEqual(
+                data["uploadUrl"], {"url": f"http://signme.com/{async_temp_file.key}", "fields": {}}
+            )
             self.assertEqual(async_temp_file.field_name, "file1")
             self.assertEqual(async_temp_file.content_type.model_class(), AsyncFileTestModel)
             self.assertEqual(async_temp_file.moved_to_location, "")
@@ -663,7 +682,9 @@ class GenerateUploadUrlViewTestCase(TestCase):
             assert async_temp_file is not None
             self.assertEqual(async_temp_file.original_filename, "abc.jpg")
             self.assertEqual(data["key"], async_temp_file.key)
-            self.assertEqual(data["uploadUrl"], f"http://signme.com/{async_temp_file.key}")
+            self.assertEqual(
+                data["uploadUrl"], {"url": f"http://signme.com/{async_temp_file.key}", "fields": {}}
+            )
             self.assertEqual(async_temp_file.field_name, "file1")
             self.assertEqual(async_temp_file.content_type.model_class(), AsyncFileTestModel)
             self.assertEqual(async_temp_file.moved_to_location, "")
@@ -675,6 +696,52 @@ class GenerateUploadUrlViewTestCase(TestCase):
             instance.save()
             self.assertEqual(AsyncTempFile.objects.count(), 1)
             self.assertEqual(AsyncTempFile.objects.filter(moved_to_location="abc.jpg").count(), 1)
+
+    def test_generate_url_includes_upload_metadata(self):
+        with patch("test_alliance_platform_storage.models.User.has_perm", return_value=True):
+            user = User.objects.create(username="test")
+            self.client.force_login(user)
+            with patch(
+                "test_alliance_platform_storage.storage.DummyStorage.generate_upload_url",
+                return_value={
+                    "url": "http://signme.com/file",
+                    "fields": {"key": "file"},
+                    "method": "POST",
+                    "provider": "s3",
+                    "headers": {"x-test-header": "test"},
+                    "fileFieldName": "file",
+                },
+            ):
+                response = self.client.get(self._get_url())
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(
+                    response.json()["uploadUrl"],
+                    {
+                        "url": "http://signme.com/file",
+                        "fields": {"key": "file"},
+                        "method": "POST",
+                        "provider": "s3",
+                        "headers": {"x-test-header": "test"},
+                        "fileFieldName": "file",
+                    },
+                )
+
+    def test_generate_url_passes_content_type_in_upload_fields(self):
+        with patch("test_alliance_platform_storage.models.User.has_perm", return_value=True):
+            user = User.objects.create(username="test")
+            self.client.force_login(user)
+            with patch(
+                "test_alliance_platform_storage.storage.DummyStorage.generate_upload_url",
+                return_value={"url": "http://signme.com/file", "fields": {}},
+            ) as mock_generate_upload_url:
+                response = self.client.get(self._get_url(filename="logo.png") + "&contentType=image%2Fpng")
+                self.assertEqual(response.status_code, 200)
+                mock_generate_upload_url.assert_called_once_with(
+                    ANY,
+                    ANY,
+                    fields={"Content-Type": "image/png"},
+                    conditions=ANY,
+                )
 
 
 class DownloadRedirectViewTestCase(TestCase):

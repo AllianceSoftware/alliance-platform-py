@@ -75,7 +75,13 @@ class AzureAsyncUploadStorage(AzureStorage, AsyncUploadStorage):
             **generate_blob_kwargs,
         )
         container_blob_url = self.client.get_blob_client(name).url
-        return {"url": BlobClient.from_blob_url(container_blob_url, credential=credential).url, "fields": {}}
+        return {
+            "url": BlobClient.from_blob_url(container_blob_url, credential=credential).url,
+            "fields": {},
+            "method": "PUT",
+            "provider": "azure",
+            "headers": {"x-ms-blob-type": "BlockBlob"},
+        }
 
     def generate_download_url(
         self, key: str, field_id: str, expire=ap_storage_settings.DOWNLOAD_URL_EXPIRY, **kwargs
