@@ -7,6 +7,7 @@ from typing import cast
 from alliance_platform.storage.async_uploads.models import AsyncTempFile
 from alliance_platform.storage.async_uploads.registry import AsyncFieldRegistry
 from alliance_platform.storage.async_uploads.registry import default_async_field_registry
+from alliance_platform.storage.async_uploads.storage.base import GenerateUploadUrlResponse
 from allianceutils.util import camelize
 from allianceutils.util import underscoreize
 from django.core.exceptions import BadRequest
@@ -27,6 +28,7 @@ from django.views import View
 def validate_generate_upload_url(data: QueryDict, registry: AsyncFieldRegistry):
     field_id = data.get("field_id")
     filename = data.get("filename")
+    content_type = data.get("content_type")
     params = data.get("params", None)
     instance_id = data.get("instance_id", None)
     errors: dict[str, str] = {}
@@ -48,6 +50,7 @@ def validate_generate_upload_url(data: QueryDict, registry: AsyncFieldRegistry):
     return {
         "field_id": field_id,
         "filename": filename,
+        "content_type": content_type,
         "params": params,
         "instance_id": instance_id,
     }
@@ -59,6 +62,13 @@ class ViewProtocol(Protocol):
 
 class ModelWithDefaultManager(Protocol):
     objects: Manager
+
+
+def normalize_upload_url_response(upload_url: str | GenerateUploadUrlResponse) -> GenerateUploadUrlResponse:
+    # Backward compatibility: custom storages may still return a plain string.
+    if isinstance(upload_url, str):
+        return {"url": upload_url, "fields": {}}
+    return upload_url
 
 
 class GenerateUploadUrlView(View):
@@ -120,22 +130,22 @@ class GenerateUploadUrlView(View):
                 raise BadRequest
 
         temp_file = AsyncTempFile.create_for_field(field, filename)
+        upload_fields = validated_data.get("params") or {}
+        content_type = validated_data.get("content_type")
+        if content_type:
+            upload_fields["Content-Type"] = content_type
         conditions = []
         if field.max_size:
             conditions.append(["content-length-range", 0, field.max_size * 1024 * 1024])
         # this matches any, but is OK because we are signing a single key only anyway which will restrict the type
         conditions.append(["starts-with", "$Content-Type", ""])
-        return JsonResponse(
-            {
-                "uploadUrl": field.storage.generate_upload_url(
-                    temp_file.key,
-                    field_id,
-                    fields=validated_data.get("params"),
-                    conditions=conditions or None,
-                ),
-                "key": temp_file.key,
-            }
+        upload_url = field.storage.generate_upload_url(
+            temp_file.key,
+            field_id,
+            fields=upload_fields or None,
+            conditions=conditions or None,
         )
+        return JsonResponse({"uploadUrl": normalize_upload_url_response(upload_url), "key": temp_file.key})
 
 
 def validate_async_file_download(data: QueryDict, registry: AsyncFieldRegistry):

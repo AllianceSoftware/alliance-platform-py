@@ -1,6 +1,7 @@
 import datetime
 import os
 from typing import TYPE_CHECKING
+from typing import NotRequired
 from typing import TypedDict
 
 from django.core.exceptions import SuspiciousFileOperation
@@ -16,7 +17,15 @@ class GenerateUploadUrlResponse(TypedDict):
     #: The URL to post to
     url: str
     #: A dictionary of form field names and their values to be included when submitting
-    fields: dict
+    fields: dict[str, str]
+    #: Optional HTTP method the upload should use (for example POST or PUT).
+    method: NotRequired[str]
+    #: Optional provider identifier for frontend adapter selection (for example s3 or azure).
+    provider: NotRequired[str]
+    #: Optional HTTP headers required for upload.
+    headers: NotRequired[dict[str, str]]
+    #: Optional multipart field name for file POST uploads.
+    fileFieldName: NotRequired[str]
 
 
 class AsyncUploadStorage(Storage):

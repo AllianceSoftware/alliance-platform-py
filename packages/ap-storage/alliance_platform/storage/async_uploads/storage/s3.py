@@ -58,9 +58,15 @@ class S3AsyncUploadStorage(S3Storage, AsyncUploadStorage):
         """
         fields = fields.copy() if fields else {}
         conditions = conditions.copy() if conditions else {}
-        return self.bucket.meta.client.generate_presigned_post(
+        response = self.bucket.meta.client.generate_presigned_post(
             self.bucket_name, name, Fields=fields, Conditions=conditions, ExpiresIn=expire
         )
+        return {
+            **response,
+            "method": "POST",
+            "provider": "s3",
+            "fileFieldName": "file",
+        }
 
     def generate_download_url(
         self, key: str, field_id: str, expire=ap_storage_settings.DOWNLOAD_URL_EXPIRY, **kwargs
