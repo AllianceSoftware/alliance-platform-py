@@ -185,12 +185,17 @@ class AsyncFileField(forms.Field):
         self.validators.append(AsyncFileInputDataValidator())
 
     def has_changed(self, initial, data):
+        if self.disabled:
+            return False
         if initial:
             initial_key = getattr(initial, "name", None) or None
         else:
             initial_key = None
-        if data:
+        if isinstance(data, AsyncFileInputData):
             data_key = data.key
+        elif data:
+            # Malformed input (e.g. non-JSON string) — treat as changed
+            return True
         else:
             data_key = None
         return initial_key != data_key

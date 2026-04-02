@@ -595,6 +595,17 @@ class AsyncFileFormTestCase(TestCase):
         initial = FakeFieldFile("")
         self.assertFalse(field.has_changed(initial, None))
 
+        # Malformed input (raw string from failed JSON parse) -> treat as changed
+        self.assertTrue(field.has_changed(None, "not-json"))
+        self.assertTrue(field.has_changed(initial, "not-json"))
+
+        # Disabled field -> never changed
+        field.disabled = True
+        data = AsyncFileInputData(key="async-temp-files/2021/03/03/abc-test.png", name="test.png")
+        self.assertFalse(field.has_changed(None, data))
+        self.assertFalse(field.has_changed(FakeFieldFile("other.png"), data))
+        field.disabled = False
+
 
 class GenerateUploadUrlViewTestCase(TestCase):
     def _get_url(self, instance: AsyncFileTestModel | None = None, filename="abc.jpg"):
