@@ -1,5 +1,12 @@
 # alliance-platform-storage
 
+## 0.0.5
+
+### Patch Changes
+
+- 4d8a232: `AsyncFileField` form field now supports `has_changed`, enabling correct `Form.has_changed()` behavior.
+- 6451dba: Add support for @alliancesoftware/ui/hook-form widget. This introduces some changes to the upload URL generation so widget can switch implementation based on backend requirements (e.g. POST vs PUT, form field requirements etc). These changes are additive to the API response so existing custom widgets should be compatible.
+
 ## 0.0.4
 
 ### Patch Changes
