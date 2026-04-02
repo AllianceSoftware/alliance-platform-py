@@ -184,6 +184,17 @@ class AsyncFileField(forms.Field):
             self.validators.append(AsyncFileInputDataLengthValidator(int(max_length)))
         self.validators.append(AsyncFileInputDataValidator())
 
+    def has_changed(self, initial, data):
+        if initial:
+            initial_key = getattr(initial, "name", None) or None
+        else:
+            initial_key = None
+        if data:
+            data_key = data.key
+        else:
+            data_key = None
+        return initial_key != data_key
+
     def widget_attrs(self, widget):
         attrs = super().widget_attrs(widget)
         attrs["async_field_registry"] = self.async_field_registry

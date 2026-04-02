@@ -557,6 +557,44 @@ class AsyncFileFormTestCase(TestCase):
 
         self.assertTrue(storage.generate_temporary_path("test.png").endswith("-test.png"))
 
+    def test_has_changed(self):
+        class AsyncFileTestModelForm(ModelForm):
+            class Meta:
+                model = AsyncFileTestModel
+                fields = ["file1"]
+
+        form = AsyncFileTestModelForm()
+        field = form.fields["file1"]
+
+        class FakeFieldFile:
+            def __init__(self, name):
+                self.name = name
+
+        # No initial, no data -> not changed
+        self.assertFalse(field.has_changed(None, None))
+
+        # No initial, has data -> changed
+        data = AsyncFileInputData(key="async-temp-files/2021/03/03/abc-test.png", name="test.png")
+        self.assertTrue(field.has_changed(None, data))
+
+        # Has initial, no data -> changed (cleared)
+        initial = FakeFieldFile("final/location/test.png")
+        self.assertTrue(field.has_changed(initial, None))
+
+        # Has initial, same key -> not changed
+        initial = FakeFieldFile("final/location/test.png")
+        data = AsyncFileInputData(key="final/location/test.png", name="test.png")
+        self.assertFalse(field.has_changed(initial, data))
+
+        # Has initial, different key -> changed
+        initial = FakeFieldFile("final/location/test.png")
+        data = AsyncFileInputData(key="async-temp-files/2021/03/03/abc-test.png", name="test.png")
+        self.assertTrue(field.has_changed(initial, data))
+
+        # Edge case: empty FieldFile name + no data -> not changed
+        initial = FakeFieldFile("")
+        self.assertFalse(field.has_changed(initial, None))
+
 
 class GenerateUploadUrlViewTestCase(TestCase):
     def _get_url(self, instance: AsyncFileTestModel | None = None, filename="abc.jpg"):
