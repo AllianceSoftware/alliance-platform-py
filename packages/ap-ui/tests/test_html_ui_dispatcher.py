@@ -123,7 +123,7 @@ class UIDispatcherTemplateTagTestCase(SimpleTestCase):
             "@alliancesoftware/ui/styles/base/focusRing.css.ts",
             "@alliancesoftware/ui/components/button/ButtonGroup.css.ts",
             "@alliancesoftware/ui/components/layout/SmartOrientation.css.ts",
-            "@alliancesoftware/ui/components/layout/SmartOrientation.attach",
+            "@alliancesoftware/ui/components/layout/SmartOrientation.attach.ts",
         ]
 
         indices = []

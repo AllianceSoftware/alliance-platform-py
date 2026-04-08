@@ -16,7 +16,7 @@ VALID_DENSITIES = ("compact", "xxs", "xs", "sm", "md", "lg", "xl", "xxl", "xxxl"
 _BUTTON_GROUP_STYLE_PATH = "@alliancesoftware/ui/components/button/ButtonGroup.css.ts"
 _SMART_ORIENTATION_STYLE_PATH = "@alliancesoftware/ui/components/layout/SmartOrientation.css.ts"
 # The runtime module is optional for now; if unresolved at parse time we degrade gracefully to static HTML.
-_RUNTIME_MODULE_PATH = "@alliancesoftware/ui/components/layout/SmartOrientation.attach"
+_RUNTIME_MODULE_PATH = "@alliancesoftware/ui/components/layout/SmartOrientation.attach.ts"
 
 
 class UIButtonGroupRenderer(BaseHtmlUIComponentRenderer):
