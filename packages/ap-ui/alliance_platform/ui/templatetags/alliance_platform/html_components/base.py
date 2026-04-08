@@ -18,7 +18,6 @@ from django.utils.safestring import mark_safe
 from alliance_platform.frontend.bundler import get_bundler
 from alliance_platform.frontend.bundler.base import ResolveContext
 from alliance_platform.frontend.bundler.context import BundlerAsset
-from alliance_platform.frontend.bundler.context import BundlerAssetContext
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from alliance_platform.frontend.bundler.vanilla_extract import resolve_vanilla_extract_class_mapping
 from alliance_platform.frontend.templatetags.react import DeferredProp
@@ -58,13 +57,13 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         self.props = props
         self.nodelist = nodelist
         self.target_var = target_var
+        self._register_asset = register_asset
         resolved_origin = origin or Origin(UNKNOWN_SOURCE)
         if register_asset:
             super().__init__(resolved_origin)
         else:
             self.origin = resolved_origin
             self.bundler = get_bundler()
-            self.bundler_asset_context = BundlerAssetContext.get_current()
 
     def resolve_component_resources(self) -> list[FrontendResource]:
         return []
@@ -76,6 +75,11 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         return self.slot_name
 
     def render(self, context: Context) -> str:
+        if not self._register_asset:
+            raise RuntimeError(
+                "Cannot render a renderer initialised with register_asset=False. "
+                "This mode is for resource introspection only."
+            )
         self._queue_resources()
         props = self.resolve_props(context)
         props = self._merge_slot_props(context, props)
@@ -90,7 +94,15 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         resolved_props: dict[str, Any] = {}
         for key, value in self.props.items():
             normalized_key = self._normalize_prop_key(key)
-            resolved_props[normalized_key] = self.resolve_prop_value(context, value)
+            resolved_value = self.resolve_prop_value(context, value)
+            if normalized_key == "className" and normalized_key in resolved_props:
+                existing = resolved_props.get(normalized_key)
+                resolved_props[normalized_key] = self.join_classes(
+                    str(existing) if existing else None,
+                    str(resolved_value) if resolved_value else None,
+                )
+                continue
+            resolved_props[normalized_key] = resolved_value
         return resolved_props
 
     def resolve_prop_value(self, context: Context, value: Any) -> Any:
@@ -134,7 +146,9 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         path: str,
         resolve_extensions: list[str] | None = None,
     ) -> FrontendResource:
-        return FrontendResource.from_path(self.resolve_resource_path(path, resolve_extensions=resolve_extensions))
+        return FrontendResource.from_path(
+            self.resolve_resource_path(path, resolve_extensions=resolve_extensions)
+        )
 
     def resolve_vanilla_extract_mapping(
         self,
@@ -180,9 +194,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
             if value is True:
                 rendered_attrs.append(f" {conditional_escape(attr_name)}")
             else:
-                rendered_attrs.append(
-                    f' {conditional_escape(attr_name)}="{conditional_escape(value)}"'
-                )
+                rendered_attrs.append(f' {conditional_escape(attr_name)}="{conditional_escape(value)}"')
         return "".join(rendered_attrs)
 
     def join_classes(self, *class_names: str | None) -> str:
