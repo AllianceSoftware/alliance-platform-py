@@ -1,0 +1,29 @@
+{
+  "generated_by": "scripts/generateHtmlUiParityFixtures.mjs",
+  "generated_at_utc": "2026-04-08T00:00:00.000Z",
+  "component": "button_group",
+  "styles": {},
+  "cases": [
+    {
+      "name": "default",
+      "template": "{% ui \"button_group\" %}{% ui \"button\" %}One{% endui %}{% endui %}",
+      "expected_html": "<div class=\"so-horizontal so-align-start so-density-md button-group-base\" data-apui=\"button-group\" data-orientation=\"horizontal\" data-djid=\"__DJID__\"><button class=\"focus-ring-base button-base button-size-md button-group-button-slot\" data-apui=\"button\" data-variant=\"solid\" data-color=\"primary\" data-size=\"md\" data-shape=\"default\"><span>One</span></button></div><script type=\"module\"> import attach from \"http://localhost:5273/static/@alliancesoftware/ui/components/layout/SmartOrientation.attach\"; const el = document.querySelector(\"[data-djid='__DJID__']\"); if (el) { attach(el); } </script>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "slot_defaults_and_child_class_merge",
+      "template": "{% ui \"button_group\" variant=\"outlined\" color=\"gray\" size=\"lg\" density=\"compact\" align=\"end\" %}{% ui \"button\" className=\"custom\" %}Two{% endui %}{% endui %}",
+      "expected_html": "<div class=\"so-horizontal so-align-end so-density-compact button-group-base\" data-apui=\"button-group\" data-orientation=\"horizontal\" data-density=\"compact\" data-align=\"end\" data-djid=\"__DJID__\"><button class=\"focus-ring-base button-base button-size-lg button-group-button-slot custom\" data-apui=\"button\" data-variant=\"outlined\" data-color=\"gray\" data-size=\"lg\" data-shape=\"default\"><span>Two</span></button></div><script type=\"module\"> import attach from \"http://localhost:5273/static/@alliancesoftware/ui/components/layout/SmartOrientation.attach\"; const el = document.querySelector(\"[data-djid='__DJID__']\"); if (el) { attach(el); } </script>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "empty_children",
+      "template": "{% ui \"button_group\" %}{% endui %}",
+      "expected_html": "",
+      "expected_warnings": [],
+      "meta": {}
+    }
+  ]
+}
