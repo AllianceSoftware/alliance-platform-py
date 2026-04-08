@@ -132,3 +132,21 @@ class UIDispatcherTemplateTagTestCase(SimpleTestCase):
             self.assertNotEqual(index, -1, msg=f"Could not find expected resource suffix: {suffix}")
             indices.append(index)
         self.assertEqual(indices, sorted(indices))
+
+    def test_resource_introspection_does_not_require_active_context(self):
+        with override_ap_frontend_settings(BUNDLER=test_development_bundler):
+            with BundlerAssetContext(
+                frontend_resource_registry=bypass_frontend_resource_registry,
+                skip_checks=False,
+            ):
+                Template("{% load alliance_platform.ui %}{% ui 'button' %}{% endui %}")
+
+    def test_class_alias_merges_with_class_name(self):
+        with self.setup_render_context():
+            output = self.render_ui_template(
+                '{% ui "button" class="alias-class" className="named-class" %}Save{% endui %}'
+            )
+
+        self.assertIn("alias-class", output)
+        self.assertIn("named-class", output)
+        self.assertIn('class="focus-ring-base button-base button-size-md alias-class named-class"', output)
