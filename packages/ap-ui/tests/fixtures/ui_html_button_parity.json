@@ -1,0 +1,38 @@
+{
+  "generated_by": "scripts/generateHtmlUiParityFixtures.mjs",
+  "generated_at_utc": "2026-04-08T00:00:00.000Z",
+  "component": "button",
+  "styles": {},
+  "cases": [
+    {
+      "name": "default",
+      "template": "{% ui \"button\" %}Save{% endui %}",
+      "expected_html": "<button class=\"focus-ring-base button-base button-size-md\" data-apui=\"button\" data-variant=\"solid\" data-color=\"primary\" data-size=\"md\" data-shape=\"default\"><span>Save</span></button>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "invalid_variant_warns_and_falls_back",
+      "template": "{% ui \"button\" variant=\"invalid\" %}Save{% endui %}",
+      "expected_html": "<button class=\"focus-ring-base button-base button-size-md\" data-apui=\"button\" data-variant=\"solid\" data-color=\"primary\" data-size=\"md\" data-shape=\"default\"><span>Save</span></button>",
+      "expected_warnings": [
+        "Invalid 'variant' prop passed: invalid"
+      ],
+      "meta": {}
+    },
+    {
+      "name": "anchor_variant",
+      "template": "{% ui \"button\" href=\"/next\" color=\"secondary\" size=\"lg\" %}Go{% endui %}",
+      "expected_html": "<a class=\"focus-ring-base button-base button-size-lg\" data-apui=\"button\" data-variant=\"solid\" data-color=\"secondary\" data-size=\"lg\" data-shape=\"default\" href=\"/next\"><span>Go</span></a>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "icon_only",
+      "template": "{% ui \"button\" %}<span data-apui-slot=\"icon\"></span>{% endui %}",
+      "expected_html": "<button class=\"focus-ring-base button-base button-size-md\" data-apui=\"button\" data-variant=\"solid\" data-color=\"primary\" data-size=\"md\" data-shape=\"default\" data-icon-only=\"true\"><span data-apui-slot=\"icon\"></span></button>",
+      "expected_warnings": [],
+      "meta": {}
+    }
+  ]
+}
