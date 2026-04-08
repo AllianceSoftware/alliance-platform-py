@@ -22,6 +22,46 @@ The Alliance UI template tags serve as a convenient alternative to the :ttag:`co
 template tag, for easily embedding components from the Alliance UI library into Django templates. See the documentation for
 the component tag for instructions on passing arguments and filters.
 
+.. templatetag:: ui
+
+``ui``
+------
+
+Render built-in HTML-only Alliance UI components via a single dispatcher tag.
+
+Usage:
+
+.. code-block:: html+django
+
+    {% ui "button" variant="solid" color="primary" %}Save{% endui %}
+
+Dynamic component names are supported when you provide a compile-time literal
+whitelist via ``allowed_components``:
+
+.. code-block:: html+django
+
+    {% ui component_name allowed_components="button,button_group" %}
+      {{ label }}
+    {% endui %}
+
+The dispatcher also supports ``as <var>``:
+
+.. code-block:: html+django
+
+    {% ui "button" as save_button_html %}Save{% endui %}
+    {{ save_button_html }}
+
+Add a New HTML Component
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+When adding a new HTML component to the ``ui`` dispatcher:
+
+1. Add a renderer class under ``alliance_platform/ui/templatetags/alliance_platform/html_components/components/``.
+2. Register it in ``html_components/registry.py``.
+3. Add parity cases in ``packages/ap-ui/scripts/parity_cases/``.
+4. Regenerate fixtures with ``scripts/generateHtmlUiParityFixtures.mjs``.
+5. Add/extend parity tests in ``packages/ap-ui/tests/``.
+
 .. templatetag:: Button
 
 ``Button``
