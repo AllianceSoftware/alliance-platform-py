@@ -17,6 +17,7 @@ from alliance_platform.frontend.templatetags.react import OmitComponentFromRende
 
 from .button import register_button
 from .date_picker import register_date_picker
+from .html_components import parse_ui_tag
 from .icon import register_icon
 from .inline_alert import register_inline_alert
 from .labeled_input import register_labeled_input
@@ -38,6 +39,7 @@ register_icon(register)
 register_date_picker(register)
 register_time_input(register)
 register_labeled_input(register)
+register.tag("ui")(parse_ui_tag)
 
 QueryParams = dict[str, Any] | QueryDict | str
 
