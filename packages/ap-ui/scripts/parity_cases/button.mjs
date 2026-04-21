@@ -27,4 +27,12 @@ export const cases = [
         },
         meta: {},
     },
+    {
+        name: 'icon_only',
+        template: '{% ui "button" %}<span data-apui-slot="icon"></span>{% endui %}',
+        buildElement({ React }) {
+            return React.createElement(Button, null, React.createElement('span', { 'data-apui-slot': 'icon' }));
+        },
+        meta: {},
+    },
 ];
