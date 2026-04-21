@@ -51,41 +51,6 @@ The dispatcher also supports ``as <var>``:
     {% ui "button" as save_button_html %}Save{% endui %}
     {{ save_button_html }}
 
-Add a New HTML Component
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-When adding a new HTML component to the ``ui`` dispatcher:
-
-1. Add a renderer class under ``alliance_platform/ui/templatetags/alliance_platform/html_components/components/``.
-2. Register it in ``html_components/registry.py``.
-3. Add parity cases in ``packages/ap-ui/scripts/parity_cases/``.
-4. Regenerate fixtures with ``just sync-html-ui-parity-fixtures``.
-5. Add/extend parity tests in ``packages/ap-ui/tests/``.
-
-Parity Fixture Workflow
-^^^^^^^^^^^^^^^^^^^^^^^
-
-The fixture generator depends on ``@alliancesoftware/ui`` TypeScript sources, so it must run through the
-``alliance-platform-js`` runtime context.
-
-From ``alliance-platform-py``:
-
-.. code-block:: bash
-
-    just sync-html-ui-parity-fixtures
-
-To use a non-default checkout path:
-
-.. code-block:: bash
-
-    just sync-html-ui-parity-fixtures /path/to/alliance-platform-js
-
-To check fixture drift in CI:
-
-.. code-block:: bash
-
-    just check-html-ui-parity-fixtures /path/to/alliance-platform-js
-
 .. templatetag:: Button
 
 ``Button``
