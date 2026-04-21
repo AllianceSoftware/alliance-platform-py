@@ -1,4 +1,3 @@
-import React from 'react';
 import { Button } from '@alliancesoftware/ui';
 
 export const component = 'button';
@@ -7,7 +6,7 @@ export const cases = [
     {
         name: 'default',
         template: '{% ui "button" %}Save{% endui %}',
-        buildElement() {
+        buildElement({ React }) {
             return React.createElement(Button, null, 'Save');
         },
         meta: {},
@@ -15,7 +14,7 @@ export const cases = [
     {
         name: 'invalid_variant_warns_and_falls_back',
         template: '{% ui "button" variant="invalid" %}Save{% endui %}',
-        buildElement() {
+        buildElement({ React }) {
             return React.createElement(Button, { variant: 'invalid' }, 'Save');
         },
         meta: {},
@@ -23,7 +22,7 @@ export const cases = [
     {
         name: 'anchor_variant',
         template: '{% ui "button" href="/next" color="secondary" size="lg" %}Go{% endui %}',
-        buildElement() {
+        buildElement({ React }) {
             return React.createElement(Button, { href: '/next', color: 'secondary', size: 'lg' }, 'Go');
         },
         meta: {},
