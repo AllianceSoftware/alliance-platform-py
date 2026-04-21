@@ -44,7 +44,9 @@ class HtmlUIParityTestCase(SimpleTestCase):
 
     def load_fixture(self):
         fixture_path = (
-            Path(__file__).resolve().parent.parent / "fixtures" / f"ui_html_{self.fixture_component}_parity.json"
+            Path(__file__).resolve().parent.parent
+            / "fixtures"
+            / f"ui_html_{self.fixture_component}_parity.json"
         )
         return json.loads(fixture_path.read_text())
 
