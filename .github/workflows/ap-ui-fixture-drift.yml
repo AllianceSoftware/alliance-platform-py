@@ -1,0 +1,48 @@
+name: ap-ui Fixture Drift
+
+on:
+  pull_request:
+    paths:
+      - "packages/ap-ui/tests/fixtures/ui_html_*_parity.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fixture-drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout alliance-platform-py
+        uses: actions/checkout@v4
+
+      - name: Checkout alliance-platform-js
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/alliance-platform-js
+          path: alliance-platform-js
+          token: ${{ secrets.ALLIANCE_PLATFORM_JS_READ_TOKEN != '' && secrets.ALLIANCE_PLATFORM_JS_READ_TOKEN || github.token }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+          cache-dependency-path: alliance-platform-js/yarn.lock
+
+      - name: Install JS dependencies
+        working-directory: alliance-platform-js
+        run: yarn install --frozen-lockfile
+
+      - name: Regenerate ap-ui parity fixtures
+        run: |
+          ./packages/ap-ui/scripts/syncHtmlUiParityFixtures.sh \
+            --js-repo "$GITHUB_WORKSPACE/alliance-platform-js"
+
+      - name: Check fixture drift
+        run: |
+          git diff --exit-code -- \
+            packages/ap-ui/tests/fixtures/ui_html_button_parity.json \
+            packages/ap-ui/tests/fixtures/ui_html_button_group_parity.json
