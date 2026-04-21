@@ -155,7 +155,9 @@ def parse_ui_tag(
     args, kwargs, target_var = parse_tag_arguments(parser, token, supports_as=True)
 
     if len(args) == 0:
-        raise TemplateSyntaxError(f"'{tag_name}' requires a component selector as the first positional argument")
+        raise TemplateSyntaxError(
+            f"'{tag_name}' requires a component selector as the first positional argument"
+        )
     if len(args) > 1:
         raise TemplateSyntaxError(
             f"'{tag_name}' accepts exactly one positional argument (component selector), received {len(args)}"
