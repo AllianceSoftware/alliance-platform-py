@@ -10,6 +10,7 @@ This file contains maintainer-focused workflow notes for developing `alliance-pl
    - `alliance_platform/ui/templatetags/alliance_platform/html_components/registry.py`
 3. Add parity cases in:
    - `scripts/parity_cases/`
+   - include `class_prefixes` in each parity case module so fixture generation can keep relevant VE class tokens without hardcoding full class maps.
 4. Regenerate fixtures:
    - `just sync-html-ui-parity-fixtures`
 5. Add or extend parity tests in:
