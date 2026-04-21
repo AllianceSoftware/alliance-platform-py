@@ -18,19 +18,6 @@ const require = createRequire(import.meta.url);
 const GENERATED_AT_ENV_VAR = 'AP_UI_PARITY_GENERATED_AT_UTC';
 const RUNTIME_ATTACH_IMPORT_URL =
     'http://localhost:5273/static/@alliancesoftware/ui/components/layout/SmartOrientation.attach.ts';
-const BUTTON_SIZES = ['sm', 'md', 'lg', 'xl', '2xl'];
-const DENSITIES = ['compact', 'xxs', 'xs', 'sm', 'md', 'lg', 'xl', 'xxl', 'xxxl'];
-const BUTTON_CORE_CLASSES = new Set(['focus-ring-base', 'button-base', ...BUTTON_SIZES.map(size => `button-size-${size}`)]);
-const BUTTON_GROUP_CLASSES = new Set([
-    'button-group-base',
-    'button-group-button-slot',
-    'so-horizontal',
-    'so-vertical',
-    'so-align-start',
-    'so-align-center',
-    'so-align-end',
-    ...DENSITIES.map(density => `so-density-${density}`),
-]);
 
 async function loadRendererRuntime() {
     const uiPackageJsonPath = require.resolve('@alliancesoftware/ui/package.json');
@@ -103,68 +90,6 @@ function tokenizeClasses(value) {
         .filter(Boolean);
 }
 
-function canonicalizeClassToken(token) {
-    if (!token) {
-        return null;
-    }
-
-    if (token.startsWith('focusRing_base__')) {
-        return 'focus-ring-base';
-    }
-    if (token.startsWith('Button_baseButton__')) {
-        return 'button-base';
-    }
-    for (const size of BUTTON_SIZES) {
-        if (token.startsWith(`Button_sizes_${size}__`)) {
-            return `button-size-${size}`;
-        }
-    }
-    if (token.startsWith('Button_sizes__')) {
-        return null;
-    }
-    if (token.startsWith('ButtonGroup_buttonGroup__')) {
-        return 'button-group-base';
-    }
-    if (token.startsWith('ButtonGroup_button__')) {
-        return 'button-group-button-slot';
-    }
-    if (token.startsWith('SmartOrientation_container_horizontal__')) {
-        return 'so-horizontal';
-    }
-    if (token.startsWith('SmartOrientation_container_vertical__')) {
-        return 'so-vertical';
-    }
-    if (token.startsWith('SmartOrientation_align_start__')) {
-        return 'so-align-start';
-    }
-    if (token.startsWith('SmartOrientation_align_center__')) {
-        return 'so-align-center';
-    }
-    if (token.startsWith('SmartOrientation_align_end__')) {
-        return 'so-align-end';
-    }
-    for (const density of DENSITIES) {
-        if (token.startsWith(`SmartOrientation_density_${density}__`)) {
-            return `so-density-${density}`;
-        }
-    }
-    if (token.startsWith('SmartOrientation_containerBase__')) {
-        return null;
-    }
-    if (token.includes('__')) {
-        return null;
-    }
-    return token;
-}
-
-function normalizeClassTokens(classValue) {
-    return dedupeTokens(
-        tokenizeClasses(classValue)
-            .map(token => canonicalizeClassToken(token))
-            .filter(Boolean)
-    );
-}
-
 function parseAttributes(attrString) {
     const attrs = new Map();
     const attrPattern = /([^\s=]+)(?:="([^"]*)")?/g;
@@ -214,118 +139,73 @@ function buildAttributesString(attrs, orderedKeys = []) {
     return parts.join('');
 }
 
-function extractButtonSize(attrs, normalizedClassTokens) {
-    const attrSize = attrs.get('data-size');
-    if (typeof attrSize === 'string' && BUTTON_SIZES.includes(attrSize)) {
-        return attrSize;
+function normalizeClassTokens(classValue, allowedPrefixes) {
+    const normalized = [];
+    for (const originalToken of tokenizeClasses(classValue)) {
+        const hashIndex = originalToken.lastIndexOf('__');
+        const hadHash = hashIndex !== -1;
+        const token = hadHash ? originalToken.slice(0, hashIndex) : originalToken;
+        if (!token) {
+            continue;
+        }
+
+        if (token.includes('_')) {
+            const prefix = token.split('_', 1)[0];
+            if (hadHash && !allowedPrefixes.has(prefix)) {
+                continue;
+            }
+        } else if (hadHash && !allowedPrefixes.has(token)) {
+            continue;
+        }
+        normalized.push(token);
     }
-    const classSize = normalizedClassTokens.find(token => token.startsWith('button-size-'));
-    if (classSize) {
-        return classSize.replace('button-size-', '');
-    }
-    return 'md';
+
+    const deduped = dedupeTokens(normalized);
+    return deduped.filter(token => {
+        const hasChildToken = deduped.some(other => other !== token && other.startsWith(`${token}_`));
+        if (hasChildToken) {
+            return false;
+        }
+        if (token.endsWith('Base')) {
+            const root = token.slice(0, -4);
+            const hasRootChild = deduped.some(other => other !== token && other.startsWith(`${root}_`));
+            if (hasRootChild) {
+                return false;
+            }
+        }
+        return true;
+    });
 }
 
-function normalizeButtonElementHtml(
-    html,
-    {
-        forceGroupSlotClass = false,
-        keepIconOnly = false,
-    } = {}
-) {
-    const elementMatch = html.match(/^<(button|a)\b([^>]*)>([\s\S]*)<\/\1>$/);
-    if (!elementMatch) {
-        return html;
-    }
-
-    const [, tagName, attrsString, childrenHtml] = elementMatch;
-    const attrs = parseAttributes(attrsString);
-
-    attrs.delete('data-react-aria-pressable');
-    if (attrs.get('type') === 'button') {
-        attrs.delete('type');
-    }
-    if (attrs.get('tabindex') === '0') {
-        attrs.delete('tabindex');
-    }
-    if (!keepIconOnly) {
-        attrs.delete('data-icon-only');
-    }
-
-    const normalizedClassTokens = normalizeClassTokens(attrs.get('class'));
-    const size = extractButtonSize(attrs, normalizedClassTokens);
-    const includeGroupSlotClass = forceGroupSlotClass || normalizedClassTokens.includes('button-group-button-slot');
-    const customClassTokens = normalizedClassTokens.filter(
-        token => !BUTTON_CORE_CLASSES.has(token) && token !== 'button-group-button-slot'
-    );
-    const classTokens = ['focus-ring-base', 'button-base', `button-size-${size}`];
-    if (includeGroupSlotClass) {
-        classTokens.push('button-group-button-slot');
-    }
-    classTokens.push(...customClassTokens);
-    attrs.set('class', dedupeTokens(classTokens).join(' '));
-
-    const orderedKeys = [
-        'class',
-        'data-apui',
-        'data-variant',
-        'data-color',
-        'data-size',
-        'data-shape',
-        'data-icon-only',
-        'data-disabled',
-        'style',
-        'href',
-    ];
-    return `<${tagName}${buildAttributesString(attrs, orderedKeys)}>${childrenHtml}</${tagName}>`;
-}
-
-function normalizeButtonHtml(testCase, html) {
-    const keepIconOnly = testCase.template.includes('data-apui-slot="icon"');
-    return normalizeButtonElementHtml(html, { keepIconOnly });
-}
-
-function normalizeButtonGroupHtml(testCase, html) {
+function normalizeDomAttributes(html, testCase, allowedPrefixes) {
     if (!html.trim()) {
         return '';
     }
 
+    let normalized = html;
+    normalized = normalized.replace(/\sdata-react-aria-pressable="true"/g, '');
+    normalized = normalized.replace(/\stabindex="0"/g, '');
+    normalized = normalized.replace(/\stype="button"/g, '');
+    if (!testCase.template.includes('data-apui-slot="icon"')) {
+        normalized = normalized.replace(/\sdata-icon-only="true"/g, '');
+    }
+    normalized = normalized.replace(/\sclass="([^"]*)"/g, (_match, classValue) => {
+        const classTokens = normalizeClassTokens(classValue, allowedPrefixes);
+        return classTokens.length ? ` class="${classTokens.join(' ')}"` : '';
+    });
+    return normalized;
+}
+
+function injectButtonGroupRuntime(html) {
     const rootMatch = html.match(/^<div\b([^>]*)>([\s\S]*)<\/div>$/);
     if (!rootMatch) {
         return html;
     }
 
-    const [, attrsString, childrenRawHtml] = rootMatch;
+    const [, attrsString, childrenHtml] = rootMatch;
     const attrs = parseAttributes(attrsString);
-    const rootClassTokens = normalizeClassTokens(attrs.get('class'));
-    const orientation = String(attrs.get('data-orientation') || 'horizontal');
-    const align = String(attrs.get('data-align') || 'start');
-    const density = String(attrs.get('data-density') || 'md');
-
-    const customRootClasses = rootClassTokens.filter(token => !BUTTON_GROUP_CLASSES.has(token));
-    attrs.set(
-        'class',
-        dedupeTokens([
-            `so-${orientation}`,
-            `so-align-${align}`,
-            `so-density-${density}`,
-            'button-group-base',
-            ...customRootClasses,
-        ]).join(' ')
-    );
-    attrs.set('data-orientation', orientation);
     attrs.set('data-djid', '__DJID__');
-
-    const normalizedChildren = childrenRawHtml.replace(/<(button|a)\b[\s\S]*?<\/\1>/g, match => {
-        const keepIconOnly = match.includes('data-apui-slot="icon"');
-        return normalizeButtonElementHtml(match, {
-            forceGroupSlotClass: true,
-            keepIconOnly,
-        });
-    });
-
-    const orderedKeys = ['class', 'data-apui', 'data-orientation', 'data-density', 'data-align', 'id', 'style', 'data-djid'];
-    const rootHtml = `<div${buildAttributesString(attrs, orderedKeys)}>${normalizedChildren}</div>`;
+    const rootHtml = `<div${buildAttributesString(attrs)}>${childrenHtml}</div>`;
     const scriptHtml =
         `<script type="module"> import attach from "${RUNTIME_ATTACH_IMPORT_URL}"; ` +
         `const el = document.querySelector("[data-djid='__DJID__']"); ` +
@@ -333,19 +213,18 @@ function normalizeButtonGroupHtml(testCase, html) {
     return `${rootHtml}${scriptHtml}`;
 }
 
-function normalizeRenderedHtml(component, testCase, html) {
-    if (component === 'button') {
-        return normalizeButtonHtml(testCase, html);
+function normalizeRenderedHtml(component, testCase, html, allowedPrefixes) {
+    const normalized = normalizeDomAttributes(html, testCase, allowedPrefixes);
+    if (component === 'button_group' && normalized) {
+        return injectButtonGroupRuntime(normalized);
     }
-    if (component === 'button_group') {
-        return normalizeButtonGroupHtml(testCase, html);
-    }
-    return html;
+    return normalized;
 }
 
 async function generateFixtureFromModule(modulePath, runtime) {
     const caseModule = await import(new URL(modulePath, import.meta.url));
-    const { component, cases } = caseModule;
+    const { component, cases, class_prefixes: classPrefixes = [] } = caseModule;
+    const allowedPrefixes = new Set(classPrefixes);
 
     if (!component || !Array.isArray(cases)) {
         throw new Error(`Invalid parity case module at ${modulePath}`);
@@ -356,7 +235,7 @@ async function generateFixtureFromModule(modulePath, runtime) {
         const { html, warnings } = captureWarnings(() =>
             runtime.renderToStaticMarkup(testCase.buildElement({ React: runtime.React }))
         );
-        const normalizedHtml = normalizeRenderedHtml(component, testCase, html);
+        const normalizedHtml = normalizeRenderedHtml(component, testCase, html, allowedPrefixes);
         serializedCases.push({
             name: testCase.name,
             template: testCase.template,

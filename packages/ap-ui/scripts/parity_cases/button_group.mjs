@@ -1,6 +1,7 @@
 import { Button, ButtonGroup } from '@alliancesoftware/ui';
 
 export const component = 'button_group';
+export const class_prefixes = ['SmartOrientation', 'ButtonGroup', 'focusRing', 'Button'];
 
 export const cases = [
     {

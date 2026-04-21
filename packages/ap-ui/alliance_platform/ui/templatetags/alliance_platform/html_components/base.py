@@ -164,7 +164,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
 
     def get_nested_style_class(self, mapping: Any, key: str, nested_key: str) -> str:
         mapping_value = getattr(mapping, key, {})
-        if isinstance(mapping_value, dict):
+        if isinstance(mapping_value, dict) or hasattr(mapping_value, "get"):
             nested_value = mapping_value.get(nested_key, "")
             return nested_value if isinstance(nested_value, str) else ""
         return ""

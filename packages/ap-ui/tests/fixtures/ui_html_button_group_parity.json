@@ -7,14 +7,14 @@
     {
       "name": "default",
       "template": "{% ui \"button_group\" %}{% ui \"button\" %}One{% endui %}{% endui %}",
-      "expected_html": "<div class=\"so-horizontal so-align-start so-density-md button-group-base\" data-apui=\"button-group\" data-orientation=\"horizontal\" data-djid=\"__DJID__\"><button class=\"focus-ring-base button-base button-size-md button-group-button-slot\" data-apui=\"button\" data-variant=\"solid\" data-color=\"primary\" data-size=\"md\" data-shape=\"default\"><span>One</span></button></div><script type=\"module\"> import attach from \"http://localhost:5273/static/@alliancesoftware/ui/components/layout/SmartOrientation.attach.ts\"; const el = document.querySelector(\"[data-djid='__DJID__']\"); if (el) { attach(el); } </script>",
+      "expected_html": "<div data-apui=\"button-group\" data-orientation=\"horizontal\" class=\"SmartOrientation_containerBase SmartOrientation_align_start SmartOrientation_density_md ButtonGroup_buttonGroup\" data-djid=\"__DJID__\"><button class=\"focusRing_base Button_baseButton Button_sizes_md ButtonGroup_button\" data-apui=\"button\" data-variant=\"solid\" data-color=\"primary\" data-size=\"md\" data-shape=\"default\"><span>One</span></button></div><script type=\"module\"> import attach from \"http://localhost:5273/static/@alliancesoftware/ui/components/layout/SmartOrientation.attach.ts\"; const el = document.querySelector(\"[data-djid='__DJID__']\"); if (el) { attach(el); } </script>",
       "expected_warnings": [],
       "meta": {}
     },
     {
       "name": "slot_defaults_and_child_class_merge",
       "template": "{% ui \"button_group\" variant=\"outlined\" color=\"gray\" size=\"lg\" density=\"compact\" align=\"end\" %}{% ui \"button\" className=\"custom\" %}Two{% endui %}{% endui %}",
-      "expected_html": "<div class=\"so-horizontal so-align-end so-density-compact button-group-base\" data-apui=\"button-group\" data-orientation=\"horizontal\" data-density=\"compact\" data-align=\"end\" data-djid=\"__DJID__\"><button class=\"focus-ring-base button-base button-size-lg button-group-button-slot custom\" data-apui=\"button\" data-variant=\"outlined\" data-color=\"gray\" data-size=\"lg\" data-shape=\"default\"><span>Two</span></button></div><script type=\"module\"> import attach from \"http://localhost:5273/static/@alliancesoftware/ui/components/layout/SmartOrientation.attach.ts\"; const el = document.querySelector(\"[data-djid='__DJID__']\"); if (el) { attach(el); } </script>",
+      "expected_html": "<div data-apui=\"button-group\" data-density=\"compact\" data-align=\"end\" data-orientation=\"horizontal\" class=\"SmartOrientation_containerBase SmartOrientation_align_end SmartOrientation_density_compact ButtonGroup_buttonGroup\" data-djid=\"__DJID__\"><button class=\"focusRing_base Button_baseButton Button_sizes_lg ButtonGroup_button custom\" data-apui=\"button\" data-variant=\"outlined\" data-color=\"gray\" data-size=\"lg\" data-shape=\"default\"><span>Two</span></button></div><script type=\"module\"> import attach from \"http://localhost:5273/static/@alliancesoftware/ui/components/layout/SmartOrientation.attach.ts\"; const el = document.querySelector(\"[data-djid='__DJID__']\"); if (el) { attach(el); } </script>",
       "expected_warnings": [],
       "meta": {}
     },
