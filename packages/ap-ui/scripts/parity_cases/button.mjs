@@ -1,6 +1,7 @@
 import { Button } from '@alliancesoftware/ui';
 
 export const component = 'button';
+export const class_prefixes = ['focusRing', 'Button'];
 
 export const cases = [
     {

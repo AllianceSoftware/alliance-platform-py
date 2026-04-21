@@ -149,4 +149,6 @@ class UIDispatcherTemplateTagTestCase(SimpleTestCase):
 
         self.assertIn("alias-class", output)
         self.assertIn("named-class", output)
-        self.assertIn('class="focus-ring-base button-base button-size-md alias-class named-class"', output)
+        self.assertIn(
+            'class="focusRing_base Button_baseButton Button_sizes_md alias-class named-class"', output
+        )

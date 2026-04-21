@@ -4,52 +4,44 @@ from pathlib import Path
 from typing import Any
 
 
+class MockStyleToken(str):
+    """String token that can also synthesise nested class keys via `.get(...)`."""
+
+    def __new__(cls, token: str):
+        return super().__new__(cls, token)
+
+    def get(self, key: str, default: str = "") -> str:
+        if not key:
+            return default
+        return f"{self}_{key}"
+
+
 class MockVanillaExtractMapping:
-    def __init__(self, mapping: dict[str, Any]):
+    def __init__(self, scope: str, mapping: dict[str, Any]):
+        self.scope = scope
         self.mapping = mapping
 
     def __getattr__(self, name: str):
-        return self.mapping.get(name, "")
+        if name in self.mapping:
+            value = self.mapping[name]
+            if isinstance(value, dict):
+                return value
+            if isinstance(value, str):
+                return value
+        return MockStyleToken(f"{self.scope}_{name}")
+
+
+def _mapping_scope_from_filename(filename: str) -> str:
+    if filename.endswith(".css.ts"):
+        return filename[: -len(".css.ts")]
+    return Path(filename).stem
 
 
 DEFAULT_STYLE_MAPPINGS: dict[str, dict[str, Any]] = {
-    "Button.css.ts": {
-        "baseButton": "button-base",
-        "sizes": {
-            "sm": "button-size-sm",
-            "md": "button-size-md",
-            "lg": "button-size-lg",
-            "xl": "button-size-xl",
-            "2xl": "button-size-2xl",
-        },
-    },
-    "focusRing.css.ts": {
-        "base": "focus-ring-base",
-    },
-    "ButtonGroup.css.ts": {
-        "buttonGroup": "button-group-base",
-        "button": "button-group-button-slot",
-    },
     "SmartOrientation.css.ts": {
         "container": {
-            "horizontal": "so-horizontal",
-            "vertical": "so-vertical",
-        },
-        "align": {
-            "start": "so-align-start",
-            "center": "so-align-center",
-            "end": "so-align-end",
-        },
-        "density": {
-            "compact": "so-density-compact",
-            "xxs": "so-density-xxs",
-            "xs": "so-density-xs",
-            "sm": "so-density-sm",
-            "md": "so-density-md",
-            "lg": "so-density-lg",
-            "xl": "so-density-xl",
-            "xxl": "so-density-xxl",
-            "xxxl": "so-density-xxxl",
+            "horizontal": "SmartOrientation_containerBase",
+            "vertical": "SmartOrientation_containerBase",
         },
     },
 }
@@ -60,6 +52,7 @@ def make_style_mapping_resolver(overrides: dict[str, dict[str, Any]] | None = No
 
     def _resolve_mapping(_bundler, filename):
         key = Path(filename).name
-        return MockVanillaExtractMapping(mappings.get(key, {}))
+        scope = _mapping_scope_from_filename(key)
+        return MockVanillaExtractMapping(scope, mappings.get(key, {}))
 
     return _resolve_mapping
