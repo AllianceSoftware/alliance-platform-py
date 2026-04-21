@@ -18,6 +18,7 @@ const require = createRequire(import.meta.url);
 const GENERATED_AT_ENV_VAR = 'AP_UI_PARITY_GENERATED_AT_UTC';
 const RUNTIME_ATTACH_IMPORT_URL =
     'http://localhost:5273/static/@alliancesoftware/ui/components/layout/SmartOrientation.attach.ts';
+let prettierFormatPromise;
 
 async function loadRendererRuntime() {
     const uiPackageJsonPath = require.resolve('@alliancesoftware/ui/package.json');
@@ -40,6 +41,25 @@ async function loadRendererRuntime() {
     }
 
     return { React, renderToStaticMarkup };
+}
+
+async function formatFixtureJson(content) {
+    if (!prettierFormatPromise) {
+        prettierFormatPromise = (async () => {
+            try {
+                const prettierPath = require.resolve('prettier');
+                const prettierModule = await import(pathToFileURL(prettierPath).href);
+                return prettierModule.format ?? prettierModule.default?.format ?? null;
+            } catch {
+                return null;
+            }
+        })();
+    }
+    const prettierFormat = await prettierFormatPromise;
+    if (!prettierFormat) {
+        return content;
+    }
+    return prettierFormat(content, { parser: 'json' });
 }
 
 async function loadExistingGeneratedAtUtc(fixturePath) {
@@ -257,7 +277,9 @@ async function generateFixtureFromModule(modulePath, runtime) {
         cases: serializedCases,
     };
 
-    await fs.writeFile(fixturePath, `${JSON.stringify(fixture, null, 2)}\n`, 'utf8');
+    const serializedFixture = `${JSON.stringify(fixture, null, 2)}\n`;
+    const formattedFixture = await formatFixtureJson(serializedFixture);
+    await fs.writeFile(fixturePath, formattedFixture, 'utf8');
     return fixturePath;
 }
 
