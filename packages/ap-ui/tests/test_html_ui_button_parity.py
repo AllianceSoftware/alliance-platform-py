@@ -17,5 +17,12 @@ class UIButtonParityTestCase(HtmlUIParityTestCase):
             self.render_ui_template('{% ui "button" %}Save{% endui %}')
             resource_paths = [str(resource.path) for resource in asset_context.get_resources_for_bundling()]
 
-        self.assertTrue(any(path.endswith("@alliancesoftware/ui/components/button/Button.css.ts") for path in resource_paths))
-        self.assertTrue(any(path.endswith("@alliancesoftware/ui/styles/base/focusRing.css.ts") for path in resource_paths))
+        self.assertTrue(
+            any(
+                path.endswith("@alliancesoftware/ui/components/button/Button.css.ts")
+                for path in resource_paths
+            )
+        )
+        self.assertTrue(
+            any(path.endswith("@alliancesoftware/ui/styles/base/focusRing.css.ts") for path in resource_paths)
+        )
