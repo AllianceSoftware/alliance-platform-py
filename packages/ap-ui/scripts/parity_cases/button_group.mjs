@@ -28,4 +28,12 @@ export const cases = [
         },
         meta: {},
     },
+    {
+        name: 'empty_children',
+        template: '{% ui "button_group" %}{% endui %}',
+        buildElement({ React }) {
+            return React.createElement(ButtonGroup, null);
+        },
+        meta: {},
+    },
 ];
