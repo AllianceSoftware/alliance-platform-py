@@ -19,11 +19,11 @@ jobs:
       - name: Checkout alliance-platform-py
         uses: actions/checkout@v4
 
-      - name: Validate cross-repo checkout token
-        if: ${{ secrets.ALLIANCE_PLATFORM_JS_READ_TOKEN == '' }}
+      - name: Validate cross-repo checkout key
+        if: ${{ secrets.ALLIANCE_PLATFORM_JS_DEPLOY_KEY == '' }}
         run: |
-          echo "::error::Missing ALLIANCE_PLATFORM_JS_READ_TOKEN secret."
-          echo "::error::Configure a PAT with read access to AllianceSoftware/alliance-platform-js and save it as ALLIANCE_PLATFORM_JS_READ_TOKEN."
+          echo "::error::Missing ALLIANCE_PLATFORM_JS_DEPLOY_KEY secret."
+          echo "::error::Add the matching public key as a read-only deploy key on AllianceSoftware/alliance-platform-js."
           exit 1
 
       - name: Checkout alliance-platform-js
@@ -31,7 +31,9 @@ jobs:
         with:
           repository: AllianceSoftware/alliance-platform-js
           path: alliance-platform-js
-          token: ${{ secrets.ALLIANCE_PLATFORM_JS_READ_TOKEN }}
+          ref: main
+          ssh-key: ${{ secrets.ALLIANCE_PLATFORM_JS_DEPLOY_KEY }}
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
