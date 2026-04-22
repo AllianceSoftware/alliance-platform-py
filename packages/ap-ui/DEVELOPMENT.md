@@ -51,3 +51,7 @@ The cross-repo fixture drift workflow is defined in:
 - `.github/workflows/ap-ui-fixture-drift.yml`
 
 It checks out both `alliance-platform-py` and `alliance-platform-js`, regenerates the fixtures, and fails if fixture files changed.
+
+For private `alliance-platform-js` access in GitHub Actions, configure:
+
+- `ALLIANCE_PLATFORM_JS_READ_TOKEN`: PAT with read access to `AllianceSoftware/alliance-platform-js`.

@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   fixture-drift:
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -18,12 +19,19 @@ jobs:
       - name: Checkout alliance-platform-py
         uses: actions/checkout@v4
 
+      - name: Validate cross-repo checkout token
+        if: ${{ secrets.ALLIANCE_PLATFORM_JS_READ_TOKEN == '' }}
+        run: |
+          echo "::error::Missing ALLIANCE_PLATFORM_JS_READ_TOKEN secret."
+          echo "::error::Configure a PAT with read access to AllianceSoftware/alliance-platform-js and save it as ALLIANCE_PLATFORM_JS_READ_TOKEN."
+          exit 1
+
       - name: Checkout alliance-platform-js
         uses: actions/checkout@v4
         with:
-          repository: ${{ github.repository_owner }}/alliance-platform-js
+          repository: AllianceSoftware/alliance-platform-js
           path: alliance-platform-js
-          token: ${{ secrets.ALLIANCE_PLATFORM_JS_READ_TOKEN != '' && secrets.ALLIANCE_PLATFORM_JS_READ_TOKEN || github.token }}
+          token: ${{ secrets.ALLIANCE_PLATFORM_JS_READ_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
