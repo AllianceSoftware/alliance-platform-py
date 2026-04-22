@@ -54,4 +54,4 @@ It checks out both `alliance-platform-py` and `alliance-platform-js`, regenerate
 
 For private `alliance-platform-js` access in GitHub Actions, configure:
 
-- `ALLIANCE_PLATFORM_JS_READ_TOKEN`: PAT with read access to `AllianceSoftware/alliance-platform-js`.
+- `ALLIANCE_PLATFORM_JS_DEPLOY_KEY`: private SSH key matching a read-only deploy key on `AllianceSoftware/alliance-platform-js`.
