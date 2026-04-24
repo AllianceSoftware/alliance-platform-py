@@ -1,5 +1,11 @@
 # alliance-platform-codegen
 
+## 0.0.10
+
+### Patch Changes
+
+- a37314c: Add `ap_codegen` management command to run the codegen registry, with `--registry`, `--dry-run` and `--check` options.
+
 ## 0.0.9
 
 ### Patch Changes
