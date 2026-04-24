@@ -27,13 +27,13 @@ You can also run codegen via the management command:
 .. code-block:: bash
 
     # Option 1: pass registry explicitly
-    ./manage.py codegen --registry my_site.codegen.codegen_registry
+    ./manage.py ap_codegen --registry my_site.codegen.codegen_registry
 
     # Option 2: set ALLIANCE_PLATFORM["CODEGEN"]["REGISTRY"] and omit --registry
-    ./manage.py codegen
+    ./manage.py ap_codegen
 
     # CI-friendly check: exit non-zero if codegen would write files
-    ./manage.py codegen --check
+    ./manage.py ap_codegen --check
 
 .. note::
 
