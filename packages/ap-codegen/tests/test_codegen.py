@@ -198,6 +198,6 @@ class TestCodegenCommand(SimpleTestCase):
 
             with override_settings(ALLIANCE_PLATFORM=alliance_platform_settings):
                 with self.assertRaises(CommandError):
-                    call_command("codegen", check=True)
+                    call_command("ap_codegen", check=True)
 
             self.assertFalse(target_path.exists())
