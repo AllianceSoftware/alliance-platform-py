@@ -19,13 +19,6 @@ jobs:
       - name: Checkout alliance-platform-py
         uses: actions/checkout@v4
 
-      - name: Validate cross-repo checkout key
-        if: ${{ secrets.ALLIANCE_PLATFORM_JS_DEPLOY_KEY == '' }}
-        run: |
-          echo "::error::Missing ALLIANCE_PLATFORM_JS_DEPLOY_KEY secret."
-          echo "::error::Add the matching public key as a read-only deploy key on AllianceSoftware/alliance-platform-js."
-          exit 1
-
       - name: Checkout alliance-platform-js
         uses: actions/checkout@v4
         with:
