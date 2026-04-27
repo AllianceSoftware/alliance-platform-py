@@ -19,6 +19,8 @@ const GENERATED_AT_ENV_VAR = 'AP_UI_PARITY_GENERATED_AT_UTC';
 const RUNTIME_ATTACH_IMPORT_URL =
     'http://localhost:5273/static/@alliancesoftware/ui/components/layout/SmartOrientation.attach.ts';
 let prettierFormatPromise;
+const parityComponentRuntimeCache = new Map();
+let uiRequirePromise;
 
 async function fileExists(filePath) {
     try {
@@ -69,14 +71,22 @@ async function resolveUiPackageJsonPath() {
 }
 
 async function loadRendererRuntime() {
-    const uiPackageJsonPath = await resolveUiPackageJsonPath();
-    const uiRequire = createRequire(uiPackageJsonPath);
-
-    const reactPath = uiRequire.resolve('react');
-    const reactDomServerPath = uiRequire.resolve('react-dom/server');
-
-    const reactModule = await import(pathToFileURL(reactPath).href);
-    const reactDomServerModule = await import(pathToFileURL(reactDomServerPath).href);
+    let reactModule;
+    let reactDomServerModule;
+    try {
+        // Prefer bare imports so vite-node resolves the same React singleton for both
+        // the component module graph and server renderer.
+        reactModule = await import('react');
+        reactDomServerModule = await import('react-dom/server');
+    } catch {
+        // Fallback for non-vite execution contexts.
+        const uiPackageJsonPath = await resolveUiPackageJsonPath();
+        const uiRequire = createRequire(uiPackageJsonPath);
+        const reactPath = uiRequire.resolve('react');
+        const reactDomServerPath = uiRequire.resolve('react-dom/server');
+        reactModule = await import(pathToFileURL(reactPath).href);
+        reactDomServerModule = await import(pathToFileURL(reactDomServerPath).href);
+    }
 
     const React = reactModule.default ?? reactModule;
     const renderToStaticMarkup =
@@ -91,15 +101,63 @@ async function loadRendererRuntime() {
     return { React, renderToStaticMarkup };
 }
 
+async function resolveUiPackageDir() {
+    const uiPackageJsonPath = await resolveUiPackageJsonPath();
+    return path.dirname(uiPackageJsonPath);
+}
+
+async function getUiRequire() {
+    if (!uiRequirePromise) {
+        uiRequirePromise = resolveUiPackageJsonPath().then(uiPackageJsonPath => createRequire(uiPackageJsonPath));
+    }
+    return uiRequirePromise;
+}
+
+async function importDefault(modulePath) {
+    const module = await import(pathToFileURL(modulePath).href);
+    return module.default ?? module;
+}
+
+async function loadParityComponents(component) {
+    if (parityComponentRuntimeCache.has(component)) {
+        return parityComponentRuntimeCache.get(component);
+    }
+
+    const uiPackageDir = await resolveUiPackageDir();
+    let components;
+    if (component === 'button') {
+        components = {
+            Button: await importDefault(path.join(uiPackageDir, 'components/button/Button.tsx')),
+        };
+    } else if (component === 'button_group') {
+        components = {
+            Button: await importDefault(path.join(uiPackageDir, 'components/button/Button.tsx')),
+            ButtonGroup: await importDefault(path.join(uiPackageDir, 'components/button/ButtonGroup.tsx')),
+        };
+    } else {
+        throw new Error(`Unsupported parity component runtime: ${component}`);
+    }
+
+    parityComponentRuntimeCache.set(component, components);
+    return components;
+}
+
 async function formatFixtureJson(content) {
     if (!prettierFormatPromise) {
         prettierFormatPromise = (async () => {
             try {
-                const prettierPath = require.resolve('prettier');
+                const uiRequire = await getUiRequire();
+                const prettierPath = uiRequire.resolve('prettier');
                 const prettierModule = await import(pathToFileURL(prettierPath).href);
                 return prettierModule.format ?? prettierModule.default?.format ?? null;
             } catch {
-                return null;
+                try {
+                    const prettierPath = require.resolve('prettier');
+                    const prettierModule = await import(pathToFileURL(prettierPath).href);
+                    return prettierModule.format ?? prettierModule.default?.format ?? null;
+                } catch {
+                    return null;
+                }
             }
         })();
     }
@@ -293,6 +351,7 @@ async function generateFixtureFromModule(modulePath, runtime) {
     const caseModule = await import(new URL(modulePath, import.meta.url));
     const { component, cases, class_prefixes: classPrefixes = [] } = caseModule;
     const allowedPrefixes = new Set(classPrefixes);
+    const parityComponents = await loadParityComponents(component);
 
     if (!component || !Array.isArray(cases)) {
         throw new Error(`Invalid parity case module at ${modulePath}`);
@@ -301,7 +360,12 @@ async function generateFixtureFromModule(modulePath, runtime) {
     const serializedCases = [];
     for (const testCase of cases) {
         const { html, warnings } = captureWarnings(() =>
-            runtime.renderToStaticMarkup(testCase.buildElement({ React: runtime.React }))
+            runtime.renderToStaticMarkup(
+                testCase.buildElement({
+                    React: runtime.React,
+                    components: parityComponents,
+                })
+            )
         );
         const normalizedHtml = normalizeRenderedHtml(component, testCase, html, allowedPrefixes);
         serializedCases.push({
