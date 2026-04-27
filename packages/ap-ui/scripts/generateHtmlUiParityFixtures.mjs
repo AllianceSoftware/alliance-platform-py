@@ -20,8 +20,56 @@ const RUNTIME_ATTACH_IMPORT_URL =
     'http://localhost:5273/static/@alliancesoftware/ui/components/layout/SmartOrientation.attach.ts';
 let prettierFormatPromise;
 
+async function fileExists(filePath) {
+    try {
+        await fs.access(filePath);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+async function resolveUiPackageJsonPath() {
+    const explicitUiPackageDir = process.env.AP_UI_UI_PACKAGE_DIR;
+    const explicitJsRepo = process.env.AP_UI_JS_REPO;
+
+    const directCandidates = [];
+    if (explicitUiPackageDir) {
+        directCandidates.push(path.resolve(explicitUiPackageDir, 'package.json'));
+    }
+    if (explicitJsRepo) {
+        directCandidates.push(path.resolve(explicitJsRepo, 'packages/ui/package.json'));
+    }
+    directCandidates.push(path.resolve(process.cwd(), 'package.json'));
+
+    for (const packageJsonPath of directCandidates) {
+        if (await fileExists(packageJsonPath)) {
+            return packageJsonPath;
+        }
+    }
+
+    const searchPaths = [];
+    if (explicitUiPackageDir) {
+        searchPaths.push(explicitUiPackageDir);
+    }
+    if (explicitJsRepo) {
+        searchPaths.push(explicitJsRepo);
+    }
+    searchPaths.push(process.cwd());
+
+    for (const searchPath of searchPaths) {
+        try {
+            return require.resolve('@alliancesoftware/ui/package.json', { paths: [searchPath] });
+        } catch {
+            // Keep trying subsequent resolution roots.
+        }
+    }
+
+    return require.resolve('@alliancesoftware/ui/package.json');
+}
+
 async function loadRendererRuntime() {
-    const uiPackageJsonPath = require.resolve('@alliancesoftware/ui/package.json');
+    const uiPackageJsonPath = await resolveUiPackageJsonPath();
     const uiRequire = createRequire(uiPackageJsonPath);
 
     const reactPath = uiRequire.resolve('react');
