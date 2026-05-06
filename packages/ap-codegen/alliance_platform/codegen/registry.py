@@ -176,6 +176,7 @@ class CodegenRegistry:
     def __init__(self):
         self.registrations = []
         self.cache_path = ap_core_settings.CACHE_DIR / "codegen-artifact-cache.json"
+        self.cache_path.parent.mkdir(parents=True, exist_ok=True)
         self.cache = json.loads(self.cache_path.read_text("utf8")) if self.cache_path.exists() else {}
         if not list(self.cache.keys()) == ["version", "entries"]:
             self.cache = {"version": 1, "entries": {}}
