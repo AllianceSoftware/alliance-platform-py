@@ -1,5 +1,11 @@
 # alliance-platform-codegen
 
+## 0.0.11
+
+### Patch Changes
+
+- cb76424: Fix `FileNotFoundError` when writing the codegen artifact cache if the `CACHE_DIR` (default `.alliance-platform/`) does not yet exist. The directory is now created on `CodegenRegistry` initialisation.
+
 ## 0.0.10
 
 ### Patch Changes
