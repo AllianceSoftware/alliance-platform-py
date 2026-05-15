@@ -17,6 +17,7 @@ from django.template import TemplateSyntaxError
 from django.template.base import UNKNOWN_SOURCE
 from django.template.base import FilterExpression
 
+from alliance_platform.frontend.bundler.context import BundlerAsset
 from alliance_platform.frontend.templatetags.react import ComponentNode
 from alliance_platform.frontend.templatetags.react import NestedComponentProp
 from alliance_platform.frontend.templatetags.react import NestedComponentPropAccumulator
@@ -33,7 +34,7 @@ class _NOT_PROVIDED:
     pass
 
 
-class FormInputNode(template.Node):
+class FormInputNode(template.Node, BundlerAsset):
     origin: Origin
     show_valid_state: FilterExpression | bool
     help_text: FilterExpression | str | type[_NOT_PROVIDED]
@@ -52,7 +53,6 @@ class FormInputNode(template.Node):
         non_standard_widget=False,
         **extra_attrs,
     ):
-        self.origin = origin or Origin(UNKNOWN_SOURCE)
         self.show_valid_state = show_valid_state
         self.field = field
         self.help_text = help_text
@@ -60,6 +60,15 @@ class FormInputNode(template.Node):
         self.required = is_required
         self.extra_attrs = extra_attrs or {}
         self.non_standard_widget = non_standard_widget
+        # ``LabeledInput`` is wrapped around the widget at render time when ``non_standard_widget`` is set,
+        # so it is not statically discoverable. Always include it so it is available in the bundle.
+        self._labeled_input_source = get_module_import_source(
+            "@alliancesoftware/ui", "LabeledInput", False, origin
+        )
+        BundlerAsset.__init__(self, origin or Origin(UNKNOWN_SOURCE))
+
+    def get_resources_for_bundling(self):
+        return [self._labeled_input_source.create_frontend_resource(self.bundler)]
 
     def render(self, context: template.Context):
         field: BoundField = self.field.resolve(context)
@@ -105,7 +114,7 @@ class FormInputNode(template.Node):
             if self.non_standard_widget:
                 node = LabeledInputNode(
                     self.origin,
-                    get_module_import_source("@alliancesoftware/ui", "LabeledInput", False, self.origin),
+                    self._labeled_input_source,
                     {
                         **extra_attrs[field.form.renderer.form_input_context_key]["extra_widget_props"],
                         "children": [],

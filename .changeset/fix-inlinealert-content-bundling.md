@@ -2,4 +2,9 @@
 "alliance-platform-ui": patch
 ---
 
-Fix `InlineAlert` template tag so the `Content` component it wraps plain-string children in is always included in the final frontend bundle. Previously the `Content` import was not statically discoverable and could be omitted from the build, causing the component to fail to render at runtime.
+Fix two latent bundling issues where components referenced dynamically at render time were not statically discoverable, so could be omitted from the production frontend bundle:
+
+- `InlineAlert` wraps plain-string children in a `Content` component.
+- `form_input` wraps the widget in a `LabeledInput` component when `non_standard_widget=True`.
+
+Both dependencies are now registered for bundling at parse time.
