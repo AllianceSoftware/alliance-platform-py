@@ -186,31 +186,31 @@ class NestedComponentFormWidgetNode(Node):
 
         ``widget_html`` will be:
 
-            __NestedComponentPropAccumulator__prop__0
+            __NestedComponentPropAccumulator__prop__0__
             Plain text <strong>Nested HTML</strong> More text <span>Extra</span>
-            __NestedComponentPropAccumulator__prop__1
+            __NestedComponentPropAccumulator__prop__1__
             End
 
         ``convert_html_string`` will return:
 
             [
-              '__NestedComponentPropAccumulator__prop__0\nPlain text ',
+              '__NestedComponentPropAccumulator__prop__0__\nPlain text ',
               ComponentNode(CommonComponentSource(name='strong'), {'children': ['Nested HTML']}),
               ' More text ',
               ComponentNode(CommonComponentSource(name='span'), {'children': ['Extra']}),
-              '\n__NestedComponentPropAccumulator__prop__1\nEnd'
+              '\n__NestedComponentPropAccumulator__prop__1__\nEnd'
             ]
 
         Next we replace any `ComponentNode` with a placeholder (__form_widget_placeholder(0)__) using ``_replace_nodes_with_str``
         which generates a string like:
 
-            __NestedComponentPropAccumulator__prop__0
+            __NestedComponentPropAccumulator__prop__0__
             Plain text __form_widget_placeholder(0)__ More text __form_widget_placeholder(1)__
-            __NestedComponentPropAccumulator__prop__1
+            __NestedComponentPropAccumulator__prop__1__
             End
 
         This gets passed through ``temp_accumulator.apply`` which will replace any of the placeholders from first
-        pass ("__NestedComponentPropAccumulator__prop__0" in the example). This results in:
+        pass ("__NestedComponentPropAccumulator__prop__0__" in the example). This results in:
 
             [
                 NestedComponentProp(ImportComponentSource(TextInput), ComponentProps({..})),
@@ -226,9 +226,9 @@ class NestedComponentFormWidgetNode(Node):
         in place of the original. This is repeated until all placeholders are replaced. This gives us a final
         string like:
 
-            __NestedComponentPropAccumulator__prop__0
-            Plain text __NestedComponentPropAccumulator__prop__1 More text __NestedComponentPropAccumulator__prop__2
-            __NestedComponentPropAccumulator__prop__3
+            __NestedComponentPropAccumulator__prop__0__
+            Plain text __NestedComponentPropAccumulator__prop__1__ More text __NestedComponentPropAccumulator__prop__2__
+            __NestedComponentPropAccumulator__prop__3__
             End
 
         This is what we return, and the parent component will replace any of the remaining placeholders as part of
