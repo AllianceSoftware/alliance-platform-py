@@ -17,6 +17,8 @@ from alliance_platform.frontend.html_parser import convert_html_string
 from alliance_platform.frontend.templatetags.react import ComponentNode
 from alliance_platform.frontend.templatetags.react import ComponentProps
 from alliance_platform.frontend.templatetags.react import ComponentSourceCodeGenerator
+from alliance_platform.frontend.templatetags.react import NestedComponentProp
+from alliance_platform.frontend.templatetags.react import NestedComponentPropAccumulator
 from django.template import Context
 from django.template import Origin
 from django.template import Template
@@ -1350,3 +1352,75 @@ class TestComponentTemplateTagOutput(SimpleTestCase):
             """<div><strong><span><em>test</em></span></strong></div>""",
             value=mark_safe("<em>test</em>"),
         )
+
+    def test_many_nested_conditional_components(self):
+        """Regression test for placeholder prefix collisions in NestedComponentPropAccumulator.
+
+        With more than 10 nested components the accumulator generates placeholders like
+        ``...__prop__1`` and ``...__prop__10``. Because ``prop__1`` is a prefix of ``prop__10``
+        the ``apply`` method could match the wrong placeholder, dropping/duplicating children
+        and leaving raw placeholder strings in the output. See
+        ``TestNestedComponentPropAccumulator`` for the focused unit tests.
+        """
+        rows = list(range(1, 21))
+        tree = self._get_debug_tree(
+            "{% component 'div' %}"
+            "{% for n in rows %}"
+            "{% component 'span' %}"
+            "{% if n %}{% component 'strong' %}{{ n }}{% endcomponent %}"
+            "{% else %}{% component 'em' %}none{% endcomponent %}{% endif %}"
+            "{% endcomponent %}"
+            "{% endfor %}"
+            "{% endcomponent %}",
+            rows=rows,
+        )
+        # No raw accumulator placeholder should leak into the generated tree
+        self.assertNotIn("__NestedComponentPropAccumulator", tree)
+        # Every row must be preserved (each row renders one <strong>{{ n }}</strong>)
+        self.assertEqual(tree.count("<strong>"), len(rows))
+        for n in rows:
+            self.assertIn(f"<strong>{n}</strong>", tree)
+
+
+class TestNestedComponentPropAccumulator(SimpleTestCase):
+    """Focused unit tests for ``NestedComponentPropAccumulator`` placeholder handling."""
+
+    def _make_accumulator(self):
+        return NestedComponentPropAccumulator(Context(), mock.Mock(spec=ComponentNode))
+
+    def test_apply_does_not_match_placeholder_prefix(self):
+        """A placeholder must not be matched as a prefix of a longer placeholder.
+
+        ``prop__1`` must not match inside ``prop__10``.
+        """
+        accumulator = self._make_accumulator()
+        props = [mock.Mock(spec=NestedComponentProp) for _ in range(11)]
+        keys = [accumulator.add(prop) for prop in props]
+        # Sanity check: the id 1 placeholder is not a prefix of the id 10 placeholder
+        self.assertFalse(keys[10].startswith(keys[1]))
+
+        # Render a value that only contains the placeholder for props[10]
+        result = accumulator.apply(f"before {keys[10]} after")
+        self.assertEqual(result, ["before ", props[10], " after"])
+
+    def test_apply_orders_children_by_occurrence(self):
+        """Children must be returned in the order they appear in the rendered value."""
+        accumulator = self._make_accumulator()
+        first = mock.Mock(spec=NestedComponentProp)
+        second = mock.Mock(spec=NestedComponentProp)
+        key_first = accumulator.add(first)
+        key_second = accumulator.add(second)
+
+        # The rendered value has ``second`` appearing before ``first``
+        result = accumulator.apply(f"{key_second} middle {key_first}")
+        self.assertEqual(result, [second, " middle ", first])
+
+    def test_add_generates_unique_non_colliding_keys(self):
+        accumulator = self._make_accumulator()
+        keys = [accumulator.add(mock.Mock(spec=NestedComponentProp)) for _ in range(12)]
+        self.assertEqual(len(set(keys)), len(keys))
+        # No key may be a prefix of another key
+        for outer in keys:
+            for inner in keys:
+                if outer is not inner:
+                    self.assertFalse(inner.startswith(outer))
