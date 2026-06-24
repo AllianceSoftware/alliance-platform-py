@@ -295,12 +295,12 @@ class NestedComponentPropAccumulator:
     checks if it's within another component by calling ``NestedComponentPropAccumulator.get_current(context)``. If
     it is it calls ``add`` and returns the string. This will end up rendering something like::
 
-        __NestedComponentPropAccumulator__prop__0 Example
+        __NestedComponentPropAccumulator__prop__0__ Example
 
     Internally ``NestedComponentPropAccumulator`` will store the actual prop::
 
         props = {
-            "__NestedComponentPropAccumulator__prop__0": NestedComponentProp(
+            "__NestedComponentPropAccumulator__prop__0__": NestedComponentProp(
                 ComponentNode("strong", ...),
                 ComponentProps({"children": ["Test"]})
             )
@@ -308,7 +308,7 @@ class NestedComponentPropAccumulator:
 
     Then when ``apply`` is called it will be passed the rendered string::
 
-        "__NestedComponentPropAccumulator__prop__0 Example"
+        "__NestedComponentPropAccumulator__prop__0__ Example"
 
     And process that, returning a list that can be used as children for the component props::
 
@@ -341,6 +341,10 @@ class NestedComponentPropAccumulator:
         self.origin_node = origin_node
         self.context = context
         self.props = {}
+        # Monotonic counter used to generate placeholder ids. Using a dedicated counter (rather
+        # than ``len(self.props)``) means ids are never reused even after props are popped in
+        # ``apply``, avoiding accidental placeholder collisions.
+        self._next_id = 0
 
     @classmethod
     def acquire(cls, context: Context, origin_node: ComponentNode):
@@ -370,7 +374,10 @@ class NestedComponentPropAccumulator:
                 "must be a NestedComponentProp; if you are passing ComponentNode wrap it in ComponentProp first"
             )
 
-        key = f"{self.context_key}__prop__{len(self.props)}"
+        # The trailing ``__`` delimiter is important: without it ``prop__1`` would be a prefix of
+        # ``prop__10`` and ``apply`` could match the wrong placeholder.
+        key = f"{self.context_key}__prop__{self._next_id}__"
+        self._next_id += 1
         self.props[key] = prop
         return key
 
@@ -383,7 +390,7 @@ class NestedComponentPropAccumulator:
 
         For example, given this value::
 
-            "__NestedComponentPropAccumulator__prop__0 Example __NestedComponentPropAccumulator__prop__1 "
+            "__NestedComponentPropAccumulator__prop__0__ Example __NestedComponentPropAccumulator__prop__1__ "
 
         This would be returned (details omitted)::
 
@@ -395,20 +402,25 @@ class NestedComponentPropAccumulator:
         """
         children: list[NestedComponentProp | str] = []
         if self.props:
-            prev_index = 0
-            found_placeholders = set()
+            # Collect each placeholder that appears in ``value`` along with its position so we can
+            # emit children in the order they actually appear in the rendered string (which is not
+            # necessarily the order they were added to ``self.props``).
+            found = []
             for placeholder, prop in self.props.items():
                 index = value.find(placeholder)
                 if index == -1:
                     continue
+                found.append((index, placeholder, prop))
+            found.sort(key=lambda item: item[0])
+
+            prev_index = 0
+            for index, placeholder, prop in found:
                 if index > prev_index:
                     part = value[prev_index:index]
                     if part:
                         children.append(part)
                 children.append(prop)
                 prev_index = index + len(placeholder)
-                found_placeholders.add(placeholder)
-            for placeholder in found_placeholders:
                 self.props.pop(placeholder)
             value = value[prev_index:]
         if value:
