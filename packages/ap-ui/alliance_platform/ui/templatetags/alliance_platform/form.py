@@ -17,6 +17,7 @@ from django.template import TemplateSyntaxError
 from django.template.base import UNKNOWN_SOURCE
 from django.template.base import FilterExpression
 
+from alliance_platform.frontend.renderable_content import RenderableContent
 from alliance_platform.frontend.templatetags.react import ComponentNode
 from alliance_platform.frontend.templatetags.react import NestedComponentProp
 from alliance_platform.frontend.templatetags.react import NestedComponentPropAccumulator
@@ -73,12 +74,14 @@ class FormInputNode(template.Node):
             )
             if help_text:
                 # Help text can be HTML and django docs make it clear this value is not HTML-escaped.
-                try:
-                    # this may return an empty list if the HTML is invalid
-                    help_text = convert_html_string(help_text, self.origin)[0]
-                except IndexError:
+                # RenderableContent keeps the value backend neutral: the React {% component %} path
+                # converts it to nested React elements, static {% ui %} widgets render it directly.
+                original_help_text = help_text
+                help_text = RenderableContent.from_html(help_text, self.origin)
+                if help_text.is_empty():
+                    # parsing ignores invalid HTML, so this can be empty for non-empty input
                     help_text = ""
-                    warnings.warn(f"Bad help text on field, likely invalid HTML: {help_text}")
+                    warnings.warn(f"Bad help text on field, likely invalid HTML: {original_help_text}")
             extra_attrs[field.form.renderer.form_input_context_key] = {
                 "raw_value": field.value(),
                 "extra_widget_props": {
@@ -290,6 +293,16 @@ def form_input(parser: template.base.Parser, token: template.base.Token):
 
         {% component "@alliancesoftware/ui" "TextInput" props=widget.attrs|merge_props:extra_widget_props|html_attr_to_jsx type=widget.type name=widget.name default_value=widget.value %}
         {% endcomponent %}
+
+    or, for static HTML widgets rendered with the ``{% ui %}`` dispatcher::
+
+        {% ui "text_input" props=widget.attrs|merge_props:extra_widget_props type=widget.type name=widget.name defaultValue=widget.value %}{% endui %}
+
+    ``extra_widget_props.description`` contains renderable content generated from ``help_text``.
+    HTML in ``help_text`` is supported for both React and static HTML widgets: it is parsed into a
+    :class:`~alliance_platform.frontend.renderable_content.RenderableContent` value which the React
+    ``{% component %}`` path converts to nested React elements and static ``{% ui %}`` inputs
+    render directly to HTML.
     """
     tag_name = token.split_contents()[0]
     args, kwargs, target_var = parse_tag_arguments(parser, token, supports_as=True)

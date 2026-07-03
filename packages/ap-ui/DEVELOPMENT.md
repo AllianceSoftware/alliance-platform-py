@@ -33,6 +33,19 @@ allowlist (`control_pass_through_props`, plus `data-*`/`aria-*` attributes); any
 and is dropped. Event handler props (`on*`) are always rejected — a string value would otherwise
 render as a live inline event handler, which React never does.
 
+### Rich content props (`RenderableContent`)
+
+`RenderableContent` (in `alliance_platform.frontend.renderable_content`) is the supported way to
+pass rich (HTML) content into static HTML renderers — `{% form_input %}` produces it for
+`help_text`, and the same value works for both React `{% component %}` widgets and static
+`{% ui %}` widgets. Renderers declare which props accept it via `rich_content_props` (currently
+only `description` on inputs; `errorMessage` and labels are deliberately plain escaped text) and
+must render it through `html_components/content.py`'s `render_content()` helper — never `str()`
+or `mark_safe()` on the raw value. `render_content()` escapes text and attribute values, refuses
+event handler attributes (`on*`) with a warning, and statically renders legacy plain-HTML
+`ComponentNode` values during migration (imported React components warn and render nothing — it
+never calls `ComponentNode.render()`, which would enter the React/bundler path).
+
 ### Bulk props (`props=` kwarg)
 
 Like the React `{% component %}` tag, `{% ui %}` accepts a reserved `props` kwarg holding a dict of
@@ -52,7 +65,7 @@ converted to their React equivalents (`maxlength` → `maxLength`, `class` → `
 do not trigger the inline-kwarg alias warnings. Matching `{% component %}`, bulk props take
 precedence over individually passed props, except `className` values which are merged. The merged
 props still pass through the same unsupported-prop filtering as inline kwargs, so non-scalar
-values (e.g. help text converted to React component nodes by `form_input`) warn and are dropped.
+values warn and are dropped unless the prop accepts rich content (see above).
 `merge_props` is registered in both the `react` and `alliance_platform.ui` template tag libraries.
 
 ### Deliberate static-render differences from React
