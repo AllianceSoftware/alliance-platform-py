@@ -14,6 +14,7 @@ from alliance_platform.frontend.bundler.ssr import SSRSerializerContext
 from alliance_platform.frontend.bundler.vanilla_extract import VanillaExtractClassMapping
 from alliance_platform.frontend.bundler.vite import ViteCssEmbed
 from alliance_platform.frontend.html_parser import convert_html_string
+from alliance_platform.frontend.renderable_content import RenderableContent
 from alliance_platform.frontend.templatetags.react import ComponentNode
 from alliance_platform.frontend.templatetags.react import ComponentProps
 from alliance_platform.frontend.templatetags.react import ComponentSourceCodeGenerator
@@ -1148,6 +1149,32 @@ class TestComponentTemplateTagOutput(SimpleTestCase):
             {% component "Input" description=help_text %}{% endcomponent %}""",
             """<Input description={<span>Help</span>} />""",
             help_text=convert_html_string("<span>Help</span>", Origin("UNKNOWN"))[0],
+        )
+
+    def test_renderable_content_as_prop(self):
+        """RenderableContent props should resolve like the equivalent convert_html_string output"""
+        self.assertComponentEqual(
+            """
+            {% component "Input" description=help_text %}{% endcomponent %}""",
+            """<Input description={<span>Help</span>} />""",
+            help_text=RenderableContent.from_html("<span>Help</span>", Origin("UNKNOWN")),
+        )
+
+    def test_renderable_content_mixed_as_prop(self):
+        """Mixed text/element content should preserve text around tags"""
+        self.assertComponentEqual(
+            """
+            {% component "Input" description=help_text %}{% endcomponent %}""",
+            """<Input description={["Use ", <strong>bold</strong>, " text"]} />""",
+            help_text=RenderableContent.from_html("Use <strong>bold</strong> text", Origin("UNKNOWN")),
+        )
+
+    def test_renderable_content_plain_text_as_prop(self):
+        self.assertComponentEqual(
+            """
+            {% component "Input" description=help_text %}{% endcomponent %}""",
+            """<Input description="Just text" />""",
+            help_text=RenderableContent.from_text("Just text"),
         )
 
     def test_void_tags(self):

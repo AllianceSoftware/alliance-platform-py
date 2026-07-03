@@ -62,8 +62,10 @@ from ..bundler.vite import ViteBundler
 from ..html_parser import HtmlAttributeTemplateNodeList
 from ..html_parser import convert_html_string
 from ..html_parser import html_replacement_placeholder_template
+from ..html_parser import renderable_content_to_component_nodes
 from ..prop_handlers import CodeGeneratorNode
 from ..prop_handlers import ComponentProp
+from ..renderable_content import RenderableContent
 from ..settings import ap_frontend_settings
 from ..util import SSRExclusionMarker
 from ..util import transform_attribute_names
@@ -899,6 +901,15 @@ class ComponentNode(template.Node, BundlerAsset):
         to convert values to the new type.
         """
 
+        if isinstance(value, RenderableContent):
+            # Backend-neutral renderable fragments (e.g. form_input help text) convert to the
+            # equivalent nested React elements
+            parts = renderable_content_to_component_nodes(value, self.origin)
+            if not parts:
+                return ""
+            if len(parts) == 1:
+                return self.resolve_prop(parts[0], context)
+            return [self.resolve_prop(part, context) for part in parts]
         # Always handle this first, as ``ComponentNode`` is also a ``Node`` but shouldn't be rendered directly here
         if isinstance(value, ComponentNode):
             return NestedComponentProp(value, self, context)
