@@ -210,7 +210,10 @@ check-html-ui-parity-fixtures js_repo="../alliance-platform-js":
     ./packages/ap-ui/scripts/syncHtmlUiParityFixtures.sh --js-repo "{{js_repo}}"
     git diff --exit-code -- \
         packages/ap-ui/tests/fixtures/ui_html_button_parity.json \
-        packages/ap-ui/tests/fixtures/ui_html_button_group_parity.json
+        packages/ap-ui/tests/fixtures/ui_html_button_group_parity.json \
+        packages/ap-ui/tests/fixtures/ui_html_text_input_parity.json \
+        packages/ap-ui/tests/fixtures/ui_html_number_input_parity.json \
+        packages/ap-ui/tests/fixtures/ui_html_text_area_parity.json
 
 # Build docs and watch for changes
 docs-watch:
