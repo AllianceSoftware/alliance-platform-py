@@ -33,6 +33,28 @@ allowlist (`control_pass_through_props`, plus `data-*`/`aria-*` attributes); any
 and is dropped. Event handler props (`on*`) are always rejected — a string value would otherwise
 render as a live inline event handler, which React never does.
 
+### Bulk props (`props=` kwarg)
+
+Like the React `{% component %}` tag, `{% ui %}` accepts a reserved `props` kwarg holding a dict of
+props to apply in bulk. This exists for dynamic attribute dicts that cannot be enumerated in the
+template, e.g. Django form widget templates:
+
+```django
+{% load alliance_platform.ui %}
+
+{% ui "text_input" props=widget.attrs|merge_props:extra_widget_props type=widget.type name=widget.name defaultValue=widget.value %}{% endui %}
+```
+
+Bulk prop keys are adapted to the component prop contract automatically: HTML attribute names are
+converted to their React equivalents (`maxlength` → `maxLength`, `class` → `className` — no
+`|html_attr_to_jsx` filter needed), and boolean state attributes to their react-aria props
+(`disabled` → `isDisabled`, `required` → `isRequired`, `readonly` → `isReadOnly`) so widget attrs
+do not trigger the inline-kwarg alias warnings. Matching `{% component %}`, bulk props take
+precedence over individually passed props, except `className` values which are merged. The merged
+props still pass through the same unsupported-prop filtering as inline kwargs, so non-scalar
+values (e.g. help text converted to React component nodes by `form_input`) warn and are dropped.
+`merge_props` is registered in both the `react` and `alliance_platform.ui` template tag libraries.
+
 ### Deliberate static-render differences from React
 
 These are normalized away by the fixture generator (`generateHtmlUiParityFixtures.mjs`) and/or are
