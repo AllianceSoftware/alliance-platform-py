@@ -35,6 +35,15 @@ _REACT_ATTR_TO_HTML_ATTR = {
     "formNoValidate": "formnovalidate",
     "formTarget": "formtarget",
     "tabIndex": "tabindex",
+    "readOnly": "readonly",
+    "autoComplete": "autocomplete",
+    "autoCapitalize": "autocapitalize",
+    "autoCorrect": "autocorrect",
+    "autoFocus": "autofocus",
+    "spellCheck": "spellcheck",
+    "inputMode": "inputmode",
+    "maxLength": "maxlength",
+    "minLength": "minlength",
 }
 
 _CAMEL_CASE_SPLIT_RE = re.compile(r"([a-z0-9])([A-Z])")
@@ -182,6 +191,44 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
             return str(value)
         warnings.warn(f"Invalid '{prop_name}' prop passed: {value}")
         return default_value
+
+    def validate_optional_enum_prop(
+        self,
+        props: dict[str, Any],
+        *,
+        prop_name: str,
+        valid_values: tuple[str, ...],
+    ) -> str | None:
+        """Like :meth:`validate_enum_prop` but for props that are omitted entirely when unset or invalid."""
+        value = props.get(prop_name)
+        if value is None:
+            return None
+        if value in valid_values:
+            return str(value)
+        warnings.warn(f"Invalid '{prop_name}' prop passed: {value}")
+        return None
+
+    def get_recipe_classes(self, mapping: Any, key: str, selections: dict[str, str]) -> list[str]:
+        """Resolve classes for a vanilla-extract recipe export.
+
+        Recipes are serialized by ``@alliancesoftware/vite-plugin-django-vanilla-extract`` as
+        ``{"base": <class>, "variants": {<group>: {<value>: <class>}}}``. Returns the base class
+        followed by the class for each selected variant, skipping anything unresolved.
+        """
+        recipe = getattr(mapping, key, None)
+        if recipe is None or not (isinstance(recipe, dict) or hasattr(recipe, "get")):
+            return []
+        classes: list[str] = []
+        base_class = recipe.get("base", "")
+        if isinstance(base_class, str) and base_class:
+            classes.append(base_class)
+        variants = recipe.get("variants", {})
+        for group, value in selections.items():
+            group_mapping = variants.get(group, {}) if isinstance(variants, dict) else {}
+            variant_class = group_mapping.get(value, "") if isinstance(group_mapping, dict) else ""
+            if isinstance(variant_class, str) and variant_class:
+                classes.append(variant_class)
+        return classes
 
     def build_attrs_string(self, attrs: dict[str, Any]) -> str:
         rendered_attrs: list[str] = []
