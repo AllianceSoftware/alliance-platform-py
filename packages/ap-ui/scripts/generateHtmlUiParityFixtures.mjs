@@ -12,7 +12,13 @@ const __dirname = path.dirname(__filename);
 const CASE_MODULES = [
     './parity_cases/button.mjs',
     './parity_cases/button_group.mjs',
+    './parity_cases/text_input.mjs',
+    './parity_cases/number_input.mjs',
+    './parity_cases/text_area.mjs',
 ];
+
+const BUTTON_COMPONENTS = new Set(['button', 'button_group']);
+const INPUT_COMPONENTS = new Set(['text_input', 'number_input', 'text_area']);
 
 const require = createRequire(import.meta.url);
 const GENERATED_AT_ENV_VAR = 'AP_UI_PARITY_GENERATED_AT_UTC';
@@ -133,6 +139,20 @@ async function loadParityComponents(component) {
         components = {
             Button: await importDefault(path.join(uiPackageDir, 'components/button/Button.tsx')),
             ButtonGroup: await importDefault(path.join(uiPackageDir, 'components/button/ButtonGroup.tsx')),
+        };
+    } else if (component === 'text_input') {
+        components = {
+            TextInput: await importDefault(path.join(uiPackageDir, 'components/text-input/TextInput.tsx')),
+        };
+    } else if (component === 'text_area') {
+        components = {
+            TextArea: await importDefault(path.join(uiPackageDir, 'components/text-input/TextArea.tsx')),
+        };
+    } else if (component === 'number_input') {
+        components = {
+            NumberInput: await importDefault(
+                path.join(uiPackageDir, 'components/number-input/NumberInput.tsx')
+            ),
         };
     } else {
         throw new Error(`Unsupported parity component runtime: ${component}`);
@@ -265,7 +285,7 @@ function buildAttributesString(attrs, orderedKeys = []) {
     return parts.join('');
 }
 
-function normalizeClassTokens(classValue, allowedPrefixes) {
+function normalizeClassTokens(classValue, allowedPrefixes, keepClassTokens) {
     const normalized = [];
     for (const originalToken of tokenizeClasses(classValue)) {
         const hashIndex = originalToken.lastIndexOf('__');
@@ -288,6 +308,9 @@ function normalizeClassTokens(classValue, allowedPrefixes) {
 
     const deduped = dedupeTokens(normalized);
     return deduped.filter(token => {
+        if (keepClassTokens.has(token)) {
+            return true;
+        }
         const hasChildToken = deduped.some(other => other !== token && other.startsWith(`${token}_`));
         if (hasChildToken) {
             return false;
@@ -303,7 +326,85 @@ function normalizeClassTokens(classValue, allowedPrefixes) {
     });
 }
 
-function normalizeDomAttributes(html, testCase, allowedPrefixes) {
+// React 18's server renderer emits some known camelCase DOM props verbatim (browsers treat
+// attribute names case-insensitively). Lowercase them so fixtures match the HTML the Python
+// renderer produces.
+const CAMEL_CASE_ATTR_RE = /\s(autoComplete|inputMode|autoCorrect|autoCapitalize|spellCheck)=/g;
+const REACT_ARIA_ID_RE = /react-aria-[^"'\s]+/g;
+
+/**
+ * Normalize react-aria generated ids into the deterministic ids the Python renderer emits.
+ *
+ * - `aria-labelledby` entries pointing at react-aria label ids are removed: the static renderer
+ *   relies on the native `<label for>` association instead.
+ * - `aria-describedby` entries pointing at react-aria ids that do not exist in the document are
+ *   removed (react-aria reserves description/error slot ids during SSR even when nothing renders).
+ *   Caller-supplied ids are always preserved.
+ * - Remaining unreferenced react-aria element ids are dropped; the Python renderer only generates
+ *   ids something else points at.
+ * - Surviving react-aria ids are remapped, in order of first appearance, to the Python scheme
+ *   `apui-<component>-<n>`.
+ */
+function normalizeReactAriaIds(html, component) {
+    let normalized = html;
+    normalized = normalized.replace(/\saria-labelledby="([^"]*)"/g, (_match, value) => {
+        const tokens = value.split(/\s+/).filter(token => token && !token.startsWith('react-aria-'));
+        return tokens.length ? ` aria-labelledby="${tokens.join(' ')}"` : '';
+    });
+
+    const presentIds = new Set();
+    for (const match of normalized.matchAll(/\sid="(react-aria-[^"]*)"/g)) {
+        presentIds.add(match[1]);
+    }
+    normalized = normalized.replace(/\saria-describedby="([^"]*)"/g, (_match, value) => {
+        const tokens = value
+            .split(/\s+/)
+            .filter(token => token && (!token.startsWith('react-aria-') || presentIds.has(token)));
+        return tokens.length ? ` aria-describedby="${tokens.join(' ')}"` : '';
+    });
+
+    const referencedIds = new Set();
+    for (const match of normalized.matchAll(
+        /\s(?:for|aria-controls|aria-errormessage)="(react-aria-[^"]*)"/g
+    )) {
+        referencedIds.add(match[1]);
+    }
+    for (const match of normalized.matchAll(/\saria-describedby="([^"]*)"/g)) {
+        for (const token of match[1].split(/\s+/)) {
+            if (token.startsWith('react-aria-')) {
+                referencedIds.add(token);
+            }
+        }
+    }
+    normalized = normalized.replace(/\sid="(react-aria-[^"]*)"/g, (match, idValue) =>
+        referencedIds.has(idValue) ? match : ''
+    );
+
+    const idMap = new Map();
+    const idPrefix = `apui-${component.replaceAll('_', '-')}-`;
+    normalized = normalized.replace(REACT_ARIA_ID_RE, token => {
+        if (!idMap.has(token)) {
+            idMap.set(token, `${idPrefix}${idMap.size + 1}`);
+        }
+        return idMap.get(token);
+    });
+    return normalized;
+}
+
+function normalizeInputComponentHtml(html, component) {
+    let normalized = html;
+    normalized = normalized.replace(CAMEL_CASE_ATTR_RE, (_match, name) => ` ${name.toLowerCase()}=`);
+    normalized = normalizeReactAriaIds(normalized, component);
+    // React emits style declarations without spacing (`height:120px`); the Python renderer emits
+    // `height: 120px`. Normalize to the Python format.
+    normalized = normalized.replace(/\sstyle="([^"]*)"/g, (_match, value) => {
+        const styleValue = value.replace(/:\s*/g, ': ').replace(/;\s*/g, '; ').trim();
+        return ` style="${styleValue}"`;
+    });
+    return normalized;
+}
+
+function normalizeDomAttributes(html, component, testCase, allowedPrefixes, keepClassTokens) {
     if (!html.trim()) {
         return '';
     }
@@ -311,12 +412,17 @@ function normalizeDomAttributes(html, testCase, allowedPrefixes) {
     let normalized = html;
     normalized = normalized.replace(/\sdata-react-aria-pressable="true"/g, '');
     normalized = normalized.replace(/\stabindex="0"/g, '');
-    normalized = normalized.replace(/\stype="button"/g, '');
-    if (!testCase.template.includes('data-apui-slot="icon"')) {
-        normalized = normalized.replace(/\sdata-icon-only="true"/g, '');
+    if (BUTTON_COMPONENTS.has(component)) {
+        normalized = normalized.replace(/\stype="button"/g, '');
+        if (!testCase.template.includes('data-apui-slot="icon"')) {
+            normalized = normalized.replace(/\sdata-icon-only="true"/g, '');
+        }
+    }
+    if (INPUT_COMPONENTS.has(component)) {
+        normalized = normalizeInputComponentHtml(normalized, component);
     }
     normalized = normalized.replace(/\sclass="([^"]*)"/g, (_match, classValue) => {
-        const classTokens = normalizeClassTokens(classValue, allowedPrefixes);
+        const classTokens = normalizeClassTokens(classValue, allowedPrefixes, keepClassTokens);
         return classTokens.length ? ` class="${classTokens.join(' ')}"` : '';
     });
     return normalized;
@@ -339,8 +445,8 @@ function injectButtonGroupRuntime(html) {
     return `${rootHtml}${scriptHtml}`;
 }
 
-function normalizeRenderedHtml(component, testCase, html, allowedPrefixes) {
-    const normalized = normalizeDomAttributes(html, testCase, allowedPrefixes);
+function normalizeRenderedHtml(component, testCase, html, allowedPrefixes, keepClassTokens) {
+    const normalized = normalizeDomAttributes(html, component, testCase, allowedPrefixes, keepClassTokens);
     if (component === 'button_group' && normalized) {
         return injectButtonGroupRuntime(normalized);
     }
@@ -349,8 +455,14 @@ function normalizeRenderedHtml(component, testCase, html, allowedPrefixes) {
 
 async function generateFixtureFromModule(modulePath, runtime) {
     const caseModule = await import(new URL(modulePath, import.meta.url));
-    const { component, cases, class_prefixes: classPrefixes = [] } = caseModule;
+    const {
+        component,
+        cases,
+        class_prefixes: classPrefixes = [],
+        keep_class_tokens: keepClassTokensList = [],
+    } = caseModule;
     const allowedPrefixes = new Set(classPrefixes);
+    const keepClassTokens = new Set(keepClassTokensList);
     const parityComponents = await loadParityComponents(component);
 
     if (!component || !Array.isArray(cases)) {
@@ -367,7 +479,13 @@ async function generateFixtureFromModule(modulePath, runtime) {
                 })
             )
         );
-        const normalizedHtml = normalizeRenderedHtml(component, testCase, html, allowedPrefixes);
+        const normalizedHtml = normalizeRenderedHtml(
+            component,
+            testCase,
+            html,
+            allowedPrefixes,
+            keepClassTokens
+        );
         serializedCases.push({
             name: testCase.name,
             template: testCase.template,
