@@ -282,6 +282,71 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         )
         self.assertIn('<button type="button" disabled', output)
 
+    def test_bulk_props_accept_html_attribute_names(self):
+        # Simulates a Django form widget template passing `props=widget.attrs`
+        output, caught = self.render_with_warnings(
+            '{% ui "text_input" props=attrs name="email" %}{% endui %}',
+            {
+                "attrs": {
+                    "id": "id_email",
+                    "maxlength": "100",
+                    "class": "widget-class",
+                    "required": True,
+                    "readonly": True,
+                    "autofocus": True,
+                    "aria-describedby": "external-help",
+                    "label": "Email",
+                }
+            },
+        )
+        self.assertEqual(caught, [])
+        self.assertIn('id="id_email"', output)
+        self.assertIn('for="id_email"', output)
+        self.assertIn('maxlength="100"', output)
+        self.assertIn("LabeledInput_labeledInput_labelPosition_top widget-class", output)
+        self.assertIn('aria-required="true"', output)
+        self.assertIn('data-required="true"', output)
+        self.assertIn(" readonly", output)
+        self.assertIn('data-readonly="true"', output)
+        self.assertIn(" autofocus", output)
+        self.assertIn('aria-describedby="external-help"', output)
+
+    def test_bulk_props_disabled_does_not_warn(self):
+        # widget.attrs expresses disabled state with the HTML attribute name; unlike an inline
+        # disabled= kwarg this should not trigger the isDisabled alias warning
+        output, caught = self.render_with_warnings(
+            '{% ui "text_input" label="Email" props=attrs %}{% endui %}',
+            {"attrs": {"disabled": True}},
+        )
+        self.assertEqual(caught, [])
+        self.assertIn('data-disabled="true"', output)
+        self.assertIn(" disabled", output)
+
+    def test_bulk_props_take_precedence_except_class_names_merge(self):
+        output, _ = self.render_with_warnings(
+            '{% ui "text_input" label="Inline label" className="inline-class" props=attrs %}{% endui %}',
+            {"attrs": {"label": "Dict label", "class": "dict-class"}},
+        )
+        self.assertIn("Dict label", output)
+        self.assertNotIn("Inline label", output)
+        self.assertIn("inline-class dict-class", output)
+
+    def test_bulk_props_non_dict_warns_and_is_ignored(self):
+        output, caught = self.render_with_warnings(
+            '{% ui "text_input" label="Email" props="not-a-dict" %}{% endui %}'
+        )
+        self.assertTrue(any(message.startswith("'props' must be a dict of props") for message in caught))
+        self.assertIn("Email", output)
+
+    def test_merge_props_filter_is_available_from_ui_library(self):
+        output, caught = self.render_with_warnings(
+            '{% ui "text_input" props=attrs|merge_props:extra %}{% endui %}',
+            {"attrs": {"id": "id_field"}, "extra": {"label": "Merged label"}},
+        )
+        self.assertEqual(caught, [])
+        self.assertIn("Merged label", output)
+        self.assertIn('id="id_field"', output)
+
     def test_none_valued_props_are_treated_as_unset(self):
         output, caught = self.render_with_warnings(
             '{% ui "text_input" label="Email" placeholder=missing_value labelAlign=missing_value %}{% endui %}',

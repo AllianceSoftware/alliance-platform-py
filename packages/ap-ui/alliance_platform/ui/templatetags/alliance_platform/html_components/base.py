@@ -21,7 +21,9 @@ from alliance_platform.frontend.bundler.context import BundlerAsset
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from alliance_platform.frontend.bundler.vanilla_extract import resolve_vanilla_extract_class_mapping
 from alliance_platform.frontend.templatetags.react import DeferredProp
+from alliance_platform.frontend.util import transform_attribute_names
 
+from .constants import BULK_PROPS_KWARG
 from .slots import get_slot_context
 from .slots import merge_slot_props
 from .slots import push_slot_scope
@@ -47,6 +49,16 @@ _REACT_ATTR_TO_HTML_ATTR = {
 }
 
 _CAMEL_CASE_SPLIT_RE = re.compile(r"([a-z0-9])([A-Z])")
+
+# Extra key adaptations applied to bulk ``props`` dicts (after the standard HTML -> React attribute
+# name conversion). Bulk props typically come from HTML attribute dicts such as Django's
+# ``widget.attrs``, where boolean state is expressed with the plain HTML attribute names rather
+# than the react-aria style props the components accept.
+_BULK_PROP_STATE_ALIASES = {
+    "disabled": "isDisabled",
+    "required": "isRequired",
+    "readOnly": "isReadOnly",
+}
 
 
 class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
@@ -101,7 +113,11 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
 
     def resolve_props(self, context: Context) -> dict[str, Any]:
         resolved_props: dict[str, Any] = {}
+        bulk_props: Any = None
         for key, value in self.props.items():
+            if key == BULK_PROPS_KWARG:
+                bulk_props = self.resolve_prop_value(context, value)
+                continue
             normalized_key = self._normalize_prop_key(key)
             resolved_value = self.resolve_prop_value(context, value)
             if normalized_key == "className" and normalized_key in resolved_props:
@@ -112,7 +128,43 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
                 )
                 continue
             resolved_props[normalized_key] = resolved_value
-        return resolved_props
+        return self._merge_bulk_props(resolved_props, bulk_props)
+
+    def _merge_bulk_props(self, resolved_props: dict[str, Any], bulk_props: Any) -> dict[str, Any]:
+        """Merge a dict passed via the ``props`` kwarg into the individually passed props.
+
+        This supports passing dynamic attribute dicts, e.g. Django's ``widget.attrs`` in form widget
+        templates. Keys are adapted to the component prop contract: HTML attribute names are
+        converted to their React equivalents (``maxlength`` -> ``maxLength``, ``class`` ->
+        ``className``), boolean state attributes to their react-aria props (``disabled`` ->
+        ``isDisabled``), and the usual template prop normalization is applied.
+
+        Matching the ``{% component %}`` tag, bulk props take precedence over individually passed
+        props, except ``className`` values which are merged.
+        """
+        if bulk_props is None:
+            return resolved_props
+        if not isinstance(bulk_props, dict):
+            warnings.warn(
+                f"'{BULK_PROPS_KWARG}' must be a dict of props; "
+                f"received {type(bulk_props).__name__} which will be ignored"
+            )
+            return resolved_props
+        merged = dict(resolved_props)
+        for key, value in transform_attribute_names(bulk_props).items():
+            if not isinstance(key, str):
+                warnings.warn(f"Ignoring non-string key in '{BULK_PROPS_KWARG}': {key!r}")
+                continue
+            normalized_key = self._normalize_prop_key(key)
+            normalized_key = _BULK_PROP_STATE_ALIASES.get(normalized_key, normalized_key)
+            if normalized_key == "className" and merged.get(normalized_key):
+                merged[normalized_key] = self.join_classes(
+                    str(merged[normalized_key]),
+                    str(value) if value else None,
+                )
+                continue
+            merged[normalized_key] = value
+        return merged
 
     def resolve_prop_value(self, context: Context, value: Any) -> Any:
         if isinstance(value, FilterExpression):
