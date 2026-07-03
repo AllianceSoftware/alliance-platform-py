@@ -28,6 +28,11 @@ Generated element ids use a deterministic `apui-<component>-<n>` scheme where th
 within a template render (stored in `context.render_context`). The fixture generator remaps the
 react-aria generated ids to the same scheme so fixtures stay deterministic.
 
+Props that are not consumed by the renderer only reach the control element through an explicit
+allowlist (`control_pass_through_props`, plus `data-*`/`aria-*` attributes); anything else warns
+and is dropped. Event handler props (`on*`) are always rejected — a string value would otherwise
+render as a live inline event handler, which React never does.
+
 ### Deliberate static-render differences from React
 
 These are normalized away by the fixture generator (`generateHtmlUiParityFixtures.mjs`) and/or are
