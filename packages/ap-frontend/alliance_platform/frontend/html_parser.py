@@ -7,6 +7,11 @@ from typing import Any
 from typing import Union
 import warnings
 
+from alliance_platform.frontend.renderable_content import RenderableContent
+from alliance_platform.frontend.renderable_content import RenderableElement
+from alliance_platform.frontend.renderable_content import RenderablePart
+from alliance_platform.frontend.renderable_content import RenderableTemplateNode
+from alliance_platform.frontend.renderable_content import RenderableText
 from alliance_platform.frontend.util import transform_attribute_names
 from django.template import Context
 from django.template import Node
@@ -160,32 +165,33 @@ ELEMENT_ATTRIBUTE_MAPPING = {
 }
 
 
-def convert_html_string(
+def convert_html_to_renderable_content(
     html: StrOrPromise, origin: Origin, *, replacements: dict[str, Node] | None = None
-) -> list[Union["ComponentNode", str]]:
+) -> RenderableContent:
     """
-    Given a string that may contain HTML, convert it to a tree of ``ComponentNode``s
+    Parse a trusted HTML fragment into a backend-neutral :class:`RenderableContent` tree.
 
-    Note that invalid HTML is ignored, so it's possible an empty list will be returned even with a non-empty input.
+    Attribute names are kept as HTML names (``class``, ``for``); React-specific naming is applied
+    by :func:`renderable_content_to_component_nodes`. Invalid attribute names are dropped with a
+    warning, and valueless boolean attributes resolve to ``True``.
+
+    Note that invalid HTML is ignored, so it's possible empty content will be returned even with a
+    non-empty input.
 
     Args:
         html: The html string to convert
         origin: The template origin
         replacements: Any replacements to make in the HTML after conversion. The way this works is that a template NodeList
             is processed into a string, with any template nodes replaced with placeholders. The string is converted to
-            a component tree, then any placeholders are replaced with the original template nodes.
-    Returns:
-
+            a content tree, then any placeholders are replaced with the original template nodes.
     """
     # NOTE: I tried lxml initially (with & without BeautifulSoup), and it was slower for our specific use case.
     # In general, it's considered very fast, but we don't need most of its features and this simple parser was
     # faster.
     parser = HtmlTreeParser()
-    html = str(html)
+    source_html = str(html)
     # Parse the HTML
-    parser.feed(html)
-
-    tags = parser.root.children
+    parser.feed(source_html)
 
     def handle_placeholders(content: str):
         if not replacements:
@@ -205,59 +211,116 @@ def convert_html_string(
         return children
 
     def convert_attributes(tag: str, attrs: dict[str, str | Any]):
-        html_attribute_template_nodes = []
+        attribute_template_nodes: list[Node | str] = []
         transformed = {}
         for key, value in attrs.items():
             if not value:
-                html_attribute_template_nodes += handle_placeholders(key)
+                # Valueless attributes may be template-node placeholders; defer them (along with
+                # plain boolean attributes) to be re-parsed at render time
+                attribute_template_nodes += handle_placeholders(key)
             else:
                 parts = handle_placeholders(value)
                 transformed[key] = parts[0] if len(parts) == 1 else NodeList(parts)
-        return transform_html_attributes(tag, transformed, html, origin), html_attribute_template_nodes
+        return (
+            clean_html_attributes(transformed, source_html, origin),
+            tuple(attribute_template_nodes),
+        )
 
-    def convert_tree(tree):
-        from alliance_platform.frontend.templatetags.react import CommonComponentSource
-        from alliance_platform.frontend.templatetags.react import ComponentNode
-
-        children = []
+    def convert_tree(tree) -> tuple[RenderablePart, ...]:
+        parts: list[RenderablePart] = []
         for el in tree:
             if isinstance(el, str):
-                parts = handle_placeholders(el)
-                children += parts
+                for part in handle_placeholders(el):
+                    if isinstance(part, str):
+                        parts.append(RenderableText(part))
+                    else:
+                        parts.append(RenderableTemplateNode(part))
             else:
-                attrs, html_attribute_template_nodes = convert_attributes(el.tag, el.attributes)
+                attrs, attribute_template_nodes = convert_attributes(el.tag, el.attributes)
+                parts.append(
+                    RenderableElement(
+                        tag=el.tag,
+                        attrs=attrs,
+                        children=RenderableContent(convert_tree(el.children), source_html=source_html),
+                        attribute_template_nodes=attribute_template_nodes,
+                    )
+                )
+        return tuple(parts)
+
+    return RenderableContent(convert_tree(parser.root.children), source_html=source_html)
+
+
+def renderable_content_to_component_nodes(
+    content: RenderableContent, origin: Origin
+) -> list[Union["ComponentNode", str]]:
+    """Convert :class:`RenderableContent` into the React ``ComponentNode`` representation.
+
+    This is where React-specific attribute handling is applied (``class`` -> ``className``,
+    ``<input value>`` -> ``defaultValue`` etc).
+    """
+    from alliance_platform.frontend.templatetags.react import CommonComponentSource
+    from alliance_platform.frontend.templatetags.react import ComponentNode
+
+    source_html = content.source_html
+
+    def convert(parts: tuple[RenderablePart, ...]) -> list[Union["ComponentNode", str, Node]]:
+        children: list[ComponentNode | str | Node] = []
+        for part in parts:
+            if isinstance(part, RenderableText):
+                children.append(part.value)
+            elif isinstance(part, RenderableTemplateNode):
+                children.append(part.node)
+            else:
+                attrs = react_transform_html_attributes(part.tag, dict(part.attrs))
                 children.append(
                     ComponentNode(
                         origin,
-                        CommonComponentSource(el.tag),
-                        {**attrs, "children": convert_tree(el.children)},
+                        CommonComponentSource(part.tag),
+                        {**attrs, "children": convert(part.children.parts)},
                         html_attribute_template_nodes=HtmlAttributeTemplateNodeList(
-                            html_attribute_template_nodes, html, origin
+                            list(part.attribute_template_nodes), source_html, origin
                         ),
                     )
                 )
         return children
 
-    return convert_tree(tags)
+    # Node values only appear from template placeholders, which the ComponentNode children
+    # handling supports; the declared return type matches the historical convert_html_string API.
+    return convert(content.parts)  # type: ignore[return-value]
 
 
-def transform_html_attributes(
-    tag: str, attrs: dict[str, str | NodeList | Node], original_html: str, origin: Origin
-):
-    """Transform the attributes of an HTML tag into the final form we want
+def convert_html_string(
+    html: StrOrPromise, origin: Origin, *, replacements: dict[str, Node] | None = None
+) -> list[Union["ComponentNode", str]]:
+    """
+    Given a string that may contain HTML, convert it to a tree of ``ComponentNode``s
 
-    This does the following:
+    Note that invalid HTML is ignored, so it's possible an empty list will be returned even with a non-empty input.
+
+    Args:
+        html: The html string to convert
+        origin: The template origin
+        replacements: Any replacements to make in the HTML after conversion. The way this works is that a template NodeList
+            is processed into a string, with any template nodes replaced with placeholders. The string is converted to
+            a component tree, then any placeholders are replaced with the original template nodes.
+    Returns:
+
+    """
+    content = convert_html_to_renderable_content(html, origin, replacements=replacements)
+    return renderable_content_to_component_nodes(content, origin)
+
+
+def clean_html_attributes(
+    attrs: dict[str, str | NodeList | Node | None], original_html: str, origin: Origin
+) -> dict[str, Any]:
+    """Clean parsed HTML attributes without applying any backend-specific naming.
+
     - If any ``value`` is ``None``, set it to ``True`` if it's a boolean html attribute otherwise empty string
     - If any key is invalid, remove it and warn
-    - Transform the attribute names to match what React expects
     """
-
     bad_keys: list[str] = []
-    final_attrs = {}
-    element_mapping = ELEMENT_ATTRIBUTE_MAPPING.get(tag, {})
+    final_attrs: dict[str, Any] = {}
     for key, value in attrs.items():
-        if key in element_mapping:
-            key = element_mapping[key]
         if not is_valid_html_attribute_name(key):
             bad_keys.append(key)
         elif value is None:
@@ -269,4 +332,24 @@ def transform_html_attributes(
         warnings.warn(
             f"{origin} contained invalid HTML in '{original_html}'. The following parts were removed from tag: {', '.join(bad_keys)}"
         )
-    return transform_attribute_names(final_attrs)
+    return final_attrs
+
+
+def react_transform_html_attributes(tag: str, attrs: dict[str, Any]) -> dict[str, Any]:
+    """Apply React-specific attribute naming to cleaned HTML attributes."""
+    element_mapping = ELEMENT_ATTRIBUTE_MAPPING.get(tag, {})
+    transformed = {element_mapping.get(key, key): value for key, value in attrs.items()}
+    return transform_attribute_names(transformed)
+
+
+def transform_html_attributes(
+    tag: str, attrs: dict[str, str | NodeList | Node | None], original_html: str, origin: Origin
+):
+    """Transform the attributes of an HTML tag into the final form we want
+
+    This does the following:
+    - If any ``value`` is ``None``, set it to ``True`` if it's a boolean html attribute otherwise empty string
+    - If any key is invalid, remove it and warn
+    - Transform the attribute names to match what React expects
+    """
+    return react_transform_html_attributes(tag, clean_html_attributes(attrs, original_html, origin))
