@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from dataclasses import field
 from typing import TYPE_CHECKING
 from typing import Any
 import warnings
@@ -102,7 +101,6 @@ class LabeledInputState:
     error_id: str | None = None
     #: full aria-describedby value for the control (generated ids plus any caller supplied value)
     described_by: str | None = None
-    extra_control_attrs: dict[str, Any] = field(default_factory=dict)
 
     @property
     def error_rendered(self) -> bool:
@@ -446,7 +444,7 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
                 warnings.warn(f"Prop '{key}' is not supported by HTML ui components and will be ignored")
                 continue
             if key == "style":
-                if not (value is None or isinstance(value, (str, dict))):
+                if not isinstance(value, (str, dict)):
                     warnings.warn("Prop 'style' must be a string or dict; it will be ignored")
                     continue
             elif not _is_scalar_prop_value(value) and not self.allow_non_scalar_prop(key, value):
