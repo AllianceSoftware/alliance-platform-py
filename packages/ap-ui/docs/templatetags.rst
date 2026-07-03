@@ -414,7 +414,12 @@ This tag set's two extra template variables to be used by the widget template:
   as defined on ``field.errors``.
 - ``validationState`` - ``"invalid"`` where there is an error, otherwise ``"valid"`` depending on the value of ``show_valid_state`` option
 - ``is_required`` - whether the field is required. This is based on the ``required`` attribute on the form field unless overridden with the ``is_required`` option to this tag.
-- ``description`` - the help text for the field. You can explicitly specify this with the ``help_text`` option, otherwise the ``field.help_text`` value will be used.
+- ``description`` - renderable content generated from the help text for the field. You can explicitly specify this with
+  the ``help_text`` option, otherwise the ``field.help_text`` value will be used. Plain text help is passed through as a
+  string; help text containing HTML becomes a ``RenderableContent`` value
+  (``alliance_platform.frontend.renderable_content``) which both the React ``{% component %}`` path and static
+  ``{% ui %}`` input widgets know how to render. Widget templates should pass it through as a prop rather than
+  outputting it directly.
 - ``autoFocus`` - whether the field should be focused on page load. This is set based on the ``auto_focus`` option to the parent ``form`` tag.
 
 The following options can be passed to the tag to override defaults:
@@ -443,12 +448,22 @@ can also pass react components to the tag:
     {% form_input field addonBefore=search_icon %}
 
 The additional props are added to the key ``extra_widget_props`` - so the relevant widget template needs to include
-this for the props to be passed through:
+this for the props to be passed through. For a React component widget:
 
 .. code-block:: html+django
 
     {% component "@alliancesoftware/ui" "TextInput" props=widget.attrs|merge_props:extra_widget_props|html_attr_to_jsx type=widget.type name=widget.name default_value=widget.value %}
     {% endcomponent %}
+
+or for a static HTML widget rendered with the ``{% ui %}`` dispatcher (which converts HTML attribute names itself,
+so ``html_attr_to_jsx`` is not needed):
+
+.. code-block:: html+django
+
+    {% ui "text_input" props=widget.attrs|merge_props:extra_widget_props type=widget.type name=widget.name defaultValue=widget.value %}{% endui %}
+
+HTML in ``help_text`` is supported by both widget styles - the React path receives it as nested React elements while
+static ``{% ui %}`` inputs render it directly as HTML (dropping any inline event handler attributes).
 
 .. note::
 
