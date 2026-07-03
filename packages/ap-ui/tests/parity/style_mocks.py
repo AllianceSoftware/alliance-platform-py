@@ -44,6 +44,22 @@ DEFAULT_STYLE_MAPPINGS: dict[str, dict[str, Any]] = {
             "vertical": "SmartOrientation_containerBase",
         },
     },
+    "LabeledInput.css.ts": {
+        # Mirrors the recipe structure serialized by @alliancesoftware/vite-plugin-django-vanilla-extract
+        "labeledInput": {
+            "base": "LabeledInput_labeledInput",
+            "variants": {
+                "inputSize": {
+                    "sm": "LabeledInput_labeledInput_inputSize_sm",
+                    "md": "LabeledInput_labeledInput_inputSize_md",
+                },
+                "labelPosition": {
+                    "top": "LabeledInput_labeledInput_labelPosition_top",
+                    "side": "LabeledInput_labeledInput_labelPosition_side",
+                },
+            },
+        },
+    },
 }
 
 

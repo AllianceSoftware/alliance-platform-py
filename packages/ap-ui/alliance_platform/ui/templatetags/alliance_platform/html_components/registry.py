@@ -47,6 +47,12 @@ built_in_registry = HtmlUIComponentRegistry()
 # Keep the default built-ins close to registry construction so parsing validation can rely on them.
 from .components.button import UIButtonRenderer  # noqa: E402
 from .components.button_group import UIButtonGroupRenderer  # noqa: E402
+from .components.input import UINumberInputRenderer  # noqa: E402
+from .components.input import UITextAreaRenderer  # noqa: E402
+from .components.input import UITextInputRenderer  # noqa: E402
 
 built_in_registry.register_renderer("button", UIButtonRenderer)
 built_in_registry.register_renderer("button_group", UIButtonGroupRenderer)
+built_in_registry.register_renderer("text_input", UITextInputRenderer)
+built_in_registry.register_renderer("number_input", UINumberInputRenderer)
+built_in_registry.register_renderer("text_area", UITextAreaRenderer)
