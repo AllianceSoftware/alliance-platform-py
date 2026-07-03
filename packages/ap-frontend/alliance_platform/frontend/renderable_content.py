@@ -106,6 +106,22 @@ class RenderableContent:
     def is_empty(self) -> bool:
         return not self.parts
 
+    def as_plain_text(self) -> str | None:
+        """Return the plain text value when the content contains only text parts.
+
+        Returns ``None`` when the content is empty or contains elements/template nodes. Useful for
+        producers that want to keep plain-text values as ordinary strings and only pass
+        ``RenderableContent`` through for genuinely rich content.
+        """
+        texts: list[str] = []
+        for part in self.parts:
+            if not isinstance(part, RenderableText):
+                return None
+            texts.append(part.value)
+        if not texts:
+            return None
+        return "".join(texts)
+
 
 def is_renderable_content(value: Any) -> TypeGuard[RenderableContent]:
     return isinstance(value, RenderableContent)

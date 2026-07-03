@@ -130,6 +130,12 @@ class UIHelpTextWidget(forms.TextInput):
     template_name = "test_widgets/ui_text_input.html"
 
 
+class RawDescriptionWidget(forms.TextInput):
+    """Widget template that outputs ``extra_widget_props.description`` directly."""
+
+    template_name = "test_widgets/raw_description.html"
+
+
 class HelpTextForm(forms.Form):
     email = forms.EmailField(
         label="Email",
@@ -138,6 +144,9 @@ class HelpTextForm(forms.Form):
     )
     plain = forms.CharField(
         label="Plain", help_text="No markup here", widget=UIHelpTextWidget, required=False
+    )
+    raw = forms.CharField(
+        label="Raw", help_text="No markup here", widget=RawDescriptionWidget, required=False
     )
 
 
@@ -208,3 +217,15 @@ class StaticInputRichContentTestCase(HtmlUIParityTestCase):
                 {"my_form": HelpTextForm()},
             )
         self.assertIn(">No markup here</div>", output)
+
+    def test_form_input_plain_help_text_stays_a_string_for_widget_templates(self):
+        # Widget templates that output extra_widget_props.description directly (rather than
+        # passing it to {% component %} or {% ui %}) must keep receiving plain help text as a str
+        with self.setup_render_context():
+            output = self.render_ui_template(
+                "{% load alliance_platform.form %}"
+                "{% form my_form %}{% form_input my_form.raw %}{% endform %}",
+                {"my_form": HelpTextForm()},
+            )
+        self.assertIn('<span class="raw-description">No markup here</span>', output)
+        self.assertNotIn("RenderableContent", output)
