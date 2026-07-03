@@ -73,6 +73,21 @@ class RenderableContentTestCase(SimpleTestCase):
         self.assertTrue(is_renderable_content(RenderableContent.from_text("x")))
         self.assertFalse(is_renderable_content("x"))
 
+    def test_as_plain_text_returns_text_for_text_only_content(self):
+        self.assertEqual(
+            RenderableContent.from_html("No markup here", origin).as_plain_text(), "No markup here"
+        )
+        # character references resolve to their unicode value like any parsed text
+        self.assertEqual(RenderableContent.from_html("a &amp; b", origin).as_plain_text(), "a & b")
+        self.assertEqual(RenderableContent.from_text("plain").as_plain_text(), "plain")
+
+    def test_as_plain_text_returns_none_for_rich_or_empty_content(self):
+        self.assertIsNone(RenderableContent.from_html("<span>Help</span>", origin).as_plain_text())
+        self.assertIsNone(
+            RenderableContent.from_html("Use <strong>bold</strong> text", origin).as_plain_text()
+        )
+        self.assertIsNone(RenderableContent(()).as_plain_text())
+
     def test_convert_html_string_still_returns_component_nodes(self):
         nodes = convert_html_string("<span>Help</span>", origin)
         self.assertEqual(len(nodes), 1)

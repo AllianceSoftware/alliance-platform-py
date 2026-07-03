@@ -83,14 +83,21 @@ class FormInputNode(template.Node, BundlerAsset):
             )
             if help_text:
                 # Help text can be HTML and django docs make it clear this value is not HTML-escaped.
-                # RenderableContent keeps the value backend neutral: the React {% component %} path
+                # RenderableContent keeps rich values backend neutral: the React {% component %} path
                 # converts it to nested React elements, static {% ui %} widgets render it directly.
+                # Plain text stays a str so widget templates that output the description directly
+                # keep working.
                 original_help_text = help_text
-                help_text = RenderableContent.from_html(help_text, self.origin)
-                if help_text.is_empty():
+                content = RenderableContent.from_html(help_text, self.origin)
+                plain_text = content.as_plain_text()
+                if content.is_empty():
                     # parsing ignores invalid HTML, so this can be empty for non-empty input
                     help_text = ""
                     warnings.warn(f"Bad help text on field, likely invalid HTML: {original_help_text}")
+                elif plain_text is not None:
+                    help_text = plain_text
+                else:
+                    help_text = content
             extra_attrs[field.form.renderer.form_input_context_key] = {
                 "raw_value": field.value(),
                 "extra_widget_props": {
