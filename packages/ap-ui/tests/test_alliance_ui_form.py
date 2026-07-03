@@ -30,6 +30,18 @@ class TestForm(forms.Form):
     second_name = forms.CharField(label="Last name", max_length=100)
 
 
+class ReactTextInputWidget(forms.TextInput):
+    template_name = "test_widgets/react_text_input.html"
+
+
+class ReactHelpTextForm(forms.Form):
+    email = forms.EmailField(
+        label="Email",
+        help_text="Use your <strong>work</strong> email",
+        widget=ReactTextInputWidget,
+    )
+
+
 test_development_bundler = TestViteBundler(
     **bundler_kwargs,  # type: ignore[arg-type]
     mode="development",
@@ -129,6 +141,29 @@ class FormRenderingTestCase(TestCase):
                 self.assertFalse(form_input_context_key in context_dict["widget"]["attrs"])
                 # check that context information has been added to top level context
                 self.assertTrue("extra_widget_props" in context_dict)
+
+    def test_form_input_html_help_text_react_widget(self):
+        """HTML help_text should reach React widgets as nested elements (via RenderableContent)"""
+        self.assertComponentEqual(
+            """
+            {% load alliance_platform.form %}
+            {% form my_form %}{% form_input my_form.email %}{% endform %}""",
+            """<TextInput
+              type="text"
+              name="email"
+              defaultValue={null}
+              maxLength="320"
+              required={true}
+              aria-describedby="id_email_helptext"
+              id="id_email"
+              label="Email"
+              errorMessage=""
+              validationState={null}
+              description={["Use your ", <strong>work</strong>, " email"]}
+              isRequired={true}
+            />""",
+            my_form=ReactHelpTextForm(),
+        )
 
     def test_html_form_nested_components(self):
         """Test that everything in a {% form %} tag is rendered as expected when nested within a component"""
