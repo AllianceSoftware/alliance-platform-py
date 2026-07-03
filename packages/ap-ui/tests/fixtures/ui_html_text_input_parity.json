@@ -1,0 +1,106 @@
+{
+  "generated_by": "scripts/generateHtmlUiParityFixtures.mjs",
+  "generated_at_utc": "2026-07-03T00:00:00.000Z",
+  "component": "text_input",
+  "styles": {},
+  "cases": [
+    {
+      "name": "default",
+      "template": "{% ui \"text_input\" label=\"Email\" %}{% endui %}",
+      "expected_html": "<div data-labeledinput=\"1\" data-apui=\"labeled-input\" data-label-position=\"top\" data-input-size=\"sm\" class=\"LabeledInput_labeledInput LabeledInput_labeledInput_inputSize_sm LabeledInput_labeledInput_labelPosition_top\"><label data-apui=\"label\" class=\"Label_label LabeledInput_label_top\" for=\"apui-text-input-1\">Email</label><div class=\"LabeledInput_input\"><div data-apui=\"text-input\" class=\"TextInputBase_inputContainer TextInputBase_sizes_sm\" data-size=\"sm\" data-element=\"input\"><div class=\"TextInputBase_inputWrapper focusRing_base\"><input type=\"text\" id=\"apui-text-input-1\" class=\"TextInputBase_input\" value=\"\"/></div></div></div></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "name_type_placeholder_default_value",
+      "template": "{% ui \"text_input\" label=\"Email\" name=\"email\" type=\"email\" placeholder=\"name@example.com\" defaultValue=\"jane@example.com\" %}{% endui %}",
+      "expected_html": "<div data-labeledinput=\"1\" data-apui=\"labeled-input\" data-label-position=\"top\" data-input-size=\"sm\" class=\"LabeledInput_labeledInput LabeledInput_labeledInput_inputSize_sm LabeledInput_labeledInput_labelPosition_top\"><label data-apui=\"label\" class=\"Label_label LabeledInput_label_top\" for=\"apui-text-input-1\">Email</label><div class=\"LabeledInput_input\"><div data-apui=\"text-input\" class=\"TextInputBase_inputContainer TextInputBase_sizes_sm\" data-size=\"sm\" data-element=\"input\"><div class=\"TextInputBase_inputWrapper focusRing_base\"><input type=\"email\" name=\"email\" placeholder=\"name@example.com\" id=\"apui-text-input-1\" class=\"TextInputBase_input\" value=\"jane@example.com\"/></div></div></div></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "description",
+      "template": "{% ui \"text_input\" label=\"Name\" description=\"Shown on your profile\" %}{% endui %}",
+      "expected_html": "<div data-labeledinput=\"1\" data-apui=\"labeled-input\" data-label-position=\"top\" data-input-size=\"sm\" class=\"LabeledInput_labeledInput LabeledInput_labeledInput_inputSize_sm LabeledInput_labeledInput_labelPosition_top\"><label data-apui=\"label\" class=\"Label_label LabeledInput_label_top\" for=\"apui-text-input-1\">Name</label><div class=\"LabeledInput_input\"><div data-apui=\"text-input\" class=\"TextInputBase_inputContainer TextInputBase_sizes_sm\" data-size=\"sm\" data-element=\"input\"><div class=\"TextInputBase_inputWrapper focusRing_base\"><input type=\"text\" id=\"apui-text-input-1\" aria-describedby=\"apui-text-input-2\" class=\"TextInputBase_input\" value=\"\"/></div></div></div><div id=\"apui-text-input-2\" class=\"LabeledInput_helpText\">Shown on your profile</div></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "invalid_with_error_message",
+      "template": "{% ui \"text_input\" label=\"Email\" validationState=\"invalid\" errorMessage=\"Enter a valid email\" %}{% endui %}",
+      "expected_html": "<div data-labeledinput=\"1\" data-apui=\"labeled-input\" data-label-position=\"top\" data-input-size=\"sm\" class=\"LabeledInput_labeledInput LabeledInput_labeledInput_inputSize_sm LabeledInput_labeledInput_labelPosition_top\" data-invalid=\"true\"><label data-apui=\"label\" class=\"Label_label LabeledInput_label_top\" for=\"apui-text-input-1\">Email</label><div class=\"LabeledInput_input\"><div data-apui=\"text-input\" class=\"TextInputBase_inputContainer TextInputBase_sizes_sm\" data-size=\"sm\" data-element=\"input\"><div class=\"TextInputBase_inputWrapper focusRing_base\" data-invalid=\"true\"><input type=\"text\" aria-invalid=\"true\" id=\"apui-text-input-1\" aria-describedby=\"apui-text-input-2\" class=\"TextInputBase_input\" value=\"\"/><span role=\"img\" aria-hidden=\"true\" class=\"Icon_icon Icon_variants_plain Icon_sizes_xs TextInputBase_adornmentIcon TextInputBase_validationIcon\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" focusable=\"false\"><path d=\"M12 8V12M12 16H12.01M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12Z\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path></svg></span></div></div></div><div class=\"LabeledInput_helpText LabeledInput_invalid\" id=\"apui-text-input-2\">Enter a valid email</div></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "invalid_error_replaces_description",
+      "template": "{% ui \"text_input\" label=\"Email\" validationState=\"invalid\" errorMessage=\"Enter a valid email\" description=\"Your work email\" %}{% endui %}",
+      "expected_html": "<div data-labeledinput=\"1\" data-apui=\"labeled-input\" data-label-position=\"top\" data-input-size=\"sm\" class=\"LabeledInput_labeledInput LabeledInput_labeledInput_inputSize_sm LabeledInput_labeledInput_labelPosition_top\" data-invalid=\"true\"><label data-apui=\"label\" class=\"Label_label LabeledInput_label_top\" for=\"apui-text-input-1\">Email</label><div class=\"LabeledInput_input\"><div data-apui=\"text-input\" class=\"TextInputBase_inputContainer TextInputBase_sizes_sm\" data-size=\"sm\" data-element=\"input\"><div class=\"TextInputBase_inputWrapper focusRing_base\" data-invalid=\"true\"><input type=\"text\" aria-invalid=\"true\" id=\"apui-text-input-1\" aria-describedby=\"apui-text-input-2\" class=\"TextInputBase_input\" value=\"\"/><span role=\"img\" aria-hidden=\"true\" class=\"Icon_icon Icon_variants_plain Icon_sizes_xs TextInputBase_adornmentIcon TextInputBase_validationIcon\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" focusable=\"false\"><path d=\"M12 8V12M12 16H12.01M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12Z\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path></svg></span></div></div></div><div class=\"LabeledInput_helpText LabeledInput_invalid\" id=\"apui-text-input-2\">Enter a valid email</div></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "valid",
+      "template": "{% ui \"text_input\" label=\"Email\" validationState=\"valid\" %}{% endui %}",
+      "expected_html": "<div data-labeledinput=\"1\" data-apui=\"labeled-input\" data-label-position=\"top\" data-input-size=\"sm\" class=\"LabeledInput_labeledInput LabeledInput_labeledInput_inputSize_sm LabeledInput_labeledInput_labelPosition_top\"><label data-apui=\"label\" class=\"Label_label LabeledInput_label_top\" for=\"apui-text-input-1\">Email</label><div class=\"LabeledInput_input\"><div data-apui=\"text-input\" class=\"TextInputBase_inputContainer TextInputBase_sizes_sm\" data-size=\"sm\" data-element=\"input\"><div class=\"TextInputBase_inputWrapper focusRing_base\" data-valid=\"true\"><input type=\"text\" id=\"apui-text-input-1\" class=\"TextInputBase_input\" value=\"\"/><span role=\"img\" aria-hidden=\"true\" class=\"Icon_icon Icon_variants_plain Icon_sizes_xs TextInputBase_adornmentIcon TextInputBase_validationIcon\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" focusable=\"false\"><path d=\"M20 6L9 17L4 12\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path></svg></span></div></div></div></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "disabled",
+      "template": "{% ui \"text_input\" label=\"Email\" isDisabled=True %}{% endui %}",
+      "expected_html": "<div data-labeledinput=\"1\" data-apui=\"labeled-input\" data-label-position=\"top\" data-input-size=\"sm\" class=\"LabeledInput_labeledInput LabeledInput_labeledInput_inputSize_sm LabeledInput_labeledInput_labelPosition_top\"><label data-apui=\"label\" class=\"Label_label LabeledInput_label_top\" for=\"apui-text-input-1\">Email</label><div class=\"LabeledInput_input\"><div data-apui=\"text-input\" class=\"TextInputBase_inputContainer TextInputBase_sizes_sm\" data-size=\"sm\" data-element=\"input\"><div class=\"TextInputBase_inputWrapper focusRing_base\" data-disabled=\"true\"><input type=\"text\" disabled=\"\" id=\"apui-text-input-1\" class=\"TextInputBase_input\" value=\"\"/></div></div></div></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "readonly",
+      "template": "{% ui \"text_input\" label=\"Code\" value=\"ABC123\" isReadOnly=True %}{% endui %}",
+      "expected_html": "<div data-labeledinput=\"1\" data-apui=\"labeled-input\" data-label-position=\"top\" data-input-size=\"sm\" class=\"LabeledInput_labeledInput LabeledInput_labeledInput_inputSize_sm LabeledInput_labeledInput_labelPosition_top\" data-readonly=\"true\"><label data-apui=\"label\" class=\"Label_label LabeledInput_label_top\" for=\"apui-text-input-1\">Code</label><div class=\"LabeledInput_input\"><div data-apui=\"text-input\" class=\"TextInputBase_inputContainer TextInputBase_sizes_sm\" data-size=\"sm\" data-element=\"input\"><div class=\"TextInputBase_inputWrapper focusRing_base\"><input type=\"text\" readonly=\"\" id=\"apui-text-input-1\" class=\"TextInputBase_input\" value=\"ABC123\"/></div></div></div></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "required",
+      "template": "{% ui \"text_input\" label=\"Email\" isRequired=True %}{% endui %}",
+      "expected_html": "<div data-labeledinput=\"1\" data-apui=\"labeled-input\" data-label-position=\"top\" data-input-size=\"sm\" class=\"LabeledInput_labeledInput LabeledInput_labeledInput_inputSize_sm LabeledInput_labeledInput_labelPosition_top\" data-required=\"true\"><label data-apui=\"label\" class=\"Label_label LabeledInput_label_top\" for=\"apui-text-input-1\">Email<span aria-hidden=\"true\" class=\"Label_requiredIndicator\">*</span></label><div class=\"LabeledInput_input\"><div data-apui=\"text-input\" class=\"TextInputBase_inputContainer TextInputBase_sizes_sm\" data-size=\"sm\" data-element=\"input\"><div class=\"TextInputBase_inputWrapper focusRing_base\"><input type=\"text\" aria-required=\"true\" id=\"apui-text-input-1\" class=\"TextInputBase_input\" value=\"\"/></div></div></div></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "label_position_side_align_end",
+      "template": "{% ui \"text_input\" label=\"Email\" labelPosition=\"side\" labelAlign=\"end\" %}{% endui %}",
+      "expected_html": "<div data-labeledinput=\"1\" data-apui=\"labeled-input\" data-label-position=\"side\" data-label-align=\"end\" data-input-size=\"sm\" class=\"LabeledInput_labeledInput LabeledInput_labeledInput_inputSize_sm LabeledInput_labeledInput_labelPosition_side FormSection_labeledInput_side\"><label data-apui=\"label\" data-label-align=\"end\" class=\"Label_label LabeledInput_label_side FormSection_label_side Label_alignEnd\" for=\"apui-text-input-1\">Email</label><div class=\"FormSection_inputHelpSideWrapper\"><div class=\"LabeledInput_input\"><div data-apui=\"text-input\" class=\"TextInputBase_inputContainer TextInputBase_sizes_sm\" data-size=\"sm\" data-element=\"input\"><div class=\"TextInputBase_inputWrapper focusRing_base\"><input type=\"text\" id=\"apui-text-input-1\" class=\"TextInputBase_input\" value=\"\"/></div></div></div></div></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "input_size_md",
+      "template": "{% ui \"text_input\" label=\"Email\" inputSize=\"md\" %}{% endui %}",
+      "expected_html": "<div data-labeledinput=\"1\" data-apui=\"labeled-input\" data-label-position=\"top\" data-input-size=\"md\" class=\"LabeledInput_labeledInput LabeledInput_labeledInput_inputSize_md LabeledInput_labeledInput_labelPosition_top\"><label data-apui=\"label\" class=\"Label_label LabeledInput_label_top\" for=\"apui-text-input-1\">Email</label><div class=\"LabeledInput_input\"><div data-apui=\"text-input\" class=\"TextInputBase_inputContainer TextInputBase_sizes_md\" data-size=\"md\" data-element=\"input\"><div class=\"TextInputBase_inputWrapper focusRing_base\"><input type=\"text\" id=\"apui-text-input-1\" class=\"TextInputBase_input\" value=\"\"/></div></div></div></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "addon_before_and_after",
+      "template": "{% ui \"text_input\" label=\"Website\" addonBefore=\"https://\" addonAfter=\".com\" %}{% endui %}",
+      "expected_html": "<div data-labeledinput=\"1\" data-apui=\"labeled-input\" data-label-position=\"top\" data-input-size=\"sm\" class=\"LabeledInput_labeledInput LabeledInput_labeledInput_inputSize_sm LabeledInput_labeledInput_labelPosition_top\"><label data-apui=\"label\" class=\"Label_label LabeledInput_label_top\" for=\"apui-text-input-1\">Website</label><div class=\"LabeledInput_input\"><div data-apui=\"text-input\" class=\"TextInputBase_inputContainer TextInputBase_sizes_sm\" data-size=\"sm\" data-element=\"input\" data-has-addon-before=\"true\" data-has-addon-after=\"true\"><div class=\"TextInputBase_addonBefore\">https://</div><div class=\"TextInputBase_inputWrapper focusRing_base\"><input type=\"text\" id=\"apui-text-input-1\" class=\"TextInputBase_input\" value=\"\"/></div><div class=\"TextInputBase_addonAfter\">.com</div></div></div></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "custom_class_names",
+      "template": "{% ui \"text_input\" label=\"Email\" className=\"custom-root\" inputClassName=\"custom-input\" %}{% endui %}",
+      "expected_html": "<div data-labeledinput=\"1\" data-apui=\"labeled-input\" data-label-position=\"top\" data-input-size=\"sm\" class=\"LabeledInput_labeledInput LabeledInput_labeledInput_inputSize_sm LabeledInput_labeledInput_labelPosition_top custom-root\"><label data-apui=\"label\" class=\"Label_label LabeledInput_label_top\" for=\"apui-text-input-1\">Email</label><div class=\"LabeledInput_input\"><div data-apui=\"text-input\" class=\"TextInputBase_inputContainer TextInputBase_sizes_sm\" data-size=\"sm\" data-element=\"input\"><div class=\"TextInputBase_inputWrapper focusRing_base\"><input type=\"text\" id=\"apui-text-input-1\" class=\"TextInputBase_input custom-input\" value=\"\"/></div></div></div></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "caller_id_and_aria_describedby",
+      "template": "{% ui \"text_input\" label=\"Email\" id=\"my-id\" aria_describedby=\"external-desc\" description=\"Some description\" %}{% endui %}",
+      "expected_html": "<div data-labeledinput=\"1\" data-apui=\"labeled-input\" data-label-position=\"top\" data-input-size=\"sm\" class=\"LabeledInput_labeledInput LabeledInput_labeledInput_inputSize_sm LabeledInput_labeledInput_labelPosition_top\"><label data-apui=\"label\" class=\"Label_label LabeledInput_label_top\" for=\"my-id\">Email</label><div class=\"LabeledInput_input\"><div data-apui=\"text-input\" class=\"TextInputBase_inputContainer TextInputBase_sizes_sm\" data-size=\"sm\" data-element=\"input\"><div class=\"TextInputBase_inputWrapper focusRing_base\"><input id=\"my-id\" aria-describedby=\"apui-text-input-1 external-desc\" type=\"text\" class=\"TextInputBase_input\" value=\"\"/></div></div></div><div id=\"apui-text-input-1\" class=\"LabeledInput_helpText\">Some description</div></div>",
+      "expected_warnings": [],
+      "meta": {}
+    }
+  ]
+}
