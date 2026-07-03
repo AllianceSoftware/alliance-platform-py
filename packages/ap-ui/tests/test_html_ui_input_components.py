@@ -62,14 +62,60 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         self.assertNotIn("someProp", output)
         self.assertNotIn("someprop", output)
 
-    def test_unknown_scalar_props_pass_through_to_control(self):
+    def test_allowlisted_props_pass_through_to_control(self):
         output, caught = self.render_with_warnings(
-            '{% ui "text_input" label="Email" autoComplete="email" maxLength=20 spellCheck="false" %}{% endui %}'
+            '{% ui "text_input" label="Email" autoComplete="email" maxLength=20 spellCheck="false" '
+            'pattern="[a-z]+" %}{% endui %}'
         )
         self.assertIn('autocomplete="email"', output)
         self.assertIn('maxlength="20"', output)
         self.assertIn('spellcheck="false"', output)
+        self.assertIn('pattern="[a-z]+"', output)
         self.assertEqual(caught, [])
+
+    def test_data_and_aria_props_pass_through_to_control(self):
+        output, caught = self.render_with_warnings(
+            '{% ui "text_input" label="Email" data_testid="email-field" aria_label="Email address" %}{% endui %}'
+        )
+        self.assertIn('data-testid="email-field"', output)
+        self.assertIn('aria-label="Email address"', output)
+        self.assertEqual(caught, [])
+
+    def test_event_handler_props_warn_and_are_never_rendered(self):
+        output, caught = self.render_with_warnings(
+            '{% ui "text_input" label="Email" onClick="alert(1)" on_input="alert(2)" %}{% endui %}'
+        )
+        self.assertIn(
+            "Event handler prop 'onClick' is not supported by HTML ui components and will be ignored",
+            caught,
+        )
+        self.assertIn(
+            "Event handler prop 'onInput' is not supported by HTML ui components and will be ignored",
+            caught,
+        )
+        self.assertNotIn("onclick", output.lower())
+        self.assertNotIn("oninput", output.lower())
+        self.assertNotIn("alert", output)
+
+    def test_unknown_props_warn_and_are_ignored(self):
+        output, caught = self.render_with_warnings(
+            '{% ui "text_input" label="Email" unknownAttr="nope" %}{% endui %}'
+        )
+        self.assertIn(
+            "Prop 'unknownAttr' is not a supported 'text-input' attribute and will be ignored",
+            caught,
+        )
+        self.assertNotIn("unknownattr", output.lower())
+
+    def test_pattern_is_not_allowed_on_text_area(self):
+        output, caught = self.render_with_warnings(
+            '{% ui "text_area" label="Notes" pattern="[a-z]+" %}{% endui %}'
+        )
+        self.assertIn(
+            "Prop 'pattern' is not a supported 'text-area' attribute and will be ignored",
+            caught,
+        )
+        self.assertNotIn("pattern", output)
 
     def test_generated_ids_are_unique_within_a_template_render(self):
         output, _ = self.render_with_warnings(

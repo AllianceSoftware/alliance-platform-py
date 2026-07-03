@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import TYPE_CHECKING
 from typing import Any
 import warnings
@@ -63,13 +64,36 @@ _REACT_ONLY_PROPS = frozenset(
         "inputRef",
         "containerRef",
         "labelRef",
-        "onChange",
-        "onFocus",
-        "onBlur",
-        "onKeyDown",
-        "onKeyUp",
         "validationBehavior",
         "validate",
+    }
+)
+
+# Matches event handler props in any of the forms they can reach us in after prop normalization
+# (onClick, onclick, on_click -> onClick). These must never be rendered: a string value would
+# become a live inline event handler attribute, which React never renders.
+_EVENT_HANDLER_PROP_RE = re.compile(r"^on[A-Za-z]")
+
+# Attributes that may be passed through to the control element for all input components, in
+# addition to data-*/aria-* attributes. Anything else that is not explicitly handled is rejected
+# with a warning rather than rendered (mirroring how react-aria's filterDOMProps drops unknown
+# props, and matching the button renderer's allowlist approach).
+_SHARED_CONTROL_PASS_THROUGH_PROPS = frozenset(
+    {
+        "autoComplete",
+        "autoCapitalize",
+        "autoCorrect",
+        "spellCheck",
+        "inputMode",
+        "maxLength",
+        "minLength",
+        "autoFocus",
+        "tabIndex",
+        "form",
+        "enterKeyHint",
+        "dir",
+        "lang",
+        "title",
     }
 )
 
@@ -326,6 +350,9 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
 
     #: tag rendered for the actual control
     control_tag = "input"
+    #: attrs that may pass through to the control element (plus data-*/aria-*); anything else
+    #: not in ``handled_props`` is rejected with a warning
+    control_pass_through_props = _SHARED_CONTROL_PASS_THROUGH_PROPS
     #: props consumed by the renderer itself; everything else is passed through or warned about
     handled_props = frozenset(
         {
@@ -443,6 +470,11 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
             if key in _REACT_ONLY_PROPS:
                 warnings.warn(f"Prop '{key}' is not supported by HTML ui components and will be ignored")
                 continue
+            if _EVENT_HANDLER_PROP_RE.match(key):
+                warnings.warn(
+                    f"Event handler prop '{key}' is not supported by HTML ui components and will be ignored"
+                )
+                continue
             if key == "style":
                 if not isinstance(value, (str, dict)):
                     warnings.warn("Prop 'style' must be a string or dict; it will be ignored")
@@ -505,7 +537,15 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
                 continue
             if key in attrs:
                 continue
-            attrs[key] = value
+            if key.startswith("data-") or key.startswith("aria-"):
+                attrs[key] = value
+                continue
+            if key in self.control_pass_through_props:
+                attrs[key] = value
+                continue
+            warnings.warn(
+                f"Prop '{key}' is not a supported '{self.apui_component_name}' attribute and will be ignored"
+            )
         return attrs
 
     def render_control(
@@ -521,6 +561,7 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
 class UITextInputRenderer(UITextInputBaseRenderer):
     apui_component_name = "text-input"
     handled_props = UITextInputBaseRenderer.handled_props | {"type"}
+    control_pass_through_props = _SHARED_CONTROL_PASS_THROUGH_PROPS | {"pattern", "size", "list"}
 
     def render_control(
         self,
@@ -545,6 +586,7 @@ class UITextAreaRenderer(UITextInputBaseRenderer):
     apui_component_name = "text-area"
     control_tag = "textarea"
     handled_props = UITextInputBaseRenderer.handled_props | {"height", "type"}
+    control_pass_through_props = _SHARED_CONTROL_PASS_THROUGH_PROPS | {"rows", "cols", "wrap"}
 
     def render_control(
         self,
