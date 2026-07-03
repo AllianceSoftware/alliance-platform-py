@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from decimal import Decimal
 import re
 from typing import TYPE_CHECKING
 from typing import Any
 import warnings
 
 from django.template import Context
+from django.utils.functional import Promise
 from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
 
@@ -99,7 +101,9 @@ _SHARED_CONTROL_PASS_THROUGH_PROPS = frozenset(
 
 
 def _is_scalar_prop_value(value: Any) -> bool:
-    return isinstance(value, (str, int, float, bool)) or value is None
+    # Promise covers lazy translation proxies (e.g. gettext_lazy form field labels), which render
+    # like plain strings. Decimal covers Django DecimalField values.
+    return isinstance(value, (str, int, float, bool, Decimal, Promise)) or value is None
 
 
 @dataclass
