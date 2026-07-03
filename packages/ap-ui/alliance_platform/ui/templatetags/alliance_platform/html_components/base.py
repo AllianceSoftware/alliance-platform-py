@@ -61,6 +61,51 @@ _BULK_PROP_STATE_ALIASES = {
 }
 
 
+def camel_to_kebab(value: str) -> str:
+    return _CAMEL_CASE_SPLIT_RE.sub(r"\1-\2", value).replace("_", "-").lower()
+
+
+def to_html_attr_name(key: str) -> str:
+    """Convert a React style prop name to the HTML attribute name (``className`` -> ``class``)."""
+    if key in _REACT_ATTR_TO_HTML_ATTR:
+        return _REACT_ATTR_TO_HTML_ATTR[key]
+    if "-" in key:
+        return key
+    if key.startswith("aria") and len(key) > 4 and key[4].isupper():
+        return "aria-" + camel_to_kebab(key[4:])
+    if key.startswith("data") and len(key) > 4 and key[4].isupper():
+        return "data-" + camel_to_kebab(key[4:])
+    return key.lower()
+
+
+def style_dict_to_string(style: dict[str, Any]) -> str:
+    declarations = []
+    for key, value in style.items():
+        css_key = key if key.startswith("--") else camel_to_kebab(str(key))
+        declarations.append(f"{css_key}: {value}")
+    return "; ".join(declarations)
+
+
+def build_attrs_string(attrs: dict[str, Any]) -> str:
+    """Render a dict of props/attributes to an escaped HTML attribute string.
+
+    ``None``/``False`` values are omitted, ``True`` renders a bare boolean attribute and React
+    style names are converted to their HTML equivalents.
+    """
+    rendered_attrs: list[str] = []
+    for name, value in attrs.items():
+        if value is None or value is False:
+            continue
+        attr_name = to_html_attr_name(name)
+        if name == "style" and isinstance(value, dict):
+            value = style_dict_to_string(value)
+        if value is True:
+            rendered_attrs.append(f" {conditional_escape(attr_name)}")
+        else:
+            rendered_attrs.append(f' {conditional_escape(attr_name)}="{conditional_escape(value)}"')
+    return "".join(rendered_attrs)
+
+
 class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
     """Base node for HTML-only UI components dispatched by ``{% ui %}``."""
 
@@ -283,18 +328,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         return classes
 
     def build_attrs_string(self, attrs: dict[str, Any]) -> str:
-        rendered_attrs: list[str] = []
-        for name, value in attrs.items():
-            if value is None or value is False:
-                continue
-            attr_name = self._to_html_attr_name(name)
-            if name == "style" and isinstance(value, dict):
-                value = self._style_dict_to_string(value)
-            if value is True:
-                rendered_attrs.append(f" {conditional_escape(attr_name)}")
-            else:
-                rendered_attrs.append(f' {conditional_escape(attr_name)}="{conditional_escape(value)}"')
-        return "".join(rendered_attrs)
+        return build_attrs_string(attrs)
 
     def join_classes(self, *class_names: str | None) -> str:
         return " ".join(class_name for class_name in class_names if class_name)
@@ -307,27 +341,6 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         if key.startswith("aria_"):
             return f"aria-{key[5:].replace('_', '-')}"
         return underscore_to_camel(key)
-
-    def _to_html_attr_name(self, key: str) -> str:
-        if key in _REACT_ATTR_TO_HTML_ATTR:
-            return _REACT_ATTR_TO_HTML_ATTR[key]
-        if "-" in key:
-            return key
-        if key.startswith("aria") and len(key) > 4 and key[4].isupper():
-            return "aria-" + self._camel_to_kebab(key[4:])
-        if key.startswith("data") and len(key) > 4 and key[4].isupper():
-            return "data-" + self._camel_to_kebab(key[4:])
-        return key.lower()
-
-    def _camel_to_kebab(self, value: str) -> str:
-        return _CAMEL_CASE_SPLIT_RE.sub(r"\1-\2", value).replace("_", "-").lower()
-
-    def _style_dict_to_string(self, style: dict[str, Any]) -> str:
-        declarations = []
-        for key, value in style.items():
-            css_key = key if key.startswith("--") else self._camel_to_kebab(str(key))
-            declarations.append(f"{css_key}: {value}")
-        return "; ".join(declarations)
 
     def _merge_slot_props(self, context: Context, child_props: dict[str, Any]) -> dict[str, Any]:
         slot_name = self.get_slot_name()

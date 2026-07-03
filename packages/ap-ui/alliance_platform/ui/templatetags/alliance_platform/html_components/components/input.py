@@ -15,6 +15,9 @@ from django.utils.safestring import mark_safe
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 
 from ..base import BaseHtmlUIComponentRenderer
+from ..content import has_renderable_content
+from ..content import is_rich_content_value
+from ..content import render_content
 
 if TYPE_CHECKING:
     # The mixin is only ever combined with BaseHtmlUIComponentRenderer; declaring it as the type
@@ -137,7 +140,7 @@ class LabeledInputState:
     @property
     def description_rendered(self) -> bool:
         # LabeledInput renders the error in place of the description when both would show
-        return bool(self.description) and not self.error_rendered
+        return has_renderable_content(self.description) and not self.error_rendered
 
 
 class UILabeledInputRendererMixin(_LabeledInputMixinBase):
@@ -262,7 +265,7 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
         }
 
         label_html = self.render_label(state, labeled_input_styles, form_section_styles)
-        help_text_html = self.render_help_text(state, labeled_input_styles)
+        help_text_html = self.render_help_text(context, state, labeled_input_styles)
         input_slot = mark_safe(
             f'<div class="{conditional_escape(self.get_style_class(labeled_input_styles, "input"))}">'
             f"{input_slot_html}</div>"
@@ -315,7 +318,7 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
             )
         return self._render_tag("label", attrs, children)
 
-    def render_help_text(self, state: LabeledInputState, labeled_input_styles: Any) -> str:
+    def render_help_text(self, context: Context, state: LabeledInputState, labeled_input_styles: Any) -> str:
         help_text_class = self.get_style_class(labeled_input_styles, "helpText")
         invalid_class = self.get_style_class(labeled_input_styles, "invalid")
         if state.error_rendered:
@@ -323,13 +326,15 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
                 "className": self.join_classes(help_text_class, invalid_class),
                 "id": state.error_id,
             }
+            # errorMessage is deliberately plain text (see rich_content_props)
             return self._render_tag("div", attrs, conditional_escape(state.error_message))
         if state.description_rendered:
             attrs = {
                 "className": self.join_classes(help_text_class, invalid_class if state.is_invalid else None),
                 "id": state.description_id,
             }
-            return self._render_tag("div", attrs, conditional_escape(state.description))
+            content = render_content(state.description, context, prop_name="description", origin=self.origin)
+            return self._render_tag("div", attrs, content)
         return ""
 
     def render_icon(self, svg_path: str, size: str, extra_class_names: list[str] | None = None) -> str:
@@ -357,6 +362,9 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
     #: attrs that may pass through to the control element (plus data-*/aria-*); anything else
     #: not in ``handled_props`` is rejected with a warning
     control_pass_through_props = _SHARED_CONTROL_PASS_THROUGH_PROPS
+    #: props that accept renderable rich content (e.g. RenderableContent from form_input help
+    #: text) in addition to plain strings. errorMessage is deliberately plain text for now.
+    rich_content_props = frozenset({"description"})
     #: props consumed by the renderer itself; everything else is passed through or warned about
     handled_props = frozenset(
         {
@@ -493,7 +501,7 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
         return filtered
 
     def allow_non_scalar_prop(self, key: str, value: Any) -> bool:
-        return False
+        return key in self.rich_content_props and is_rich_content_value(value)
 
     def get_container_extra_attrs(self, props: dict[str, Any], state: LabeledInputState) -> dict[str, Any]:
         return {}
@@ -632,7 +640,7 @@ class UINumberInputRenderer(UITextInputBaseRenderer):
 
     def allow_non_scalar_prop(self, key: str, value: Any) -> bool:
         # formatOptions is dict valued; it gets its own more specific warning in render_control
-        return key == "formatOptions"
+        return key == "formatOptions" or super().allow_non_scalar_prop(key, value)
 
     def get_container_extra_attrs(self, props: dict[str, Any], state: LabeledInputState) -> dict[str, Any]:
         # useNumberField renders the container as a labelled group
