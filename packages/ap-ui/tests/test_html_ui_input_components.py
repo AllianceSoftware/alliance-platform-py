@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from decimal import Decimal
 import warnings
+
+from django.utils.translation import gettext_lazy
 
 from tests.parity.base import HtmlUIParityTestCase
 
@@ -346,6 +349,35 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         self.assertEqual(caught, [])
         self.assertIn("Merged label", output)
         self.assertIn('id="id_field"', output)
+
+    def test_lazy_translation_values_are_treated_as_strings(self):
+        # Django form field labels are commonly lazy translation proxies (e.g.
+        # AuthenticationForm's password field); these must render like plain strings
+        output, caught = self.render_with_warnings(
+            '{% ui "text_input" props=attrs %}{% endui %}',
+            {
+                "attrs": {
+                    "id": "id_password",
+                    "label": gettext_lazy("Password"),
+                    "placeholder": gettext_lazy("Enter password"),
+                    "description": gettext_lazy("Keep it secret"),
+                }
+            },
+        )
+        self.assertEqual(caught, [])
+        self.assertIn(">Password</label>", output)
+        self.assertIn('for="id_password"', output)
+        self.assertIn('placeholder="Enter password"', output)
+        self.assertIn(">Keep it secret</div>", output)
+
+    def test_decimal_values_render_on_number_input(self):
+        output, caught = self.render_with_warnings(
+            '{% ui "number_input" label="Price" name="price" defaultValue=value %}{% endui %}',
+            {"value": Decimal("12.50")},
+        )
+        self.assertEqual(caught, [])
+        self.assertIn('value="12.50"', output)
+        self.assertIn('<input type="hidden" name="price" value="12.50"', output)
 
     def test_none_valued_props_are_treated_as_unset(self):
         output, caught = self.render_with_warnings(
