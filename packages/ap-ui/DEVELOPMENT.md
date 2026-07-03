@@ -16,6 +16,49 @@ This file contains maintainer-focused workflow notes for developing `alliance-pl
 5. Add or extend parity tests in:
    - `tests/`
 
+## Input components (`text_input`, `number_input`, `text_area`)
+
+The input renderers live in
+`alliance_platform/ui/templatetags/alliance_platform/html_components/components/input.py` and share the
+`UILabeledInputRendererMixin` / `UITextInputBaseRenderer` rendering path, mirroring how the React
+components all render through `LabeledInput` + `TextInputBase`. Future input-like components (search
+input, select, date picker) should reuse the same base classes.
+
+Generated element ids use a deterministic `apui-<component>-<n>` scheme where the counter is unique
+within a template render (stored in `context.render_context`). The fixture generator remaps the
+react-aria generated ids to the same scheme so fixtures stay deterministic.
+
+### Deliberate static-render differences from React
+
+These are normalized away by the fixture generator (`generateHtmlUiParityFixtures.mjs`) and/or are
+intentional extensions, so they will not show up as parity failures:
+
+- **Label association**: react-aria wires labels with both `<label for>` and an
+  `aria-labelledby`/label `id` pair. The static renderer relies on the native `<label for>`
+  association only.
+- **`aria-describedby`**: react-aria reserves description/error slot ids during SSR even when
+  neither renders. The static renderer only generates ids for help text that actually renders.
+  Caller supplied `aria-describedby` values are preserved with generated ids prepended (matching
+  react-aria's ordering).
+- **`rows`/`cols` on `text_area`**: the React component drops these in favour of runtime
+  autosizing; the static renderer passes them through as normal textarea attributes since there is
+  no autosize behaviour. They are covered by unit tests, not parity fixtures.
+- **`minValue`/`maxValue`/`step` on `number_input`**: accepted but produce no DOM output, matching
+  React (clamping/stepping is client-side behaviour). Step buttons are rendered statically with no
+  increment/decrement behaviour and are not disabled at min/max boundaries.
+- **Number formatting**: the static renderer renders numeric values with `str()` (integral floats
+  collapse to integers). Locale-aware formatting (`formatOptions`, thousand separators, `locale`)
+  is not supported; `formatOptions` and `locale` warn and are ignored. Keep fixture values below
+  1000 so the en-US formatted React output matches.
+- **Validation icons / step button chevrons**: rendered as static SVG markup copied from
+  `@alliancesoftware/icons` (`AlertCircleOutlined`, `CheckOutlined`, `ChevronUpOutlined`,
+  `ChevronDownOutlined`). If those icons change upstream the fixture drift check will catch it.
+- **`font_*` classes**: excluded from fixture `class_prefixes`. In production the composed font
+  classes come through automatically because the real vanilla-extract mappings store the full
+  composite class strings; the test style mocks return single tokens.
+- **Boolean attributes**: React SSR renders `disabled=""`/`readonly=""`; the Python renderer emits
+  bare `disabled`/`readonly`. The parity normalizer treats these as equivalent (they are in HTML).
+
 ## HTML parity fixture workflow
 
 The fixture generator depends on `@alliancesoftware/ui` TypeScript sources, so it must run through the `alliance-platform-js` runtime context.
