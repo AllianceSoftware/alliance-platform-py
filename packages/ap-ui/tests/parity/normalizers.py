@@ -24,7 +24,9 @@ def _normalize_tag_attributes(value: str) -> str:
 
         rendered_attrs = []
         for name, attr_value in attrs:
-            if attr_value is None:
+            # An attribute with an empty value is equivalent to a bare boolean attribute in HTML
+            # (React SSR renders boolean attributes as `disabled=""`, the Python renderer as `disabled`).
+            if attr_value is None or attr_value == "":
                 rendered_attrs.append(f" {name}")
             else:
                 rendered_attrs.append(f' {name}="{attr_value}"')

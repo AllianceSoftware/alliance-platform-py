@@ -14,6 +14,7 @@ from django.urls import reverse
 
 from alliance_platform.frontend.templatetags.react import DeferredProp
 from alliance_platform.frontend.templatetags.react import OmitComponentFromRendering
+from alliance_platform.frontend.templatetags.react import merge_props
 
 from .button import register_button
 from .date_picker import register_date_picker
@@ -40,6 +41,10 @@ register_date_picker(register)
 register_time_input(register)
 register_labeled_input(register)
 register.tag("ui")(parse_ui_tag)
+# Registered here as well as in the `react` library so templates using only HTML `ui` components
+# (e.g. form widget templates passing `props=widget.attrs|merge_props:extra_widget_props`) don't
+# need to load the react library.
+register.filter("merge_props", merge_props)
 
 QueryParams = dict[str, Any] | QueryDict | str
 
