@@ -44,6 +44,16 @@ DEFAULT_STYLE_MAPPINGS: dict[str, dict[str, Any]] = {
             "vertical": "SmartOrientation_containerBase",
         },
     },
+    "Table.css.ts": {
+        # The theme contract vars are serialized as var() references; only columnWidth is used
+        # by the static renderer (for the column width prop).
+        "vars": {
+            "columnWidth": "var(--components-table-columnWidth)",
+        },
+        # sortIconUnsorted is composed from sortIcon (style([sortIcon, ...])) so the serialized
+        # mapping value contains both classes.
+        "sortIconUnsorted": "Table_sortIconUnsorted Table_sortIcon",
+    },
     "LabeledInput.css.ts": {
         # Mirrors the recipe structure serialized by @alliancesoftware/vite-plugin-django-vanilla-extract
         "labeledInput": {

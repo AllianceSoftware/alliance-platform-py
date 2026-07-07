@@ -15,10 +15,12 @@ const CASE_MODULES = [
     './parity_cases/text_input.mjs',
     './parity_cases/number_input.mjs',
     './parity_cases/text_area.mjs',
+    './parity_cases/table.mjs',
 ];
 
 const BUTTON_COMPONENTS = new Set(['button', 'button_group']);
 const INPUT_COMPONENTS = new Set(['text_input', 'number_input', 'text_area']);
+const TABLE_COMPONENTS = new Set(['table']);
 
 const require = createRequire(import.meta.url);
 const GENERATED_AT_ENV_VAR = 'AP_UI_PARITY_GENERATED_AT_UTC';
@@ -124,6 +126,16 @@ async function importDefault(modulePath) {
     return module.default ?? module;
 }
 
+async function importBareModule(specifier) {
+    try {
+        // Prefer bare imports so vite-node resolves the same singletons as the component module graph.
+        return await import(specifier);
+    } catch {
+        const uiRequire = await getUiRequire();
+        return import(pathToFileURL(uiRequire.resolve(specifier)).href);
+    }
+}
+
 async function loadParityComponents(component) {
     if (parityComponentRuntimeCache.has(component)) {
         return parityComponentRuntimeCache.get(component);
@@ -153,6 +165,21 @@ async function loadParityComponents(component) {
             NumberInput: await importDefault(
                 path.join(uiPackageDir, 'components/number-input/NumberInput.tsx')
             ),
+        };
+    } else if (component === 'table') {
+        // Table itself comes from the ui package; the collection components (TableHeader etc.)
+        // are the react-stately ones the ui package re-exports.
+        const reactStately = await importBareModule('react-stately');
+        components = {
+            Table: await importDefault(path.join(uiPackageDir, 'components/table/Table.tsx')),
+            ColumnHeaderLink: await importDefault(
+                path.join(uiPackageDir, 'components/table/ColumnHeaderLink.tsx')
+            ),
+            TableHeader: reactStately.TableHeader,
+            TableBody: reactStately.TableBody,
+            Column: reactStately.Column,
+            Row: reactStately.Row,
+            Cell: reactStately.Cell,
         };
     } else {
         throw new Error(`Unsupported parity component runtime: ${component}`);
@@ -391,16 +418,58 @@ function normalizeReactAriaIds(html, component) {
     return normalized;
 }
 
+// React emits style declarations without spacing (`height:120px`); the Python renderer emits
+// `height: 120px`. Normalize to the Python format.
+function normalizeInlineStyleSpacing(html) {
+    return html.replace(/\sstyle="([^"]*)"/g, (_match, value) => {
+        const styleValue = value.replace(/:\s*/g, ': ').replace(/;\s*/g, '; ').trim();
+        return ` style="${styleValue}"`;
+    });
+}
+
 function normalizeInputComponentHtml(html, component) {
     let normalized = html;
     normalized = normalized.replace(CAMEL_CASE_ATTR_RE, (_match, name) => ` ${name.toLowerCase()}=`);
     normalized = normalizeReactAriaIds(normalized, component);
-    // React emits style declarations without spacing (`height:120px`); the Python renderer emits
-    // `height: 120px`. Normalize to the Python format.
-    normalized = normalized.replace(/\sstyle="([^"]*)"/g, (_match, value) => {
-        const styleValue = value.replace(/:\s*/g, ': ').replace(/;\s*/g, '; ').trim();
-        return ` style="${styleValue}"`;
-    });
+    normalized = normalizeInlineStyleSpacing(normalized);
+    return normalized;
+}
+
+/**
+ * Normalize the intentional differences between the React Aria table and the static renderer.
+ *
+ * The React Table is an interactive ARIA grid; the static table keeps native table semantics
+ * instead (see the table components spec). Concretely:
+ *
+ * - Grid roles (`grid`/`row`/`rowgroup`/`columnheader`/`gridcell`), tab indexes and
+ *   `aria-colindex`-style attributes are dropped; `role="rowheader"` is kept as the static
+ *   renderer emits it too.
+ * - `scope="col"` is added to header cells (native semantics; ARIA grids don't use scope).
+ * - Sort link hrefs are absolute (built from the SSR currentUrl); the static renderer emits
+ *   path-relative URLs.
+ * - Generated hashes in CSS custom property names within style attributes are stripped, the same
+ *   way class name hashes are.
+ */
+function normalizeTableComponentHtml(html, component) {
+    let normalized = html;
+    normalized = normalized.replace(/\srole="(grid|rowgroup|row|columnheader|gridcell)"/g, '');
+    normalized = normalized.replace(/\stabindex="-?\d+"/g, '');
+    normalized = normalized.replace(
+        /\saria-(colindex|rowindex|colcount|rowcount|colspan|rowspan|multiselectable|selected)="[^"]*"/g,
+        ''
+    );
+    // react-aria stamps collection bookkeeping attributes on every element; the static renderer
+    // renders data-key only where the caller passes a key (covered by unit tests, not fixtures).
+    normalized = normalized.replace(/\sdata-collection="[^"]*"/g, '');
+    normalized = normalized.replace(/\sdata-key="[^"]*"/g, '');
+    // The empty state row uses a raw JSX <td colSpan={...}> which the server renderer emits
+    // verbatim; attribute names are case-insensitive in HTML.
+    normalized = normalized.replace(/\s(colSpan|rowSpan)=/g, (_match, name) => ` ${name.toLowerCase()}=`);
+    normalized = normalizeReactAriaIds(normalized, component);
+    normalized = normalized.replace(/<th(?![\w-])/g, '<th scope="col"');
+    normalized = normalized.replace(/href="http:\/\/testserver/g, 'href="');
+    normalized = normalized.replace(/(--[\w-]+)__[a-z0-9]+\s*:/g, '$1:');
+    normalized = normalizeInlineStyleSpacing(normalized);
     return normalized;
 }
 
@@ -420,6 +489,9 @@ function normalizeDomAttributes(html, component, testCase, allowedPrefixes, keep
     }
     if (INPUT_COMPONENTS.has(component)) {
         normalized = normalizeInputComponentHtml(normalized, component);
+    }
+    if (TABLE_COMPONENTS.has(component)) {
+        normalized = normalizeTableComponentHtml(normalized, component);
     }
     normalized = normalized.replace(/\sclass="([^"]*)"/g, (_match, classValue) => {
         const classTokens = normalizeClassTokens(classValue, allowedPrefixes, keepClassTokens);
@@ -471,6 +543,15 @@ async function generateFixtureFromModule(modulePath, runtime) {
 
     const serializedCases = [];
     for (const testCase of cases) {
+        // Cases may specify the current URL (path + query) the render happens at; ColumnHeaderLink
+        // reads it from globalSsrContext during SSR. The matching Python parity test builds a
+        // request for the same URL. The origin is stripped again during normalization.
+        const currentUrl = testCase.meta?.current_url;
+        if (currentUrl) {
+            globalThis.globalSsrContext = {
+                currentUrl: new URL(currentUrl, 'http://testserver').toString(),
+            };
+        }
         const { html, warnings } = captureWarnings(() =>
             runtime.renderToStaticMarkup(
                 testCase.buildElement({
@@ -479,6 +560,9 @@ async function generateFixtureFromModule(modulePath, runtime) {
                 })
             )
         );
+        if (currentUrl) {
+            delete globalThis.globalSsrContext;
+        }
         const normalizedHtml = normalizeRenderedHtml(
             component,
             testCase,

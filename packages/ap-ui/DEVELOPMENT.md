@@ -99,6 +99,65 @@ intentional extensions, so they will not show up as parity failures:
 - **Boolean attributes**: React SSR renders `disabled=""`/`readonly=""`; the Python renderer emits
   bare `disabled`/`readonly`. The parity normalizer treats these as equivalent (they are in HTML).
 
+## Table components (`table`, `table_header`, `table_body`, `table_column`, `table_row`, `table_cell`)
+
+The static table renderers live in
+`alliance_platform/ui/templatetags/alliance_platform/html_components/components/table.py` and
+mirror `@alliancesoftware/ui`'s `Table.tsx` for the read-only CRUD list case. Sorting is rendered
+as plain `<a href>` links that update a backend query parameter, mirroring `ColumnHeaderLink.tsx` /
+`useTableSorter.ts` (direction cycle: unsorted → ascending → descending → off).
+
+### Cross-component render state
+
+The components coordinate through a `TableRenderState` stack stored in `context.render_context`
+(`_TABLE_STATE_KEY`), pushed by `table` around its children via the
+`render_children_for_component()` hook on the base renderer (which, unlike `render_children()`,
+receives the resolved props). `render_context` is shared across `{% include %}` — including
+`only` — within one template render, and a stack supports tables nested inside cells:
+
+1. `table` builds the state from its props (sort order/mode/behaviour, query param, empty state)
+   and pushes it while children render.
+2. Each `table_column` appends its `TableColumnState` (key, align, row-header flag, sort state)
+   in render order.
+3. Each `table_row` resets `current_row_cell_index` to 0 around its children and increments
+   `row_count` (so `table_body` can render the default empty state only when no rows rendered).
+4. Each `table_cell` consumes the column state at the current index to inherit alignment and
+   row-header status, advancing the index by the cell's `colSpan` so later cells stay aligned.
+
+Components rendered outside their expected parent warn and render fallback markup rather than
+failing (CRUD pages should not 500 because of a conditional cell); rows with more cells than
+registered columns warn once per table.
+
+### Intentionally unsupported React Table features
+
+Row selection (`selectionMode`, `selectedKeys`, checkboxes, `isSelected`), client-side sorting
+(`onSortChange`, `sortFunction`, `defaultSortOrder`), collection render props (`items`,
+`columns`), `columnHeaderElementType`, nested/grouped columns, and all keyboard grid/focus
+behaviour (including `mode="edit"` semantics — only the `data-mode` attribute is rendered). These
+warn and are dropped so templates never render interactive-looking state with no behaviour behind
+it.
+
+### Native semantics vs the React ARIA grid
+
+The React table is an interactive ARIA grid (grid roles, tab indexes, focus management). The
+static renderer intentionally keeps native table semantics instead: no grid roles or tab indexes,
+`scope="col"` and `aria-sort` on `<th>` header cells (direction when sorted, `"none"` when
+sortable-but-unsorted), and row-header cells as `<td role="rowheader">` rather than
+`<th scope="row">` so browser default `<th>` styling cannot diverge visually from React. The
+fixture generator's `normalizeTableComponentHtml()` reconciles these documented differences; see
+the comments there for the full list (grid roles, `data-collection`/`data-key` bookkeeping,
+absolute vs relative sort hrefs, CSS var hashes in `style`).
+
+Two React quirks worth knowing when comparing against `Table.tsx`: the user `className` is merged
+*before* the default classes on `<th>`/`<tr>` (mergeProps ordering) but *after* them on `<td>`
+and the wrapper, and `align="center"` applies `alignCenter` to body cells only — headers just get
+`data-align="center"` (the static renderer matches both).
+
+Sortable-column fixtures record the URL the React SSR render happened at in `meta.current_url`
+(the generator exposes it via `globalSsrContext.currentUrl`, which `ColumnHeaderLink` reads during
+SSR); the Python parity test builds a `RequestFactory` request for the same URL. Regenerate the
+table fixtures with `just sync-html-ui-parity-fixtures ../alliance-platform-js table`.
+
 ## HTML parity fixture workflow
 
 The fixture generator depends on `@alliancesoftware/ui` TypeScript sources, so it must run through the `alliance-platform-js` runtime context.
@@ -134,6 +193,19 @@ The cross-repo fixture drift workflow is defined in:
 - `.github/workflows/ap-ui-fixture-drift.yml`
 
 It checks out both `alliance-platform-py` and `alliance-platform-js`, regenerates the fixtures, and fails if fixture files changed.
+
+### Testing against an unmerged alliance-platform-js branch
+
+By default the workflow regenerates fixtures against alliance-platform-js `main`. When a change
+here depends on an unmerged alliance-platform-js branch (e.g. fixtures were regenerated against a
+JS fix), pin the ref in:
+
+- `.github/alliance-platform-js-ref` — single line containing the branch/tag/SHA to check out.
+
+Commit the pin with your PR so CI tests the pair together, and reset the file to `main` once the
+JS branch merges (until then, `main` runs of the drift check will use the pinned ref, so don't
+leave stale pins behind). Manual runs can override the ref with the `js_ref` input on
+`workflow_dispatch` without touching the file.
 
 For private `alliance-platform-js` access in GitHub Actions, configure:
 
