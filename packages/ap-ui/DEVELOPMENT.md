@@ -148,10 +148,13 @@ fixture generator's `normalizeTableComponentHtml()` reconciles these documented 
 the comments there for the full list (grid roles, `data-collection`/`data-key` bookkeeping,
 absolute vs relative sort hrefs, CSS var hashes in `style`).
 
-Two React quirks worth knowing when comparing against `Table.tsx`: the user `className` is merged
-*before* the default classes on `<th>`/`<tr>` (mergeProps ordering) but *after* them on `<td>`
-and the wrapper, and `align="center"` applies `alignCenter` to body cells only — headers just get
-`data-align="center"` (the static renderer matches both).
+The Table stylesheet is deliberately "class-free" for consumers: all structural styling hangs off
+the `tableWrapper` class on the root element, with rows/cells targeted through element and
+data-attribute selectors (`tbody tr`, `td`, `[data-align]`, `[data-spans-multiple]`,
+`[data-has-header]`/`[data-has-footer]`). Only the root and the header chrome
+(`headerCellWrapper`, `headerCellContent`, `sortWrapper`, sort icon classes, `noResults`) carry
+classes, so user `className` values render alone on `<th>`/`<tr>`/`<td>` and the data attributes
+are load-bearing — don't drop them as informational.
 
 Sortable-column fixtures record the URL the React SSR render happened at in `meta.current_url`
 (the generator exposes it via `globalSsrContext.currentUrl`, which `ColumnHeaderLink` reads during
