@@ -50,9 +50,21 @@ from .components.button_group import UIButtonGroupRenderer  # noqa: E402
 from .components.input import UINumberInputRenderer  # noqa: E402
 from .components.input import UITextAreaRenderer  # noqa: E402
 from .components.input import UITextInputRenderer  # noqa: E402
+from .components.table import UITableBodyRenderer  # noqa: E402
+from .components.table import UITableCellRenderer  # noqa: E402
+from .components.table import UITableColumnRenderer  # noqa: E402
+from .components.table import UITableHeaderRenderer  # noqa: E402
+from .components.table import UITableRenderer  # noqa: E402
+from .components.table import UITableRowRenderer  # noqa: E402
 
 built_in_registry.register_renderer("button", UIButtonRenderer)
 built_in_registry.register_renderer("button_group", UIButtonGroupRenderer)
 built_in_registry.register_renderer("text_input", UITextInputRenderer)
 built_in_registry.register_renderer("number_input", UINumberInputRenderer)
 built_in_registry.register_renderer("text_area", UITextAreaRenderer)
+built_in_registry.register_renderer("table", UITableRenderer)
+built_in_registry.register_renderer("table_header", UITableHeaderRenderer)
+built_in_registry.register_renderer("table_body", UITableBodyRenderer)
+built_in_registry.register_renderer("table_column", UITableColumnRenderer)
+built_in_registry.register_renderer("table_row", UITableRowRenderer)
+built_in_registry.register_renderer("table_cell", UITableCellRenderer)

@@ -14,6 +14,7 @@ from django.utils.safestring import mark_safe
 
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 
+from ..base import ICON_STYLE_PATH
 from ..base import BaseHtmlUIComponentRenderer
 from ..content import has_renderable_content
 from ..content import is_rich_content_value
@@ -36,17 +37,11 @@ _LABELED_INPUT_STYLE_PATH = "@alliancesoftware/ui/components/form/LabeledInput.c
 _LABEL_STYLE_PATH = "@alliancesoftware/ui/components/form/Label.css.ts"
 _FORM_SECTION_STYLE_PATH = "@alliancesoftware/ui/components/form/FormSection.css.ts"
 _FOCUS_RING_STYLE_PATH = "@alliancesoftware/ui/styles/base/focusRing.css.ts"
-_ICON_STYLE_PATH = "@alliancesoftware/icons/Icon.css.ts"
 _NUMBER_INPUT_STYLE_PATH = "@alliancesoftware/ui/components/number-input/NumberInput.css.ts"
 
 # Key used in ``context.render_context`` to keep generated ids unique within a template render.
 _HTML_ID_COUNTER_KEY = "alliance_platform_ui_html_id_counter"
 
-# Static SVG markup matching the icons rendered by the React components
-# (see @alliancesoftware/icons/outlined/*.tsx). Width/height are set inline by the Icon
-# component so icons have a size before stylesheets load.
-_SVG_ATTRS = 'width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" focusable="false"'
-_SVG_PATH_ATTRS = 'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'
 _ALERT_CIRCLE_SVG_PATH = (
     "M12 8V12M12 16H12.01M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 "
     "6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12Z"
@@ -337,22 +332,6 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
             return self._render_tag("div", attrs, content)
         return ""
 
-    def render_icon(self, svg_path: str, size: str, extra_class_names: list[str] | None = None) -> str:
-        """Render the static markup produced by ``@alliancesoftware/icons`` for an outlined icon."""
-        icon_styles = self.resolve_vanilla_extract_mapping(_ICON_STYLE_PATH)
-        class_name = self.join_classes(
-            self.get_style_class(icon_styles, "icon"),
-            self.get_nested_style_class(icon_styles, "variants", "plain"),
-            self.get_nested_style_class(icon_styles, "sizes", size),
-            *(extra_class_names or []),
-        )
-        return (
-            f'<span role="img" aria-hidden="true" class="{conditional_escape(class_name)}">'
-            f"<svg {_SVG_ATTRS}>"
-            f'<path d="{svg_path}" {_SVG_PATH_ATTRS}></path>'
-            "</svg></span>"
-        )
-
 
 class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRenderer):
     """Shared rendering for text-like inputs, mirroring ``TextInputBase.tsx``."""
@@ -406,7 +385,7 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
             self.resolve_frontend_resource(_LABEL_STYLE_PATH),
             self.resolve_frontend_resource(_FORM_SECTION_STYLE_PATH),
             self.resolve_frontend_resource(_FOCUS_RING_STYLE_PATH),
-            self.resolve_frontend_resource(_ICON_STYLE_PATH),
+            self.resolve_frontend_resource(ICON_STYLE_PATH),
         ]
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
