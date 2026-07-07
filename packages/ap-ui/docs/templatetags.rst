@@ -51,6 +51,71 @@ The dispatcher also supports ``as <var>``:
     {% ui "button" as save_button_html %}Save{% endui %}
     {{ save_button_html }}
 
+Static HTML table components
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``{% ui "table" %}`` and its child components render the Alliance UI table as static HTML — the
+same visual classes and state data attributes as the React ``Table``, but with no JavaScript
+runtime. Use it for read-only list views (the common CRUD case) where sorting happens on the
+backend through normal links. Row selection, client-side sorting and the interactive keyboard
+grid behaviour are **not** supported — use the React-backed :ttag:`Table` tag when you need
+those.
+
+The available components are ``table``, ``table_header``, ``table_body``, ``table_column``,
+``table_row`` and ``table_cell``. A CRUD list view with backend sorting looks like:
+
+.. code-block:: html+django
+
+    {% load alliance_platform.ui %}
+
+    {% ui "table" aria_label="User list" sort_order=request|table_sort_order:"order" sort_query_param="order" sort_mode="multiple" sort_behavior="toggle" %}
+      {% ui "table_header" %}
+        {% ui "table_column" key="name" allows_sorting=True %}Name{% endui %}
+        {% ui "table_column" key="email" allows_sorting=True %}Email{% endui %}
+        {% ui "table_column" key="active" align="center" %}Active{% endui %}
+        {% ui "table_column" hide_header=True width=96 %}Actions{% endui %}
+      {% endui %}
+      {% ui "table_body" %}
+        {% for obj in object_list %}
+          {% ui "table_row" key=obj.pk %}
+            {% ui "table_cell" %}{{ obj.name }}{% endui %}
+            {% ui "table_cell" %}{{ obj.email }}{% endui %}
+            {% ui "table_cell" %}{{ obj.is_active }}{% endui %}
+            {% ui "table_cell" %}{# action buttons #}{% endui %}
+          {% endui %}
+        {% endfor %}
+      {% endui %}
+    {% endui %}
+
+Sortable columns (``allows_sorting=True`` with a ``key``) render their header content as a link
+that updates the table's sort query parameter (``sort_query_param``, default ``"ordering"``),
+preserving all other query parameters. :tfilter:`table_sort_order` extracts the current order
+from the request in the format ``sort_order`` expects. Each click cycles the column through
+ascending → descending → unsorted. With ``sort_mode="single"`` (the default) sorting by a column
+replaces any other sorting; with ``sort_mode="multiple"`` and ``sort_behavior="toggle"`` other
+columns are preserved, while ``sort_behavior="replace"`` replaces them (the React ctrl/cmd-click
+multi-sort has no static equivalent). ``request`` must be available in the template context for
+link generation; alternatively pass an explicit URL when it is computed elsewhere:
+
+.. code-block:: html+django
+
+    {% ui "table_column" allows_sorting=True sort_href="?order=-created_at" sort_direction="descending" %}
+      Created
+    {% endui %}
+
+Other notable behaviour:
+
+* The first column is treated as the row header for accessibility; set ``is_row_header=True`` on
+  one or more columns to override this.
+* ``table_cell`` inherits alignment and row-header status from the ``table_column`` at the same
+  position, so alignment is set once on the column.
+* An empty ``table_body`` renders a "No results" empty state spanning all columns. Customise it
+  with ``empty_state="..."`` or disable it with ``empty_state=False``.
+* ``header``/``footer`` content (e.g. a heading or pagination) can be passed to ``table`` and is
+  rendered above/below the scrollable table area.
+* Unsupported interactive props (selection, ``on*`` callbacks, ``items``/``columns`` collections)
+  warn and are ignored rather than rendering broken interactivity.
+
 .. templatetag:: Button
 
 ``Button``
@@ -245,6 +310,13 @@ submenu with an icon for the current user's account management link and a logout
 Render an `Table <https://main--64894ae38875dcf46367336f.chromatic.com/?path=/docs/ui-table--docs>`_ component.
 
 You can use ``TableHeader``, ``TableBody``, ``Row``, ``Column`` and ``Cell`` components to build the menu.
+
+.. note::
+
+    For read-only list views that only need backend sort links there is also a static HTML
+    implementation with no JavaScript runtime — see `Static HTML table components`_ under the
+    :ttag:`ui` tag. Use this React-backed tag when you need row selection or the interactive
+    keyboard grid behaviour.
 
 This example renders a list of records, and allows sorting of columns by clicking on the column headers. This makes
 use of the :tfilter:`table_sort_order` filter to determine the current sort order of the column and pass it through

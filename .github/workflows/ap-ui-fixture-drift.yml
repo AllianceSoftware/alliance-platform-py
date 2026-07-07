@@ -4,7 +4,15 @@ on:
   pull_request:
     paths:
       - "packages/ap-ui/tests/fixtures/ui_html_*_parity.json"
+      - "packages/ap-ui/scripts/**"
+      - ".github/alliance-platform-js-ref"
+      - ".github/workflows/ap-ui-fixture-drift.yml"
   workflow_dispatch:
+    inputs:
+      js_ref:
+        description: "alliance-platform-js ref to regenerate fixtures against (overrides .github/alliance-platform-js-ref)"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -19,12 +27,26 @@ jobs:
       - name: Checkout alliance-platform-py
         uses: actions/checkout@v4
 
+      # Cross-repo changes can be tested before the alliance-platform-js side merges by pinning
+      # the ref in .github/alliance-platform-js-ref (reset it to "main" once the JS branch
+      # merges), or by passing the js_ref input on manual runs.
+      - name: Resolve alliance-platform-js ref
+        id: js-ref
+        run: |
+          ref="${{ inputs.js_ref }}"
+          if [[ -z "$ref" && -f .github/alliance-platform-js-ref ]]; then
+            ref="$(head -n1 .github/alliance-platform-js-ref | tr -d '[:space:]')"
+          fi
+          ref="${ref:-main}"
+          echo "Using alliance-platform-js ref: $ref"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
       - name: Checkout alliance-platform-js
         uses: actions/checkout@v4
         with:
           repository: AllianceSoftware/alliance-platform-js
           path: alliance-platform-js
-          ref: main
+          ref: ${{ steps.js-ref.outputs.ref }}
           ssh-key: ${{ secrets.ALLIANCE_PLATFORM_JS_DEPLOY_KEY }}
           persist-credentials: false
 
@@ -51,4 +73,5 @@ jobs:
             packages/ap-ui/tests/fixtures/ui_html_button_group_parity.json \
             packages/ap-ui/tests/fixtures/ui_html_text_input_parity.json \
             packages/ap-ui/tests/fixtures/ui_html_number_input_parity.json \
-            packages/ap-ui/tests/fixtures/ui_html_text_area_parity.json
+            packages/ap-ui/tests/fixtures/ui_html_text_area_parity.json \
+            packages/ap-ui/tests/fixtures/ui_html_table_parity.json

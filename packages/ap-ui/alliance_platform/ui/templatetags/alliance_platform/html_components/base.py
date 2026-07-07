@@ -50,6 +50,16 @@ _REACT_ATTR_TO_HTML_ATTR = {
 
 _CAMEL_CASE_SPLIT_RE = re.compile(r"([a-z0-9])([A-Z])")
 
+#: Stylesheet for the ``@alliancesoftware/icons`` Icon component, required whenever
+#: :meth:`BaseHtmlUIComponentRenderer.render_icon` output may be rendered.
+ICON_STYLE_PATH = "@alliancesoftware/icons/Icon.css.ts"
+
+# Static SVG markup matching the icons rendered by the React components
+# (see @alliancesoftware/icons/outlined/*.tsx). Width/height are set inline by the Icon
+# component so icons have a size before stylesheets load.
+_SVG_ATTRS = 'width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" focusable="false"'
+_SVG_PATH_ATTRS = 'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'
+
 # Extra key adaptations applied to bulk ``props`` dicts (after the standard HTML -> React attribute
 # name conversion). Bulk props typically come from HTML attribute dicts such as Django's
 # ``widget.attrs``, where boolean state is expressed with the plain HTML attribute names rather
@@ -149,7 +159,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         self._queue_resources()
         props = self.resolve_props(context)
         props = self._merge_slot_props(context, props)
-        children_html = self.render_children(context)
+        children_html = self.render_children_for_component(context, props)
         rendered = self.render_component(context, props, children_html)
         if self.target_var:
             context[self.target_var] = rendered
@@ -219,6 +229,15 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         if isinstance(value, NodeList):
             return value.render(context)
         return value
+
+    def render_children_for_component(self, context: Context, props: dict[str, Any]) -> str:
+        """Render children during the main :meth:`render` flow.
+
+        Unlike :meth:`render_children` this receives the resolved props, so renderers that need to
+        share state with their children (e.g. the table components) can push that state around the
+        children render based on the props.
+        """
+        return self.render_children(context)
 
     def render_children(
         self,
@@ -326,6 +345,22 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
             if isinstance(variant_class, str) and variant_class:
                 classes.append(variant_class)
         return classes
+
+    def render_icon(self, svg_path: str, size: str, extra_class_names: list[str] | None = None) -> str:
+        """Render the static markup produced by ``@alliancesoftware/icons`` for an outlined icon."""
+        icon_styles = self.resolve_vanilla_extract_mapping(ICON_STYLE_PATH)
+        class_name = self.join_classes(
+            self.get_style_class(icon_styles, "icon"),
+            self.get_nested_style_class(icon_styles, "variants", "plain"),
+            self.get_nested_style_class(icon_styles, "sizes", size),
+            *(extra_class_names or []),
+        )
+        return (
+            f'<span role="img" aria-hidden="true" class="{conditional_escape(class_name)}">'
+            f"<svg {_SVG_ATTRS}>"
+            f'<path d="{svg_path}" {_SVG_PATH_ATTRS}></path>'
+            "</svg></span>"
+        )
 
     def build_attrs_string(self, attrs: dict[str, Any]) -> str:
         return build_attrs_string(attrs)
