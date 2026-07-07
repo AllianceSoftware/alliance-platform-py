@@ -1,0 +1,5 @@
+---
+"alliance-platform-ui": patch
+---
+
+Add static HTML dispatcher renderers for the Alliance UI menubar components, available through `{% ui "menubar" %}`, `{% ui "menubar_item" %}`, `{% ui "menubar_submenu" %}` and `{% ui "menubar_section" %}`. These mirror the `@alliancesoftware/ui` `Menubar` markup (visual classes, layout/orientation and open/disabled/current state data attributes, chevron icons, popover-styled flyouts) with real server-rendered anchors and form buttons; a small standalone runtime module (`Menubar.attach.ts`, no React) adds submenu open/close, roving-tabindex keyboard navigation and typeahead. Denied `url_with_perm` links render nothing — `OmitComponentFromRendering` is now handled by all static `{% ui %}` components — and submenus/sections whose children were all denied are pruned automatically (`hide_when_empty=False` / `render_when_empty=True` opt out). Client-side callbacks, selection, dynamic `items` collections and width overflow are intentionally unsupported; the React-backed `{% Menubar %}` tags remain for those cases.

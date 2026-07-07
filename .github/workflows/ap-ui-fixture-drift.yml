@@ -74,4 +74,5 @@ jobs:
             packages/ap-ui/tests/fixtures/ui_html_text_input_parity.json \
             packages/ap-ui/tests/fixtures/ui_html_number_input_parity.json \
             packages/ap-ui/tests/fixtures/ui_html_text_area_parity.json \
-            packages/ap-ui/tests/fixtures/ui_html_table_parity.json
+            packages/ap-ui/tests/fixtures/ui_html_table_parity.json \
+            packages/ap-ui/tests/fixtures/ui_html_menubar_parity.json
