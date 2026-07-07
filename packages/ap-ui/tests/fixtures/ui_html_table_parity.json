@@ -1,0 +1,100 @@
+{
+  "generated_by": "scripts/generateHtmlUiParityFixtures.mjs",
+  "generated_at_utc": "2026-07-07T06:04:01.138Z",
+  "component": "table",
+  "styles": {},
+  "cases": [
+    {
+      "name": "basic",
+      "template": "{% ui \"table\" aria_label=\"User list\" %}{% ui \"table_header\" %}{% ui \"table_column\" key=\"name\" %}Name{% endui %}{% ui \"table_column\" key=\"email\" %}Email{% endui %}{% endui %}{% ui \"table_body\" %}{% ui \"table_row\" %}{% ui \"table_cell\" %}Jane{% endui %}{% ui \"table_cell\" %}jane@example.com{% endui %}{% endui %}{% ui \"table_row\" %}{% ui \"table_cell\" %}John{% endui %}{% ui \"table_cell\" %}john@example.com{% endui %}{% endui %}{% endui %}{% endui %}",
+      "expected_html": "<div data-apui=\"table\" data-mode=\"default\" class=\"Table_wrapper Table_hasNoHeader Table_hasNoFooter\"><div class=\"Table_scrollContainer\"><table aria-label=\"User list\"><thead><tr class=\"Table_headerRow\"><th scope=\"col\" class=\"Table_headerCell\"><div class=\"Table_headerCellWrapper\"><div class=\"Table_headerCellContent\">Name</div></div></th><th scope=\"col\" class=\"Table_headerCell\"><div class=\"Table_headerCellWrapper\"><div class=\"Table_headerCellContent\">Email</div></div></th></tr></thead><tbody><tr class=\"Table_row\"><td role=\"rowheader\" class=\"Table_cell\">Jane</td><td class=\"Table_cell\">jane@example.com</td></tr><tr class=\"Table_row\"><td role=\"rowheader\" class=\"Table_cell\">John</td><td class=\"Table_cell\">john@example.com</td></tr></tbody></table></div></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "class_style_merging",
+      "template": "{% ui \"table\" aria_label=\"User list\" class=\"custom-table\" style=\"max-width: 400px\" %}{% ui \"table_header\" %}{% ui \"table_column\" key=\"name\" class=\"custom-column\" %}Name{% endui %}{% endui %}{% ui \"table_body\" class=\"custom-body\" %}{% ui \"table_row\" class=\"custom-row\" %}{% ui \"table_cell\" class=\"custom-cell\" style=\"font-style: italic\" %}Jane{% endui %}{% endui %}{% endui %}{% endui %}",
+      "expected_html": "<div data-apui=\"table\" data-mode=\"default\" class=\"Table_wrapper custom-table Table_hasNoHeader Table_hasNoFooter\" style=\"max-width: 400px\"><div class=\"Table_scrollContainer\"><table aria-label=\"User list\"><thead><tr class=\"Table_headerRow\"><th scope=\"col\" class=\"custom-column Table_headerCell\"><div class=\"Table_headerCellWrapper\"><div class=\"Table_headerCellContent\">Name</div></div></th></tr></thead><tbody class=\"custom-body\"><tr class=\"custom-row Table_row\"><td role=\"rowheader\" class=\"Table_cell custom-cell\" style=\"font-style: italic\">Jane</td></tr></tbody></table></div></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "column_alignment",
+      "template": "{% ui \"table\" aria_label=\"User list\" %}{% ui \"table_header\" %}{% ui \"table_column\" key=\"name\" %}Name{% endui %}{% ui \"table_column\" key=\"active\" align=\"center\" %}Active{% endui %}{% ui \"table_column\" key=\"total\" align=\"end\" %}Total{% endui %}{% ui \"table_column\" key=\"notes\" align=\"start\" %}Notes{% endui %}{% endui %}{% ui \"table_body\" %}{% ui \"table_row\" %}{% ui \"table_cell\" %}Jane{% endui %}{% ui \"table_cell\" %}Yes{% endui %}{% ui \"table_cell\" %}10{% endui %}{% ui \"table_cell\" %}-{% endui %}{% endui %}{% endui %}{% endui %}",
+      "expected_html": "<div data-apui=\"table\" data-mode=\"default\" class=\"Table_wrapper Table_hasNoHeader Table_hasNoFooter\"><div class=\"Table_scrollContainer\"><table aria-label=\"User list\"><thead><tr class=\"Table_headerRow\"><th scope=\"col\" class=\"Table_headerCell\"><div class=\"Table_headerCellWrapper\"><div class=\"Table_headerCellContent\">Name</div></div></th><th scope=\"col\" class=\"Table_headerCell\" data-align=\"center\"><div class=\"Table_headerCellWrapper\"><div class=\"Table_headerCellContent\">Active</div></div></th><th scope=\"col\" class=\"Table_headerCell Table_alignEnd\" data-align=\"end\"><div class=\"Table_headerCellWrapper\"><div class=\"Table_headerCellContent\">Total</div></div></th><th scope=\"col\" class=\"Table_headerCell\" data-align=\"start\"><div class=\"Table_headerCellWrapper\"><div class=\"Table_headerCellContent\">Notes</div></div></th></tr></thead><tbody><tr class=\"Table_row\"><td role=\"rowheader\" class=\"Table_cell\">Jane</td><td class=\"Table_cell Table_alignCenter\" data-align=\"center\">Yes</td><td class=\"Table_cell Table_alignEnd\" data-align=\"end\">10</td><td class=\"Table_cell\" data-align=\"start\">-</td></tr></tbody></table></div></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "column_width",
+      "template": "{% ui \"table\" aria_label=\"User list\" %}{% ui \"table_header\" %}{% ui \"table_column\" key=\"name\" width=96 %}Name{% endui %}{% endui %}{% ui \"table_body\" %}{% ui \"table_row\" %}{% ui \"table_cell\" %}Jane{% endui %}{% endui %}{% endui %}{% endui %}",
+      "expected_html": "<div data-apui=\"table\" data-mode=\"default\" class=\"Table_wrapper Table_hasNoHeader Table_hasNoFooter\"><div class=\"Table_scrollContainer\"><table aria-label=\"User list\"><thead><tr class=\"Table_headerRow\"><th scope=\"col\" class=\"Table_headerCell\" style=\"--components-table-columnWidth: 96px\"><div class=\"Table_headerCellWrapper\"><div class=\"Table_headerCellContent\">Name</div></div></th></tr></thead><tbody><tr class=\"Table_row\"><td role=\"rowheader\" class=\"Table_cell\">Jane</td></tr></tbody></table></div></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "sortable_unsorted",
+      "template": "{% ui \"table\" aria_label=\"User list\" sort_order=request|table_sort_order %}{% ui \"table_header\" %}{% ui \"table_column\" key=\"name\" allows_sorting=True %}Name{% endui %}{% ui \"table_column\" key=\"email\" %}Email{% endui %}{% endui %}{% ui \"table_body\" %}{% ui \"table_row\" %}{% ui \"table_cell\" %}Jane{% endui %}{% ui \"table_cell\" %}jane@example.com{% endui %}{% endui %}{% endui %}{% endui %}",
+      "expected_html": "<div data-apui=\"table\" data-mode=\"default\" class=\"Table_wrapper Table_hasNoHeader Table_hasNoFooter\"><div class=\"Table_scrollContainer\"><table aria-label=\"User list\"><thead><tr class=\"Table_headerRow\"><th scope=\"col\" aria-sort=\"none\" class=\"Table_headerCell\"><div class=\"Table_headerCellWrapper\"><a class=\"Table_headerCellContent\" href=\"/users/?ordering=name\">Name</a><span class=\"Table_sortWrapper\"><span aria-hidden=\"true\" role=\"img\" class=\"Icon_icon Icon_variants_plain Icon_sizes_xs Table_sortIconUnsorted Table_sortIcon\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" focusable=\"false\"><path d=\"M12 19V5M12 5L5 12M12 5L19 12\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path></svg></span></span></div></th><th scope=\"col\" class=\"Table_headerCell\"><div class=\"Table_headerCellWrapper\"><div class=\"Table_headerCellContent\">Email</div></div></th></tr></thead><tbody><tr class=\"Table_row\"><td role=\"rowheader\" class=\"Table_cell\">Jane</td><td class=\"Table_cell\">jane@example.com</td></tr></tbody></table></div></div>",
+      "expected_warnings": [],
+      "meta": {
+        "current_url": "/users/"
+      }
+    },
+    {
+      "name": "sortable_ascending",
+      "template": "{% ui \"table\" aria_label=\"User list\" sort_order=request|table_sort_order %}{% ui \"table_header\" %}{% ui \"table_column\" key=\"name\" allows_sorting=True %}Name{% endui %}{% endui %}{% ui \"table_body\" %}{% ui \"table_row\" %}{% ui \"table_cell\" %}Jane{% endui %}{% endui %}{% endui %}{% endui %}",
+      "expected_html": "<div data-apui=\"table\" data-mode=\"default\" class=\"Table_wrapper Table_hasNoHeader Table_hasNoFooter\"><div class=\"Table_scrollContainer\"><table aria-label=\"User list\"><thead><tr class=\"Table_headerRow\"><th scope=\"col\" aria-sort=\"ascending\" class=\"Table_headerCell\" data-sort-direction=\"ascending\"><div class=\"Table_headerCellWrapper\"><a class=\"Table_headerCellContent\" href=\"/users/?ordering=-name\">Name</a><span class=\"Table_sortWrapper\"><span aria-hidden=\"true\" role=\"img\" class=\"Icon_icon Icon_variants_plain Icon_sizes_xs Table_sortIcon\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" focusable=\"false\"><path d=\"M12 19V5M12 5L5 12M12 5L19 12\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path></svg></span></span></div></th></tr></thead><tbody><tr class=\"Table_row\"><td role=\"rowheader\" class=\"Table_cell\">Jane</td></tr></tbody></table></div></div>",
+      "expected_warnings": [],
+      "meta": {
+        "current_url": "/users/?ordering=name"
+      }
+    },
+    {
+      "name": "sortable_descending",
+      "template": "{% ui \"table\" aria_label=\"User list\" sort_order=request|table_sort_order %}{% ui \"table_header\" %}{% ui \"table_column\" key=\"name\" allows_sorting=True %}Name{% endui %}{% endui %}{% ui \"table_body\" %}{% ui \"table_row\" %}{% ui \"table_cell\" %}Jane{% endui %}{% endui %}{% endui %}{% endui %}",
+      "expected_html": "<div data-apui=\"table\" data-mode=\"default\" class=\"Table_wrapper Table_hasNoHeader Table_hasNoFooter\"><div class=\"Table_scrollContainer\"><table aria-label=\"User list\"><thead><tr class=\"Table_headerRow\"><th scope=\"col\" aria-sort=\"descending\" class=\"Table_headerCell\" data-sort-direction=\"descending\"><div class=\"Table_headerCellWrapper\"><a class=\"Table_headerCellContent\" href=\"/users/\">Name</a><span class=\"Table_sortWrapper\"><span aria-hidden=\"true\" role=\"img\" class=\"Icon_icon Icon_variants_plain Icon_sizes_xs Table_sortIcon\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" focusable=\"false\"><path d=\"M12 5V19M12 19L19 12M12 19L5 12\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path></svg></span></span></div></th></tr></thead><tbody><tr class=\"Table_row\"><td role=\"rowheader\" class=\"Table_cell\">Jane</td></tr></tbody></table></div></div>",
+      "expected_warnings": [],
+      "meta": {
+        "current_url": "/users/?ordering=-name"
+      }
+    },
+    {
+      "name": "multiple_sort_with_position",
+      "template": "{% ui \"table\" aria_label=\"User list\" sort_order=request|table_sort_order sort_mode=\"multiple\" sort_behavior=\"toggle\" %}{% ui \"table_header\" %}{% ui \"table_column\" key=\"name\" allows_sorting=True %}Name{% endui %}{% ui \"table_column\" key=\"created\" allows_sorting=True %}Created{% endui %}{% ui \"table_column\" key=\"email\" allows_sorting=True %}Email{% endui %}{% endui %}{% ui \"table_body\" %}{% ui \"table_row\" %}{% ui \"table_cell\" %}Jane{% endui %}{% ui \"table_cell\" %}2026-01-01{% endui %}{% ui \"table_cell\" %}jane@example.com{% endui %}{% endui %}{% endui %}{% endui %}",
+      "expected_html": "<div data-apui=\"table\" data-mode=\"default\" class=\"Table_wrapper Table_hasNoHeader Table_hasNoFooter\"><div class=\"Table_scrollContainer\"><table aria-label=\"User list\"><thead><tr class=\"Table_headerRow\"><th scope=\"col\" aria-sort=\"ascending\" class=\"Table_headerCell\" data-sort-direction=\"ascending\"><div class=\"Table_headerCellWrapper\"><a class=\"Table_headerCellContent\" href=\"/users/?page=2&amp;ordering=-name%2C-created\">Name</a><span class=\"Table_sortWrapper\"><span aria-hidden=\"true\" role=\"img\" class=\"Icon_icon Icon_variants_plain Icon_sizes_xs Table_sortIcon\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" focusable=\"false\"><path d=\"M12 19V5M12 5L5 12M12 5L19 12\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path></svg></span><span>1</span></span></div></th><th scope=\"col\" aria-sort=\"descending\" class=\"Table_headerCell\" data-sort-direction=\"descending\"><div class=\"Table_headerCellWrapper\"><a class=\"Table_headerCellContent\" href=\"/users/?page=2&amp;ordering=name\">Created</a><span class=\"Table_sortWrapper\"><span aria-hidden=\"true\" role=\"img\" class=\"Icon_icon Icon_variants_plain Icon_sizes_xs Table_sortIcon\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" focusable=\"false\"><path d=\"M12 5V19M12 19L19 12M12 19L5 12\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path></svg></span><span>2</span></span></div></th><th scope=\"col\" aria-sort=\"none\" class=\"Table_headerCell\"><div class=\"Table_headerCellWrapper\"><a class=\"Table_headerCellContent\" href=\"/users/?page=2&amp;ordering=name%2C-created%2Cemail\">Email</a><span class=\"Table_sortWrapper\"><span aria-hidden=\"true\" role=\"img\" class=\"Icon_icon Icon_variants_plain Icon_sizes_xs Table_sortIconUnsorted Table_sortIcon\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" focusable=\"false\"><path d=\"M12 19V5M12 5L5 12M12 5L19 12\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path></svg></span><span></span></span></div></th></tr></thead><tbody><tr class=\"Table_row\"><td role=\"rowheader\" class=\"Table_cell\">Jane</td><td class=\"Table_cell\">2026-01-01</td><td class=\"Table_cell\">jane@example.com</td></tr></tbody></table></div></div>",
+      "expected_warnings": [],
+      "meta": {
+        "current_url": "/users/?page=2&ordering=name,-created"
+      }
+    },
+    {
+      "name": "hidden_header",
+      "template": "{% ui \"table\" aria_label=\"User list\" %}{% ui \"table_header\" %}{% ui \"table_column\" key=\"name\" %}Name{% endui %}{% ui \"table_column\" key=\"actions\" hide_header=True %}Actions{% endui %}{% endui %}{% ui \"table_body\" %}{% ui \"table_row\" %}{% ui \"table_cell\" %}Jane{% endui %}{% ui \"table_cell\" %}Edit{% endui %}{% endui %}{% endui %}{% endui %}",
+      "expected_html": "<div data-apui=\"table\" data-mode=\"default\" class=\"Table_wrapper Table_hasNoHeader Table_hasNoFooter\"><div class=\"Table_scrollContainer\"><table aria-label=\"User list\"><thead><tr class=\"Table_headerRow\"><th scope=\"col\" class=\"Table_headerCell\"><div class=\"Table_headerCellWrapper\"><div class=\"Table_headerCellContent\">Name</div></div></th><th scope=\"col\" class=\"Table_headerCell\"><div class=\"Table_headerCellWrapper\"><div style=\"border: 0; clip: rect(0 0 0 0); clip-path: inset(50%); height: 1px; margin: -1px; overflow: hidden; padding: 0; position: absolute; width: 1px; white-space: nowrap\"><div class=\"Table_headerCellContent\">Actions</div></div></div></th></tr></thead><tbody><tr class=\"Table_row\"><td role=\"rowheader\" class=\"Table_cell\">Jane</td><td class=\"Table_cell\">Edit</td></tr></tbody></table></div></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "empty_body_default_empty_state",
+      "template": "{% ui \"table\" aria_label=\"User list\" %}{% ui \"table_header\" %}{% ui \"table_column\" key=\"name\" %}Name{% endui %}{% ui \"table_column\" key=\"email\" %}Email{% endui %}{% endui %}{% ui \"table_body\" %}{% endui %}{% endui %}",
+      "expected_html": "<div data-apui=\"table\" data-mode=\"default\" class=\"Table_wrapper Table_hasNoHeader Table_hasNoFooter\"><div class=\"Table_scrollContainer\"><table aria-label=\"User list\"><thead><tr class=\"Table_headerRow\"><th scope=\"col\" class=\"Table_headerCell\"><div class=\"Table_headerCellWrapper\"><div class=\"Table_headerCellContent\">Name</div></div></th><th scope=\"col\" class=\"Table_headerCell\"><div class=\"Table_headerCellWrapper\"><div class=\"Table_headerCellContent\">Email</div></div></th></tr></thead><tbody><tr><td colspan=\"2\"><div class=\"Table_noResults\"><em>No results</em></div></td></tr></tbody></table></div></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "empty_body_empty_state_disabled",
+      "template": "{% ui \"table\" aria_label=\"User list\" render_empty_state=None %}{% ui \"table_header\" %}{% ui \"table_column\" key=\"name\" %}Name{% endui %}{% endui %}{% ui \"table_body\" %}{% endui %}{% endui %}",
+      "expected_html": "<div data-apui=\"table\" data-mode=\"default\" class=\"Table_wrapper Table_hasNoHeader Table_hasNoFooter\"><div class=\"Table_scrollContainer\"><table aria-label=\"User list\"><thead><tr class=\"Table_headerRow\"><th scope=\"col\" class=\"Table_headerCell\"><div class=\"Table_headerCellWrapper\"><div class=\"Table_headerCellContent\">Name</div></div></th></tr></thead><tbody></tbody></table></div></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "header_footer_content",
+      "template": "{% ui \"table\" aria_label=\"User list\" header=\"Showing 1 user\" footer=\"Page 1 of 1\" %}{% ui \"table_header\" %}{% ui \"table_column\" key=\"name\" %}Name{% endui %}{% endui %}{% ui \"table_body\" %}{% ui \"table_row\" %}{% ui \"table_cell\" %}Jane{% endui %}{% endui %}{% endui %}{% endui %}",
+      "expected_html": "<div data-apui=\"table\" data-mode=\"default\" data-has-header=\"true\" data-has-footer=\"true\" class=\"Table_wrapper Table_hasHeader\">Showing 1 user<div class=\"Table_scrollContainer\"><table aria-label=\"User list\"><thead><tr class=\"Table_headerRow\"><th scope=\"col\" class=\"Table_headerCell\"><div class=\"Table_headerCellWrapper\"><div class=\"Table_headerCellContent\">Name</div></div></th></tr></thead><tbody><tr class=\"Table_row\"><td role=\"rowheader\" class=\"Table_cell\">Jane</td></tr></tbody></table></div>Page 1 of 1</div>",
+      "expected_warnings": [],
+      "meta": {}
+    }
+  ]
+}

@@ -117,19 +117,21 @@ class FormRenderingTestCase(TestCase):
     def test_form_input_requires_renderer(self):
         user = self.get_user()
 
-        with self.setup_overrides():
-            with override_settings(FORM_RENDERER="django.forms.renderers.DjangoTemplates"):
-                with self.assertWarns(
-                    UserWarning,
-                    msg="form_input tag should only be used with 'FormInputContextRenderer'",
-                ):
-                    self.client.get(reverse("update_user", kwargs={"pk": user.pk}), follow=True)
-
-        # IMPORTANT: Clear the form renderer cache after overriding settings
-        # Django 4.2+ caches the renderer with @lru_cache which persists across tests
         from django.forms.renderers import get_default_renderer
 
-        get_default_renderer.cache_clear()
+        with self.setup_overrides():
+            with override_settings(FORM_RENDERER="django.forms.renderers.DjangoTemplates"):
+                # Django 4.2 caches the default renderer with @lru_cache and
+                # doesn't clear it when FORM_RENDERER is overridden.
+                get_default_renderer.cache_clear()
+                try:
+                    with self.assertWarns(
+                        UserWarning,
+                        msg="form_input tag should only be used with 'FormInputContextRenderer'",
+                    ):
+                        self.client.get(reverse("update_user", kwargs={"pk": user.pk}), follow=True)
+                finally:
+                    get_default_renderer.cache_clear()
 
     def test_renderer_handles_context_key(self):
         user = self.get_user()

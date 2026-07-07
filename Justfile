@@ -213,7 +213,8 @@ check-html-ui-parity-fixtures js_repo="../alliance-platform-js":
         packages/ap-ui/tests/fixtures/ui_html_button_group_parity.json \
         packages/ap-ui/tests/fixtures/ui_html_text_input_parity.json \
         packages/ap-ui/tests/fixtures/ui_html_number_input_parity.json \
-        packages/ap-ui/tests/fixtures/ui_html_text_area_parity.json
+        packages/ap-ui/tests/fixtures/ui_html_text_area_parity.json \
+        packages/ap-ui/tests/fixtures/ui_html_table_parity.json
 
 # Build docs and watch for changes
 docs-watch:
