@@ -30,6 +30,19 @@ class FormInputContextRenderer(TemplatesSetting):
 
     form_input_context_key = form_input_context_key
 
+    def _add_missing_describedby(self, attrs, extra_context):
+        """Mirror Django 5's help-text aria wiring when running on Django 4.2."""
+        if attrs.get("aria-describedby") or "id" not in attrs:
+            return
+        if not extra_context.get("extra_widget_props", {}).get("description"):
+            return
+
+        # Django 5 adds this in BoundField.build_widget_attrs(), before the id is
+        # added. Reorder the dict so generated JSX debug output remains stable.
+        field_id = attrs.pop("id")
+        attrs["aria-describedby"] = f"{field_id}_helptext"
+        attrs["id"] = field_id
+
     def render(self, template_name, context, request=None):
         from alliance_platform.frontend.templatetags.react import NestedComponentPropAccumulator
 
@@ -46,5 +59,6 @@ class FormInputContextRenderer(TemplatesSetting):
             # usage with merge_props etc easier
             if "extra_widget_props" not in extra_context:
                 extra_context["extra_widget_props"] = {}
+            self._add_missing_describedby(context["widget"]["attrs"], extra_context)
             context.update(extra_context)
         return super().render(template_name, context, request)
