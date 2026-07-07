@@ -57,23 +57,24 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
     def test_table_renders_full_structure(self):
         output, caught = self.render_with_warnings(BASIC_TABLE_TEMPLATE)
         self.assertEqual(caught, [])
+        # Structural styling hangs off the tableWrapper class; rows/cells are styled through
+        # element/data-attribute selectors and carry no classes of their own.
         self.assertIn(
-            '<div data-apui="table" data-mode="default" '
-            'class="Table_wrapper Table_hasNoHeader Table_hasNoFooter">',
+            '<div data-apui="table" data-mode="default" class="Table_tableWrapper">',
             output,
         )
-        self.assertIn('<div class="Table_scrollContainer"><table aria-label="User list">', output)
-        self.assertIn('<thead><tr class="Table_headerRow">', output)
+        self.assertIn('<div><table aria-label="User list">', output)
+        self.assertIn("<thead><tr>", output)
         self.assertIn(
-            '<th class="Table_headerCell" scope="col">'
+            '<th scope="col">'
             '<div class="Table_headerCellWrapper"><div class="Table_headerCellContent">Name</div></div>'
             "</th>",
             output,
         )
         self.assertIn("<tbody>", output)
-        self.assertIn('<tr class="Table_row" data-key="1">', output)
-        self.assertIn('<td class="Table_cell" role="rowheader">Jane</td>', output)
-        self.assertIn('<td class="Table_cell">jane@example.com</td>', output)
+        self.assertIn('<tr data-key="1">', output)
+        self.assertIn('<td role="rowheader">Jane</td>', output)
+        self.assertIn("<td>jane@example.com</td>", output)
         # No ARIA grid behaviour is rendered by the static implementation
         self.assertNotIn('role="grid"', output)
         self.assertNotIn("tabindex", output)
@@ -93,13 +94,13 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
         )
         output, caught = self.render_with_warnings(template)
         self.assertEqual(caught, [])
-        self.assertIn('class="Table_wrapper my-table Table_hasNoHeader Table_hasNoFooter"', output)
-        # Header cells and rows merge the user class before the default classes (matching the
-        # React mergeProps ordering); body cells merge it after.
-        self.assertIn('class="my-column Table_headerCell"', output)
+        # The wrapper merges the user class with tableWrapper; other elements have no default
+        # classes so the user class renders alone.
+        self.assertIn('class="Table_tableWrapper my-table"', output)
+        self.assertIn('<th class="my-column" scope="col">', output)
         self.assertIn('<tbody class="my-body">', output)
-        self.assertIn('class="my-row Table_row"', output)
-        self.assertIn('class="Table_cell my-cell"', output)
+        self.assertIn('<tr class="my-row">', output)
+        self.assertIn('<td class="my-cell" role="rowheader">', output)
 
     def test_column_align_applies_to_header_and_body_cells(self):
         template = (
@@ -122,16 +123,14 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
         )
         output, caught = self.render_with_warnings(template)
         self.assertEqual(caught, [])
-        # center: data attribute on the header, alignCenter class only on the body cell (the React
-        # implementation does not apply alignCenter to header cells)
-        self.assertIn('<th class="Table_headerCell" data-align="center" scope="col">', output)
-        self.assertIn('<td class="Table_cell Table_alignCenter" data-align="center">Yes</td>', output)
-        # end: alignEnd class on both header and body cell
-        self.assertIn('<th class="Table_headerCell Table_alignEnd" data-align="end" scope="col">', output)
-        self.assertIn('<td class="Table_cell Table_alignEnd" data-align="end">10</td>', output)
-        # start: data attribute only, no extra class
-        self.assertIn('<th class="Table_headerCell" data-align="start" scope="col">', output)
-        self.assertIn('<td class="Table_cell" data-align="start">-</td>', output)
+        # Alignment is styled entirely through the data-align attribute selectors, applied to the
+        # header cell and inherited by body cells through the column metadata.
+        self.assertIn('<th data-align="center" scope="col">', output)
+        self.assertIn('<td data-align="center">Yes</td>', output)
+        self.assertIn('<th data-align="end" scope="col">', output)
+        self.assertIn('<td data-align="end">10</td>', output)
+        self.assertIn('<th data-align="start" scope="col">', output)
+        self.assertIn('<td data-align="start">-</td>', output)
 
     def test_invalid_align_warns_and_is_ignored(self):
         template = make_sortable_table_template(
@@ -143,7 +142,7 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
 
     def test_first_column_is_row_header_by_default(self):
         output, _ = self.render_with_warnings(BASIC_TABLE_TEMPLATE)
-        self.assertIn('<td class="Table_cell" role="rowheader">Jane</td>', output)
+        self.assertIn('<td role="rowheader">Jane</td>', output)
         self.assertNotIn('role="rowheader">jane@example.com', output)
 
     def test_explicit_is_row_header_overrides_first_column_default(self):
@@ -163,8 +162,8 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
         )
         output, caught = self.render_with_warnings(template)
         self.assertEqual(caught, [])
-        self.assertIn('<td class="Table_cell">Jane</td>', output)
-        self.assertIn('<td class="Table_cell" role="rowheader">jane@example.com</td>', output)
+        self.assertIn("<td>Jane</td>", output)
+        self.assertIn('<td role="rowheader">jane@example.com</td>', output)
 
     def test_column_width_renders_css_variable(self):
         template = make_sortable_table_template(columns='{% ui "table_column" width=96 %}Name{% endui %}')
@@ -371,11 +370,10 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
         )
         output, caught = self.render_with_warnings(template)
         self.assertEqual(caught, [])
+        # data-has-header/footer are load-bearing: the stylesheet keys the header/footer chrome
+        # off these attributes on the tableWrapper element.
         self.assertIn('data-has-header="true"', output)
         self.assertIn('data-has-footer="true"', output)
-        self.assertIn("Table_hasHeader", output)
-        self.assertNotIn("Table_hasNoHeader", output)
-        self.assertNotIn("Table_hasNoFooter", output)
         self.assertIn("<h2>People</h2>", output)
         self.assertIn("Footer text</div>", output)
 
@@ -564,13 +562,13 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
             any("'table_cell' was rendered outside" in item for item in caught),
             caught,
         )
-        self.assertIn('<td class="Table_cell">Orphan</td>', output)
+        self.assertIn("<td>Orphan</td>", output)
 
     def test_child_components_outside_table_warn_and_render_fallback(self):
         for template, expected_fragment in (
             ('{% ui "table_header" %}{% endui %}', "<thead>"),
             ('{% ui "table_body" %}{% endui %}', "<tbody>"),
-            ('{% ui "table_row" %}{% endui %}', '<tr class="Table_row">'),
+            ('{% ui "table_row" %}{% endui %}', "<tr></tr>"),
         ):
             with self.subTest(template=template):
                 output, caught = self.render_with_warnings(template)
@@ -596,8 +594,8 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
         output, caught = self.render_with_warnings(template)
         extra_cell_warnings = [item for item in caught if "more 'table_cell' components" in item]
         self.assertEqual(len(extra_cell_warnings), 1)
-        self.assertIn('<td class="Table_cell">extra-1</td>', output)
-        self.assertIn('<td class="Table_cell">extra-2</td>', output)
+        self.assertIn("<td>extra-1</td>", output)
+        self.assertIn("<td>extra-2</td>", output)
 
     def test_cell_colspan_consumes_multiple_columns(self):
         template = (
@@ -617,9 +615,9 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
         )
         output, caught = self.render_with_warnings(template)
         self.assertEqual(caught, [])
-        self.assertIn('<td class="Table_cell" colspan="2" role="rowheader">Jane</td>', output)
+        self.assertIn('<td colspan="2" role="rowheader">Jane</td>', output)
         # The cell after a colspan=2 cell inherits metadata from the third column
-        self.assertIn('<td class="Table_cell Table_alignEnd" data-align="end">10</td>', output)
+        self.assertIn('<td data-align="end">10</td>', output)
 
     def test_nested_table_in_cell_uses_its_own_state(self):
         inner_table = (
@@ -646,11 +644,8 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
         )
         output, caught = self.render_with_warnings(template)
         self.assertEqual(caught, [])
-        # Inner cell is the inner table's first column: row header with alignEnd from inner column
-        self.assertIn(
-            '<td class="Table_cell Table_alignEnd" data-align="end" role="rowheader">inner-cell</td>',
-            output,
-        )
+        # Inner cell is the inner table's first column: row header with alignment from inner column
+        self.assertIn('<td data-align="end" role="rowheader">inner-cell</td>', output)
         # The outer table's empty state/row counting is unaffected
         self.assertNotIn("Table_noResults", output)
 
@@ -658,11 +653,7 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
         template = make_sortable_table_template(columns='{% ui "table_column" col_span=2 %}Name{% endui %}')
         output, caught = self.render_with_warnings(template)
         self.assertEqual(caught, [])
-        self.assertIn(
-            '<th class="Table_headerCell Table_spansMultiple" data-spans-multiple="true" '
-            'colspan="2" scope="col">',
-            output,
-        )
+        self.assertIn('<th data-spans-multiple="true" colspan="2" scope="col">', output)
 
     def test_compiled_template_is_reusable_across_renders(self):
         # Template nodes are shared between renders (and threads); the components must not carry

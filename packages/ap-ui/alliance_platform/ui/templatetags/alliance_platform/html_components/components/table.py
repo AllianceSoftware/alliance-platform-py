@@ -1,10 +1,13 @@
 """Static HTML renderers for the Alliance UI table components.
 
 These mirror ``@alliancesoftware/ui``'s ``Table`` (see ``components/table/Table.tsx``) for the
-read-only CRUD list case: the same markup structure, vanilla-extract classes and state data
-attributes, but no JavaScript runtime. Sorting is expressed as plain links that update a backend
-query parameter (mirroring ``ColumnHeaderLink.tsx`` / ``useTableSorter.ts``); row selection,
-client-side sorting and the React Aria keyboard grid behaviour are intentionally unsupported.
+read-only CRUD list case: the same markup structure, classes and state data attributes, but no
+JavaScript runtime. Structural styling hangs off the ``tableWrapper`` class on the root element —
+rows/cells are styled through element and data-attribute selectors (``[data-align]``,
+``[data-has-header]`` etc.) so only the root and the header chrome (sort indicator, header
+content) carry classes. Sorting is expressed as plain links that update a backend query parameter
+(mirroring ``ColumnHeaderLink.tsx`` / ``useTableSorter.ts``); row selection, client-side sorting
+and the React Aria keyboard grid behaviour are intentionally unsupported.
 
 Because the React table is an interactive ARIA grid and the static table is not, native table
 semantics are preferred: no grid roles or tab indexes are rendered, ``aria-sort``/``scope="col"``
@@ -382,15 +385,13 @@ class UITableRenderer(UITableComponentRendererBase):
         wrapper_attrs: dict[str, Any] = {
             "data-apui": "table",
             "data-mode": mode,
+            # These are load-bearing for styling: the stylesheet keys header/footer chrome off
+            # [data-has-header]/[data-has-footer] on the tableWrapper class.
             "data-has-header": "true" if has_header else None,
             "data-has-footer": "true" if has_footer else None,
             "className": self.join_classes(
-                self.get_style_class(table_styles, "wrapper"),
+                self.get_style_class(table_styles, "tableWrapper"),
                 props.get("className"),
-                self.get_style_class(table_styles, "hasHeader")
-                if has_header
-                else self.get_style_class(table_styles, "hasNoHeader"),
-                None if has_footer else self.get_style_class(table_styles, "hasNoFooter"),
             ),
             "style": props.get("style"),
         }
@@ -402,8 +403,9 @@ class UITableRenderer(UITableComponentRendererBase):
             "aria-describedby": props.get("aria-describedby"),
         }
         table_html = self._render_tag("table", table_attrs, children_html)
-        scroll_container_class = self.get_style_class(table_styles, "scrollContainer")
-        scroll_html = f'<div class="{conditional_escape(scroll_container_class)}">{table_html}</div>'
+        # The horizontal scroll container is a plain div; the stylesheet targets it with
+        # `${tableWrapper} > div:has(> table)`.
+        scroll_html = f"<div>{table_html}</div>"
 
         return self._render_tag("div", wrapper_attrs, f"{header_html}{scroll_html}{footer_html}")
 
@@ -417,10 +419,8 @@ class UITableHeaderRenderer(UITableComponentRendererBase):
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
         if get_current_table_state(context) is None:
             self.warn_outside_table()
-        table_styles = self.resolve_table_styles()
-        header_row_class = self.get_style_class(table_styles, "headerRow")
-        row_html = f'<tr class="{conditional_escape(header_row_class)}">{children_html}</tr>'
-        return mark_safe(f"<thead>{row_html}</thead>")
+        # Header rows carry no class; the stylesheet targets `thead tr` under the tableWrapper.
+        return mark_safe(f"<thead><tr>{children_html}</tr></thead>")
 
 
 class UITableColumnRenderer(UITableComponentRendererBase):
@@ -523,14 +523,9 @@ class UITableColumnRenderer(UITableComponentRendererBase):
             aria_sort = sort_direction or "none"
 
         attrs: dict[str, Any] = {
-            # The React implementation merges the user className before the default classes for
-            # header cells (via mergeProps); match that ordering for parity.
-            "className": self.join_classes(
-                props.get("className"),
-                self.get_style_class(table_styles, "headerCell"),
-                self.get_style_class(table_styles, "alignEnd") if align == "end" else None,
-                self.get_style_class(table_styles, "spansMultiple") if spans_multiple else None,
-            ),
+            # Header cells carry no default classes; alignment and multi-span styling are driven
+            # by the data attributes ([data-align], [data-spans-multiple]) under the tableWrapper.
+            "className": props.get("className"),
             "id": props.get("id"),
             "style": self.resolve_column_style(props, table_styles),
             "data-align": align,
@@ -716,15 +711,11 @@ class UITableRowRenderer(UITableComponentRendererBase):
             state.row_count += 1
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
-        table_styles = self.resolve_table_styles()
         key = props.get("key")
         attrs: dict[str, Any] = {
-            # The React implementation merges the user className before styles.row (via
-            # mergeProps); match that ordering for parity.
-            "className": self.join_classes(
-                props.get("className"),
-                self.get_style_class(table_styles, "row"),
-            ),
+            # Rows carry no default classes; the stylesheet targets `tbody tr` under the
+            # tableWrapper.
+            "className": props.get("className"),
             "id": props.get("id"),
             "style": props.get("style"),
             "data-key": str(key) if key is not None else None,
@@ -768,14 +759,10 @@ class UITableCellRenderer(UITableComponentRendererBase):
         if column is not None and state is not None and cell_index is not None:
             is_row_header = column.is_row_header if state.has_explicit_row_header else cell_index == 0
 
-        table_styles = self.resolve_table_styles()
         attrs: dict[str, Any] = {
-            "className": self.join_classes(
-                self.get_style_class(table_styles, "cell"),
-                props.get("className"),
-                self.get_style_class(table_styles, "alignEnd") if align == "end" else None,
-                self.get_style_class(table_styles, "alignCenter") if align == "center" else None,
-            ),
+            # Cells carry no default classes; cell typography and alignment are driven by the
+            # `td` element and [data-align] selectors under the tableWrapper.
+            "className": props.get("className"),
             "id": props.get("id"),
             "style": props.get("style"),
             "data-align": align,
