@@ -116,6 +116,75 @@ Other notable behaviour:
 * Unsupported interactive props (selection, ``on*`` callbacks, ``items``/``columns`` collections)
   warn and are ignored rather than rendering broken interactivity.
 
+Static menubar components
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``{% ui "menubar" %}`` and its child components render the Alliance UI ``Menubar`` as static
+HTML with the same visual classes, layout and state data attributes as the React component.
+Links are real ``<a href>`` elements and form actions are real ``<button>`` elements, so
+top-level navigation works even with JavaScript disabled; a small standalone runtime module
+(loaded automatically, no React) adds the dropdown behaviour: opening/closing submenus, keyboard
+navigation with roving tabindex, Escape/outside-click handling and typeahead.
+
+Use it for server-rendered navigation menus. Use the React-backed :ttag:`Menubar` tag instead
+when you need client-side callbacks (``on_action``), selection state, dynamic ``items``
+collections or automatic width overflow into a "More" menu — none of those are supported by the
+static path.
+
+The available components are ``menubar``, ``menubar_item``, ``menubar_submenu`` and
+``menubar_section``. A primary navigation menu with permission-based links looks like:
+
+.. code-block:: html+django
+
+    {% load alliance_platform.ui %}
+
+    {# Logout should occur via POST: submitted by the button item below #}
+    <form method="post" action="{% url 'logout' %}" id="logout-form">
+      {% csrf_token %}
+    </form>
+
+    {% ui "menubar" aria_label="Primary navigation" layout="horizontal" %}
+      {% ui "menubar_item" href="my_app:dashboard"|url_with_perm %}Dashboard{% endui %}
+
+      {% ui "menubar_submenu" key="users" title="Users" %}
+        {% ui "menubar_item" href="my_app:adminprofile_list"|url_with_perm %}Admin{% endui %}
+        {% ui "menubar_item" href="my_app:client_list"|url_with_perm %}Clients{% endui %}
+      {% endui %}
+
+      {% ui "menubar_item" href="my_app:audit_logs"|url_with_perm %}Audit{% endui %}
+
+      {% ui "menubar_section" %}
+        {% ui "menubar_submenu" key="manage" title="Manage" %}
+          {% ui "menubar_item" href="my_app:personal-account"|url_with_perm %}My Account{% endui %}
+          {% ui "menubar_item" element_type="button" type="submit" form="logout-form" %}Logout{% endui %}
+        {% endui %}
+      {% endui %}
+    {% endui %}
+
+Permission pruning happens automatically: a link whose :tfilter:`url_with_perm` check fails
+renders nothing, a submenu or section whose visible children were all denied is hidden too
+(pass ``hide_when_empty=False`` to keep it), and a menubar with no visible children renders
+nothing at all (pass ``render_when_empty=True`` to keep it). In the example above the whole
+Users menu disappears for users who can access neither list, without any extra template logic.
+
+Other notable behaviour:
+
+* ``layout`` can be ``"horizontal"`` (default), ``"vertical"`` or ``"inline"``. Horizontal and
+  vertical menus open submenus in flyout popovers; inline menus expand submenus in place.
+* Set ``is_current=True`` on the item for the current page: it renders ``aria-current="page"``
+  (override with ``aria_current``) plus a ``data-current="true"`` attribute that also propagates
+  to ancestor submenu triggers and sections for styling active trails.
+* ``default_expanded_keys`` (list or comma-separated string of submenu ``key`` values) renders
+  those submenus open initially — also useful as a no-JS fallback for inline menus.
+* Submenu ``title`` accepts plain text; pass ``text_value`` whenever the title or an item's
+  content is not plain text so the item has an accessible label (and typeahead works).
+* Disabled items (``is_disabled=True``) render with ``aria-disabled="true"`` (anchors become
+  non-navigable ``<div>`` elements, matching React) and are skipped by keyboard navigation.
+* Unsupported interactive props (``on_action`` and other callbacks, selection props, ``items``
+  collections, overflow props) warn and are ignored rather than rendering broken interactivity.
+* JavaScript is required for the dropdown interactivity only; closed submenu contents are
+  rendered hidden in the page and links inside them still work once opened.
+
 .. templatetag:: Button
 
 ``Button``
@@ -266,6 +335,10 @@ but wrap it in a ``LabeledInput`` component.
 Render an `Menubar <https://main--64894ae38875dcf46367336f.chromatic.com/?path=/docs/ui-menubar--docs>`_ component.
 
 You can use ``Menubar.Section``, ``Menubar.Item``, and `Menubar.SubMenu`` components to build the menu.
+
+For navigation menus that don't need client-side callbacks, selection or overflow handling,
+consider the static ``{% ui "menubar" %}`` components instead (see
+`Static menubar components`_) — they render the same markup server-side without React.
 
 Here is a fully featured example that renders a Users section, followed by a link to an Audit logs page, and finally a
 submenu with an icon for the current user's account management link and a logout button that submits a logout form.

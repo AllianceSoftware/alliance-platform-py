@@ -161,6 +161,88 @@ Sortable-column fixtures record the URL the React SSR render happened at in `met
 SSR); the Python parity test builds a `RequestFactory` request for the same URL. Regenerate the
 table fixtures with `just sync-html-ui-parity-fixtures ../alliance-platform-js table`.
 
+## Menubar components (`menubar`, `menubar_item`, `menubar_submenu`, `menubar_section`)
+
+The static menubar renderers live in
+`alliance_platform/ui/templatetags/alliance_platform/html_components/components/menubar.py` and
+mirror `@alliancesoftware/ui`'s `Menubar.tsx` for server-rendered navigation menus. Interactivity
+comes from a standalone runtime module in the JS repo —
+`@alliancesoftware/ui/components/menu-bar/Menubar.attach.ts` — attached through
+`attach_module_script()` exactly like the button group's `SmartOrientation.attach.ts` (per-root
+`data-djid` + module script; the runtime is idempotent and holds cleanup state in a `WeakMap`).
+The runtime never imports CSS mappings: the Python renderer exposes the state class names it must
+toggle through `data-open-class` / `data-focused-class` / `data-popover-open-class` on the root.
+
+### Cross-component render state
+
+The components coordinate through a `MenubarRenderState` stack in `context.render_context`
+(`_MENUBAR_STATE_KEY`), with one `MenubarRenderFrame` per menu grouping (root menu, submenu popup,
+section). `menubar`, `menubar_submenu` and `menubar_section` render their children from inside
+`render_component()` (returning `""` from `render_children_for_component()`) so the frame wraps
+the children and the child counts are available when deciding what to render:
+
+1. Items increment the current frame's `item_count` only when they actually render — a denied
+   `url_with_perm` href raises `OmitComponentFromRendering`, which the static renderer base now
+   catches (the whole component renders nothing, silently, matching the React tags).
+2. A submenu/section whose child frame has `item_count == 0` renders nothing by default
+   (`hide_when_empty=False` opts out); a menubar with an empty root frame renders nothing unless
+   `render_when_empty=True`.
+3. `is_current` items set `contains_current` on their frame, which propagates `data-current` to
+   ancestor submenu triggers and sections.
+4. The first enabled root-level item claims `tabindex="0"` (or the `default_focused_key` item);
+   everything else renders `tabindex="-1"` and the runtime moves the roving tab stop.
+
+Section separators are decided *after* pruning (`is_first` = parent frame count at render time),
+so a pruned first section never leaves a leading separator behind.
+
+### Intentionally unsupported React Menubar features
+
+`onAction`/`onSelectionChange`/`onExpandedChange` callbacks, selection (`selectionMode` etc.),
+dynamic collections (`items`/`childItems`), `itemElementType`, controlled `expandedKeys`, and
+width overflow into a "More" submenu (`overflowLabel`/`overflowTextLabel`). These warn and are
+dropped. `default_expanded_keys` *is* supported statically (submenus render open; the runtime
+initialises from `data-open="true"`). Known first-pass runtime gaps: flyout positioning is simple
+DOM-relative placement without viewport-aware flipping, and typeahead searches within the current
+menu only.
+
+### Deliberate static-render differences from React
+
+Reconciled by `normalizeMenubarComponentHtml()` in the fixture generator (React side) and
+`strip_static_menubar_extensions()` in `tests/test_html_ui_menubar_parity.py` (static side):
+
+- **Closed submenu popups**: React renders open menus in a portal and closed menus not at all;
+  the static renderer renders every popup in place, hidden — flyouts in a `Popover.css`-styled
+  wrapper (`data-apui-menu-popover`), inline menus as a hidden `<ul>` (`data-apui-menu-popup`).
+  Content parity for submenu menus comes from `layout="inline"` + `defaultExpandedKeys` fixture
+  cases, which React does render during SSR.
+- **Submenu trigger element**: React defaults to `<div>` for triggers without `href`; the static
+  renderer uses `<button type="button">` so menus work without React synthetic events. Fixture
+  cases pass `elementType="button"` on the React side; the `type="button"` attribute is stripped
+  for comparison.
+- **`aria-controls`/popup ids, roving `tabindex`, `data-open="false"`, `data-current`,
+  `data-key`**: static extensions (or explicit values React leaves implicit); stripped and unit
+  tested instead.
+- **`hasLeadingIcon`**: React SSRs the class + `data-has-leading-icon` optimistically as true and
+  corrects it client-side via `useHasChild`; the static renderer doesn't render it at all (a
+  follow-up could compute it in `Menubar.attach.ts`).
+- **Overflow measurement placeholders**: React SSRs an offscreen dummy "more items" node for
+  measuring; removed from fixtures.
+- **react-aria ids**: unlike the input components, `aria-labelledby` references (section heading
+  ids) must survive normalization — the generator drops only unreferenced element ids, then remaps
+  survivors to the static `apui-menubar-<n>` scheme.
+
+Regenerate with `just sync-html-ui-parity-fixtures ../alliance-platform-js menubar`. The runtime
+tests live in the JS repo: `packages/ui/components/menu-bar/tests/Menubar.attach.test.ts`
+(`npx vitest --run components/menu-bar/tests/Menubar.attach.test.ts` from `packages/ui`).
+
+### template-django primary nav migration
+
+`nav_primary.html` can migrate from the React `PrimaryNav` to the static path following the
+example in `docs/templatetags.rst` (the `Users` submenu's `component:omit_if_empty=True` becomes
+automatic empty-pruning, logout stays a POST `<button form="logout-form">`). Don't remove
+`PrimaryNav.tsx` until its responsive mobile drawer behaviour is accounted for — the static
+menubar deliberately doesn't reproduce it; that needs a static drawer/disclosure component first.
+
 ## HTML parity fixture workflow
 
 The fixture generator depends on `@alliancesoftware/ui` TypeScript sources, so it must run through the `alliance-platform-js` runtime context.

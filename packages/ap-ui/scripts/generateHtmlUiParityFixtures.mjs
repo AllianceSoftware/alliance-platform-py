@@ -16,11 +16,13 @@ const CASE_MODULES = [
     './parity_cases/number_input.mjs',
     './parity_cases/text_area.mjs',
     './parity_cases/table.mjs',
+    './parity_cases/menubar.mjs',
 ];
 
 const BUTTON_COMPONENTS = new Set(['button', 'button_group']);
 const INPUT_COMPONENTS = new Set(['text_input', 'number_input', 'text_area']);
 const TABLE_COMPONENTS = new Set(['table']);
+const MENUBAR_COMPONENTS = new Set(['menubar']);
 
 const require = createRequire(import.meta.url);
 const GENERATED_AT_ENV_VAR = 'AP_UI_PARITY_GENERATED_AT_UTC';
@@ -180,6 +182,14 @@ async function loadParityComponents(component) {
             Column: reactStately.Column,
             Row: reactStately.Row,
             Cell: reactStately.Cell,
+        };
+    } else if (component === 'menubar') {
+        const Menubar = await importDefault(path.join(uiPackageDir, 'components/menu-bar/Menubar.tsx'));
+        components = {
+            Menubar,
+            Item: Menubar.Item,
+            SubMenu: Menubar.SubMenu,
+            Section: Menubar.Section,
         };
     } else {
         throw new Error(`Unsupported parity component runtime: ${component}`);
@@ -473,6 +483,64 @@ function normalizeTableComponentHtml(html, component) {
     return normalized;
 }
 
+/**
+ * Normalize the intentional differences between the React Menubar and the static renderer.
+ *
+ * - The offscreen overflow-measurement placeholders (the dummy "more items" node and any
+ *   overflowed duplicates) are SSR'd for measuring; the static renderer has no overflow handling.
+ * - Roving tabindex assignment is runtime state (dropped on both sides; unit tested).
+ * - `data-key` is only rendered by the static renderer where the caller passes a key, and
+ *   `data-collection` is react-aria bookkeeping.
+ * - React renders `aria-disabled="false"` on enabled items and `aria-hidden="false"` on
+ *   non-placeholder sections; the static renderer omits both.
+ * - `hasLeadingIcon` (class + data attribute) is SSR'd optimistically as true and corrected
+ *   client-side by `useHasChild`; the static renderer does not render it.
+ * - Unreferenced react-aria element ids are dropped (the static renderer only generates ids
+ *   something points at); surviving ids (section heading ids referenced from `aria-labelledby`)
+ *   are remapped in order of first appearance to the deterministic static ids. Unlike the input
+ *   components, `aria-labelledby` references must be preserved here.
+ */
+function normalizeMenubarComponentHtml(html, component) {
+    let normalized = html;
+    normalized = normalized.replace(
+        /<li[^>]*data-key="____more_items_from_overflow"[\s\S]*?<\/li>/g,
+        ''
+    );
+    normalized = normalized.replace(/\stabindex="-?\d+"/g, '');
+    normalized = normalized.replace(/\sdata-key="[^"]*"/g, '');
+    normalized = normalized.replace(/\sdata-collection="[^"]*"/g, '');
+    normalized = normalized.replace(/\saria-disabled="false"/g, '');
+    normalized = normalized.replace(/\saria-hidden="false"/g, '');
+    normalized = normalized.replace(/\sdata-has-leading-icon="true"/g, '');
+    normalized = normalized.replace(/\s?Menubar_hasLeadingIcon__\w+/g, '');
+
+    const referencedIds = new Set();
+    for (const match of normalized.matchAll(
+        /\s(?:for|aria-controls|aria-labelledby|aria-describedby|aria-errormessage)="([^"]*)"/g
+    )) {
+        for (const token of match[1].split(/\s+/)) {
+            if (token.startsWith('react-aria-')) {
+                referencedIds.add(token);
+            }
+        }
+    }
+    normalized = normalized.replace(/\sid="(react-aria-[^"]*)"/g, (match, idValue) =>
+        referencedIds.has(idValue) ? match : ''
+    );
+
+    const idMap = new Map();
+    const idPrefix = `apui-${component.replaceAll('_', '-')}-`;
+    normalized = normalized.replace(REACT_ARIA_ID_RE, token => {
+        if (!idMap.has(token)) {
+            idMap.set(token, `${idPrefix}${idMap.size + 1}`);
+        }
+        return idMap.get(token);
+    });
+    normalized = normalized.replace(/(--[\w-]+)__[a-z0-9]+\s*:/g, '$1:');
+    normalized = normalizeInlineStyleSpacing(normalized);
+    return normalized;
+}
+
 function normalizeDomAttributes(html, component, testCase, allowedPrefixes, keepClassTokens) {
     if (!html.trim()) {
         return '';
@@ -492,6 +560,9 @@ function normalizeDomAttributes(html, component, testCase, allowedPrefixes, keep
     }
     if (TABLE_COMPONENTS.has(component)) {
         normalized = normalizeTableComponentHtml(normalized, component);
+    }
+    if (MENUBAR_COMPONENTS.has(component)) {
+        normalized = normalizeMenubarComponentHtml(normalized, component);
     }
     normalized = normalized.replace(/\sclass="([^"]*)"/g, (_match, classValue) => {
         const classTokens = normalizeClassTokens(classValue, allowedPrefixes, keepClassTokens);

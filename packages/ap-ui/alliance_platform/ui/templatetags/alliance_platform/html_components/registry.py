@@ -50,6 +50,10 @@ from .components.button_group import UIButtonGroupRenderer  # noqa: E402
 from .components.input import UINumberInputRenderer  # noqa: E402
 from .components.input import UITextAreaRenderer  # noqa: E402
 from .components.input import UITextInputRenderer  # noqa: E402
+from .components.menubar import UIMenubarItemRenderer  # noqa: E402
+from .components.menubar import UIMenubarRenderer  # noqa: E402
+from .components.menubar import UIMenubarSectionRenderer  # noqa: E402
+from .components.menubar import UIMenubarSubMenuRenderer  # noqa: E402
 from .components.table import UITableBodyRenderer  # noqa: E402
 from .components.table import UITableCellRenderer  # noqa: E402
 from .components.table import UITableColumnRenderer  # noqa: E402
@@ -68,3 +72,7 @@ built_in_registry.register_renderer("table_body", UITableBodyRenderer)
 built_in_registry.register_renderer("table_column", UITableColumnRenderer)
 built_in_registry.register_renderer("table_row", UITableRowRenderer)
 built_in_registry.register_renderer("table_cell", UITableCellRenderer)
+built_in_registry.register_renderer("menubar", UIMenubarRenderer)
+built_in_registry.register_renderer("menubar_item", UIMenubarItemRenderer)
+built_in_registry.register_renderer("menubar_submenu", UIMenubarSubMenuRenderer)
+built_in_registry.register_renderer("menubar_section", UIMenubarSectionRenderer)

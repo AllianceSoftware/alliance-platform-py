@@ -54,6 +54,17 @@ DEFAULT_STYLE_MAPPINGS: dict[str, dict[str, Any]] = {
         # mapping value contains both classes.
         "sortIconUnsorted": "Table_sortIconUnsorted Table_sortIcon",
     },
+    "Menubar.css.ts": {
+        # menubarMenuItem is composed from menubarMenuItemBase (style([font, base])) so the
+        # serialized mapping value contains both classes (font classes are outside the Menubar
+        # scope and stripped from parity fixtures).
+        "menubarMenuItem": "Menubar_menubarMenuItem Menubar_menubarMenuItemBase",
+        # The level theme var is serialized as a var() reference; the static renderer sets it as
+        # an inline style on submenu popup menus (matching assignInlineVars in React).
+        "vars": {
+            "level": "var(--level)",
+        },
+    },
     "LabeledInput.css.ts": {
         # Mirrors the recipe structure serialized by @alliancesoftware/vite-plugin-django-vanilla-extract
         "labeledInput": {

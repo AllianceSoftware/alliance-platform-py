@@ -21,6 +21,7 @@ from alliance_platform.frontend.bundler.context import BundlerAsset
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from alliance_platform.frontend.bundler.vanilla_extract import resolve_vanilla_extract_class_mapping
 from alliance_platform.frontend.templatetags.react import DeferredProp
+from alliance_platform.frontend.templatetags.react import OmitComponentFromRendering
 from alliance_platform.frontend.util import transform_attribute_names
 
 from .constants import BULK_PROPS_KWARG
@@ -157,10 +158,16 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
                 "This mode is for resource introspection only."
             )
         self._queue_resources()
-        props = self.resolve_props(context)
-        props = self._merge_slot_props(context, props)
-        children_html = self.render_children_for_component(context, props)
-        rendered = self.render_component(context, props, children_html)
+        try:
+            props = self.resolve_props(context)
+            props = self._merge_slot_props(context, props)
+            children_html = self.render_children_for_component(context, props)
+            rendered = self.render_component(context, props, children_html)
+        except OmitComponentFromRendering:
+            # Matches the React component tags: a prop can raise this to indicate the whole
+            # component should not render (e.g. a denied ``url_with_perm`` href). This is expected
+            # behaviour so no warning is emitted.
+            rendered = ""
         if self.target_var:
             context[self.target_var] = rendered
             return ""
