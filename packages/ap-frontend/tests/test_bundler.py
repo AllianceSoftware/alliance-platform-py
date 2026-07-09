@@ -258,6 +258,17 @@ class TestViteBundlerTestCase(TestCase):
                 cdn_bundler.get_url(settings.PROJECT_DIR / "components/Button.tsx"),
             )
 
+    def test_production_resource_file_path_uses_manifest_output(self):
+        bundler = self.create_bundler()
+        source_path = settings.PROJECT_DIR / (
+            "node_modules/@alliancesoftware/icons/static-svg/outlined/Pencil01Outlined.svg"
+        )
+
+        self.assertEqual(
+            Path(dirname(__file__)) / "fixtures/build_test/assets/Pencil01Outlined-a1b2c3.svg",
+            bundler.get_resource_file_path(source_path),
+        )
+
     def test_resolve(self):
         root_dir = settings.BASE_DIR
         bundler = self.create_bundler(

@@ -48,6 +48,7 @@ from django.utils.html import strip_tags
 from django.utils.safestring import mark_safe
 
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
+from alliance_platform.ui.icons import get_static_icon_resource
 
 from ..base import ICON_STYLE_PATH
 from ..base import BaseHtmlUIComponentRenderer
@@ -70,10 +71,9 @@ _HTML_ID_COUNTER_KEY = "alliance_platform_ui_html_id_counter"
 VALID_LAYOUTS = ("horizontal", "vertical", "inline")
 VALID_ITEM_ELEMENT_TYPES = ("a", "button", "div")
 
-# SVG paths matching @alliancesoftware/icons/outlined/Chevron{Down,Right,Up}Outlined.tsx
-_CHEVRON_DOWN_SVG_PATH = "M6 9L12 15L18 9"
-_CHEVRON_RIGHT_SVG_PATH = "M9 18L15 12L9 6"
-_CHEVRON_UP_SVG_PATH = "M18 15L12 9L6 15"
+_CHEVRON_DOWN_ICON = "ChevronDownOutlined"
+_CHEVRON_RIGHT_ICON = "ChevronRightOutlined"
+_CHEVRON_UP_ICON = "ChevronUpOutlined"
 
 # Matches event handler props in any of the forms they can reach us in after prop normalization
 # (onClick, onclick, on_click -> onClick). These must never be rendered: a string value would
@@ -451,6 +451,9 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
             self.resolve_frontend_resource(_MENUBAR_STYLE_PATH),
             self.resolve_frontend_resource(_POPOVER_STYLE_PATH),
             self.resolve_frontend_resource(ICON_STYLE_PATH),
+            get_static_icon_resource(_CHEVRON_DOWN_ICON, origin=self.origin),
+            get_static_icon_resource(_CHEVRON_RIGHT_ICON, origin=self.origin),
+            get_static_icon_resource(_CHEVRON_UP_ICON, origin=self.origin),
         ]
         runtime_resource = self._resolve_runtime_resource()
         if runtime_resource is not None:
@@ -784,13 +787,13 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
         popup_id = f"apui-menu-{key}" if key is not None else self.generate_html_id(context, "apui-menu")
 
         chevron_direction = self.resolve_chevron_direction(effective_state, level, is_open)
-        chevron_svg_path = {
-            "up": _CHEVRON_UP_SVG_PATH,
-            "down": _CHEVRON_DOWN_SVG_PATH,
-            "right": _CHEVRON_RIGHT_SVG_PATH,
+        chevron_icon_name = {
+            "up": _CHEVRON_UP_ICON,
+            "down": _CHEVRON_DOWN_ICON,
+            "right": _CHEVRON_RIGHT_ICON,
         }[chevron_direction]
         chevron_html = self.render_icon(
-            chevron_svg_path, "xs", [self.get_style_class(menubar_styles, "dropdownIcon")]
+            chevron_icon_name, "xs", [self.get_style_class(menubar_styles, "dropdownIcon")]
         )
 
         if "tabIndex" in props:

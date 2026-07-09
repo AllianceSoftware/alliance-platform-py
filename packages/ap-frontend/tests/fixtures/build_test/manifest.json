@@ -57,6 +57,12 @@
     "isEntry": true,
     "src": "styles/normalize.css"
   },
+  "node_modules/@alliancesoftware/icons/static-svg/outlined/Pencil01Outlined.svg": {
+    "file": "assets/Pencil01Outlined-a1b2c3.svg",
+    "isEntry": true,
+    "src": "node_modules/@alliancesoftware/icons/static-svg/outlined/Pencil01Outlined.svg",
+    "unresolvedPath": "node_modules/@alliancesoftware/icons/static-svg/outlined/Pencil01Outlined.svg"
+  },
   "login.css.ts": {
     "css": ["assets/login.css-a9690449.css"],
     "file": "assets/login.css-669fd56c.js",

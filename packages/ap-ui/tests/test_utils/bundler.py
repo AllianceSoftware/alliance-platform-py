@@ -1,6 +1,8 @@
 from pathlib import Path
 import subprocess
 
+from alliance_platform.frontend.bundler.base import PathResolver
+from alliance_platform.frontend.bundler.base import ResolveContext
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from alliance_platform.frontend.bundler.resource_registry import FrontendResourceRegistry
 from alliance_platform.frontend.bundler.vite import ViteBundler
@@ -9,9 +11,17 @@ from django.conf import settings
 
 fixtures_dir = Path(__file__).parent.parent / "fixtures"
 
+
+class TestAlliancePlatformPackageResolver(PathResolver):
+    def resolve(self, path: str, context: ResolveContext):
+        if path.startswith("@alliancesoftware/icons/static-svg/"):
+            return fixtures_dir / "icons" / path.removeprefix("@alliancesoftware/icons/")
+        return None
+
+
 bundler_kwargs = dict(
     root_dir=settings.PROJECT_DIR,
-    path_resolvers=[],
+    path_resolvers=[TestAlliancePlatformPackageResolver()],
     build_dir=fixtures_dir / "build_test",
     server_build_dir=fixtures_dir / "server_build_test",
     server_host="localhost",

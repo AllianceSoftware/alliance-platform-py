@@ -606,6 +606,9 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
             "@alliancesoftware/ui/components/menu-bar/Menubar.css.ts",
             "@alliancesoftware/ui/components/overlay/Popover.css.ts",
             "@alliancesoftware/icons/Icon.css.ts",
+            "static-svg/outlined/ChevronDownOutlined.svg",
+            "static-svg/outlined/ChevronRightOutlined.svg",
+            "static-svg/outlined/ChevronUpOutlined.svg",
             "@alliancesoftware/ui/components/menu-bar/Menubar.attach.ts",
         ):
             self.assertTrue(
@@ -625,8 +628,9 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
                 register_asset=False,
             )
             resource_paths = [str(resource.path) for resource in renderer.get_resources_for_bundling()]
-        self.assertEqual(len(resource_paths), 4)
+        self.assertEqual(len(resource_paths), 7)
         self.assertTrue(any("Menubar.attach" in path for path in resource_paths))
+        self.assertTrue(any("ChevronDownOutlined.svg" in path for path in resource_paths))
 
     def test_runtime_script_attaches_to_rendered_root(self):
         with self.setup_render_context():
