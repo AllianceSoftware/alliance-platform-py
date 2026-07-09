@@ -292,15 +292,10 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn("Icon_icon Icon_variants_plain Icon_sizes_xs Table_sortIcon", output)
         self.assertIn("Icon_icon Icon_variants_plain Icon_sizes_xs Table_sortIconUnsorted", output)
         # Multi-sort with more than one descriptor shows sort positions
-        self.assertIn(
-            '<span class="Table_sortWrapper">'
-            '<span role="img" aria-hidden="true" class="Icon_icon Icon_variants_plain Icon_sizes_xs '
-            'Table_sortIcon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" '
-            'xmlns="http://www.w3.org/2000/svg" focusable="false">'
-            f'<path {up_icon} stroke="currentColor" stroke-width="2" stroke-linecap="round" '
-            'stroke-linejoin="round"></path></svg></span><span>1</span></span>',
-            output,
-        )
+        self.assertIn('<span class="Table_sortWrapper">', output)
+        self.assertIn('data-apui-slot="icon"', output)
+        self.assertIn(f"<path {up_icon}", output)
+        self.assertIn("<span>1</span>", output)
         self.assertIn("<span>2</span>", output)
         # Sortable but unsorted column renders an empty position placeholder
         self.assertIn("<span></span>", output)

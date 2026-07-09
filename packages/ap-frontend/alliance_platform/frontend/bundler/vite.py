@@ -430,6 +430,13 @@ class ViteBundler(BaseBundler):
         # production & preview both need to use the file from the manifest
         return self.resolve_url(self.build_manifest.get_asset(path).file)
 
+    def get_resource_file_path(self, path: Path | str) -> Path:
+        """Return the filesystem path for a resource, using the build manifest outside dev."""
+        if self.mode == "development":
+            return super().get_resource_file_path(path)
+        asset = self.build_manifest.get_asset(path)
+        return self.build_manifest.manifest_file.parent / asset.file
+
     def does_asset_exist(self, filename: Path):
         """In production node_modules might not exist - instead check the manifest file"""
         if self.mode == "development":

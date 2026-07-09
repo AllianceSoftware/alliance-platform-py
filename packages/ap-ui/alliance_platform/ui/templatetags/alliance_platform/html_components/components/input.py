@@ -13,6 +13,7 @@ from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
 
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
+from alliance_platform.ui.icons import get_static_icon_resource
 
 from ..base import ICON_STYLE_PATH
 from ..base import BaseHtmlUIComponentRenderer
@@ -42,13 +43,10 @@ _NUMBER_INPUT_STYLE_PATH = "@alliancesoftware/ui/components/number-input/NumberI
 # Key used in ``context.render_context`` to keep generated ids unique within a template render.
 _HTML_ID_COUNTER_KEY = "alliance_platform_ui_html_id_counter"
 
-_ALERT_CIRCLE_SVG_PATH = (
-    "M12 8V12M12 16H12.01M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 "
-    "6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12Z"
-)
-_CHECK_SVG_PATH = "M20 6L9 17L4 12"
-_CHEVRON_UP_SVG_PATH = "M18 15L12 9L6 15"
-_CHEVRON_DOWN_SVG_PATH = "M6 9L12 15L18 9"
+_ALERT_CIRCLE_ICON = "AlertCircleOutlined"
+_CHECK_ICON = "CheckOutlined"
+_CHEVRON_UP_ICON = "ChevronUpOutlined"
+_CHEVRON_DOWN_ICON = "ChevronDownOutlined"
 
 # Props that only make sense with the React runtime (render props, react-aria plumbing). These are
 # warned about and ignored rather than rendered as attributes.
@@ -386,6 +384,8 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
             self.resolve_frontend_resource(_FORM_SECTION_STYLE_PATH),
             self.resolve_frontend_resource(_FOCUS_RING_STYLE_PATH),
             self.resolve_frontend_resource(ICON_STYLE_PATH),
+            get_static_icon_resource(_ALERT_CIRCLE_ICON, origin=self.origin),
+            get_static_icon_resource(_CHECK_ICON, origin=self.origin),
         ]
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
@@ -403,9 +403,9 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
 
         validation_icon_html = ""
         if state.validation_state and not state.is_disabled:
-            icon_path = _CHECK_SVG_PATH if state.validation_state == "valid" else _ALERT_CIRCLE_SVG_PATH
+            icon_name = _CHECK_ICON if state.validation_state == "valid" else _ALERT_CIRCLE_ICON
             validation_icon_html = self.render_icon(
-                icon_path,
+                icon_name,
                 "xs",
                 [
                     self.get_style_class(text_input_base_styles, "adornmentIcon"),
@@ -615,6 +615,8 @@ class UINumberInputRenderer(UITextInputBaseRenderer):
         return [
             *super().resolve_component_resources(),
             self.resolve_frontend_resource(_NUMBER_INPUT_STYLE_PATH),
+            get_static_icon_resource(_CHEVRON_UP_ICON, origin=self.origin),
+            get_static_icon_resource(_CHEVRON_DOWN_ICON, origin=self.origin),
         ]
 
     def allow_non_scalar_prop(self, key: str, value: Any) -> bool:
@@ -690,9 +692,9 @@ class UINumberInputRenderer(UITextInputBaseRenderer):
         button_class = self.get_nested_style_class(number_input_styles, "stepButton", "default")
 
         buttons = []
-        for direction, aria_label_prefix, icon_path in (
-            ("up", "Increase", _CHEVRON_UP_SVG_PATH),
-            ("down", "Decrease", _CHEVRON_DOWN_SVG_PATH),
+        for direction, aria_label_prefix, icon_name in (
+            ("up", "Increase", _CHEVRON_UP_ICON),
+            ("down", "Decrease", _CHEVRON_DOWN_ICON),
         ):
             aria_label = aria_label_prefix
             if state.label:
@@ -706,7 +708,7 @@ class UINumberInputRenderer(UITextInputBaseRenderer):
                 "className": button_class,
                 "data-direction": direction,
             }
-            buttons.append(self._render_tag("button", attrs, self.render_icon(icon_path, "xxs")))
+            buttons.append(self._render_tag("button", attrs, self.render_icon(icon_name, "xxs")))
         return f'<div class="{conditional_escape(container_class)}">{"".join(buttons)}</div>'
 
     def render_after_root(self, props: dict[str, Any], state: LabeledInputState) -> str:

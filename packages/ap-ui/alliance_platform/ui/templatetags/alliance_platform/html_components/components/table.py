@@ -39,6 +39,7 @@ from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
 
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
+from alliance_platform.ui.icons import get_static_icon_resource
 
 from ..base import ICON_STYLE_PATH
 from ..base import BaseHtmlUIComponentRenderer
@@ -59,9 +60,8 @@ VALID_SORT_DIRECTIONS = ("ascending", "descending")
 
 DEFAULT_SORT_QUERY_PARAM = "ordering"
 
-# SVG paths matching @alliancesoftware/icons/outlined/Arrow{Up,Down}Outlined.tsx
-_ARROW_UP_SVG_PATH = "M12 19V5M12 5L5 12M12 5L19 12"
-_ARROW_DOWN_SVG_PATH = "M12 5V19M12 19L19 12M12 19L5 12"
+_ARROW_UP_ICON = "ArrowUpOutlined"
+_ARROW_DOWN_ICON = "ArrowDownOutlined"
 
 # Inline styles rendered by react-aria's VisuallyHidden, used for hideHeader content. There is no
 # shared visually-hidden class in the design system so the same inline convention is used here.
@@ -304,6 +304,8 @@ class UITableRenderer(UITableComponentRendererBase):
         return [
             self.resolve_frontend_resource(_TABLE_STYLE_PATH),
             self.resolve_frontend_resource(ICON_STYLE_PATH),
+            get_static_icon_resource(_ARROW_UP_ICON, origin=self.origin),
+            get_static_icon_resource(_ARROW_DOWN_ICON, origin=self.origin),
         ]
 
     def render_children_for_component(self, context: Context, props: dict[str, Any]) -> str:
@@ -558,15 +560,15 @@ class UITableColumnRenderer(UITableComponentRendererBase):
     def render_sort_wrapper(self, column_state: TableColumnState, table_styles: Any) -> str:
         if column_state.sort_direction == "descending":
             icon_html = self.render_icon(
-                _ARROW_DOWN_SVG_PATH, "xs", [self.get_style_class(table_styles, "sortIcon")]
+                _ARROW_DOWN_ICON, "xs", [self.get_style_class(table_styles, "sortIcon")]
             )
         elif column_state.sort_direction == "ascending":
             icon_html = self.render_icon(
-                _ARROW_UP_SVG_PATH, "xs", [self.get_style_class(table_styles, "sortIcon")]
+                _ARROW_UP_ICON, "xs", [self.get_style_class(table_styles, "sortIcon")]
             )
         else:
             icon_html = self.render_icon(
-                _ARROW_UP_SVG_PATH, "xs", [self.get_style_class(table_styles, "sortIconUnsorted")]
+                _ARROW_UP_ICON, "xs", [self.get_style_class(table_styles, "sortIconUnsorted")]
             )
         position_html = ""
         if column_state.show_sort_position:
