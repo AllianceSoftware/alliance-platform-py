@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import signal
 import time
 
 from . import TMUX_PROTOCOL_VERSION
@@ -23,6 +24,18 @@ TMUX_METADATA_KEYS = {
     "DEV_VITE_PORT",
     "DEV_PROTOCOL_VERSION",
 }
+
+
+def _normalise_signal(value: str) -> str | None:
+    if not value:
+        return None
+    if not value.isdigit():
+        return value
+    try:
+        name = signal.Signals(int(value)).name
+    except ValueError:
+        return value
+    return name.removeprefix("SIG").lower()
 
 
 class TmuxClient:
@@ -233,7 +246,7 @@ class TmuxClient:
                 name=parts[0],
                 alive=parts[1] != "1",
                 exit_code=exit_code,
-                signal=parts[3] or None,
+                signal=_normalise_signal(parts[3]),
             )
         return statuses
 
