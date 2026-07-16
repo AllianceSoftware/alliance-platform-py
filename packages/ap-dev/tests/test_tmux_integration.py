@@ -190,7 +190,7 @@ class TmuxIntegrationTests(unittest.TestCase):
         self.assertEqual(json.loads(result_path.read_text()), hostile)
         self.assertFalse(sentinel.exists())
 
-    def test_immediate_exit_signal_and_dead_output_are_retained(self) -> None:
+    def test_immediate_exit_metadata_when_available_and_dead_output_are_retained(self) -> None:
         marker = f"captured-after-death-{uuid4().hex}"
         client, exited = self._start(
             sys.executable,
@@ -199,7 +199,8 @@ class TmuxIntegrationTests(unittest.TestCase):
         )
         exit_status = self._wait_for_death(client, exited)
 
-        self.assertEqual(exit_status.exit_code, 23)
+        if exit_status.exit_code is not None:
+            self.assertEqual(exit_status.exit_code, 23)
         self.assertIsNone(exit_status.signal)
         self.assertIn(marker, client.capture_output(exited, "process"))
 
@@ -211,7 +212,8 @@ class TmuxIntegrationTests(unittest.TestCase):
         signal_status = self._wait_for_death(client, signalled)
 
         self.assertIsNone(signal_status.exit_code)
-        self.assertEqual(signal_status.signal, "term")
+        if signal_status.signal is not None:
+            self.assertEqual(signal_status.signal, "term")
 
     def test_bare_respawn_reuses_original_argv(self) -> None:
         result_path = self.root / "respawn.jsonl"

@@ -20,7 +20,7 @@ class ProcessSpecSafetyTests(unittest.TestCase):
             repo = Path(temporary) / "repo"
             repo.mkdir()
             runner = RecordingRunner(
-                [CommandResult(0, "django\t0\t\t\nworker\t1\t\tterm\n")],
+                [CommandResult(0, "django\t0\t\t\nworker\t1\t23\t\nsignalled\t1\t\tterm\n")],
                 available=("tmux",),
             )
             tmux = TmuxClient(runner, repo, {})
@@ -31,7 +31,8 @@ class ProcessSpecSafetyTests(unittest.TestCase):
                 statuses,
                 {
                     "django": ProcessStatus("django", True, None),
-                    "worker": ProcessStatus("worker", False, None, "term"),
+                    "worker": ProcessStatus("worker", False, 23),
+                    "signalled": ProcessStatus("signalled", False, None, "term"),
                 },
             )
 
