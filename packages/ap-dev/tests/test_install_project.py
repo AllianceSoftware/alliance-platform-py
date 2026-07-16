@@ -9,7 +9,6 @@ import unittest
 
 from alliance_platform.dev.cli import dispatch
 from alliance_platform.dev.errors import DevError
-from alliance_platform.dev.install_project import PORTLESS_DJANGO_SETTINGS
 from alliance_platform.dev.install_project import install_project
 from alliance_platform.dev.install_project import resolve_install_root
 from rich.console import Console
@@ -57,11 +56,51 @@ class ProjectInstallationTests(unittest.TestCase):
             self.assertIn('django_cwd = "django-root"', config.read_text())
             self.assertIn('vite_cwd = "."', config.read_text())
             self.assertIn("default_tool_source='/tmp/alliance platform dev'", launcher.read_text())
-            self.assertIn("uvx_cache_args=(--no-cache)", launcher.read_text())
-            self.assertIn(PORTLESS_DJANGO_SETTINGS, output.getvalue())
+            self.assertIn("CSRF_TRUSTED_ORIGINS = [", output.getvalue())
+            self.assertIn("USE_X_FORWARDED_HOST = True", output.getvalue())
+            self.assertIn("SECURE_PROXY_SSL_HEADER", output.getvalue())
             self.assertIn("preserves the browser hostname", output.getvalue())
             self.assertTrue(os.access(launcher, os.X_OK))
             subprocess.run(["bash", "-n", launcher], check=True)
+
+    def test_launcher_runs_with_pypi_git_and_local_tool_sources_under_nounset(self) -> None:
+        sources = {
+            "pypi": ("alliance-platform-dev==1.2.3", False),
+            "git": (
+                "git+https://github.com/example/project.git@branch#subdirectory=packages/ap-dev",
+                True,
+            ),
+            "local": ("/tmp/local-ap-dev", True),
+        }
+        for source_type, (source, expect_no_cache) in sources.items():
+            with self.subTest(source_type=source_type), TemporaryDirectory() as directory:
+                repo = self.make_project(directory)
+                install_project(
+                    repo,
+                    assume_yes=True,
+                    tool_source=source,
+                    console=self.console(),
+                )
+                fake_bin = repo / "fake-bin"
+                fake_bin.mkdir()
+                for name, contents in (
+                    ("uv", "#!/bin/sh\nexit 0\n"),
+                    ("uvx", '#!/bin/sh\nprintf "%s\\n" "$@" > "$CAPTURE_FILE"\n'),
+                ):
+                    executable = fake_bin / name
+                    executable.write_text(contents)
+                    executable.chmod(0o755)
+                capture = repo / "uvx-args"
+                environment = dict(os.environ)
+                environment["PATH"] = f"{fake_bin}{os.pathsep}{environment['PATH']}"
+                environment["CAPTURE_FILE"] = str(capture)
+
+                subprocess.run([repo / "bin" / "dev", "doctor"], env=environment, check=True)
+
+                arguments = capture.read_text().splitlines()
+                self.assertEqual("--no-cache" in arguments, expect_no_cache)
+                self.assertIn(source, arguments)
+                self.assertEqual(arguments[-2:], ["alliance-dev", "doctor"])
 
     def test_existing_generated_file_is_not_replaced_without_force(self) -> None:
         with TemporaryDirectory() as directory:

@@ -192,14 +192,17 @@ fi
 
 default_tool_source={default_source}
 tool_source="${{ALLIANCE_DEV_TOOL_SOURCE:-$default_tool_source}}"
-uvx_cache_args=()
-case "$tool_source" in
-    /*|./*|../*|file://*) uvx_cache_args=(--no-cache) ;;
-esac
 export ALLIANCE_DEV_PROJECT_DIR="$repo_dir"
 export ALLIANCE_DEV_INVOCATION_NAME="bin/dev"
 
-exec uvx --isolated --no-env-file "${{uvx_cache_args[@]}}" --from "$tool_source" alliance-dev "$@"
+case "$tool_source" in
+    /*|./*|../*|file://*|git+*)
+        exec uvx --isolated --no-env-file --no-cache --from "$tool_source" alliance-dev "$@"
+        ;;
+    *)
+        exec uvx --isolated --no-env-file --from "$tool_source" alliance-dev "$@"
+        ;;
+esac
 """
 
 
