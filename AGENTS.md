@@ -21,6 +21,7 @@ Current packages:
 - `ap-pdf`
 - `ap-server-choices`
 - `ap-ordered-model`
+- `ap-dev`
 
 ## Tooling and Setup
 
@@ -79,9 +80,17 @@ cd packages/ap-frontend
 uv run ./manage.py test tests.test_bundler.TestViteBundlerTestCase.test_resolve
 ```
 
+Run the standalone development runner tests (no Django constraint or database):
+
+```bash
+just test-dev
+just test-package ap-dev 3.12
+```
+
 ## Test Environment Notes
 
 - Package test settings use PostgreSQL (`django.db.backends.postgresql`) across packages.
+- `ap-dev` is the exception: it uses standalone `unittest` tests and has no Django test app.
 - Ensure local DB access is configured (`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`) or defaults are valid.
 - Some frontend tests rely on Node tooling (for example Prettier via `node_modules`). Keep `yarn` dependencies installed.
 

@@ -18,6 +18,15 @@ test-package package python="" constraint="":
     PY="{{python}}"
     CONSTRAINT="{{constraint}}"
 
+    if [[ "$PKG" == "ap-dev" ]]; then
+        if [[ -n "$CONSTRAINT" ]]; then
+            echo "ap-dev does not accept a Django constraint" >&2
+            exit 2
+        fi
+        just test-dev "$PY"
+        exit
+    fi
+
     # Colors
     BOLD='\033[1m'
     GREEN='\033[32m'
@@ -56,6 +65,17 @@ test-package package python="" constraint="":
 
     # Run tests
     cd "packages/$PKG" && uv run ./manage.py test
+
+# Run the standalone development runner tests (no Django test app or database).
+test-dev python="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ -n "{{python}}" ]]; then
+        export UV_PYTHON="{{python}}"
+    fi
+    unset UV_NO_SYNC
+    cd packages/ap-dev
+    uv run --package alliance-platform-dev python -m unittest discover -s tests -p 'test_*.py'
 
 # Run tests for all packages
 # Usage: just test-all [python-version] [django-constraint]
@@ -101,6 +121,12 @@ test-all python="" constraint="":
 
     FAILED_PACKAGES=()
     PASSED_PACKAGES=()
+
+    if just test-dev "$PY"; then
+        PASSED_PACKAGES+=("ap-dev")
+    else
+        FAILED_PACKAGES+=("ap-dev")
+    fi
 
     for pkg in ap-core ap-codegen ap-frontend ap-storage ap-audit ap-ui ap-pdf ap-server-choices ap-ordered-model; do
         echo -e "${BOLD}${GREEN}═══════════════════════════════════════════════════${RESET}"
@@ -168,7 +194,7 @@ mypy-package package:
 mypy-all:
     #!/usr/bin/env bash
     set -e
-    for pkg in ap-core ap-codegen ap-frontend ap-storage ap-audit ap-ui ap-pdf ap-server-choices ap-ordered-model; do
+    for pkg in ap-core ap-codegen ap-frontend ap-storage ap-audit ap-ui ap-pdf ap-server-choices ap-ordered-model ap-dev; do
         echo "Type checking $pkg..."
         cd packages/$pkg && uv run mypy .
         cd ../..

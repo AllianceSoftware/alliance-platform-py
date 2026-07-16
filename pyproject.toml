@@ -18,6 +18,7 @@ dev = [
   "alliance-platform-pdf",
   "alliance-platform-server-choices",
   "alliance-platform-ordered-model",
+  "alliance-platform-dev",
   "beautifulsoup4<5.0,>=4.11",
   "django-stubs",
   "djangorestframework-stubs",
@@ -65,6 +66,7 @@ alliance-platform-ui = { workspace = true }
 alliance-platform-pdf = { workspace = true }
 alliance-platform-server-choices = { workspace = true }
 alliance-platform-ordered-model = { workspace = true }
+alliance-platform-dev = { workspace = true }
 
 [tool.ruff]
 line-length = 110

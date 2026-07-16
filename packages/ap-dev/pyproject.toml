@@ -1,0 +1,38 @@
+[tool.pdm]
+
+[project]
+name = "alliance-platform-dev"
+dynamic = ["version"]
+description = "Worktree-aware development runner for Alliance Platform Django projects"
+authors = [
+    {name = "Alliance Software", email = "support@alliancesoftware.com.au"},
+]
+dependencies = [
+    "python-dotenv==1.2.2",
+    "rich==14.2.0",
+]
+requires-python = ">=3.11"
+readme = "README.md"
+license = {text = "BSD-2-Clause"}
+include = [
+    "alliance_platform/dev/py.typed",
+]
+
+[project.scripts]
+alliance-dev = "alliance_platform.dev.cli:main"
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm.build]
+includes = ["alliance_platform"]
+
+[tool.pdm.version]
+source = "call"
+getter = "extract_version:get_version()"
+
+[tool.mypy]
+python_version = "3.11"
+explicit_package_bases = true
+warn_unused_ignores = true

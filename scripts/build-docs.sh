@@ -3,7 +3,7 @@
 # Function to kill all background processes
 cleanup() {
 	echo "Terminating all background processes..."
-	kill $pid_core $pid_frontend $pid_codegen $pid_storage $pid_audit $pid_ui
+	kill $pid_core $pid_frontend $pid_codegen $pid_storage $pid_audit $pid_ui $pid_pdf $pid_server_choices $pid_ordered_model $pid_dev
 }
 
 # Trap SIGINT (Ctrl+C) and SIGTERM (termination signal) to call the cleanup function
@@ -26,8 +26,10 @@ PROJECT=server-choices sphinx-autobuild --port=56682 -a --watch packages/ap-serv
 pid_server_choices=$!
 PROJECT=ordered-model sphinx-autobuild --port=56683 -a --watch packages/ap-ordered-model/ docs _docs-build/ordered-model &
 pid_ordered_model=$!
+PROJECT=dev sphinx-autobuild --port=56684 -a --watch packages/ap-dev/ docs _docs-build/dev &
+pid_dev=$!
 sphinx-autobuild --port=56675 --open-browser -a --watch packages/ap-core/ docs _docs-build/core &
 pid_core=$!
 
 # Wait for all background processes to finish
-wait $pid_core $pid_frontend $pid_codegen $pid_storage $pid_audit $pid_ui $pid_pdf $pid_server_choices $pid_ordered_model
+wait $pid_core $pid_frontend $pid_codegen $pid_storage $pid_audit $pid_ui $pid_pdf $pid_server_choices $pid_ordered_model $pid_dev

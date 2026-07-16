@@ -15,6 +15,7 @@ Documentation: https://alliance-platform.readthedocs.io/
 - [PDF](packages/ap-pdf) ([Documentation](https://alliance-platform.readthedocs.io/projects/pdf/latest/))
 - [Server Choices](packages/ap-server-choices) ([Documentation](https://alliance-platform.readthedocs.io/projects/server-choices/latest/))
 - [Ordered Model](packages/ap-ordered-model) ([Documentation](https://alliance-platform.readthedocs.io/projects/ordered-model/latest/))
+- [Dev](packages/ap-dev) ([Documentation](https://alliance-platform.readthedocs.io/projects/dev/latest/))
 
 ## Development Setup
 
@@ -62,6 +63,10 @@ just test-package ap-pdf 3.12
 # With Django constraint (matches CI behavior)
 just test-package ap-pdf 3.12 django42  # Django 4.2.x
 just test-package ap-pdf 3.12 django52  # Django 5.2.x
+
+# Standalone dev runner (no Django constraint or database)
+just test-package ap-dev
+just test-dev 3.12
 ```
 
 ### Test All Packages
