@@ -6,6 +6,7 @@ from pathlib import Path
 import subprocess
 from tempfile import TemporaryDirectory
 import unittest
+from unittest.mock import patch
 
 from alliance_platform.dev.cli import dispatch
 from alliance_platform.dev.errors import DevError
@@ -113,6 +114,98 @@ class ProjectInstallationTests(unittest.TestCase):
 
             self.assertEqual((repo / "bin" / "dev").read_text(), "custom launcher\n")
             self.assertFalse((repo / "config" / "dev.toml").exists())
+
+    def test_install_wraps_environment_sensitive_husky_hooks(self) -> None:
+        with TemporaryDirectory() as directory:
+            repo = self.make_project(directory)
+            husky = repo / ".husky"
+            husky.mkdir()
+            pre_commit = husky / "pre-commit"
+            pre_commit.write_text('#!/bin/sh\n. "$(dirname "$0")/_/husky.sh"\n\nyarn lint-staged --verbose\n')
+            pre_push = husky / "pre-push"
+            pre_push.write_text(
+                '#!/bin/sh\n. "$(dirname "$0")/_/husky.sh"\n\n'
+                'if [ "$1" = "skip" ]; then\n    exit 0\nfi\n'
+                "exec ./bin/lint.sh --aggregate-only\n"
+            )
+            commit_msg = husky / "commit-msg"
+            commit_msg.write_text('#!/bin/sh\n./bin/git-hooks/commit-msg "$1"\n')
+
+            first = install_project(repo, assume_yes=True, console=self.console())
+            second = install_project(repo, assume_yes=True, console=self.console())
+
+            wrapper = repo / "bin" / "run-with-dev-env-if-managed"
+            self.assertIn(wrapper, first.created)
+            self.assertIn(pre_commit, first.updated)
+            self.assertIn(pre_push, first.updated)
+            self.assertIn(wrapper, second.unchanged)
+            self.assertIn(pre_commit, second.unchanged)
+            self.assertIn(pre_push, second.unchanged)
+            self.assertIn(
+                "exec ./bin/run-with-dev-env-if-managed yarn lint-staged --verbose",
+                pre_commit.read_text(),
+            )
+            self.assertIn(
+                "exec ./bin/run-with-dev-env-if-managed ./bin/lint.sh --aggregate-only",
+                pre_push.read_text(),
+            )
+            self.assertEqual(commit_msg.read_text(), '#!/bin/sh\n./bin/git-hooks/commit-msg "$1"\n')
+            self.assertTrue(os.access(wrapper, os.X_OK))
+            subprocess.run(["bash", "-n", wrapper], check=True)
+
+    def test_interactive_install_can_leave_husky_hooks_unchanged(self) -> None:
+        with TemporaryDirectory() as directory:
+            repo = self.make_project(directory)
+            husky = repo / ".husky"
+            husky.mkdir()
+            pre_commit = husky / "pre-commit"
+            original = "#!/bin/sh\nyarn lint-staged\n"
+            pre_commit.write_text(original)
+            console = Console(file=io.StringIO(), force_terminal=True, color_system=None)
+
+            with (
+                patch(
+                    "alliance_platform.dev.install_project.Prompt.ask",
+                    return_value="example-app",
+                ),
+                patch(
+                    "alliance_platform.dev.install_project.Confirm.ask",
+                    return_value=False,
+                ) as confirm,
+            ):
+                install_project(repo, console=console)
+
+            confirm.assert_called_once()
+            self.assertEqual(pre_commit.read_text(), original)
+            self.assertFalse((repo / "bin" / "run-with-dev-env-if-managed").exists())
+
+    def test_hook_wrapper_selects_managed_inherited_and_opt_out_environments(self) -> None:
+        with TemporaryDirectory() as directory:
+            repo = self.make_project(directory)
+            husky = repo / ".husky"
+            husky.mkdir()
+            (husky / "pre-commit").write_text("#!/bin/sh\n./bin/check-hook value\n")
+            install_project(repo, assume_yes=True, console=self.console())
+            wrapper = repo / "bin" / "run-with-dev-env-if-managed"
+            capture = repo / "capture"
+            command = repo / "bin" / "check-hook"
+            command.write_text('#!/bin/sh\nprintf "direct:%s\\n" "$*" > "$CAPTURE_FILE"\n')
+            command.chmod(0o755)
+            environment = {**os.environ, "CAPTURE_FILE": str(capture)}
+
+            subprocess.run([wrapper, command, "one"], env=environment, check=True)
+            self.assertEqual(capture.read_text(), "direct:one\n")
+
+            (repo / ".dev-server").mkdir()
+            (repo / ".dev-server" / "state.json").write_text("{}\n")
+            (repo / "bin" / "dev").write_text('#!/bin/sh\nprintf "managed:%s\\n" "$*" > "$CAPTURE_FILE"\n')
+            (repo / "bin" / "dev").chmod(0o755)
+            subprocess.run([wrapper, command, "two"], env=environment, check=True)
+            self.assertEqual(capture.read_text(), f"managed:run -- {command} two\n")
+
+            environment["BIN_DEV_HOOK_ENV"] = "off"
+            subprocess.run([wrapper, command, "three"], env=environment, check=True)
+            self.assertEqual(capture.read_text(), "direct:three\n")
 
     def test_resolve_install_root_only_requires_pyproject(self) -> None:
         with TemporaryDirectory() as directory:

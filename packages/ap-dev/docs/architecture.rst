@@ -38,6 +38,11 @@ Foreground commands such as ``manage``, ``test``, ``lint``, and ``run`` receive 
 database, port, and hostname environment as the servers. This prevents a command run from one
 worktree from silently falling back to another worktree's database.
 
+Projects using Husky can route pre-commit and pre-push commands through the generated
+``bin/run-with-dev-env-if-managed`` wrapper. It selects ``bin/dev run`` only when the worktree has
+managed state, retaining the normal inherited environment for checkouts that have not used the
+runner.
+
 Application environment and secrets
 -----------------------------------
 

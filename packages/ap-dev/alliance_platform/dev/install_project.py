@@ -31,6 +31,8 @@ PORTLESS_DJANGO_SETTINGS = """CSRF_TRUSTED_ORIGINS = [
 
 USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")"""
+HOOK_WRAPPER_PATH = Path("bin/run-with-dev-env-if-managed")
+MANAGED_HUSKY_HOOKS = ("pre-commit", "pre-push")
 IGNORED_DIRECTORIES = {
     ".git",
     ".mypy_cache",
@@ -206,6 +208,77 @@ esac
 """
 
 
+def _hook_wrapper_contents() -> str:
+    return """#!/bin/bash
+set -euo pipefail
+
+repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+cd "$repo_dir"
+
+if [[ $# -eq 0 ]]; then
+    echo "Usage: bin/run-with-dev-env-if-managed <command> [args...]" >&2
+    exit 2
+fi
+
+hook_environment="${BIN_DEV_HOOK_ENV:-auto}"
+case "$hook_environment" in
+    auto)
+        if [[ -f "$repo_dir/.dev-server/state.json" ]]; then
+            echo "→ Git hook environment: bin/dev state found; using the managed worktree environment." >&2
+            exec "$repo_dir/bin/dev" run -- "$@"
+        fi
+        echo "→ Git hook environment: no bin/dev state; using the inherited environment." >&2
+        exec "$@"
+        ;;
+    off)
+        echo "→ Git hook environment: BIN_DEV_HOOK_ENV=off; using the inherited environment." >&2
+        exec "$@"
+        ;;
+    *)
+        echo "Invalid BIN_DEV_HOOK_ENV '$hook_environment'; expected 'auto' or 'off'." >&2
+        exit 2
+        ;;
+esac
+"""
+
+
+def _wrap_husky_hook(contents: str) -> str | None:
+    if str(HOOK_WRAPPER_PATH) in contents:
+        return contents
+    lines = contents.splitlines(keepends=True)
+    command_end: int | None = None
+    for index in range(len(lines) - 1, -1, -1):
+        stripped = lines[index].strip()
+        if stripped and not stripped.startswith("#"):
+            command_end = index
+            break
+    if command_end is None:
+        return None
+    command_start = command_end
+    while command_start > 0 and lines[command_start - 1].rstrip().endswith("\\"):
+        command_start -= 1
+    command = "".join(lines[command_start : command_end + 1])
+    first_line = lines[command_start]
+    indent = first_line[: len(first_line) - len(first_line.lstrip())]
+    stripped_command = command[len(indent) :]
+    if stripped_command.split(maxsplit=1)[0] in {
+        ".",
+        "done",
+        "esac",
+        "exit",
+        "fi",
+        "return",
+        "source",
+        "then",
+        "}",
+    }:
+        return None
+    if stripped_command.startswith("exec "):
+        stripped_command = stripped_command[5:]
+    replacement = f"{indent}exec ./{HOOK_WRAPPER_PATH} {stripped_command}"
+    return "".join([*lines[:command_start], replacement, *lines[command_end + 1 :]])
+
+
 def _config_contents(project_id: str, django_cwd: str) -> str:
     return f"""# Committed defaults for bin/dev. User overrides live under
 # ~/.config/alliance/dev/{project_id}/ and worktree overrides under .dev-server/.
@@ -350,11 +423,67 @@ def install_project(
         records,
     )
 
+    husky_hooks = [repo / ".husky" / name for name in MANAGED_HUSKY_HOOKS]
+    existing_hooks = [path for path in husky_hooks if path.is_file()]
+    hook_updates = {
+        path: wrapped
+        for path in existing_hooks
+        if (wrapped := _wrap_husky_hook(path.read_text())) is not None
+    }
+    unwrapped_hooks = [path for path, contents in hook_updates.items() if contents != path.read_text()]
+    unsupported_hooks = [path for path in existing_hooks if path not in hook_updates]
+    hook_prompt_required = bool(unwrapped_hooks or unsupported_hooks)
+    update_hooks = bool(existing_hooks) and (
+        not hook_prompt_required
+        or assume_yes
+        or Confirm.ask(
+            "Update pre-commit/pre-push Husky hooks to use the managed worktree environment?",
+            default=True,
+            console=output,
+        )
+    )
+    hooks_enabled = update_hooks and bool(hook_updates)
+    if hooks_enabled:
+        hook_wrapper = repo / HOOK_WRAPPER_PATH
+        _record(
+            hook_wrapper,
+            _write_file(
+                hook_wrapper,
+                _hook_wrapper_contents(),
+                console=output,
+                assume_yes=assume_yes,
+                force=force,
+                executable=True,
+            ),
+            records,
+        )
+        for path, contents in hook_updates.items():
+            _record(
+                path,
+                _write_file(
+                    path,
+                    contents,
+                    console=output,
+                    assume_yes=assume_yes,
+                    force=True,
+                    executable=True,
+                ),
+                records,
+            )
+    if update_hooks and unsupported_hooks:
+        output.print(
+            "[yellow]Could not safely update these Husky hooks; wrap their project command "
+            f"manually with ./{HOOK_WRAPPER_PATH}: "
+            f"{', '.join(str(path.relative_to(repo)) for path in unsupported_hooks)}[/yellow]"
+        )
+
     output.print("\n[bold green]Alliance development environment installed.[/bold green]")
     output.print(f"  Project: {project_id}")
     output.print(f"  Django:  {resolved_django_cwd.relative_to(repo)}")
     output.print("  Vite:    .")
     output.print(f"  Source:  {source}")
+    if hooks_enabled:
+        output.print("  Git hooks: managed worktree environment enabled")
     output.print("\n[bold]Add these settings to your development settings module (normally dev.py):[/bold]")
     output.print(Syntax(PORTLESS_DJANGO_SETTINGS, "python", theme="ansi_dark", padding=1))
     output.print(
