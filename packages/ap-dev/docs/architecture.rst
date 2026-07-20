@@ -22,9 +22,25 @@ stable worktree identity. That identity scopes the PostgreSQL database, tmux ses
 ports, state files, and Portless hostname. Renaming a branch does not change the environment's
 identity.
 
-State and recent process output live under the worktree's ``.dev-server`` directory. Machine-wide
-locks coordinate port allocation and database setup when several projects or agents start at the
-same time. ``bin/dev status --all`` shows the active environments belonging to the project.
+State needed to operate the current worktree and recent process output live under its
+``.dev-server`` directory. The runner also maintains a machine-wide resource registry under
+``$XDG_STATE_HOME/alliance/dev/registry/v1`` (normally
+``~/.local/state/alliance/dev/registry/v1``). Each project has a directory keyed by
+``project_id``, with one JSON record per worktree identity.
+
+The registry records resource identity and lifecycle information—not application secrets. This
+includes the original worktree path, Git identity, database ownership, tmux session, ports, last
+activity, and optional agent owner/lease metadata. Writes are atomic; registry directories and
+files are private to the local user. A record remains after ``down`` while its database is being
+retained, and is removed after ``down --drop-db`` or successful cleanup of a failed first startup.
+This means the database can still be discovered after its Git worktree directory has been removed.
+Agent launchers can identify themselves with ``ALLIANCE_DEV_OWNER_KIND``,
+``ALLIANCE_DEV_OWNER_ID``, and an ISO-8601 ``ALLIANCE_DEV_LEASE_EXPIRES_AT`` value; ordinary
+interactive use is recorded as human-owned without requiring any configuration.
+
+Machine-wide locks coordinate port allocation and database setup when several projects or agents
+start at the same time. ``bin/dev status --all`` shows the project's currently active tmux
+environments; the registry additionally preserves stopped environments that still own resources.
 
 Processes and commands
 ----------------------
@@ -60,6 +76,9 @@ Compatibility and cleanup
 
 Stopping an environment leaves its database available for the next ``up``. Use
 ``bin/dev down --drop-db`` for a clean reset, with ``--yes`` in non-interactive automation.
+Prefer dropping the database before removing a worktree. If the worktree is removed first, its
+machine-wide registry record retains the database name and ownership information needed by
+cleanup tooling; do not put passwords or other application configuration in that record.
 Before adopting a release with documented compatibility changes, stop active environments and
 follow its changelog instructions. Invalid worktree state under ``.dev-server`` can be regenerated
 after confirming that no interrupted database setup needs recovery.
