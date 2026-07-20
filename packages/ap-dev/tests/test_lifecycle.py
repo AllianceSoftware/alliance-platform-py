@@ -23,8 +23,12 @@ from alliance_platform.dev.lifecycle import interrupt_on_termination
 from alliance_platform.dev.lifecycle import port_available
 from alliance_platform.dev.lifecycle import tcp_ready
 from alliance_platform.dev.lifecycle import vite_ready
+from alliance_platform.dev.models import DevConfig
 from alliance_platform.dev.models import PersistedState
+from alliance_platform.dev.models import WorktreeIdentity
+from alliance_platform.dev.registry import RegistryStore
 from alliance_platform.dev.runner import CommandResult
+from alliance_platform.dev.runner import Runner
 from alliance_platform.dev.state import StateStore
 from alliance_platform.dev.state import allocation_lock
 from alliance_platform.dev.state import worktree_lock
@@ -39,6 +43,31 @@ def persisted_state() -> PersistedState:
         django_port=8000,
         vite_port=5173,
         use_portless=False,
+    )
+
+
+def make_dev_environment(
+    runner: Runner,
+    repo: Path,
+    config: DevConfig,
+    identity: WorktreeIdentity,
+    process_environment: dict[str, str],
+    control_environment: dict[str, str],
+) -> DevEnvironment:
+    return DevEnvironment(
+        runner,
+        repo,
+        config,
+        identity,
+        process_environment,
+        control_environment,
+        registry=RegistryStore(
+            repo,
+            config,
+            identity,
+            environ={**process_environment, **control_environment},
+            root=repo / ".test-dev-registry",
+        ),
     )
 
 
@@ -374,7 +403,7 @@ class ViteReadinessTests(unittest.TestCase):
                 django_port=8123,
                 vite_port=5123,
             )
-            dev = DevEnvironment(runner, repo, config, identity, {}, {})
+            dev = make_dev_environment(runner, repo, config, identity, {}, {})
 
             with patch("alliance_platform.dev.lifecycle.port_available", return_value=True):
                 state = dev._allocate_state(use_portless=False)
@@ -397,7 +426,7 @@ class CommandEnvironmentTests(unittest.TestCase):
                 "DEV_VITE_PORT": "9998",
                 "TERM": "xterm-256color",
             }
-            dev = DevEnvironment(runner, repo, config, identity, inherited, {})
+            dev = make_dev_environment(runner, repo, config, identity, inherited, {})
 
             stopped = dev.command_environment()
             self.assertEqual(stopped["DB_NAME"], identity.database_name)
@@ -432,7 +461,7 @@ class DoctorTests(unittest.TestCase):
             runner = LifecycleRunner()
             runner.supports_force_drop = False
             environment = {"HOME": str(root / "home")}
-            dev = DevEnvironment(runner, repo, config, identity, environment, environment)
+            dev = make_dev_environment(runner, repo, config, identity, environment, environment)
             report = dev.doctor_report()
 
             checks = {check.name: check for check in report.checks}
@@ -459,7 +488,7 @@ class StatusTests(unittest.TestCase):
             )
             runner.panes[identity.session_name] = {"django"}
             environment = {"HOME": str(root / "home")}
-            dev = DevEnvironment(runner, repo, config, identity, environment, environment)
+            dev = make_dev_environment(runner, repo, config, identity, environment, environment)
 
             records = dev.status_records()
 
@@ -482,7 +511,7 @@ class StatusTests(unittest.TestCase):
             config = load_config(repo, {"XDG_CONFIG_HOME": str(root / "xdg")})
             identity = resolve_identity(repo, config)
             runner = LifecycleRunner()
-            dev = DevEnvironment(runner, repo, config, identity, {}, {})
+            dev = make_dev_environment(runner, repo, config, identity, {}, {})
 
             record = dev.status_records()[0]
 
@@ -508,7 +537,7 @@ class StatusTests(unittest.TestCase):
                 worktree_id=identity.worktree_id,
             )
             runner.panes[identity.session_name] = {"django", "vite", "worker"}
-            dev = DevEnvironment(runner, repo, config, identity, {}, {})
+            dev = make_dev_environment(runner, repo, config, identity, {}, {})
 
             with (
                 patch(
@@ -532,7 +561,7 @@ class DatabaseSessionSafetyTests(unittest.TestCase):
         identity = resolve_identity(repo, config)
         runner = LifecycleRunner()
         environment = {"HOME": str(root / "home")}
-        primary = DevEnvironment(runner, repo, config, identity, environment, environment)
+        primary = make_dev_environment(runner, repo, config, identity, environment, environment)
         return primary, runner
 
     def test_start_refuses_a_metadata_matched_managed_session(self) -> None:
@@ -650,6 +679,7 @@ class DatabaseSessionSafetyTests(unittest.TestCase):
             drops = destructive_drop_calls(runner)
             self.assertEqual(len(drops), 1)
             self.assertEqual(drops[0].args[-1], primary.identity.database_name)
+            self.assertIsNone(primary.registry.load())
 
 
 class PublicLifecycleTests(unittest.TestCase):
@@ -660,7 +690,7 @@ class PublicLifecycleTests(unittest.TestCase):
             config = load_config(repo, {"XDG_CONFIG_HOME": str(root / "xdg")})
             identity = resolve_identity(repo, config)
             runner = LifecycleRunner()
-            dev = DevEnvironment(runner, repo, config, identity, {}, {})
+            dev = make_dev_environment(runner, repo, config, identity, {}, {})
             dev.store.ensure()
             dev.store.state_path.write_text('{"version": 1}\n')
 
@@ -680,7 +710,7 @@ class PublicLifecycleTests(unittest.TestCase):
             identity = resolve_identity(repo, config)
             runner = LifecycleRunner()
             environment = {"HOME": str(root / "home")}
-            dev = DevEnvironment(runner, repo, config, identity, environment, environment)
+            dev = make_dev_environment(runner, repo, config, identity, environment, environment)
 
             with (
                 patch.dict(os.environ, {"XDG_CACHE_HOME": str(root / "cache")}),
@@ -690,6 +720,7 @@ class PublicLifecycleTests(unittest.TestCase):
                 dev.start()
 
             self.assertIsNone(dev.store.load())
+            self.assertIsNone(dev.registry.load())
             self.assertNotIn(identity.session_name, runner.sessions)
             self.assertEqual(destructive_drop_calls(runner), [])
             self.assertFalse(any("migrate" in call.args for call in runner.calls))
@@ -708,7 +739,7 @@ class PublicLifecycleTests(unittest.TestCase):
             identity = resolve_identity(repo, config)
             runner = LifecycleRunner()
             environment = {"HOME": str(root / "home")}
-            dev = DevEnvironment(runner, repo, config, identity, environment, environment)
+            dev = make_dev_environment(runner, repo, config, identity, environment, environment)
 
             patches = (
                 patch.dict(os.environ, {"XDG_CACHE_HOME": str(root / "cache")}),
@@ -748,8 +779,13 @@ class PublicLifecycleTests(unittest.TestCase):
                 restarted = dev.store.load()
 
             assert restarted is not None
+            registry_entry = dev.registry.load()
+            assert registry_entry is not None
             self.assertEqual((first.django_port, first.vite_port), (8000, 8001))
             self.assertEqual((restarted.django_port, restarted.vite_port), (8000, 8001))
+            self.assertEqual(registry_entry.last_action, "running")
+            self.assertTrue(registry_entry.database_present)
+            self.assertEqual((registry_entry.django_port, registry_entry.vite_port), (8000, 8001))
             self.assertEqual(runner.panes[identity.session_name], {"django", "vite"})
             self.assertEqual(dev.store.snapshot_path("django").read_text(), "first run output\n")
             manage_calls = [
@@ -777,7 +813,7 @@ class PublicLifecycleTests(unittest.TestCase):
             identity = resolve_identity(repo, config)
             runner = LifecycleRunner()
             environment = {"HOME": str(root / "home")}
-            dev = DevEnvironment(runner, repo, config, identity, environment, environment)
+            dev = make_dev_environment(runner, repo, config, identity, environment, environment)
             unavailable: set[int] = set()
 
             with (
@@ -829,7 +865,7 @@ class PublicLifecycleTests(unittest.TestCase):
                 worktree_id=identity.worktree_id,
             )
             runner.panes[identity.session_name] = {"django", "vite"}
-            dev = DevEnvironment(runner, repo, config, identity, {}, {})
+            dev = make_dev_environment(runner, repo, config, identity, {}, {})
             dev.store.save(persisted_state())
 
             with (
@@ -843,6 +879,21 @@ class PublicLifecycleTests(unittest.TestCase):
                 result = dev.stop()
 
             self.assertTrue(result.was_running)
+
+    def test_no_op_stop_does_not_create_a_registry_record(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repo = make_repo(root / "repo")
+            config = load_config(repo, {"XDG_CONFIG_HOME": str(root / "xdg")})
+            identity = resolve_identity(repo, config)
+            runner = LifecycleRunner()
+            dev = make_dev_environment(runner, repo, config, identity, {}, {})
+
+            with patch.dict(os.environ, {"XDG_CACHE_HOME": str(root / "cache")}):
+                result = dev.stop()
+
+            self.assertFalse(result.was_running)
+            self.assertIsNone(dev.registry.load())
 
     def test_failed_restart_all_stops_partial_replacement_without_touching_database(self) -> None:
         with TemporaryDirectory() as temporary:
@@ -860,7 +911,7 @@ class PublicLifecycleTests(unittest.TestCase):
             )
             runner.panes[identity.session_name] = {"django", "vite"}
             runner.fail_new_window = True
-            dev = DevEnvironment(runner, repo, config, identity, {}, {})
+            dev = make_dev_environment(runner, repo, config, identity, {}, {})
             dev.store.save(persisted_state())
 
             with (
@@ -891,7 +942,7 @@ class PublicLifecycleTests(unittest.TestCase):
             runner.database_exists = False
             runner.interrupt_on_migrate = True
             environment = {"HOME": str(root / "home")}
-            dev = DevEnvironment(runner, repo, config, identity, environment, environment)
+            dev = make_dev_environment(runner, repo, config, identity, environment, environment)
 
             with (
                 patch.dict(os.environ, {"XDG_CACHE_HOME": str(root / "cache")}),
@@ -903,6 +954,7 @@ class PublicLifecycleTests(unittest.TestCase):
                 dev.start()
 
             self.assertIsNone(dev.store.load())
+            self.assertIsNone(dev.registry.load())
             self.assertFalse(runner.database_exists)
             self.assertNotIn(identity.session_name, runner.sessions)
             self.assertEqual(len(destructive_drop_calls(runner)), 1)
@@ -921,7 +973,7 @@ class PublicLifecycleTests(unittest.TestCase):
             runner.failed_pane = "django"
             runner.pane_output[f"{identity.session_name}:django"] = "django boot failed\n"
             environment = {"HOME": str(root / "home")}
-            dev = DevEnvironment(runner, repo, config, identity, environment, environment)
+            dev = make_dev_environment(runner, repo, config, identity, environment, environment)
 
             with (
                 patch.dict(os.environ, {"XDG_CACHE_HOME": str(root / "cache")}),
@@ -953,7 +1005,7 @@ class PublicLifecycleTests(unittest.TestCase):
             runner.database_exists = False
             runner.fail_createdb_uncertain = True
             environment = {"HOME": str(root / "home")}
-            dev = DevEnvironment(runner, repo, config, identity, environment, environment)
+            dev = make_dev_environment(runner, repo, config, identity, environment, environment)
             pending_at_createdb: list[bool] = []
 
             def observe_createdb() -> None:
@@ -988,7 +1040,7 @@ class PublicLifecycleTests(unittest.TestCase):
             runner.database_exists = True
             runner.fail_migrate = True
             environment = {"HOME": str(root / "home")}
-            dev = DevEnvironment(runner, repo, config, identity, environment, environment)
+            dev = make_dev_environment(runner, repo, config, identity, environment, environment)
 
             with (
                 patch.dict(os.environ, {"XDG_CACHE_HOME": str(root / "cache")}),
@@ -1016,7 +1068,7 @@ class PublicLifecycleTests(unittest.TestCase):
             runner.database_exists = False
             runner.fail_new_window = True
             environment = {"HOME": str(root / "home")}
-            dev = DevEnvironment(runner, repo, config, identity, environment, environment)
+            dev = make_dev_environment(runner, repo, config, identity, environment, environment)
 
             with (
                 patch.dict(os.environ, {"XDG_CACHE_HOME": str(root / "cache")}),
@@ -1047,7 +1099,7 @@ class PublicLifecycleTests(unittest.TestCase):
             runner.fail_new_window = True
             runner.fail_drop = True
             environment = {"HOME": str(root / "home")}
-            dev = DevEnvironment(runner, repo, config, identity, environment, environment)
+            dev = make_dev_environment(runner, repo, config, identity, environment, environment)
 
             with (
                 patch.dict(os.environ, {"XDG_CACHE_HOME": str(root / "cache")}),
@@ -1060,8 +1112,12 @@ class PublicLifecycleTests(unittest.TestCase):
                 dev.start()
 
             failed = dev.store.load()
+            registry_entry = dev.registry.load()
             assert failed is not None
+            assert registry_entry is not None
             self.assertTrue(failed.database_setup_pending)
+            self.assertTrue(registry_entry.database_owned)
+            self.assertTrue(registry_entry.database_setup_pending)
             self.assertTrue(runner.database_exists)
 
             runner.fail_drop = False
@@ -1072,6 +1128,7 @@ class PublicLifecycleTests(unittest.TestCase):
             recovered = dev.store.load()
             assert recovered is not None
             self.assertFalse(recovered.database_setup_pending)
+            self.assertIsNone(dev.registry.load())
             self.assertFalse(runner.database_exists)
 
     def test_next_start_recovers_a_persisted_incomplete_database_marker(self) -> None:
@@ -1085,7 +1142,7 @@ class PublicLifecycleTests(unittest.TestCase):
             identity = resolve_identity(repo, config)
             runner = LifecycleRunner()
             environment = {"HOME": str(root / "home")}
-            dev = DevEnvironment(runner, repo, config, identity, environment, environment)
+            dev = make_dev_environment(runner, repo, config, identity, environment, environment)
             with patch("alliance_platform.dev.lifecycle.port_available", return_value=True):
                 interrupted = dev._allocate_state(use_portless=False)
             interrupted.database_setup_pending = True

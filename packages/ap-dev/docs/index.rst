@@ -188,6 +188,13 @@ failing agent environment can be inspected with ``logs`` before it is stopped; c
 scoped to that worktree. Non-interactive database deletion requires the explicit
 ``bin/dev down --drop-db --yes`` form.
 
+The runner keeps a private machine-wide registry of databases and sessions associated with each
+worktree. Stopping an agent with plain ``down`` retains both its database and registry record for
+later reuse; use ``down --drop-db --yes`` before removing a disposable agent worktree when its
+database is no longer needed. The registry is stored below ``$XDG_STATE_HOME/alliance/dev`` (or
+``~/.local/state/alliance/dev``) so resource ownership is not lost merely because an agent deletes
+the worktree directory.
+
 Starting quickly from a template database
 -----------------------------------------
 

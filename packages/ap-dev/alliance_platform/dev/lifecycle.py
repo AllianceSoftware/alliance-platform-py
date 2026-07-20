@@ -44,6 +44,7 @@ from .models import ToolRecord
 from .models import WorktreeIdentity
 from .portless import PortlessAdapter
 from .portless import PortlessSelection
+from .registry import RegistryStore
 from .runner import Runner
 from .runner import require_success
 from .state import StateStore
@@ -165,6 +166,7 @@ class DevEnvironment:
         identity: WorktreeIdentity,
         process_environment: dict[str, str],
         control_environment: dict[str, str],
+        registry: RegistryStore | None = None,
     ):
         self.runner = runner
         self.repo = repo
@@ -172,6 +174,12 @@ class DevEnvironment:
         self.identity = identity
         self.environment = process_environment
         self.store = StateStore(repo)
+        self.registry = registry or RegistryStore(
+            repo,
+            config,
+            identity,
+            environ={**process_environment, **control_environment},
+        )
         self.tmux = TmuxClient(runner, repo, process_environment)
         self.portless = PortlessAdapter(
             runner,
@@ -509,6 +517,7 @@ class DevEnvironment:
         self.database.drop()
 
         self._clear_database_setup_marker(state)
+        self.registry.remove()
         return True
 
     def _clear_database_setup_marker(self, state: PersistedState) -> None:
@@ -523,6 +532,8 @@ class DevEnvironment:
         # empty dedicated tmux server or performing any other mutation.
         self.store.load()
         self.tmux.ensure_server()
+        existing_registry_entry = self.registry.load()
+        self.registry.register()
         state: RuntimeView | None = None
         setup_state: PersistedState | None = None
         portless_selection: PortlessSelection | None = None
@@ -550,6 +561,11 @@ class DevEnvironment:
                     raise DevError(
                         f"Dev processes are alive but not ready; inspect: {invocation_name()} logs"
                     )
+                self.registry.database_ready(created=False)
+                self.registry.started(
+                    django_port=current.django_port,
+                    vite_port=current.vite_port,
+                )
                 return StartResult(
                     environment=self._environment_summary(current),
                     already_running=True,
@@ -585,11 +601,13 @@ class DevEnvironment:
                 else:
                     setup_state.database_setup_pending = True
                 self.store.save(setup_state)
+                self.registry.database_setup_started()
 
             preparation = self.database.ensure(
                 on_database_creation=database_creation_started,
                 dev_base_host=dev_base_host,
             )
+            self.registry.database_ready(created=preparation.created)
             if setup_state is not None and setup_state.vite_port > 0:
                 self._clear_database_setup_marker(setup_state)
 
@@ -601,6 +619,10 @@ class DevEnvironment:
                 self._launch_processes(state, process_environment)
             assert state is not None
             self._wait_until_ready(state)
+            self.registry.started(
+                django_port=state.django_port,
+                vite_port=state.vite_port,
+            )
         except BaseException as error:
             if state is not None and self.tmux.session_exists(state.session_name):
                 for warning in self._save_output_snapshots(state.session_name):
@@ -612,10 +634,17 @@ class DevEnvironment:
 
             owns_database = preparation is not None and preparation.created
             owns_database = owns_database or (setup_state is not None and setup_state.database_setup_pending)
+            database_cleaned_up = False
             if owns_database:
                 marker = state.persisted if state is not None else setup_state
                 assert marker is not None
                 marker.database_setup_pending = True
+                try:
+                    self.registry.database_setup_started()
+                except DevError as cleanup_error:
+                    error.add_note(
+                        f"could not save failed database ownership in the registry: {cleanup_error}"
+                    )
                 try:
                     self.store.save(marker)
                 except (DevError, OSError) as cleanup_error:
@@ -633,6 +662,23 @@ class DevEnvironment:
                             self._clear_database_setup_marker(marker)
                         except (DevError, OSError) as cleanup_error:
                             error.add_note(f"could not save database cleanup state: {cleanup_error}")
+                        else:
+                            database_cleaned_up = True
+            try:
+                session_remains = self.tmux.session_exists(self.identity.session_name)
+                if not session_remains and database_cleaned_up:
+                    self.registry.remove()
+                elif not session_remains and not owns_database and preparation is not None:
+                    self.registry.stopped(database_present=True)
+                elif not session_remains and preparation is None:
+                    if existing_registry_entry is None:
+                        self.registry.remove()
+                    else:
+                        self.registry.stopped(
+                            database_present=existing_registry_entry.database_present,
+                        )
+            except DevError as cleanup_error:
+                error.add_note(f"could not update the dev registry after failed startup: {cleanup_error}")
             raise
         assert portless_selection is not None
         return StartResult(
@@ -664,6 +710,7 @@ class DevEnvironment:
 
     def _stop_locked(self, *, drop_database: bool = False) -> StopResult:
         state = self.store.load()
+        existing_registry_entry = self.registry.load()
         interrupted_setup = state is not None and state.database_setup_pending
         if drop_database or interrupted_setup:
             self._require_no_other_worktree_sessions(
@@ -677,6 +724,13 @@ class DevEnvironment:
             database_dropped = self.database.drop()
         if state:
             self._clear_database_setup_marker(state)
+        if drop_database or interrupted_setup:
+            self.registry.remove()
+        elif existing_registry_entry is not None or state is not None or was_running:
+            registry_entry = self.registry.register()
+            self.registry.stopped(
+                database_present=registry_entry.database_present,
+            )
         return StopResult(
             was_running=was_running,
             database_drop_requested=drop_database,
@@ -701,6 +755,7 @@ class DevEnvironment:
             raise DevError(f"Dev environment is not running. Start it with: {invocation_name()} up")
         if persisted.database_setup_pending:
             raise DevError(f"Database setup is incomplete. Recover it with: {invocation_name()} up")
+        self.registry.register()
 
         _was_running, warnings = self._stop_processes_locked()
         state: RuntimeView | None = None
@@ -717,6 +772,11 @@ class DevEnvironment:
                 process_environment = self._managed_environment(state)
                 self._launch_processes(state, process_environment)
             self._wait_until_ready(state)
+            self.registry.database_ready(created=False)
+            self.registry.started(
+                django_port=state.django_port,
+                vite_port=state.vite_port,
+            )
         except BaseException as error:
             for warning in warnings:
                 error.add_note(warning)
@@ -727,6 +787,11 @@ class DevEnvironment:
                     self.tmux.stop_session(state.session_name)
                 except DevError as cleanup_error:
                     error.add_note(f"could not stop the failed replacement session: {cleanup_error}")
+            try:
+                if not self.tmux.session_exists(self.identity.session_name):
+                    self.registry.stopped(database_present=True)
+            except DevError as cleanup_error:
+                error.add_note(f"could not update the dev registry after failed restart: {cleanup_error}")
             raise
 
         assert portless_selection is not None
