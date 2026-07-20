@@ -42,7 +42,8 @@ available. It creates ``bin/dev`` and ``config/dev.toml``, discovers the Django 
 and prints the Portless proxy settings to add to ``dev.py``. Vite is assumed to use
 the repository root. Use ``--django-cwd`` to resolve an unusual Django layout, ``--yes`` for
 non-interactive setup, and ``--force`` only when intentionally replacing existing generated
-files.
+files. If Husky pre-commit or pre-push hooks exist, installation can update their project command
+to use the generated worktree-aware hook wrapper.
 
 JSON output from ``status``, ``url``, ``doctor``, ``config show``, and ``config paths`` is a
 public automation contract and includes a schema version.

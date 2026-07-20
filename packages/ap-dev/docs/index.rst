@@ -101,6 +101,11 @@ Existing ``bin/dev`` and ``config/dev.toml`` files are never replaced non-intera
 arrays—especially the test, lint, and check scripts—before running ``bin/dev doctor`` and
 ``bin/dev up``.
 
+When Husky pre-commit or pre-push hooks are present, the installer also offers to create a small
+hook wrapper and update those hooks. It uses the managed worktree environment after ``bin/dev up``
+and preserves the inherited hook environment before a worktree has managed state. This prevents a
+hook in one worktree from accidentally testing against another worktree's database.
+
 Several environments at the same time
 --------------------------------------
 

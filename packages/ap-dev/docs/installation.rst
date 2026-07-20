@@ -22,6 +22,12 @@ The generated ``bin/dev`` launcher pins the installed package version, so every 
 worktree uses the same release without adding it to the application's Python environment. Commit
 both ``bin/dev`` and ``config/dev.toml``.
 
+If the project has ``.husky/pre-commit`` or ``.husky/pre-push``, the interactive installer offers
+to route their final project command through ``bin/run-with-dev-env-if-managed``. Accept this so
+hooks run against the current worktree's generated database and environment whenever that
+worktree has been started. Message-only hooks such as ``commit-msg`` and
+``prepare-commit-msg`` are left unchanged.
+
 Post-install setup
 ------------------
 
@@ -52,6 +58,22 @@ Then verify the installation and start the environment:
    bin/dev doctor
    bin/dev up
    bin/dev url
+
+Git hooks
+---------
+
+The generated hook wrapper checks for ``.dev-server/state.json``. When managed state exists, the
+hook command runs through ``bin/dev run`` and receives the worktree database, identity, ports, and
+host. Before the first ``bin/dev up``, or in a checkout without managed state, the hook uses the
+inherited environment as it did previously.
+
+The wrapper prints which environment it selected. To make one commit or push use the inherited
+environment without skipping the hook itself:
+
+.. code-block:: bash
+
+   BIN_DEV_HOOK_ENV=off git commit
+   BIN_DEV_HOOK_ENV=off git push
 
 Upgrading
 ---------
