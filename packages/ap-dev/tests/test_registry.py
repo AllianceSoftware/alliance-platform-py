@@ -113,6 +113,42 @@ class RegistryStoreTests(unittest.TestCase):
 
             self.assertEqual([path.name for path in store.path.parent.iterdir()], [store.path.name])
 
+    def test_cleanup_transitions_are_durable_before_registry_removal(self) -> None:
+        with TemporaryDirectory() as directory:
+            store = self.make_store(Path(directory))
+            store.register()
+            owned = store.database_setup_started()
+            ready = store.database_ready(created=True)
+
+            pending = store.cleanup_started(ready, session_stopped=True)
+            removed = store.database_removed(pending)
+
+            self.assertEqual(pending.last_action, "cleanupPending")
+            self.assertEqual(pending.database_ownership_token, owned.database_ownership_token)
+            self.assertEqual(removed.last_action, "databaseRemoved")
+            self.assertFalse(removed.database_present)
+            self.assertFalse(removed.database_setup_pending)
+
+            store.remove_project_entry(removed.worktree_id)
+            self.assertIsNone(store.load_project_entry(removed.worktree_id))
+
+    def test_registry_environment_ids_cannot_escape_the_project_directory(self) -> None:
+        with TemporaryDirectory() as directory:
+            store = self.make_store(Path(directory))
+
+            with self.assertRaisesRegex(DevError, "Invalid registry environment ID"):
+                store.remove_project_entry("../another-project/entry")
+
+    def test_registry_filename_must_match_the_stored_environment_id(self) -> None:
+        with TemporaryDirectory() as directory:
+            store = self.make_store(Path(directory))
+            store.register()
+            mismatched = store.path.with_name("different-0123456789.json")
+            store.path.replace(mismatched)
+
+            with self.assertRaisesRegex(DevError, "filename does not match"):
+                store.list_project()
+
 
 if __name__ == "__main__":
     unittest.main()

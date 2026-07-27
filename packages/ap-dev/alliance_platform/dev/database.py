@@ -177,8 +177,8 @@ class DatabaseManager:
             )
         return DatabasePreparationResult(created=created)
 
-    def drop(self) -> bool:
-        name = self.identity.database_name
+    def drop(self, name: str | None = None) -> bool:
+        name = name or self.identity.database_name
         if not self.exists(name):
             return False
         self.require_force_drop_support()

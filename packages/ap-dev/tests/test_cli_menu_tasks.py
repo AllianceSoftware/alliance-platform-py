@@ -13,6 +13,9 @@ from unittest.mock import patch
 
 from alliance_platform.dev.cli import Context
 from alliance_platform.dev.cli import _doctor_payload
+from alliance_platform.dev.cli import _environment_payload
+from alliance_platform.dev.cli import _print_environment_removal
+from alliance_platform.dev.cli import _print_environments
 from alliance_platform.dev.cli import _print_start_result
 from alliance_platform.dev.cli import _print_status
 from alliance_platform.dev.cli import _show_config
@@ -28,6 +31,8 @@ from alliance_platform.dev.models import ConfigPaths
 from alliance_platform.dev.models import DoctorCheck
 from alliance_platform.dev.models import DoctorReport
 from alliance_platform.dev.models import DoctorStateRecord
+from alliance_platform.dev.models import EnvironmentRecord
+from alliance_platform.dev.models import EnvironmentRemovalResult
 from alliance_platform.dev.models import EnvironmentSummary
 from alliance_platform.dev.models import StartResult
 from alliance_platform.dev.models import StatusProcessRecord
@@ -43,6 +48,29 @@ class TTYBuffer(io.StringIO):
 
 
 class CommandLineInteractionTests(unittest.TestCase):
+    def environment_record(self) -> EnvironmentRecord:
+        return EnvironmentRecord(
+            project_id="demo",
+            environment_id="agent-cleanup-0123456789",
+            state="orphaned",
+            worktree_path="/tmp/missing-agent",
+            worktree_branch="codex/cleanup",
+            worktree_exists=False,
+            session_name="demo-wt-agent-cleanup-0123456789",
+            session_state="absent",
+            database_name="demo_agent_cleanup_0123456789",
+            database_present=True,
+            database_owned=True,
+            database_setup_pending=False,
+            owner_kind="agent",
+            owner_id="task-123",
+            lease_expires_at="2026-07-21T00:00:00Z",
+            registered_at="2026-07-20T00:00:00Z",
+            last_seen_at="2026-07-20T01:00:00Z",
+            last_started_at="2026-07-20T00:30:00Z",
+            last_stopped_at="2026-07-20T00:45:00Z",
+        )
+
     def test_cli_owns_stable_status_json_mapping(self) -> None:
         record = StatusRecord(
             project_id="demo",
@@ -113,6 +141,38 @@ class CommandLineInteractionTests(unittest.TestCase):
 
         self.assertEqual(set(json.loads(current_output.getvalue())), {"schemaVersion", "environment"})
         self.assertEqual(set(json.loads(all_output.getvalue())), {"schemaVersion", "environments"})
+
+    def test_environment_list_has_a_stable_secret_free_json_shape(self) -> None:
+        record = self.environment_record()
+        output = io.StringIO()
+
+        with redirect_stdout(output):
+            _print_environments((record,), as_json=True)
+
+        payload = json.loads(output.getvalue())
+        self.assertEqual(set(payload), {"schemaVersion", "environments"})
+        self.assertEqual(payload["environments"], [_environment_payload(record)])
+        self.assertEqual(payload["environments"][0]["state"], "orphaned")
+        self.assertEqual(
+            set(payload["environments"][0]),
+            {"id", "state", "projectId", "worktree", "session", "database", "owner", "activity"},
+        )
+
+    def test_environment_removal_reports_retained_unowned_database(self) -> None:
+        output = io.StringIO()
+        result = EnvironmentRemovalResult(
+            environment_id="agent-cleanup-0123456789",
+            session_stopped=True,
+            database_dropped=False,
+            database_was_absent=False,
+            database_retained=True,
+        )
+
+        with redirect_stdout(output):
+            _print_environment_removal(result)
+
+        self.assertIn("session stopped", output.getvalue())
+        self.assertIn("not registry-owned", output.getvalue())
 
     def test_doctor_json_has_the_documented_secret_free_shape(self) -> None:
         with TemporaryDirectory() as temporary:
@@ -361,6 +421,21 @@ class CommandLineInteractionTests(unittest.TestCase):
         self.assertTrue(all_worktrees.all_worktrees)
         self.assertTrue(all_worktrees.as_json)
 
+    def test_env_parser_requires_an_action_and_accepts_list_and_remove(self) -> None:
+        parser = build_parser()
+
+        listed = parser.parse_args(["env", "list", "--json"])
+        removed = parser.parse_args(["env", "remove", "repo-0123456789", "--yes"])
+
+        self.assertEqual(listed.env_action, "list")
+        self.assertTrue(listed.as_json)
+        self.assertEqual(removed.env_action, "remove")
+        self.assertEqual(removed.environment_id, "repo-0123456789")
+        self.assertTrue(removed.yes)
+
+        with patch.object(sys, "stderr", io.StringIO()), self.assertRaises(SystemExit):
+            parser.parse_args(["env"])
+
     def test_remainder_arguments_are_not_consumed_by_the_top_level_parser(self) -> None:
         parser = build_parser()
         parsed = parser.parse_args(["test", "package.Case.test_name", "--keepdb", "argument with spaces"])
@@ -426,6 +501,37 @@ class CommandLineInteractionTests(unittest.TestCase):
                 cwd="django-root",
                 environment=command_environment,
             )
+
+    def test_dispatch_removes_an_environment_non_interactively(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repo = make_repo(root / "repo")
+            config = load_config(repo, {"XDG_CONFIG_HOME": str(root / "xdg")})
+            identity = WorktreeIdentity(
+                repo=repo,
+                branch="feature/test",
+                worktree_id="repo-0123456789",
+                session_name="demo-wt-repo-0123456789",
+                database_name="demo_repo_0123456789",
+                portless_app_name="repo-0123456789.demo",
+            )
+            context = Context(repo, config, identity, {}, {})
+            record = self.environment_record()
+            removal = EnvironmentRemovalResult(record.environment_id, False, True, False, False)
+
+            with (
+                patch("alliance_platform.dev.cli.make_context", return_value=context),
+                patch("alliance_platform.dev.cli.DevEnvironment") as dev_environment,
+                patch("alliance_platform.dev.cli.CommandDelegates"),
+                redirect_stdout(io.StringIO()),
+            ):
+                dev_environment.return_value.environment_record.return_value = record
+                dev_environment.return_value.remove_environment.return_value = removal
+                result = dispatch(["env", "remove", record.environment_id, "--yes"])
+
+            self.assertEqual(result, 0)
+            dev_environment.return_value.environment_record.assert_called_once_with(record.environment_id)
+            dev_environment.return_value.remove_environment.assert_called_once_with(record.environment_id)
 
     def test_passthrough_command_has_discoverable_wrapper_help(self) -> None:
         output = io.StringIO()

@@ -40,7 +40,10 @@ interactive use is recorded as human-owned without requiring any configuration.
 
 Machine-wide locks coordinate port allocation and database setup when several projects or agents
 start at the same time. ``bin/dev status --all`` shows the project's currently active tmux
-environments; the registry additionally preserves stopped environments that still own resources.
+environments; ``bin/dev env list`` reads the registry and additionally shows stopped environments
+that still own resources. ``bin/dev env remove WORKTREE-ID`` can clean up a registered environment
+after its worktree has disappeared. It refuses mismatched tmux or deterministic resource identity,
+and never drops a database that is not marked as registry-owned.
 
 Processes and commands
 ----------------------
@@ -78,7 +81,7 @@ Stopping an environment leaves its database available for the next ``up``. Use
 ``bin/dev down --drop-db`` for a clean reset, with ``--yes`` in non-interactive automation.
 Prefer dropping the database before removing a worktree. If the worktree is removed first, its
 machine-wide registry record retains the database name and ownership information needed by
-cleanup tooling; do not put passwords or other application configuration in that record.
+``bin/dev env remove``; do not put passwords or other application configuration in that record.
 Before adopting a release with documented compatibility changes, stop active environments and
 follow its changelog instructions. Invalid worktree state under ``.dev-server`` can be regenerated
 after confirming that no interrupted database setup needs recovery.

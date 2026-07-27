@@ -28,6 +28,8 @@ from .models import DevConfig
 from .models import DoctorCheck
 from .models import DoctorReport
 from .models import DoctorStateRecord
+from .models import EnvironmentRecord
+from .models import EnvironmentRemovalResult
 from .models import EnvironmentSummary
 from .models import LogRecord
 from .models import ManagedSession
@@ -514,9 +516,12 @@ class DevEnvironment:
         )
         if self.tmux.session_exists(self.identity.session_name):
             return False
+        registry_entry = self.registry.load()
         self.database.drop()
 
         self._clear_database_setup_marker(state)
+        if registry_entry is not None:
+            self.registry.database_removed(registry_entry)
         self.registry.remove()
         return True
 
@@ -526,6 +531,128 @@ class DevEnvironment:
             self.store.clear()
         else:
             self.store.save(state)
+
+    def environment_records(self) -> tuple[EnvironmentRecord, ...]:
+        managed_sessions = {session.name: session for session in self.tmux.list_managed_sessions()}
+        records: list[EnvironmentRecord] = []
+        for entry in self.registry.list_project():
+            worktree_exists = Path(entry.worktree_path).is_dir()
+            session = managed_sessions.get(entry.session_name)
+            session_exists = session is not None or self.tmux.session_exists(entry.session_name)
+            session_matches = session is not None and (
+                session.project_slug == self.config.project_slug
+                and session.worktree_id == entry.worktree_id
+                and session.worktree_path == entry.worktree_path
+            )
+            if session_exists and not session_matches:
+                session_state = "conflict"
+                state = "conflict"
+            elif session_matches:
+                session_state = "running"
+                state = "running" if worktree_exists else "running-orphaned"
+            else:
+                session_state = "absent"
+                state = "stopped" if worktree_exists else "orphaned"
+            if entry.database_setup_pending and state != "conflict":
+                state = "incomplete"
+            records.append(
+                EnvironmentRecord(
+                    project_id=entry.project_id,
+                    environment_id=entry.worktree_id,
+                    state=state,
+                    worktree_path=entry.worktree_path,
+                    worktree_branch=entry.branch,
+                    worktree_exists=worktree_exists,
+                    session_name=entry.session_name,
+                    session_state=session_state,
+                    database_name=entry.database_name,
+                    database_present=entry.database_present,
+                    database_owned=entry.database_owned,
+                    database_setup_pending=entry.database_setup_pending,
+                    owner_kind=entry.owner_kind,
+                    owner_id=entry.owner_id,
+                    lease_expires_at=entry.lease_expires_at,
+                    registered_at=entry.registered_at,
+                    last_seen_at=entry.last_seen_at,
+                    last_started_at=entry.last_started_at,
+                    last_stopped_at=entry.last_stopped_at,
+                )
+            )
+        return tuple(records)
+
+    def environment_record(self, worktree_id: str) -> EnvironmentRecord:
+        record = next(
+            (record for record in self.environment_records() if record.environment_id == worktree_id),
+            None,
+        )
+        if record is None:
+            raise DevError(f"Unknown registered environment: {worktree_id}")
+        return record
+
+    def remove_environment(self, worktree_id: str) -> EnvironmentRemovalResult:
+        timeout = max(600.0, self.config.startup_timeout * 2)
+        with worktree_lock(self.config.project_slug, worktree_id, timeout):
+            entry = self.registry.load_project_entry(worktree_id)
+            if entry is None:
+                raise DevError(f"Unknown registered environment: {worktree_id}")
+
+            stem, separator, path_hash = entry.worktree_id.rpartition("-")
+            expected_database = database_name(self.config.project_slug, stem, path_hash)
+            expected_session = f"{self.config.project_slug}-wt-{entry.worktree_id}"
+            if not separator or entry.database_name != expected_database:
+                raise DevError(
+                    f"Refusing to remove {entry.worktree_id}: registered database identity is invalid"
+                )
+            if entry.session_name != expected_session:
+                raise DevError(
+                    f"Refusing to remove {entry.worktree_id}: registered tmux session identity is invalid"
+                )
+
+            session_exists = self.tmux.session_exists(entry.session_name)
+            if session_exists:
+                session = next(
+                    (
+                        session
+                        for session in self.tmux.list_managed_sessions()
+                        if session.name == entry.session_name
+                    ),
+                    None,
+                )
+                if session is None or (
+                    session.project_slug != self.config.project_slug
+                    or session.worktree_id != entry.worktree_id
+                    or session.worktree_path != entry.worktree_path
+                ):
+                    raise DevError(
+                        f"Refusing to stop tmux session {entry.session_name}: metadata does not match "
+                        "the registry entry"
+                    )
+
+            pending = self.registry.cleanup_started(entry, session_stopped=False)
+            session_stopped = False
+            if session_exists:
+                self.tmux.stop_session(entry.session_name)
+                session_stopped = True
+                pending = self.registry.cleanup_started(pending, session_stopped=True)
+
+            database_dropped = False
+            database_was_absent = False
+            database_retained = False
+            if entry.database_owned:
+                database_dropped = self.database.drop(entry.database_name)
+                database_was_absent = not database_dropped
+                pending = self.registry.database_removed(pending)
+            else:
+                database_retained = entry.database_present is not False
+
+            self.registry.remove_project_entry(entry.worktree_id)
+            return EnvironmentRemovalResult(
+                environment_id=entry.worktree_id,
+                session_stopped=session_stopped,
+                database_dropped=database_dropped,
+                database_was_absent=database_was_absent,
+                database_retained=database_retained,
+            )
 
     def _start_locked(self, *, no_portless: bool = False) -> StartResult:
         # Reject incompatible or corrupt state before starting an otherwise
@@ -663,7 +790,15 @@ class DevEnvironment:
                         except (DevError, OSError) as cleanup_error:
                             error.add_note(f"could not save database cleanup state: {cleanup_error}")
                         else:
-                            database_cleaned_up = True
+                            try:
+                                self.registry.database_removed()
+                            except DevError as cleanup_error:
+                                error.add_note(
+                                    "could not record the failed startup database cleanup: "
+                                    f"{cleanup_error}"
+                                )
+                            else:
+                                database_cleaned_up = True
             try:
                 session_remains = self.tmux.session_exists(self.identity.session_name)
                 if not session_remains and database_cleaned_up:
@@ -725,6 +860,8 @@ class DevEnvironment:
         if state:
             self._clear_database_setup_marker(state)
         if drop_database or interrupted_setup:
+            if existing_registry_entry is not None:
+                self.registry.database_removed(existing_registry_entry)
             self.registry.remove()
         elif existing_registry_entry is not None or state is not None or was_running:
             registry_entry = self.registry.register()

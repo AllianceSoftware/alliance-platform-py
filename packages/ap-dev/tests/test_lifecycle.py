@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import redirect_stderr
 from contextlib import redirect_stdout
+from dataclasses import replace
 import io
 import json
 import os
@@ -16,6 +17,7 @@ from unittest.mock import patch
 
 from alliance_platform.dev.config import load_config
 from alliance_platform.dev.errors import DevError
+from alliance_platform.dev.identity import database_name
 from alliance_platform.dev.identity import resolve_identity
 from alliance_platform.dev.lifecycle import DevEnvironment
 from alliance_platform.dev.lifecycle import find_free_port
@@ -69,6 +71,34 @@ def make_dev_environment(
             root=repo / ".test-dev-registry",
         ),
     )
+
+
+def register_environment(
+    dev: DevEnvironment,
+    *,
+    worktree_id: str = "agent-cleanup-0123456789",
+    worktree_path: str = "/missing/agent-cleanup",
+    database_owned: bool = True,
+    database_present: bool | None = True,
+    setup_pending: bool = False,
+):
+    current = dev.registry.register()
+    dev.registry.remove()
+    stem, _, path_hash = worktree_id.rpartition("-")
+    entry = replace(
+        current,
+        worktree_id=worktree_id,
+        worktree_path=worktree_path,
+        branch="codex/cleanup",
+        database_name=database_name(dev.config.project_slug, stem, path_hash),
+        database_present=database_present,
+        database_owned=database_owned,
+        database_ownership_token="owned-token" if database_owned else None,
+        database_setup_pending=setup_pending,
+        session_name=f"{dev.config.project_slug}-wt-{worktree_id}",
+    )
+    dev.registry.save_project_entry(entry)
+    return entry
 
 
 def destructive_drop_calls(runner: RecordingRunner) -> list[RecordedCall]:
@@ -680,6 +710,150 @@ class DatabaseSessionSafetyTests(unittest.TestCase):
             self.assertEqual(len(drops), 1)
             self.assertEqual(drops[0].args[-1], primary.identity.database_name)
             self.assertIsNone(primary.registry.load())
+
+
+class EnvironmentRegistryLifecycleTests(unittest.TestCase):
+    def make_environment(self, root: Path) -> tuple[DevEnvironment, LifecycleRunner]:
+        repo = make_repo(root / "repo")
+        config = load_config(repo, {"XDG_CONFIG_HOME": str(root / "xdg")})
+        identity = resolve_identity(repo, config)
+        runner = LifecycleRunner()
+        environment = {"HOME": str(root / "home")}
+        return (
+            make_dev_environment(runner, repo, config, identity, environment, environment),
+            runner,
+        )
+
+    def test_environment_inventory_reconciles_registry_with_worktree_and_tmux(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            dev, runner = self.make_environment(root)
+            entry = register_environment(dev)
+
+            orphaned = dev.environment_record(entry.worktree_id)
+            self.assertEqual(orphaned.state, "orphaned")
+            self.assertEqual(orphaned.session_state, "absent")
+            self.assertFalse(orphaned.worktree_exists)
+
+            add_managed_session(
+                runner,
+                entry.session_name,
+                project=dev.config.project_slug,
+                worktree_path=entry.worktree_path,
+                worktree_id=entry.worktree_id,
+            )
+            runner.panes[entry.session_name] = {"django", "vite"}
+
+            running = dev.environment_record(entry.worktree_id)
+            self.assertEqual(running.state, "running-orphaned")
+            self.assertEqual(running.session_state, "running")
+
+    def test_incomplete_and_conflicting_environments_are_identified(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            dev, runner = self.make_environment(root)
+            entry = register_environment(dev, setup_pending=True)
+
+            self.assertEqual(dev.environment_record(entry.worktree_id).state, "incomplete")
+
+            add_managed_session(
+                runner,
+                entry.session_name,
+                project=dev.config.project_slug,
+                worktree_path="/different/worktree",
+                worktree_id="different-0123456789",
+            )
+            self.assertEqual(dev.environment_record(entry.worktree_id).state, "conflict")
+
+    def test_remove_stops_matching_session_and_drops_owned_database(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            dev, runner = self.make_environment(root)
+            entry = register_environment(dev)
+            add_managed_session(
+                runner,
+                entry.session_name,
+                project=dev.config.project_slug,
+                worktree_path=entry.worktree_path,
+                worktree_id=entry.worktree_id,
+            )
+            runner.panes[entry.session_name] = {"django", "vite"}
+
+            result = dev.remove_environment(entry.worktree_id)
+
+            self.assertTrue(result.session_stopped)
+            self.assertTrue(result.database_dropped)
+            self.assertFalse(result.database_retained)
+            self.assertNotIn(entry.session_name, runner.sessions)
+            self.assertIsNone(dev.registry.load_project_entry(entry.worktree_id))
+            self.assertEqual(destructive_drop_calls(runner)[0].args[-1], entry.database_name)
+
+    def test_remove_forgets_unowned_database_without_dropping_it(self) -> None:
+        with TemporaryDirectory() as temporary:
+            dev, runner = self.make_environment(Path(temporary))
+            entry = register_environment(dev, database_owned=False)
+
+            result = dev.remove_environment(entry.worktree_id)
+
+            self.assertTrue(result.database_retained)
+            self.assertTrue(runner.database_exists)
+            self.assertEqual(destructive_drop_calls(runner), [])
+            self.assertIsNone(dev.registry.load_project_entry(entry.worktree_id))
+
+    def test_failed_database_cleanup_retains_a_retryable_registry_record(self) -> None:
+        with TemporaryDirectory() as temporary:
+            dev, runner = self.make_environment(Path(temporary))
+            entry = register_environment(dev)
+            runner.fail_drop = True
+
+            with self.assertRaisesRegex(DevError, "Dropping database.*failed"):
+                dev.remove_environment(entry.worktree_id)
+
+            retained = dev.registry.load_project_entry(entry.worktree_id)
+            assert retained is not None
+            self.assertEqual(retained.last_action, "cleanupPending")
+            self.assertTrue(retained.database_owned)
+            self.assertTrue(retained.database_present)
+
+    def test_failed_registry_unlink_retains_an_accurate_database_removed_record(self) -> None:
+        with TemporaryDirectory() as temporary:
+            dev, runner = self.make_environment(Path(temporary))
+            entry = register_environment(dev)
+
+            with (
+                patch.object(
+                    dev.registry,
+                    "remove_project_entry",
+                    side_effect=DevError("registry unlink failed"),
+                ),
+                self.assertRaisesRegex(DevError, "registry unlink failed"),
+            ):
+                dev.remove_environment(entry.worktree_id)
+
+            retained = dev.registry.load_project_entry(entry.worktree_id)
+            assert retained is not None
+            self.assertEqual(retained.last_action, "databaseRemoved")
+            self.assertFalse(retained.database_present)
+            self.assertFalse(runner.database_exists)
+
+    def test_remove_refuses_a_tmux_session_with_mismatched_metadata(self) -> None:
+        with TemporaryDirectory() as temporary:
+            dev, runner = self.make_environment(Path(temporary))
+            entry = register_environment(dev)
+            add_managed_session(
+                runner,
+                entry.session_name,
+                project=dev.config.project_slug,
+                worktree_path="/different/worktree",
+                worktree_id="different-0123456789",
+            )
+
+            with self.assertRaisesRegex(DevError, "metadata does not match"):
+                dev.remove_environment(entry.worktree_id)
+
+            self.assertIn(entry.session_name, runner.sessions)
+            self.assertEqual(destructive_drop_calls(runner), [])
+            self.assertIsNotNone(dev.registry.load_project_entry(entry.worktree_id))
 
 
 class PublicLifecycleTests(unittest.TestCase):

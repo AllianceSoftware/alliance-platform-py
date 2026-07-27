@@ -7,6 +7,7 @@ from datetime import timezone
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 from typing import Any
 from uuid import uuid4
@@ -236,6 +237,18 @@ class RegistryStore:
             raise DevError(f"Registry entry identity does not match this worktree: {self.path}")
         return entry
 
+    def _entry_path(self, worktree_id: str) -> Path:
+        if re.fullmatch(r"[a-z0-9][a-z0-9-]*", worktree_id) is None:
+            raise DevError(f"Invalid registry environment ID: {worktree_id!r}")
+        return self.project_directory / f"{worktree_id}.json"
+
+    def load_project_entry(self, worktree_id: str) -> RegistryEntry | None:
+        entry = next(
+            (entry for entry in self.list_project() if entry.worktree_id == worktree_id),
+            None,
+        )
+        return entry
+
     def list_project(self) -> tuple[RegistryEntry, ...]:
         if not self.project_directory.exists():
             return ()
@@ -250,29 +263,37 @@ class RegistryStore:
                 raise DevError(f"Invalid dev registry entry {path}: {error}") from error
             if entry.project_id != self.config.project_id:
                 raise DevError(f"Registry entry belongs to another project: {path}")
+            if path.stem != entry.worktree_id:
+                raise DevError(f"Registry entry filename does not match its environment ID: {path}")
             entries.append(entry)
         return tuple(entries)
 
     def save(self, entry: RegistryEntry) -> None:
         if entry.project_id != self.config.project_id or entry.worktree_id != self.identity.worktree_id:
             raise DevError("Refusing to write a registry entry for another worktree")
+        self.save_project_entry(entry)
+
+    def save_project_entry(self, entry: RegistryEntry) -> None:
+        if entry.project_id != self.config.project_id:
+            raise DevError("Refusing to write a registry entry for another project")
         try:
             RegistryEntry.from_dict(entry.as_dict())
         except ValueError as error:
             raise DevError(f"Refusing to write invalid registry entry: {error}") from error
-        self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        self.path.parent.chmod(0o700)
-        temporary = self.path.with_name(f".{self.path.name}.{uuid4().hex}.tmp")
+        path = self._entry_path(entry.worktree_id)
+        path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        path.parent.chmod(0o700)
+        temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
         try:
             descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
             with os.fdopen(descriptor, "w") as file:
                 json.dump(entry.as_dict(), file, indent=2, sort_keys=True)
                 file.write("\n")
-            temporary.replace(self.path)
-            self.path.chmod(0o600)
+            temporary.replace(path)
+            path.chmod(0o600)
         except OSError as error:
             temporary.unlink(missing_ok=True)
-            raise DevError(f"Could not write dev registry entry {self.path}: {error}") from error
+            raise DevError(f"Could not write dev registry entry {path}: {error}") from error
 
     def update(self, **changes: Any) -> RegistryEntry:
         now = _timestamp()
@@ -344,8 +365,42 @@ class RegistryStore:
             last_action="stopped",
         )
 
+    def cleanup_started(self, entry: RegistryEntry, *, session_stopped: bool) -> RegistryEntry:
+        now = _timestamp()
+        updated = replace(
+            entry,
+            last_seen_at=now,
+            last_stopped_at=now if session_stopped else entry.last_stopped_at,
+            last_action="cleanupPending",
+            tool_version=package_version(),
+            protocol_version=DEV_PROTOCOL_VERSION,
+        )
+        self.save_project_entry(updated)
+        return updated
+
+    def database_removed(self, entry: RegistryEntry | None = None) -> RegistryEntry:
+        current = entry or self.load()
+        if current is None:
+            raise DevError("Cannot record database removal without a registry entry")
+        now = _timestamp()
+        updated = replace(
+            current,
+            database_present=False,
+            database_setup_pending=False,
+            last_seen_at=now,
+            last_action="databaseRemoved",
+            tool_version=package_version(),
+            protocol_version=DEV_PROTOCOL_VERSION,
+        )
+        self.save_project_entry(updated)
+        return updated
+
     def remove(self) -> None:
+        self.remove_project_entry(self.identity.worktree_id)
+
+    def remove_project_entry(self, worktree_id: str) -> None:
+        path = self._entry_path(worktree_id)
         try:
-            self.path.unlink(missing_ok=True)
+            path.unlink(missing_ok=True)
         except OSError as error:
-            raise DevError(f"Could not remove dev registry entry {self.path}: {error}") from error
+            raise DevError(f"Could not remove dev registry entry {path}: {error}") from error
