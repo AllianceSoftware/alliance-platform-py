@@ -112,6 +112,38 @@ class StatusRecord:
 
 
 @dataclass(frozen=True)
+class EnvironmentRecord:
+    project_id: str
+    environment_id: str
+    state: str
+    worktree_path: str
+    worktree_branch: str | None
+    worktree_exists: bool
+    session_name: str
+    session_state: str
+    database_name: str
+    database_present: bool | None
+    database_owned: bool
+    database_setup_pending: bool
+    owner_kind: str
+    owner_id: str | None
+    lease_expires_at: str | None
+    registered_at: str
+    last_seen_at: str
+    last_started_at: str | None
+    last_stopped_at: str | None
+
+
+@dataclass(frozen=True)
+class EnvironmentRemovalResult:
+    environment_id: str
+    session_stopped: bool
+    database_dropped: bool
+    database_was_absent: bool
+    database_retained: bool
+
+
+@dataclass(frozen=True)
 class LogRecord:
     name: str
     output: str

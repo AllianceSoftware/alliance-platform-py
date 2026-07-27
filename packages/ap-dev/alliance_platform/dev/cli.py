@@ -28,6 +28,8 @@ from .lifecycle import DevEnvironment
 from .models import ConfigPaths
 from .models import DevConfig
 from .models import DoctorReport
+from .models import EnvironmentRecord
+from .models import EnvironmentRemovalResult
 from .models import EnvironmentSummary
 from .models import LogRecord
 from .models import RestartResult
@@ -127,6 +129,24 @@ def build_parser() -> argparse.ArgumentParser:
     status = subparsers.add_parser("status", help="show this worktree or all active worktrees")
     status.add_argument("--all", action="store_true", dest="all_worktrees")
     status.add_argument("--json", action="store_true", dest="as_json")
+
+    environment = subparsers.add_parser("env", help="list or remove registered environments")
+    environment_subparsers = environment.add_subparsers(dest="env_action", required=True)
+    environment_list = environment_subparsers.add_parser(
+        "list",
+        help="list registered environments for this project",
+    )
+    environment_list.add_argument("--json", action="store_true", dest="as_json")
+    environment_remove = environment_subparsers.add_parser(
+        "remove",
+        help="remove a registered environment and its owned resources",
+    )
+    environment_remove.add_argument("environment_id", help="exact registered worktree ID")
+    environment_remove.add_argument(
+        "--yes",
+        action="store_true",
+        help="confirm a destructive non-interactive action",
+    )
 
     logs = subparsers.add_parser("logs", help="show live pane output or the last saved snapshot")
     logs.add_argument("target", nargs="?")
@@ -344,6 +364,25 @@ def _confirm_database(identity: WorktreeIdentity, assume_yes: bool) -> bool:
     return response == identity.database_name
 
 
+def _confirm_environment(record: EnvironmentRecord, assume_yes: bool) -> bool:
+    if assume_yes:
+        return True
+    if not (sys.stdin.isatty() and sys.stdout.isatty()):
+        raise DevError("Removing an environment requires --yes in a non-interactive terminal")
+    database_action = (
+        "will drop if present" if record.database_owned else "will retain (not registry-owned)"
+    )
+    print(f"Remove environment '{record.environment_id}'?")
+    print(f"  Worktree: {record.worktree_path} ({'exists' if record.worktree_exists else 'missing'})")
+    print(f"  Session:  {record.session_name} ({record.session_state})")
+    print(f"  Database: {record.database_name} ({database_action})")
+    try:
+        response = input(f"Type {record.environment_id} to continue: ").strip()
+    except EOFError:
+        return False
+    return response == record.environment_id
+
+
 def _print_warnings(warnings: tuple[str, ...]) -> None:
     for warning in warnings:
         print(f"Warning: {warning}", file=sys.stderr)
@@ -462,6 +501,87 @@ def _print_status(
         if failures:
             print(f"  failures: {', '.join(failures)}")
         print()
+
+
+def _environment_payload(record: EnvironmentRecord) -> dict[str, object]:
+    return {
+        "id": record.environment_id,
+        "state": record.state,
+        "projectId": record.project_id,
+        "worktree": {
+            "path": record.worktree_path,
+            "branch": record.worktree_branch,
+            "exists": record.worktree_exists,
+        },
+        "session": {
+            "name": record.session_name,
+            "state": record.session_state,
+        },
+        "database": {
+            "name": record.database_name,
+            "present": record.database_present,
+            "owned": record.database_owned,
+            "setupPending": record.database_setup_pending,
+        },
+        "owner": {
+            "kind": record.owner_kind,
+            "id": record.owner_id,
+            "leaseExpiresAt": record.lease_expires_at,
+        },
+        "activity": {
+            "registeredAt": record.registered_at,
+            "lastSeenAt": record.last_seen_at,
+            "lastStartedAt": record.last_started_at,
+            "lastStoppedAt": record.last_stopped_at,
+        },
+    }
+
+
+def _print_environments(records: tuple[EnvironmentRecord, ...], *, as_json: bool) -> None:
+    if as_json:
+        print(
+            json.dumps(
+                {
+                    "schemaVersion": 1,
+                    "environments": [_environment_payload(record) for record in records],
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return
+    if not records:
+        print("No registered dev environments")
+        return
+    for record in records:
+        owner = record.owner_kind + (f":{record.owner_id}" if record.owner_id else "")
+        database_state = (
+            "present"
+            if record.database_present is True
+            else "absent"
+            if record.database_present is False
+            else "unknown"
+        )
+        ownership = "owned" if record.database_owned else "unowned"
+        print(f"{record.environment_id}  ({record.state}; {record.worktree_branch or 'detached'})")
+        print(f"  worktree: {record.worktree_path}")
+        print(f"  session:  {record.session_name} ({record.session_state})")
+        print(f"  db:       {record.database_name} ({database_state}; {ownership})")
+        print(f"  owner:    {owner}")
+        print(f"  seen:     {record.last_seen_at}")
+        print()
+
+
+def _print_environment_removal(result: EnvironmentRemovalResult) -> None:
+    if result.session_stopped:
+        print("→ session stopped")
+    if result.database_dropped:
+        print("→ owned database dropped")
+    elif result.database_was_absent:
+        print("→ owned database already absent")
+    elif result.database_retained:
+        print("→ database retained because it is not registry-owned")
+    print(f"Removed environment {result.environment_id} from the registry.")
 
 
 def _print_logs(records: tuple[LogRecord, ...], *, one_process: bool) -> None:
@@ -611,6 +731,15 @@ def dispatch(argv: list[str], parser: argparse.ArgumentParser | None = None) -> 
             all_worktrees=args.all_worktrees,
             as_json=args.as_json,
         )
+    elif command == "env":
+        if args.env_action == "list":
+            _print_environments(dev.environment_records(), as_json=args.as_json)
+        elif args.env_action == "remove":
+            record = dev.environment_record(args.environment_id)
+            if not _confirm_environment(record, args.yes):
+                print("Cancelled.")
+                return 0
+            _print_environment_removal(dev.remove_environment(args.environment_id))
     elif command == "logs":
         _print_logs(
             dev.log_records(args.target, lines=args.lines),

@@ -195,6 +195,16 @@ database is no longer needed. The registry is stored below ``$XDG_STATE_HOME/all
 ``~/.local/state/alliance/dev``) so resource ownership is not lost merely because an agent deletes
 the worktree directory.
 
+From any remaining worktree for the same project, inspect and remove retained agent environments:
+
+.. code-block:: bash
+
+   bin/dev env list
+   bin/dev env remove agent-billing-0123456789 --yes
+
+Removal stops a live matching session and drops its database only when the registry says the
+runner created it. A pre-existing or otherwise unowned database is left untouched.
+
 Starting quickly from a template database
 -----------------------------------------
 
