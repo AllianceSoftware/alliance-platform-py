@@ -38,6 +38,8 @@ IGNORED_DIRECTORIES = {
     ".mypy_cache",
     ".tox",
     ".venv",
+    ".claude",
+    ".codex",
     "migrations",
     "node_modules",
     "tests",
