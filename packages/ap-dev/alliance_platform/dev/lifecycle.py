@@ -26,6 +26,7 @@ from .environment import build_managed_environment
 from .errors import DevError
 from .identity import current_branch
 from .identity import database_name
+from .identity import legacy_database_name
 from .models import DevConfig
 from .models import DoctorCheck
 from .models import DoctorReport
@@ -608,8 +609,9 @@ class DevEnvironment:
 
             stem, separator, path_hash = entry.worktree_id.rpartition("-")
             expected_database = database_name(self.config.project_slug, stem, path_hash)
+            legacy_database = legacy_database_name(self.config.project_slug, stem, path_hash)
             expected_session = f"{self.config.project_slug}-wt-{entry.worktree_id}"
-            if not separator or entry.database_name != expected_database:
+            if not separator or entry.database_name not in {expected_database, legacy_database}:
                 raise DevError(
                     f"Refusing to remove {entry.worktree_id}: registered database identity is invalid"
                 )

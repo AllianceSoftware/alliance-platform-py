@@ -13,8 +13,10 @@ from typing import Any
 from uuid import uuid4
 
 from . import DEV_PROTOCOL_VERSION
+from . import invocation_name
 from . import package_version
 from .errors import DevError
+from .identity import legacy_database_name
 from .models import DevConfig
 from .models import WorktreeIdentity
 
@@ -235,6 +237,17 @@ class RegistryStore:
             raise DevError(f"Invalid dev registry entry {self.path}: {error}") from error
         if entry.project_id != self.config.project_id or entry.worktree_id != self.identity.worktree_id:
             raise DevError(f"Registry entry identity does not match this worktree: {self.path}")
+        if entry.database_name != self.identity.database_name:
+            stem, separator, path_hash = entry.worktree_id.rpartition("-")
+            legacy_name = legacy_database_name(self.config.project_slug, stem, path_hash) if separator else ""
+            if entry.database_name == legacy_name:
+                raise DevError(
+                    f"Registered database '{entry.database_name}' uses the previous naming limit. "
+                    "Its name is too long for reliable parallel Django test clones. Remove the "
+                    f"retained environment with: {invocation_name()} env remove "
+                    f"{entry.worktree_id}; then run {invocation_name()} up."
+                )
+            raise DevError(f"Registry database identity does not match this worktree: {self.path}")
         return entry
 
     def _entry_path(self, worktree_id: str) -> Path:

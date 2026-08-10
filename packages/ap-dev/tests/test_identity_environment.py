@@ -12,6 +12,7 @@ from alliance_platform.dev.environment import build_control_environment
 from alliance_platform.dev.environment import build_managed_environment
 from alliance_platform.dev.environment import build_process_environment
 from alliance_platform.dev.environment import pane_environment
+from alliance_platform.dev.identity import DATABASE_NAME_MAX_LENGTH
 from alliance_platform.dev.identity import resolve_identity
 
 from tests.helpers import RecordingRunner
@@ -112,10 +113,29 @@ class WorktreeIdentityTests(unittest.TestCase):
             first = resolve_identity(first_repo, load_config(first_repo, environment))
             second = resolve_identity(second_repo, load_config(second_repo, environment))
 
-            self.assertLessEqual(len(first.database_name), 58)
-            self.assertLessEqual(len("test_" + first.database_name), 63)
+            self.assertLessEqual(len(first.database_name), DATABASE_NAME_MAX_LENGTH)
+            self.assertLessEqual(len("test_" + first.database_name + "_9999"), 63)
             self.assertRegex(first.database_name, r"^[a-z0-9_]+$")
             self.assertNotEqual(first.database_name, second.database_name)
+
+    def test_managed_database_environment_reserves_parallel_django_clone_suffixes(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repo = make_repo(
+                root / "cleanbins-bin-dev-long-worktree-name",
+                config='project_id = "clean-bins-waste-comp-platform"\n',
+            )
+            config = load_config(repo, {"XDG_CONFIG_HOME": str(root / "xdg")})
+            identity = resolve_identity(repo, config)
+
+            environment = build_managed_environment(repo, config.project_slug, identity, {})
+
+            test_database = f"test_{environment['DB_NAME']}"
+            clone_databases = [f"{test_database}_{worker}" for worker in range(1, 5)]
+            self.assertEqual(environment["PGDATABASE"], environment["DB_NAME"])
+            self.assertLessEqual(len(test_database), 63)
+            self.assertTrue(all(len(name) <= 63 for name in clone_databases))
+            self.assertEqual(len({test_database, *clone_databases}), 5)
 
 
 class EnvironmentBoundaryTests(unittest.TestCase):
