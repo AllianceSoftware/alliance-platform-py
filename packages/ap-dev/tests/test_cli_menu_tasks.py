@@ -16,6 +16,7 @@ from alliance_platform.dev.cli import _doctor_payload
 from alliance_platform.dev.cli import _environment_payload
 from alliance_platform.dev.cli import _print_environment_removal
 from alliance_platform.dev.cli import _print_environments
+from alliance_platform.dev.cli import _print_progress
 from alliance_platform.dev.cli import _print_start_result
 from alliance_platform.dev.cli import _print_status
 from alliance_platform.dev.cli import _show_config
@@ -236,6 +237,12 @@ class CommandLineInteractionTests(unittest.TestCase):
         self.assertIn("Branch:    feature/example", rendered)
         self.assertIn("Django:    http://localhost:8000", rendered)
         self.assertIn("Ready.", rendered)
+
+    def test_progress_output_is_immediately_flushed(self) -> None:
+        with patch("builtins.print") as print_output:
+            _print_progress("Cloning database...")
+
+        print_output.assert_called_once_with("→ Cloning database...", flush=True)
 
     def test_config_show_lists_environment_keys_without_disclosing_values(self) -> None:
         with TemporaryDirectory() as temporary:
@@ -500,6 +507,35 @@ class CommandLineInteractionTests(unittest.TestCase):
                 ["./project-script", "--help"],
                 cwd="django-root",
                 environment=command_environment,
+            )
+
+    def test_dispatch_supplies_the_flushed_progress_reporter_to_up(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repo = make_repo(root / "repo")
+            config = load_config(repo, {"XDG_CONFIG_HOME": str(root / "xdg")})
+            identity = WorktreeIdentity(
+                repo=repo,
+                branch="feature/test",
+                worktree_id="repo-0123456789",
+                session_name="demo-wt-repo-0123456789",
+                database_name="demo_repo_0123456789",
+                portless_app_name="repo-0123456789.demo",
+            )
+            context = Context(repo, config, identity, {}, {})
+
+            with (
+                patch("alliance_platform.dev.cli.make_context", return_value=context),
+                patch("alliance_platform.dev.cli.DevEnvironment") as dev_environment,
+                patch("alliance_platform.dev.cli.CommandDelegates"),
+                patch("alliance_platform.dev.cli._print_start_result"),
+            ):
+                result = dispatch(["up"])
+
+            self.assertEqual(result, 0)
+            dev_environment.return_value.start.assert_called_once_with(
+                no_portless=False,
+                on_progress=_print_progress,
             )
 
     def test_dispatch_removes_an_environment_non_interactively(self) -> None:

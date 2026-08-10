@@ -232,6 +232,10 @@ worktree database normally. The team remains responsible for refreshing the temp
 baseline data becomes stale, but each new worktree gets a near-instant independent copy instead of
 rebuilding the same data.
 
+Large templates can be cloned with PostgreSQL's ``FILE_COPY`` strategy and, on supported
+PostgreSQL 18 installations and filesystems, copy-on-write cloning. See
+:ref:`faster-template-database-clones` for setup and the cluster-wide checkpoint tradeoff.
+
 Adapting cloned data with ``db_prepare_command``
 -------------------------------------------------
 

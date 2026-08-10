@@ -4,8 +4,10 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Sequence
 import unittest
+from unittest.mock import patch
 
 from alliance_platform.dev.config import load_config
+from alliance_platform.dev.database import DATABASE_CLONE_DOCS_URL
 from alliance_platform.dev.database import DatabaseManager
 from alliance_platform.dev.environment import build_control_environment
 from alliance_platform.dev.environment import build_process_environment
@@ -264,6 +266,71 @@ class DatabaseLifecycleTests(unittest.TestCase):
             )
             self.assertFalse(any("createdevdata" in call for call in calls))
             self.assertTrue(result.created)
+
+    def test_template_clone_and_preparation_stages_report_timed_progress(self) -> None:
+        with TemporaryDirectory() as temporary:
+            runner = DatabaseRunner([False, True])
+            manager = self.manager(
+                Path(temporary),
+                runner,
+                config_body=(
+                    'database_template = "seed_template"\ndb_prepare_command = ["prepare_worktree_db"]\n'
+                ),
+            )
+            messages: list[str] = []
+
+            with patch(
+                "alliance_platform.dev.database.time.monotonic",
+                side_effect=[10.0, 72.0, 80.0, 81.25, 90.0, 92.5],
+            ):
+                manager.ensure(on_progress=messages.append)
+
+            self.assertEqual(
+                messages,
+                [
+                    (
+                        "Cloning database 'seed_template' → "
+                        "'demo_project_repo_0123456789' "
+                        "(strategy: PostgreSQL default; this may take a while)..."
+                    ),
+                    (
+                        "Hint: For faster local template clones, consider "
+                        'database_template_strategy = "file_copy". '
+                        f"Learn about PostgreSQL copy-on-write setup: {DATABASE_CLONE_DOCS_URL}"
+                    ),
+                    "Database cloned (62.0s).",
+                    "Running Django migrations...",
+                    "Django migrations complete (1.2s).",
+                    "Preparing the worktree database...",
+                    "Worktree database prepared (2.5s).",
+                ],
+            )
+
+    def test_explicit_template_strategy_is_passed_without_the_default_hint(self) -> None:
+        with TemporaryDirectory() as temporary:
+            runner = DatabaseRunner([False, True])
+            manager = self.manager(
+                Path(temporary),
+                runner,
+                config_body=(
+                    'database_template = "seed_template"\ndatabase_template_strategy = "file_copy"\n'
+                ),
+            )
+            messages: list[str] = []
+
+            manager.ensure(on_progress=messages.append)
+
+            self.assertIn(
+                (
+                    "createdb",
+                    "--template=seed_template",
+                    "--strategy=file_copy",
+                    "demo_project_repo_0123456789",
+                ),
+                [call.args for call in runner.calls],
+            )
+            self.assertTrue(any("strategy: FILE_COPY" in message for message in messages))
+            self.assertFalse(any(message.startswith("Hint:") for message in messages))
 
     def test_prepare_command_receives_the_selected_worktree_base_host(self) -> None:
         with TemporaryDirectory() as temporary:

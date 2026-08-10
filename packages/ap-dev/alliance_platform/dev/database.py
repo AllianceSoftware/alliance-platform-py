@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import time
 from typing import Callable
 from typing import Sequence
 
@@ -11,6 +12,11 @@ from .models import WorktreeIdentity
 from .runner import CommandResult
 from .runner import Runner
 from .runner import require_success
+
+DATABASE_CLONE_DOCS_URL = (
+    "https://alliance-platform.readthedocs.io/projects/dev/latest/"
+    "configuration.html#faster-template-database-clones"
+)
 
 
 @dataclass(frozen=True)
@@ -127,8 +133,13 @@ class DatabaseManager:
         self,
         *,
         on_database_creation: Callable[[], None] | None = None,
+        on_progress: Callable[[str], None] | None = None,
         dev_base_host: str = "",
     ) -> DatabasePreparationResult:
+        def progress(message: str) -> None:
+            if on_progress is not None:
+                on_progress(message)
+
         self.require_tools()
         name = self.identity.database_name
         created = False
@@ -141,33 +152,62 @@ class DatabaseManager:
                     raise DevError(f"Configured database template '{template}' does not exist")
                 if on_database_creation:
                     on_database_creation()
+                strategy = self.config.database_template_strategy
+                strategy_label = "PostgreSQL default" if strategy == "default" else strategy.upper()
+                progress(
+                    f"Cloning database '{template}' → '{name}' "
+                    f"(strategy: {strategy_label}; this may take a while)..."
+                )
+                if strategy == "default":
+                    progress(
+                        "Hint: For faster local template clones, consider "
+                        'database_template_strategy = "file_copy". '
+                        f"Learn about PostgreSQL copy-on-write setup: {DATABASE_CLONE_DOCS_URL}"
+                    )
+                started_at = time.monotonic()
+                createdb_args = ["createdb", f"--template={template}"]
+                if strategy != "default":
+                    createdb_args.append(f"--strategy={strategy}")
+                createdb_args.append(name)
                 result = self.runner.run(
-                    ["createdb", f"--template={template}", name],
+                    createdb_args,
                     env=self.postgres_environment(),
                 )
                 require_success(result, f"Creating database {name}")
+                progress(f"Database cloned ({time.monotonic() - started_at:.1f}s).")
                 created = True
             else:
                 if on_database_creation:
                     on_database_creation()
+                progress(f"Creating database '{name}'...")
+                started_at = time.monotonic()
                 result = self.runner.run(["createdb", name], env=self.postgres_environment())
                 require_success(result, f"Creating database {name}")
+                progress(f"Database created ({time.monotonic() - started_at:.1f}s).")
                 created = True
 
         # Migrations deliberately run on every startup. Seeding and the prepare
         # hook remain creation-only.
+        progress("Running Django migrations...")
+        started_at = time.monotonic()
         require_success(
             self.run_manage(["migrate", "--noinput"]),
             "Django migrations",
         )
+        progress(f"Django migrations complete ({time.monotonic() - started_at:.1f}s).")
         if created and not self.config.database_template:
+            progress("Creating development data...")
+            started_at = time.monotonic()
             require_success(
                 self.run_manage(
                     ["createdevdata", *self.config.createdevdata_args],
                 ),
                 "Creating development data",
             )
+            progress(f"Development data created ({time.monotonic() - started_at:.1f}s).")
         if created and self.config.db_prepare_command:
+            progress("Preparing the worktree database...")
+            started_at = time.monotonic()
             require_success(
                 self.run_manage(
                     list(self.config.db_prepare_command),
@@ -175,6 +215,7 @@ class DatabaseManager:
                 ),
                 "Preparing worktree database",
             )
+            progress(f"Worktree database prepared ({time.monotonic() - started_at:.1f}s).")
         return DatabasePreparationResult(created=created)
 
     def drop(self, name: str | None = None) -> bool:

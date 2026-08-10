@@ -20,6 +20,7 @@ CONFIG_KEYS = {
     "vite_port_base",
     "portless",
     "database_template",
+    "database_template_strategy",
     "createdevdata_args",
     "db_prepare_command",
     "django_cwd",
@@ -41,6 +42,7 @@ DEFAULTS: dict[str, Any] = {
     "vite_port_base": 5173,
     "portless": "auto",
     "database_template": "",
+    "database_template_strategy": "default",
     "createdevdata_args": [],
     "db_prepare_command": [],
     "django_cwd": "django-root",
@@ -182,6 +184,12 @@ def validate_layer(value: dict[str, Any], path: Path, repo: Path, *, allow_proje
             raise ConfigError(f'portless in {path} must be "auto", "off", or "required"')
     if "database_template" in value:
         _expect_exact(value["database_template"], str, f"database_template in {path}")
+    if "database_template_strategy" in value:
+        strategy = value["database_template_strategy"]
+        if not isinstance(strategy, str) or strategy not in {"default", "wal_log", "file_copy"}:
+            raise ConfigError(
+                f'database_template_strategy in {path} must be "default", "wal_log", or "file_copy"'
+            )
     for key in ("createdevdata_args", "db_prepare_command"):
         if key in value:
             _validate_string_list(value[key], f"{key} in {path}")
@@ -352,6 +360,7 @@ def load_config(
         vite_port_base=effective["vite_port_base"],
         portless=effective["portless"],
         database_template=database_template,
+        database_template_strategy=effective["database_template_strategy"],
         createdevdata_args=tuple(effective["createdevdata_args"]),
         db_prepare_command=tuple(effective["db_prepare_command"]),
         django_cwd=effective["django_cwd"],

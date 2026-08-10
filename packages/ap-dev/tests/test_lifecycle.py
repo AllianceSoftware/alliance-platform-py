@@ -914,6 +914,7 @@ class PublicLifecycleTests(unittest.TestCase):
             runner = LifecycleRunner()
             environment = {"HOME": str(root / "home")}
             dev = make_dev_environment(runner, repo, config, identity, environment, environment)
+            progress: list[str] = []
 
             patches = (
                 patch.dict(os.environ, {"XDG_CACHE_HOME": str(root / "cache")}),
@@ -930,7 +931,7 @@ class PublicLifecycleTests(unittest.TestCase):
                 patches[4],
                 redirect_stdout(io.StringIO()),
             ):
-                dev.start()
+                dev.start(on_progress=progress.append)
                 first = dev.store.load()
                 assert first is not None
                 live = dev.live_environment()
@@ -957,6 +958,9 @@ class PublicLifecycleTests(unittest.TestCase):
             assert registry_entry is not None
             self.assertEqual((first.django_port, first.vite_port), (8000, 8001))
             self.assertEqual((restarted.django_port, restarted.vite_port), (8000, 8001))
+            self.assertEqual(len(progress), 2)
+            self.assertEqual(progress[0], "Running Django migrations...")
+            self.assertTrue(progress[1].startswith("Django migrations complete ("))
             self.assertEqual(registry_entry.last_action, "running")
             self.assertTrue(registry_entry.database_present)
             self.assertEqual((registry_entry.django_port, registry_entry.vite_port), (8000, 8001))

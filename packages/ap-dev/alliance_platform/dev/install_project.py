@@ -292,6 +292,7 @@ vite_port_base = 5173
 portless = "auto"
 startup_timeout = 60.0
 database_template = ""
+database_template_strategy = "default"
 
 createdevdata_args = []
 db_prepare_command = []

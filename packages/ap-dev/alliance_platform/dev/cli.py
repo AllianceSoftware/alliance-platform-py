@@ -226,6 +226,7 @@ def _effective_settings(config: DevConfig) -> dict[str, Any]:
         "vite_port_base": config.vite_port_base,
         "portless": config.portless,
         "database_template": config.database_template,
+        "database_template_strategy": config.database_template_strategy,
         "createdevdata_args": list(config.createdevdata_args),
         "db_prepare_command": list(config.db_prepare_command),
         "django_cwd": config.django_cwd,
@@ -369,9 +370,7 @@ def _confirm_environment(record: EnvironmentRecord, assume_yes: bool) -> bool:
         return True
     if not (sys.stdin.isatty() and sys.stdout.isatty()):
         raise DevError("Removing an environment requires --yes in a non-interactive terminal")
-    database_action = (
-        "will drop if present" if record.database_owned else "will retain (not registry-owned)"
-    )
+    database_action = "will drop if present" if record.database_owned else "will retain (not registry-owned)"
     print(f"Remove environment '{record.environment_id}'?")
     print(f"  Worktree: {record.worktree_path} ({'exists' if record.worktree_exists else 'missing'})")
     print(f"  Session:  {record.session_name} ({record.session_state})")
@@ -386,6 +385,10 @@ def _confirm_environment(record: EnvironmentRecord, assume_yes: bool) -> bool:
 def _print_warnings(warnings: tuple[str, ...]) -> None:
     for warning in warnings:
         print(f"Warning: {warning}", file=sys.stderr)
+
+
+def _print_progress(message: str) -> None:
+    print(f"→ {message}", flush=True)
 
 
 def _print_environment(environment: EnvironmentSummary, portless_reason: str | None) -> None:
@@ -709,7 +712,12 @@ def dispatch(argv: list[str], parser: argparse.ArgumentParser | None = None) -> 
     )
     command = args.command
     if command == "up":
-        _print_start_result(dev.start(no_portless=args.no_portless))
+        _print_start_result(
+            dev.start(
+                no_portless=args.no_portless,
+                on_progress=_print_progress,
+            )
+        )
     elif command == "down":
         if args.drop_db and not _confirm_database(context.identity, args.yes):
             print("Cancelled.")
