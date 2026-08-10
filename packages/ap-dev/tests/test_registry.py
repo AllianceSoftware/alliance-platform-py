@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -7,6 +8,7 @@ import unittest
 
 from alliance_platform.dev.config import load_config
 from alliance_platform.dev.errors import DevError
+from alliance_platform.dev.identity import legacy_database_name
 from alliance_platform.dev.identity import resolve_identity
 from alliance_platform.dev.registry import RegistryStore
 from alliance_platform.dev.registry import registry_root
@@ -103,6 +105,29 @@ class RegistryStoreTests(unittest.TestCase):
             store.remove()
             store.remove()
             self.assertFalse(store.path.exists())
+
+    def test_legacy_long_database_identity_requires_explicit_environment_cleanup(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            repo = make_repo(
+                root / "cleanbins-bin-dev-long-worktree-name",
+                config='project_id = "clean-bins-waste-comp-platform"\n',
+            )
+            init_git(repo, "feature/registry")
+            config = load_config(repo, environ={"XDG_CONFIG_HOME": str(root / "config")})
+            identity = resolve_identity(repo, config)
+            store = RegistryStore(repo, config, identity, root=root / "state")
+            current = store.register()
+            stem, _, path_hash = identity.worktree_id.rpartition("-")
+            legacy_name = legacy_database_name(config.project_slug, stem, path_hash)
+            self.assertNotEqual(legacy_name, identity.database_name)
+            store.save_project_entry(replace(current, database_name=legacy_name))
+
+            with self.assertRaisesRegex(
+                DevError,
+                rf"previous naming limit.*env remove {identity.worktree_id}.*then run.*up",
+            ):
+                store.load()
 
     def test_atomic_save_leaves_no_temporary_files(self) -> None:
         with TemporaryDirectory() as directory:

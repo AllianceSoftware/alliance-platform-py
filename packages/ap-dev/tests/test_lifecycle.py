@@ -18,6 +18,7 @@ from unittest.mock import patch
 from alliance_platform.dev.config import load_config
 from alliance_platform.dev.errors import DevError
 from alliance_platform.dev.identity import database_name
+from alliance_platform.dev.identity import legacy_database_name
 from alliance_platform.dev.identity import resolve_identity
 from alliance_platform.dev.lifecycle import DevEnvironment
 from alliance_platform.dev.lifecycle import find_free_port
@@ -812,6 +813,35 @@ class EnvironmentRegistryLifecycleTests(unittest.TestCase):
             self.assertNotIn(entry.session_name, runner.sessions)
             self.assertIsNone(dev.registry.load_project_entry(entry.worktree_id))
             self.assertEqual(destructive_drop_calls(runner)[0].args[-1], entry.database_name)
+
+    def test_remove_accepts_and_drops_a_legacy_long_database_identity(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repo = make_repo(
+                root / "cleanbins-bin-dev-long-worktree-name",
+                config='project_id = "clean-bins-waste-comp-platform"\n',
+            )
+            config = load_config(repo, {"XDG_CONFIG_HOME": str(root / "xdg")})
+            identity = resolve_identity(repo, config)
+            runner = LifecycleRunner()
+            dev = make_dev_environment(runner, repo, config, identity, {}, {})
+            current = dev.registry.register()
+            stem, _, path_hash = identity.worktree_id.rpartition("-")
+            legacy_name = legacy_database_name(config.project_slug, stem, path_hash)
+            legacy = replace(
+                current,
+                database_name=legacy_name,
+                database_present=True,
+                database_owned=True,
+                database_ownership_token="legacy-owned-token",
+            )
+            dev.registry.save_project_entry(legacy)
+
+            result = dev.remove_environment(identity.worktree_id)
+
+            self.assertTrue(result.database_dropped)
+            self.assertEqual(destructive_drop_calls(runner)[0].args[-1], legacy_name)
+            self.assertIsNone(dev.registry.load_project_entry(identity.worktree_id))
 
     def test_remove_forgets_unowned_database_without_dropping_it(self) -> None:
         with TemporaryDirectory() as temporary:

@@ -9,3 +9,5 @@ progress while cloning and preparing worktree databases. Template clones can opt
 ``wal_log`` or ``file_copy`` strategy, and default clones link to the copy-on-write setup guide.
 Existing-project installation now detects available verification commands and leaves unresolved
 commands explicitly disabled instead of referencing assumed ``bin/`` scripts.
+Generated database names reserve space for Django's parallel test database suffixes, preventing
+PostgreSQL identifier truncation from collapsing worker clones onto the primary test database.

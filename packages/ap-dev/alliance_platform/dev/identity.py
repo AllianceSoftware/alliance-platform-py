@@ -8,6 +8,17 @@ import subprocess
 from .models import DevConfig
 from .models import WorktreeIdentity
 
+POSTGRES_IDENTIFIER_MAX_LENGTH = 63
+DJANGO_TEST_DATABASE_PREFIX = "test_"
+# Django appends ``_<worker number>`` when cloning its test database for
+# parallel execution. Four digits is comfortably beyond a practical local
+# worker count while retaining useful project/worktree context in the name.
+DJANGO_PARALLEL_CLONE_SUFFIX_LENGTH = len("_9999")
+DATABASE_NAME_MAX_LENGTH = (
+    POSTGRES_IDENTIFIER_MAX_LENGTH - len(DJANGO_TEST_DATABASE_PREFIX) - DJANGO_PARALLEL_CLONE_SUFFIX_LENGTH
+)
+LEGACY_DATABASE_NAME_MAX_LENGTH = 58
+
 
 def slugify(value: str) -> str:
     value = value.lower()
@@ -39,14 +50,26 @@ def current_branch(repo: Path) -> str | None:
     return branch or None
 
 
-def database_name(project_slug: str, stem: str, path_hash: str) -> str:
+def _database_name_parts(project_slug: str, stem: str, path_hash: str) -> str:
     prefix = slugify(project_slug).replace("-", "_")
     readable = slugify(stem).replace("-", "_")[:24]
-    suffix = f"{readable}_{path_hash}"
-    name = f"{prefix}_{suffix}"
-    if len(name) > 58:
+    return f"{prefix}_{readable}_{path_hash}"
+
+
+def database_name(project_slug: str, stem: str, path_hash: str) -> str:
+    name = _database_name_parts(project_slug, stem, path_hash)
+    if len(name) <= DATABASE_NAME_MAX_LENGTH:
+        return name
+    hash_suffix = f"_{path_hash}"
+    return f"{name[: DATABASE_NAME_MAX_LENGTH - len(hash_suffix)]}{hash_suffix}"
+
+
+def legacy_database_name(project_slug: str, stem: str, path_hash: str) -> str:
+    """Return the pre-parallel-test-safe database identity for cleanup only."""
+    name = _database_name_parts(project_slug, stem, path_hash)
+    if len(name) > LEGACY_DATABASE_NAME_MAX_LENGTH:
         name = f"{name[:49]}_{path_hash}"
-    return name[:58]
+    return name[:LEGACY_DATABASE_NAME_MAX_LENGTH]
 
 
 def resolve_identity(repo: Path, config: DevConfig) -> WorktreeIdentity:
