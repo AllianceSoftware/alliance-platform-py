@@ -33,6 +33,12 @@ USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")"""
 HOOK_WRAPPER_PATH = Path("bin/run-with-dev-env-if-managed")
 MANAGED_HUSKY_HOOKS = ("pre-commit", "pre-push")
+VERIFICATION_SCRIPTS = {
+    "test": Path("bin/run-tests-django.sh"),
+    "jstest": Path("bin/run-tests-frontend.sh"),
+    "lint": Path("bin/lint.sh"),
+    "check": Path("bin/check.sh"),
+}
 IGNORED_DIRECTORIES = {
     ".git",
     ".mypy_cache",
@@ -281,7 +287,111 @@ def _wrap_husky_hook(contents: str) -> str | None:
     return "".join([*lines[:command_start], replacement, *lines[command_end + 1 :]])
 
 
-def _config_contents(project_id: str, django_cwd: str) -> str:
+def _package_scripts(repo: Path) -> dict[str, str]:
+    path = repo / "package.json"
+    try:
+        value = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+    scripts = value.get("scripts") if isinstance(value, dict) else None
+    if not isinstance(scripts, dict):
+        return {}
+    return {name: command for name, command in scripts.items() if isinstance(command, str)}
+
+
+def _vitest_command(repo: Path) -> tuple[tuple[str, ...], str] | None:
+    scripts = _package_scripts(repo)
+    for name in ("test:run", "jstest", "test", "vitest"):
+        script = scripts.get(name)
+        if script is None:
+            continue
+        try:
+            tokens = shlex.split(script)
+        except ValueError:
+            continue
+        if not any(Path(token).name == "vitest" for token in tokens):
+            continue
+        command = ["yarn", name]
+        if "run" not in tokens and "--run" not in tokens:
+            command.append("--run")
+        return tuple(command), f"package.json script {name}"
+    return None
+
+
+def _prompt_for_command(console: Console, label: str) -> tuple[str, ...]:
+    while True:
+        value = Prompt.ask(
+            f"{label} command (leave blank to disable)",
+            default="",
+            show_default=False,
+            console=console,
+        ).strip()
+        if not value:
+            return ()
+        try:
+            command = tuple(shlex.split(value))
+        except ValueError as error:
+            console.print(f"[red]Invalid command: {error}[/red]")
+            continue
+        if command:
+            return command
+
+
+def _verification_commands(
+    repo: Path,
+    manage: Path,
+    *,
+    console: Console,
+    assume_yes: bool,
+) -> dict[str, tuple[str, ...]]:
+    commands: dict[str, tuple[str, ...]] = {}
+    sources: dict[str, str] = {}
+    for name, relative_path in VERIFICATION_SCRIPTS.items():
+        candidate = repo / relative_path
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            commands[name] = (relative_path.as_posix(),)
+            sources[name] = f"existing {relative_path.as_posix()}"
+
+    if "test" not in commands:
+        commands["test"] = (
+            "uv",
+            "run",
+            "python",
+            manage.relative_to(repo).as_posix(),
+            "test",
+        )
+        sources["test"] = "Django manage.py"
+    if "jstest" not in commands and (vitest := _vitest_command(repo)) is not None:
+        commands["jstest"], sources["jstest"] = vitest
+
+    labels = {
+        "test": "Django tests",
+        "jstest": "Frontend tests",
+        "lint": "Lint",
+        "check": "Full check",
+    }
+    if not assume_yes:
+        for name, label in labels.items():
+            if name not in commands:
+                command = _prompt_for_command(console, label)
+                commands[name] = command
+                sources[name] = "entered during installation" if command else "not configured"
+    for name in labels:
+        commands.setdefault(name, ())
+        sources.setdefault(name, "not configured")
+
+    console.print("\n[bold]Verification commands[/bold]")
+    for name, label in labels.items():
+        rendered = shlex.join(commands[name]) if commands[name] else "not configured"
+        console.print(f"  {label + ':':<17} {rendered} [dim]({sources[name]})[/dim]")
+    return commands
+
+
+def _config_contents(
+    project_id: str,
+    django_cwd: str,
+    verification_commands: dict[str, tuple[str, ...]],
+) -> str:
     return f"""# Committed defaults for bin/dev. User overrides live under
 # ~/.config/alliance/dev/{project_id}/ and worktree overrides under .dev-server/.
 
@@ -301,10 +411,10 @@ vite_cwd = "."
 manage_command = ["uv", "run", "python", "manage.py"]
 django_command = ["uv", "run", "python", "manage.py", "runserver"]
 vite_command = ["yarn", "dev"]
-test_command = ["bin/run-tests-django.sh"]
-jstest_command = ["bin/run-tests-frontend.sh"]
-lint_command = ["bin/lint.sh"]
-check_command = ["bin/check.sh"]
+test_command = {json.dumps(list(verification_commands["test"]))}
+jstest_command = {json.dumps(list(verification_commands["jstest"]))}
+lint_command = {json.dumps(list(verification_commands["lint"]))}
+check_command = {json.dumps(list(verification_commands["check"]))}
 
 # Add project-specific services as argv arrays:
 # [[extra_processes]]
@@ -394,6 +504,12 @@ def install_project(
     if not manage.is_file() or not manage.is_relative_to(repo):
         raise DevError(f"Invalid Django working directory: {manage.parent}")
     resolved_django_cwd = manage.parent
+    verification_commands = _verification_commands(
+        repo,
+        manage,
+        console=output,
+        assume_yes=assume_yes,
+    )
 
     launcher = repo / "bin" / "dev"
     config = repo / "config" / "dev.toml"
@@ -418,6 +534,7 @@ def install_project(
             _config_contents(
                 project_id,
                 str(resolved_django_cwd.relative_to(repo)) or ".",
+                verification_commands,
             ),
             console=output,
             assume_yes=assume_yes,

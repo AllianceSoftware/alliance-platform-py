@@ -68,10 +68,24 @@ Project layout and commands are controlled by:
    lint_command = ["bin/lint.sh"]
    check_command = ["bin/check.sh"]
 
-Every command is a non-empty argv array and never a joined shell string. Configured working
-directories must stay inside the repository and exist when used. ``startup_timeout`` controls
-readiness. ``extra_processes`` entries contain ``name``, ``command``, optional ``cwd``, and
-optional ``required``. The ``environment`` table supplies non-secret project overrides;
-application secrets remain in ``.env`` and are loaded only for control/database operations.
+Commands are argv arrays and never joined shell strings. ``manage_command``, ``django_command``,
+and ``vite_command`` must be non-empty. The four verification delegates may be empty to disable
+verbs that the project has not configured:
+
+.. code-block:: toml
+
+   test_command = ["uv", "run", "python", "django-root/manage.py", "test"]
+   jstest_command = []
+   lint_command = []
+   check_command = []
+
+Invoking a disabled verb produces an actionable configuration error. ``doctor`` reports disabled
+commands as warnings and validates the entry point of every configured verification command.
+
+Configured working directories must stay inside the repository and exist when used.
+``startup_timeout`` controls readiness. ``extra_processes`` entries contain ``name``, ``command``,
+optional ``cwd``, and optional ``required``. The ``environment`` table supplies non-secret project
+overrides; application secrets remain in ``.env`` and are loaded only for control/database
+operations.
 
 Launcher and generated worktree variables are reserved and cannot be set in configuration.

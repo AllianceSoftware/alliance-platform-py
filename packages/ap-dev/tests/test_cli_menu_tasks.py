@@ -588,7 +588,15 @@ class CommandDelegateTests(unittest.TestCase):
         self.temporary = TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         root = Path(self.temporary.name)
-        self.repo = make_repo(root / "repo")
+        self.repo = make_repo(
+            root / "repo",
+            config=(
+                'test_command = ["bin/run-tests-django.sh"]\n'
+                'jstest_command = ["bin/run-tests-frontend.sh"]\n'
+                'lint_command = ["bin/lint.sh"]\n'
+                'check_command = ["bin/check.sh"]\n'
+            ),
+        )
         self.config = load_config(self.repo, {"XDG_CONFIG_HOME": str(root / "xdg")})
         self.identity = WorktreeIdentity(
             repo=self.repo,
@@ -679,6 +687,16 @@ class CommandDelegateTests(unittest.TestCase):
         delegates = self.delegates()
 
         self.assert_exec(delegates.check, ("bin/check.sh",), verification=True)
+
+    def test_disabled_verification_command_has_an_actionable_error(self) -> None:
+        config = replace(self.config, check_command=())
+        delegates = CommandDelegates(self.repo, config, self.identity, {})
+
+        with self.assertRaisesRegex(
+            DevError,
+            "check is not configured.*Set check_command in config/dev.toml.*doctor",
+        ):
+            delegates.check()
 
     def test_delegated_command_uses_configured_argv_and_appends_arguments_literally(self) -> None:
         config = replace(self.config, test_command=("scripts/verify", "django"))
