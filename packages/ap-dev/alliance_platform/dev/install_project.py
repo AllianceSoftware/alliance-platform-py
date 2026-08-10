@@ -205,14 +205,25 @@ tool_source="${{ALLIANCE_DEV_TOOL_SOURCE:-$default_tool_source}}"
 export ALLIANCE_DEV_PROJECT_DIR="$repo_dir"
 export ALLIANCE_DEV_INVOCATION_NAME="bin/dev"
 
-case "$tool_source" in
-    /*|./*|../*|file://*|git+*)
-        exec uvx --isolated --no-env-file --no-cache --from "$tool_source" alliance-dev "$@"
-        ;;
-    *)
-        exec uvx --isolated --no-env-file --from "$tool_source" alliance-dev "$@"
-        ;;
-esac
+if [[ -n "${{ALLIANCE_DEV_UV_CACHE_DIR:-}}" ]]; then
+    uv_cache_dir="$ALLIANCE_DEV_UV_CACHE_DIR"
+elif [[ -n "${{UV_CACHE_DIR:-}}" ]]; then
+    uv_cache_dir="$UV_CACHE_DIR"
+else
+    cache_root="${{TMPDIR:-/tmp}}"
+    default_uv_cache_root="${{cache_root%/}}/alliance-dev-${{UID:-$(id -u)}}"
+    uv_cache_dir="$default_uv_cache_root/uv-cache"
+    if ! (umask 077 && mkdir -p "$uv_cache_dir" && chmod 700 "$default_uv_cache_root" "$uv_cache_dir"); then
+        echo "Cannot create the uv cache at '$uv_cache_dir'. Set ALLIANCE_DEV_UV_CACHE_DIR to a writable directory." >&2
+        exit 1
+    fi
+fi
+if ! mkdir -p "$uv_cache_dir"; then
+    echo "Cannot create the uv cache at '$uv_cache_dir'. Set ALLIANCE_DEV_UV_CACHE_DIR to a writable directory." >&2
+    exit 1
+fi
+
+exec uvx --cache-dir "$uv_cache_dir" --isolated --no-env-file --from "$tool_source" alliance-dev "$@"
 """
 
 

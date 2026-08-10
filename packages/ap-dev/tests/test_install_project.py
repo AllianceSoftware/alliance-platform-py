@@ -117,16 +117,13 @@ class ProjectInstallationTests(unittest.TestCase):
 
             self.assertIn("jstest_command = []", (repo / "config" / "dev.toml").read_text())
 
-    def test_launcher_runs_with_pypi_git_and_local_tool_sources_under_nounset(self) -> None:
+    def test_launcher_uses_a_stable_cache_for_pypi_git_and_local_tool_sources(self) -> None:
         sources = {
-            "pypi": ("alliance-platform-dev==1.2.3", False),
-            "git": (
-                "git+https://github.com/example/project.git@branch#subdirectory=packages/ap-dev",
-                True,
-            ),
-            "local": ("/tmp/local-ap-dev", True),
+            "pypi": "alliance-platform-dev==1.2.3",
+            "git": "git+https://github.com/example/project.git@branch#subdirectory=packages/ap-dev",
+            "local": "/tmp/local-ap-dev",
         }
-        for source_type, (source, expect_no_cache) in sources.items():
+        for source_type, source in sources.items():
             with self.subTest(source_type=source_type), TemporaryDirectory() as directory:
                 repo = self.make_project(directory)
                 install_project(
@@ -148,13 +145,65 @@ class ProjectInstallationTests(unittest.TestCase):
                 environment = dict(os.environ)
                 environment["PATH"] = f"{fake_bin}{os.pathsep}{environment['PATH']}"
                 environment["CAPTURE_FILE"] = str(capture)
+                environment["TMPDIR"] = str(repo / "sandbox-tmp")
+                environment.pop("ALLIANCE_DEV_UV_CACHE_DIR", None)
+                environment.pop("UV_CACHE_DIR", None)
 
                 subprocess.run([repo / "bin" / "dev", "doctor"], env=environment, check=True)
 
                 arguments = capture.read_text().splitlines()
-                self.assertEqual("--no-cache" in arguments, expect_no_cache)
+                expected_cache = repo / "sandbox-tmp" / f"alliance-dev-{os.getuid()}" / "uv-cache"
+                cache_option = arguments.index("--cache-dir")
+                self.assertEqual(arguments[cache_option + 1], str(expected_cache))
+                self.assertTrue(expected_cache.is_dir())
+                self.assertEqual(expected_cache.stat().st_mode & 0o777, 0o700)
+                self.assertEqual(expected_cache.parent.stat().st_mode & 0o777, 0o700)
+                self.assertNotIn("--no-cache", arguments)
+                self.assertIn("--isolated", arguments)
+                self.assertIn("--no-env-file", arguments)
                 self.assertIn(source, arguments)
                 self.assertEqual(arguments[-2:], ["alliance-dev", "doctor"])
+
+    def test_launcher_respects_uv_cache_overrides(self) -> None:
+        with TemporaryDirectory() as directory:
+            repo = self.make_project(directory)
+            install_project(
+                repo,
+                assume_yes=True,
+                tool_source="alliance-platform-dev==1.2.3",
+                console=self.console(),
+            )
+            fake_bin = repo / "fake-bin"
+            fake_bin.mkdir()
+            for name, contents in (
+                ("uv", "#!/bin/sh\nexit 0\n"),
+                ("uvx", '#!/bin/sh\nprintf "%s\\n" "$@" > "$CAPTURE_FILE"\n'),
+            ):
+                executable = fake_bin / name
+                executable.write_text(contents)
+                executable.chmod(0o755)
+            capture = repo / "uvx-args"
+            environment = {
+                **os.environ,
+                "PATH": f"{fake_bin}{os.pathsep}{os.environ['PATH']}",
+                "CAPTURE_FILE": str(capture),
+                "UV_CACHE_DIR": str(repo / "standard-uv-cache"),
+            }
+
+            subprocess.run([repo / "bin" / "dev", "doctor"], env=environment, check=True)
+            arguments = capture.read_text().splitlines()
+            self.assertEqual(
+                arguments[arguments.index("--cache-dir") + 1],
+                str(repo / "standard-uv-cache"),
+            )
+
+            environment["ALLIANCE_DEV_UV_CACHE_DIR"] = str(repo / "launcher-uv-cache")
+            subprocess.run([repo / "bin" / "dev", "doctor"], env=environment, check=True)
+            arguments = capture.read_text().splitlines()
+            self.assertEqual(
+                arguments[arguments.index("--cache-dir") + 1],
+                str(repo / "launcher-uv-cache"),
+            )
 
     def test_existing_generated_file_is_not_replaced_without_force(self) -> None:
         with TemporaryDirectory() as directory:

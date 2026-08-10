@@ -30,6 +30,28 @@ The generated ``bin/dev`` launcher pins the installed package version, so every 
 worktree uses the same release without adding it to the application's Python environment. Commit
 both ``bin/dev`` and ``config/dev.toml``.
 
+Launcher cache and first run
+----------------------------
+
+The launcher runs the tool through ``uvx --isolated`` but retains uv's cache between invocations.
+Its default cache is ``${TMPDIR:-/tmp}/alliance-dev-$UID/uv-cache``: a user-scoped temporary
+location that remains writable in managed worktree sandboxes and can be shared by worktrees on
+the same machine. ``ALLIANCE_DEV_UV_CACHE_DIR`` overrides this launcher default; when it is not
+set, the standard ``UV_CACHE_DIR`` override is respected. Operating systems may eventually clean
+temporary directories, after which the next invocation bootstraps the cache again.
+
+The first invocation with an uncached source still needs network access for the package and any
+missing dependencies. Subsequent invocations can reuse the isolated tool environment and cached
+artifacts without contacting the package index. An explicitly selected local directory remains
+fresh: uv checks and reinstalls the local project when its source changes, while reusing cached
+build dependencies and artifacts.
+
+Published Alliance Platform Dev releases include a Python wheel. Installing that compatible wheel
+does not invoke the project's PEP 517 build backend (``pdm-backend``), although the first uncached
+installation still needs network access for the wheel and its runtime dependencies. A source
+distribution or local source checkout does require its build backend when that dependency is not
+already cached.
+
 If the project has ``.husky/pre-commit`` or ``.husky/pre-push``, the interactive installer offers
 to route their final project command through ``bin/run-with-dev-env-if-managed``. Accept this so
 hooks run against the current worktree's generated database and environment whenever that
