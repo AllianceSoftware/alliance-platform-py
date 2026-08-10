@@ -64,7 +64,10 @@ Post-install setup
 Review the verification-command summary and generated arrays in ``config/dev.toml``. An empty
 ``test_command``, ``jstest_command``, ``lint_command``, or ``check_command`` disables that verb;
 invoking it explains which setting to add. ``bin/dev doctor`` reports disabled commands as
-warnings and configured entry points that are missing or non-executable as errors.
+warnings and configured entry points that are missing or non-executable as errors. The generated
+``verification_virtualenv = ".venv"`` setting makes Python-backed ``test``, ``lint``, and ``check``
+commands work without manually sourcing ``.venv/bin/activate`` after dependencies are provisioned
+with ``uv sync``. An intentionally active caller virtualenv still takes precedence.
 
 In the development settings module, normally ``dev.py``, add the settings printed by the installer:
 
@@ -88,6 +91,7 @@ Then verify the installation and start the environment:
 
 .. code-block:: bash
 
+   uv sync
    bin/dev doctor
    bin/dev up
    bin/dev url

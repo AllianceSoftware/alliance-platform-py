@@ -419,6 +419,7 @@ createdevdata_args = []
 db_prepare_command = []
 django_cwd = {json.dumps(django_cwd)}
 vite_cwd = "."
+verification_virtualenv = ".venv"
 manage_command = ["uv", "run", "python", "manage.py"]
 django_command = ["uv", "run", "python", "manage.py", "runserver"]
 vite_command = ["yarn", "dev"]
@@ -623,7 +624,10 @@ def install_project(
         "tells Django that the original browser request used HTTPS. Keep these settings limited "
         "to development, where Portless is the trusted proxy."
     )
-    output.print("\nNext: review config/dev.toml, then run bin/dev doctor and bin/dev up.")
+    output.print(
+        "\nNext: run uv sync to provision .venv, review config/dev.toml, then run "
+        "bin/dev doctor and bin/dev up."
+    )
     return InstallResult(
         repo=repo,
         launcher=launcher,

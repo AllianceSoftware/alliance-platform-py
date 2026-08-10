@@ -57,6 +57,7 @@ class ProjectInstallationTests(unittest.TestCase):
             self.assertIn('project_id = "example-app"', config.read_text())
             self.assertIn('django_cwd = "django-root"', config.read_text())
             self.assertIn('vite_cwd = "."', config.read_text())
+            self.assertIn('verification_virtualenv = ".venv"', config.read_text())
             self.assertIn(
                 'test_command = ["uv", "run", "python", "django-root/manage.py", "test"]',
                 config.read_text(),
@@ -71,6 +72,7 @@ class ProjectInstallationTests(unittest.TestCase):
             self.assertIn("USE_X_FORWARDED_HOST = True", output.getvalue())
             self.assertIn("SECURE_PROXY_SSL_HEADER", output.getvalue())
             self.assertIn("preserves the browser hostname", output.getvalue())
+            self.assertIn("run uv sync to provision .venv", output.getvalue())
             self.assertTrue(os.access(launcher, os.X_OK))
             subprocess.run(["bash", "-n", launcher], check=True)
 

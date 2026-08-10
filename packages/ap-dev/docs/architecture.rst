@@ -57,6 +57,11 @@ Foreground commands such as ``manage``, ``test``, ``lint``, and ``run`` receive 
 database, port, and hostname environment as the servers. This prevents a command run from one
 worktree from silently falling back to another worktree's database.
 
+The isolated ``uvx`` tool environment is removed before any project command runs. Python-backed
+verification delegates (``test``, ``lint``, and ``check``) then preserve an explicitly active
+caller virtualenv or activate the configured project ``verification_virtualenv``. Frontend-only
+``jstest`` and arbitrary ``run`` commands do not receive implicit Python virtualenv behavior.
+
 Projects using Husky can route pre-commit and pre-push commands through the generated
 ``bin/run-with-dev-env-if-managed`` wrapper. It selects ``bin/dev run`` only when the worktree has
 managed state, retaining the normal inherited environment for checkouts that have not used the

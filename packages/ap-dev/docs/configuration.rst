@@ -60,6 +60,7 @@ Project layout and commands are controlled by:
 
    django_cwd = "django-root"
    vite_cwd = "."
+   verification_virtualenv = ".venv"
    manage_command = ["uv", "run", "python", "manage.py"]
    django_command = ["uv", "run", "python", "manage.py", "runserver"]
    vite_command = ["yarn", "dev"]
@@ -82,10 +83,23 @@ verbs that the project has not configured:
 Invoking a disabled verb produces an actionable configuration error. ``doctor`` reports disabled
 commands as warnings and validates the entry point of every configured verification command.
 
+``verification_virtualenv`` is the repository-relative Python environment used by ``test``,
+``lint``, and ``check`` when the caller has not already activated a virtualenv. The default is
+``.venv``. The runner validates ``bin/python``, prepends the virtualenv's ``bin`` directory to
+``PATH``, sets ``VIRTUAL_ENV``, and removes ``PYTHONHOME`` before executing the configured project
+command. This supports project wrappers that invoke bare tools such as ``coverage`` or ``ruff``.
+
+An explicitly active caller ``VIRTUAL_ENV`` takes precedence and its ``PATH`` and environment are
+preserved exactly. Set ``verification_virtualenv = ""`` to disable automatic activation when all
+Python verification wrappers manage their own environment with commands such as ``uv run``.
+``jstest`` does not activate or require a Python virtualenv, and neither does arbitrary
+``bin/dev run`` delegation.
+
 Configured working directories must stay inside the repository and exist when used.
 ``startup_timeout`` controls readiness. ``extra_processes`` entries contain ``name``, ``command``,
 optional ``cwd``, and optional ``required``. The ``environment`` table supplies non-secret project
 overrides; application secrets remain in ``.env`` and are loaded only for control/database
 operations.
 
-Launcher and generated worktree variables are reserved and cannot be set in configuration.
+Launcher and generated worktree variables, including ``VIRTUAL_ENV``, are reserved and cannot be
+set through the ``environment`` table.

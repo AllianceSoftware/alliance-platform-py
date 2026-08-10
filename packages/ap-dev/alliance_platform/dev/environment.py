@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 import os
 from pathlib import Path
 import re
@@ -28,6 +29,13 @@ LAUNCHER_ENVIRONMENT_MARKERS = {
     "ALLIANCE_DEV_INVOCATION_NAME",
     "ALLIANCE_DEV_UV_CACHE_DIR",
 }
+
+
+@dataclass(frozen=True)
+class VerificationVirtualenv:
+    path: Path
+    source: str
+    activate: bool
 
 
 def _restore_invoking_environment(environment: dict[str, str]) -> dict[str, str]:
@@ -125,6 +133,55 @@ def build_managed_environment(
             result.pop(key, None)
         else:
             result[key] = str(value)
+    return result
+
+
+def resolve_verification_virtualenv(
+    repo: Path,
+    configured: str,
+    environment: dict[str, str],
+) -> VerificationVirtualenv | None:
+    active = environment.get("VIRTUAL_ENV")
+    if active:
+        path = Path(active).expanduser()
+        if not path.is_absolute():
+            path = repo / path
+        resolution = VerificationVirtualenv(path.resolve(), "active caller virtualenv", False)
+    elif configured:
+        path = Path(configured).expanduser()
+        if not path.is_absolute():
+            path = repo / path
+        resolution = VerificationVirtualenv(path.resolve(), "configured project virtualenv", True)
+    else:
+        return None
+
+    python = resolution.path / "bin" / "python"
+    if not resolution.path.is_dir() or not python.is_file() or not os.access(python, os.X_OK):
+        setting = (
+            "Activate a provisioned environment before invoking bin/dev."
+            if not resolution.activate
+            else "Provision it with 'uv sync', activate another environment, or set "
+            'verification_virtualenv = "" to disable automatic activation.'
+        )
+        raise DevError(
+            f"The {resolution.source} is not provisioned at {resolution.path}; "
+            f"expected executable {python}. {setting}"
+        )
+    return resolution
+
+
+def build_verification_environment(
+    repo: Path,
+    configured: str,
+    environment: dict[str, str],
+) -> dict[str, str]:
+    result = dict(environment)
+    resolution = resolve_verification_virtualenv(repo, configured, result)
+    if resolution is None or not resolution.activate:
+        return result
+    result["VIRTUAL_ENV"] = str(resolution.path)
+    result["PATH"] = f"{resolution.path / 'bin'}{os.pathsep}{result.get('PATH', '')}"
+    result.pop("PYTHONHOME", None)
     return result
 
 

@@ -44,6 +44,11 @@ worktree environment. These foreground commands are terminal: a successful invoc
 ``exec`` rather than returning to the runner. A verification command configured as an empty argv
 is disabled and reports the corresponding ``config/dev.toml`` setting when invoked.
 
+``test``, ``lint``, and ``check`` use the active caller virtualenv when one was explicitly supplied;
+otherwise they activate the configured ``verification_virtualenv`` by adjusting their execution
+environment. ``jstest`` and ``run`` retain the caller environment without project virtualenv
+activation.
+
 Configuration and initialization
 --------------------------------
 
@@ -53,8 +58,8 @@ Configuration and initialization
 updates a template's project name and ID and intentionally runs before normal project-ID
 validation.
 
-``doctor`` reports disabled verification commands and validates each configured command's entry
-point in addition to checking the development environment dependencies.
+``doctor`` reports disabled verification commands, validates each configured command's entry
+point, and checks that the required verification virtualenv is provisioned.
 
 ``install [PATH]`` bootstraps an existing Django project before normal project discovery is
 available. It creates ``bin/dev`` and ``config/dev.toml``, discovers the Django working directory,

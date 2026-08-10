@@ -4,6 +4,7 @@ from contextlib import redirect_stdout
 from dataclasses import replace
 import io
 import json
+import os
 from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
@@ -597,6 +598,10 @@ class CommandDelegateTests(unittest.TestCase):
                 'check_command = ["bin/check.sh"]\n'
             ),
         )
+        project_python = self.repo / ".venv" / "bin" / "python"
+        project_python.parent.mkdir(parents=True)
+        project_python.write_text("#!/bin/sh\n")
+        project_python.chmod(0o755)
         self.config = load_config(self.repo, {"XDG_CONFIG_HOME": str(root / "xdg")})
         self.identity = WorktreeIdentity(
             repo=self.repo,
@@ -618,6 +623,7 @@ class CommandDelegateTests(unittest.TestCase):
                 "PGDATABASE": "also-wrong",
                 "DISABLE_SSR": "0",
                 "PASSTHROUGH": "kept",
+                "PATH": "/caller/bin",
             },
         )
 
@@ -656,8 +662,16 @@ class CommandDelegateTests(unittest.TestCase):
         self.assertEqual(environment["PYTHONPATH"], str(self.repo))
         if verification:
             self.assertEqual(environment["DISABLE_SSR"], "1")
+            project_venv = (self.repo / ".venv").resolve()
+            self.assertEqual(environment["VIRTUAL_ENV"], str(project_venv))
+            self.assertEqual(
+                environment["PATH"],
+                f"{project_venv / 'bin'}{os.pathsep}/caller/bin",
+            )
         else:
             self.assertEqual(environment["DISABLE_SSR"], "0")
+            self.assertNotIn("VIRTUAL_ENV", environment)
+            self.assertEqual(environment["PATH"], "/caller/bin")
 
     def test_django_test_preserves_native_arguments_and_injects_the_worktree_database(self) -> None:
         delegates = self.delegates()
@@ -698,13 +712,33 @@ class CommandDelegateTests(unittest.TestCase):
         ):
             delegates.check()
 
+    def test_missing_project_virtualenv_fails_before_executing_verification_script(self) -> None:
+        (self.repo / ".venv" / "bin" / "python").unlink()
+        delegates = self.delegates()
+
+        with (
+            patch("alliance_platform.dev.commands.os.execvpe") as execute,
+            self.assertRaisesRegex(DevError, "project virtualenv is not provisioned.*uv sync"),
+        ):
+            delegates.test(["package.Case"])
+
+        execute.assert_not_called()
+
+    def test_frontend_tests_do_not_require_the_python_virtualenv(self) -> None:
+        (self.repo / ".venv" / "bin" / "python").unlink()
+
+        self.assert_exec(
+            lambda: self.delegates().jstest(["frontend.test.ts"]),
+            ("bin/run-tests-frontend.sh", "frontend.test.ts"),
+        )
+
     def test_delegated_command_uses_configured_argv_and_appends_arguments_literally(self) -> None:
         config = replace(self.config, test_command=("scripts/verify", "django"))
         delegates = CommandDelegates(
             self.repo,
             config,
             self.identity,
-            {"PASSTHROUGH": "kept"},
+            {"PASSTHROUGH": "kept", "PATH": "/caller/bin"},
         )
         dangerous = "value with spaces; $(touch never-executed)"
 

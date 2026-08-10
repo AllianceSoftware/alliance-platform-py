@@ -23,6 +23,8 @@ from . import package_version
 from .database import DatabaseManager
 from .database import DatabasePreparationResult
 from .environment import build_managed_environment
+from .environment import build_verification_environment
+from .environment import resolve_verification_virtualenv
 from .errors import DevError
 from .identity import current_branch
 from .identity import database_name
@@ -1166,6 +1168,7 @@ class DevEnvironment:
         self,
         name: str,
         configured: tuple[str, ...],
+        environment: dict[str, str] | None = None,
     ) -> DoctorCheck:
         setting = f"{name}_command"
         if not configured:
@@ -1194,7 +1197,7 @@ class DevEnvironment:
                 )
             detail = str(path)
         else:
-            resolved = self.runner.which(executable, self.environment)
+            resolved = self.runner.which(executable, environment or self.environment)
             if resolved is None:
                 return DoctorCheck(
                     f"command:{name}",
@@ -1236,8 +1239,60 @@ class DevEnvironment:
                     detail=tool.path or ("optional; not installed" if optional else "not found on PATH"),
                 )
             )
+        python_verification_commands = tuple(
+            name
+            for name, command in (
+                ("test", self.config.test_command),
+                ("lint", self.config.lint_command),
+                ("check", self.config.check_command),
+            )
+            if command
+        )
+        python_verification_environment = self.environment
+        if not python_verification_commands:
+            virtualenv_check = DoctorCheck(
+                "verification:virtualenv",
+                "ok",
+                "not required; no Python verification commands are configured",
+            )
+        else:
+            try:
+                virtualenv = resolve_verification_virtualenv(
+                    self.repo,
+                    self.config.verification_virtualenv,
+                    self.environment,
+                )
+            except DevError as error:
+                virtualenv_check = DoctorCheck("verification:virtualenv", "error", str(error))
+            else:
+                if virtualenv is None:
+                    virtualenv_check = DoctorCheck(
+                        "verification:virtualenv",
+                        "warning",
+                        "automatic activation disabled; Python verification commands use caller PATH",
+                    )
+                else:
+                    python_verification_environment = build_verification_environment(
+                        self.repo,
+                        self.config.verification_virtualenv,
+                        self.environment,
+                    )
+                    virtualenv_check = DoctorCheck(
+                        "verification:virtualenv",
+                        "ok",
+                        f"{virtualenv.source}: {virtualenv.path}",
+                    )
+        checks.append(virtualenv_check)
         checks.extend(
-            self._verification_command_check(name, command)
+            self._verification_command_check(
+                name,
+                command,
+                (
+                    python_verification_environment
+                    if name in python_verification_commands
+                    else self.environment
+                ),
+            )
             for name, command in (
                 ("test", self.config.test_command),
                 ("jstest", self.config.jstest_command),

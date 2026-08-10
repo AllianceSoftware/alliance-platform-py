@@ -11,7 +11,9 @@ from alliance_platform.dev.database import DatabaseManager
 from alliance_platform.dev.environment import build_control_environment
 from alliance_platform.dev.environment import build_managed_environment
 from alliance_platform.dev.environment import build_process_environment
+from alliance_platform.dev.environment import build_verification_environment
 from alliance_platform.dev.environment import pane_environment
+from alliance_platform.dev.errors import DevError
 from alliance_platform.dev.identity import DATABASE_NAME_MAX_LENGTH
 from alliance_platform.dev.identity import resolve_identity
 
@@ -139,6 +141,64 @@ class WorktreeIdentityTests(unittest.TestCase):
 
 
 class EnvironmentBoundaryTests(unittest.TestCase):
+    def test_verification_environment_activates_project_venv_without_uvx_leakage(self) -> None:
+        with TemporaryDirectory() as temporary:
+            repo = Path(temporary) / "repo"
+            python = repo / ".venv" / "bin" / "python"
+            python.parent.mkdir(parents=True)
+            python.write_text("#!/bin/sh\n")
+            python.chmod(0o755)
+            environment = {
+                "PATH": "/caller/bin",
+                "PYTHONHOME": "/caller/python-home",
+            }
+
+            result = build_verification_environment(repo, ".venv", environment)
+
+            project_venv = (repo / ".venv").resolve()
+            self.assertEqual(result["VIRTUAL_ENV"], str(project_venv))
+            self.assertEqual(
+                result["PATH"],
+                f"{project_venv / 'bin'}{os.pathsep}/caller/bin",
+            )
+            self.assertNotIn("PYTHONHOME", result)
+
+    def test_verification_environment_preserves_an_explicit_caller_venv_exactly(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repo = root / "repo"
+            caller_venv = root / "intentional-venv"
+            python = caller_venv / "bin" / "python"
+            python.parent.mkdir(parents=True)
+            python.write_text("#!/bin/sh\n")
+            python.chmod(0o755)
+            environment = {
+                "PATH": f"{caller_venv / 'custom-bin'}:/caller/bin",
+                "VIRTUAL_ENV": str(caller_venv),
+                "PYTHONHOME": "/preserved/by/caller",
+            }
+
+            result = build_verification_environment(repo, ".venv", environment)
+
+            self.assertEqual(result, environment)
+
+    def test_verification_environment_reports_a_missing_project_venv(self) -> None:
+        with TemporaryDirectory() as temporary:
+            repo = Path(temporary) / "repo"
+
+            with self.assertRaisesRegex(
+                DevError,
+                "configured project virtualenv is not provisioned.*uv sync",
+            ):
+                build_verification_environment(repo, ".venv", {"PATH": "/caller/bin"})
+
+    def test_verification_environment_can_leave_automatic_activation_disabled(self) -> None:
+        environment = {"PATH": "/caller/bin", "PYTHONHOME": "/caller/python-home"}
+
+        result = build_verification_environment(Path("/project"), "", environment)
+
+        self.assertEqual(result, environment)
+
     def test_launcher_runtime_does_not_leak_into_application_environment(self) -> None:
         with TemporaryDirectory() as temporary:
             root = Path(temporary)

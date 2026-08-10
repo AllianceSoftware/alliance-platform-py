@@ -215,6 +215,7 @@ class DevConfig:
     db_prepare_command: tuple[str, ...]
     django_cwd: str
     vite_cwd: str
+    verification_virtualenv: str
     manage_command: tuple[str, ...]
     test_command: tuple[str, ...]
     jstest_command: tuple[str, ...]

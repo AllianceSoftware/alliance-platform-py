@@ -7,6 +7,7 @@ from typing import Sequence
 
 from . import invocation_name
 from .environment import build_managed_environment
+from .environment import build_verification_environment
 from .errors import DevError
 from .models import DevConfig
 from .models import WorktreeIdentity
@@ -27,7 +28,12 @@ class CommandDelegates:
         self.identity = identity
         self.environment = dict(environment)
 
-    def _managed_environment(self, *, verification: bool = False) -> dict[str, str]:
+    def _managed_environment(
+        self,
+        *,
+        verification: bool = False,
+        python_verification: bool = False,
+    ) -> dict[str, str]:
         environment = build_managed_environment(
             self.repo,
             self.config.project_slug,
@@ -36,6 +42,12 @@ class CommandDelegates:
         )
         if verification:
             environment["DISABLE_SSR"] = "1"
+        if python_verification:
+            environment = build_verification_environment(
+                self.repo,
+                self.config.verification_virtualenv,
+                environment,
+            )
         return environment
 
     def _working_directory(self, value: str) -> Path:
@@ -59,12 +71,16 @@ class CommandDelegates:
         cwd: Path | None = None,
         environment: dict[str, str] | None = None,
         verification: bool = False,
+        python_verification: bool = False,
     ) -> NoReturn:
         argv = [*configured, *args]
         command_environment = (
             dict(environment)
             if environment is not None
-            else self._managed_environment(verification=verification)
+            else self._managed_environment(
+                verification=verification,
+                python_verification=python_verification,
+            )
         )
         try:
             os.chdir(self.repo if cwd is None else cwd)
@@ -86,6 +102,7 @@ class CommandDelegates:
             self._verification_command("test", self.config.test_command),
             args,
             verification=True,
+            python_verification=True,
         )
 
     def jstest(self, args: Sequence[str]) -> NoReturn:
@@ -96,12 +113,14 @@ class CommandDelegates:
             self._verification_command("lint", self.config.lint_command),
             args,
             verification=True,
+            python_verification=True,
         )
 
     def check(self) -> NoReturn:
         self._exec_argv(
             self._verification_command("check", self.config.check_command),
             verification=True,
+            python_verification=True,
         )
 
     def run(

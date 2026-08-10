@@ -147,9 +147,10 @@ class LifecycleRunner(RecordingRunner):
         self.supports_force_drop = True
         self.failed_pane: str | None = None
         self.createdb_observer: Callable[[], None] | None = None
+        self.which_calls: list[tuple[str, dict[str, str] | None]] = []
 
     def which(self, command: str, env: dict[str, str] | None = None) -> str | None:
-        del env
+        self.which_calls.append((command, dict(env) if env is not None else None))
         return None if command == "portless" else f"/fake/{command}"
 
     def run(
@@ -501,12 +502,32 @@ class DoctorTests(unittest.TestCase):
 
             checks = {check.name: check for check in dev.doctor_report().checks}
 
+            self.assertEqual(checks["verification:virtualenv"].status, "error")
+            self.assertIn("not provisioned", checks["verification:virtualenv"].detail)
             self.assertEqual(checks["command:test"].status, "ok")
             self.assertEqual(checks["command:jstest"].status, "warning")
             self.assertIn("not configured", checks["command:jstest"].detail)
             self.assertEqual(checks["command:lint"].status, "warning")
             self.assertEqual(checks["command:check"].status, "error")
             self.assertIn("does not exist", checks["command:check"].detail)
+
+            project_python = repo / ".venv" / "bin" / "python"
+            project_python.parent.mkdir(parents=True)
+            project_python.write_text("#!/bin/sh\n")
+            project_python.chmod(0o755)
+            provisioned_checks = {check.name: check for check in dev.doctor_report().checks}
+            self.assertEqual(provisioned_checks["verification:virtualenv"].status, "ok")
+            self.assertIn(str(repo / ".venv"), provisioned_checks["verification:virtualenv"].detail)
+            test_command_environments = [
+                environment
+                for command, environment in runner.which_calls
+                if command == "uv" and environment is not None and "VIRTUAL_ENV" in environment
+            ]
+            self.assertTrue(test_command_environments)
+            self.assertEqual(
+                test_command_environments[-1]["PATH"].split(os.pathsep)[0],
+                str((repo / ".venv" / "bin").resolve()),
+            )
 
     def test_doctor_reports_when_dropdb_cannot_force_connection_termination(self) -> None:
         with TemporaryDirectory() as temporary:
