@@ -25,6 +25,7 @@ CONFIG_KEYS = {
     "db_prepare_command",
     "django_cwd",
     "vite_cwd",
+    "verification_virtualenv",
     "manage_command",
     "test_command",
     "jstest_command",
@@ -47,6 +48,7 @@ DEFAULTS: dict[str, Any] = {
     "db_prepare_command": [],
     "django_cwd": "django-root",
     "vite_cwd": ".",
+    "verification_virtualenv": ".venv",
     "manage_command": ["uv", "run", "python", "manage.py"],
     "test_command": [],
     "jstest_command": [],
@@ -79,6 +81,7 @@ RESERVED_ENVIRONMENT_NAMES = {
     "DEV_WORKTREE_ID",
     "DEV_DJANGO_PORT",
     "DEV_VITE_PORT",
+    "VIRTUAL_ENV",
 }
 
 CWD_KEYS = {"django_cwd", "vite_cwd"}
@@ -210,6 +213,15 @@ def validate_layer(value: dict[str, Any], path: Path, repo: Path, *, allow_proje
             cwd_path = (repo / cwd).resolve()
             if not cwd_path.is_relative_to(repo.resolve()):
                 raise ConfigError(f"{key} in {path} must stay inside the repository")
+    if "verification_virtualenv" in value:
+        virtualenv = value["verification_virtualenv"]
+        _expect_exact(virtualenv, str, f"verification_virtualenv in {path}")
+        if virtualenv:
+            virtualenv_path = Path(virtualenv)
+            if not virtualenv_path.is_absolute():
+                virtualenv_path = repo / virtualenv_path
+            if not virtualenv_path.resolve().is_relative_to(repo.resolve()):
+                raise ConfigError(f"verification_virtualenv in {path} must stay inside the repository")
     if "startup_timeout" in value:
         timeout = value["startup_timeout"]
         if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout <= 0:
@@ -371,6 +383,7 @@ def load_config(
         db_prepare_command=tuple(effective["db_prepare_command"]),
         django_cwd=effective["django_cwd"],
         vite_cwd=effective["vite_cwd"],
+        verification_virtualenv=effective["verification_virtualenv"],
         manage_command=tuple(effective["manage_command"]),
         test_command=tuple(effective["test_command"]),
         jstest_command=tuple(effective["jstest_command"]),

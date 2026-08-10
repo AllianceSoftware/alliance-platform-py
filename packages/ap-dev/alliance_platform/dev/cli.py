@@ -231,6 +231,7 @@ def _effective_settings(config: DevConfig) -> dict[str, Any]:
         "db_prepare_command": list(config.db_prepare_command),
         "django_cwd": config.django_cwd,
         "vite_cwd": config.vite_cwd,
+        "verification_virtualenv": config.verification_virtualenv,
         "manage_command": list(config.manage_command),
         "test_command": list(config.test_command),
         "jstest_command": list(config.jstest_command),

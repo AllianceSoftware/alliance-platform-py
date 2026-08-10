@@ -60,6 +60,7 @@ SHARED = "local"
             self.assertEqual(config.vite_port_base, 5300)
             self.assertEqual(config.portless, "off")
             self.assertEqual(config.database_template_strategy, "default")
+            self.assertEqual(config.verification_virtualenv, ".venv")
             self.assertEqual(config.jstest_command, ())
             self.assertEqual(config.lint_command, ())
             self.assertEqual(config.check_command, ())
@@ -164,6 +165,17 @@ required = false
                 with self.assertRaisesRegex(ConfigError, "cannot set reserved variable"):
                     load_config(repo, {"XDG_CONFIG_HOME": str(xdg)})
 
+    def test_virtualenv_must_use_the_dedicated_setting(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repo = make_repo(
+                root / "repo",
+                config='[environment]\nVIRTUAL_ENV = ".venv"\n',
+            )
+
+            with self.assertRaisesRegex(ConfigError, "cannot set reserved variable VIRTUAL_ENV"):
+                load_config(repo, {"XDG_CONFIG_HOME": str(root / "xdg")})
+
 
 class ConfigValidationTests(unittest.TestCase):
     def test_invalid_config_shapes_are_rejected(self) -> None:
@@ -194,6 +206,10 @@ class ConfigValidationTests(unittest.TestCase):
             "escaping cwd": (
                 '[[extra_processes]]\nname = "worker"\ncommand = ["worker"]\ncwd = ".."\n',
                 "must stay inside the repository",
+            ),
+            "escaping verification virtualenv": (
+                'verification_virtualenv = "../shared-venv"\n',
+                "verification_virtualenv.*must stay inside the repository",
             ),
         }
         for label, (body, expected) in cases.items():

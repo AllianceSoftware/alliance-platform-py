@@ -13,3 +13,6 @@ Generated database names reserve space for Django's parallel test database suffi
 PostgreSQL identifier truncation from collapsing worker clones onto the primary test database.
 Generated launchers now retain uvx's isolated cache in a sandbox-writable, worktree-shared temporary
 location, avoiding repeated dependency downloads and builds after the first successful bootstrap.
+Python-backed verification commands automatically use a provisioned project virtualenv when the
+caller has not explicitly activated one, allowing project wrappers to invoke installed tools
+without requiring developers or agents to source ``activate`` first.
