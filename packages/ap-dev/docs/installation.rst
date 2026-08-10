@@ -50,6 +50,10 @@ for that path. For local paths and ``file://`` URLs, the launcher instead uses
 ``uv run --isolated --no-project --with-editable``. The environment remains separate from the
 application, but imports ap-dev directly from the checkout so committed and uncommitted source
 changes are visible immediately. uv continues to reuse cached build and runtime dependencies.
+The launcher first probes that environment in offline mode. Once it is provisioned, normal local
+invocations remain offline and avoid package-index or DNS delays. If the probe finds that the tool,
+build backend, or another required artifact is absent, the launcher retries the requested command
+online to bootstrap it. A failed delegated command is not retried.
 Git URLs and versioned PyPI requirements retain the normal ``uvx`` cache policy; use an immutable
 Git revision when reproducibility matters.
 

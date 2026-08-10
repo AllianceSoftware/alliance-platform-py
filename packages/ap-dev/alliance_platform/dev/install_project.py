@@ -228,8 +228,17 @@ case "$tool_source" in
         # uvx keys its disposable tool environment by requirement, so a mutable
         # path can keep running an older build. An isolated editable environment
         # reads current source while retaining uv's dependency and build cache.
-        exec uv run --cache-dir "$uv_cache_dir" --isolated --no-project --no-env-file \
-            --with-editable "$tool_source" alliance-dev "$@"
+        local_uv_args=(run --cache-dir "$uv_cache_dir" --isolated --no-project --no-env-file \
+            --with-editable "$tool_source")
+
+        # Avoid uv's index refresh latency once the editable environment and its
+        # dependencies are cached. Probe with a harmless command so a failing
+        # delegated command is never mistaken for a bootstrap failure and rerun.
+        if uv "${{local_uv_args[@]}}" --offline alliance-dev --version >/dev/null 2>&1; then
+            exec uv "${{local_uv_args[@]}}" --offline alliance-dev "$@"
+        fi
+
+        exec uv "${{local_uv_args[@]}}" alliance-dev "$@"
         ;;
 esac
 
