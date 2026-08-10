@@ -155,6 +155,7 @@ class EnvironmentBoundaryTests(unittest.TestCase):
                 "DEV_INVOKE_UV_RUN_RECURSION_DEPTH_SET": "0",
                 "ALLIANCE_DEV_PROJECT_DIR": str(repo),
                 "ALLIANCE_DEV_INVOCATION_NAME": "bin/dev",
+                "ALLIANCE_DEV_UV_CACHE_DIR": "/tmp/launcher-only-cache",
             }
 
             process = build_process_environment(config, inherited=launcher_environment)

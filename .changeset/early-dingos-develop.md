@@ -11,3 +11,5 @@ Existing-project installation now detects available verification commands and le
 commands explicitly disabled instead of referencing assumed ``bin/`` scripts.
 Generated database names reserve space for Django's parallel test database suffixes, preventing
 PostgreSQL identifier truncation from collapsing worker clones onto the primary test database.
+Generated launchers now retain uvx's isolated cache in a sandbox-writable, worktree-shared temporary
+location, avoiding repeated dependency downloads and builds after the first successful bootstrap.
