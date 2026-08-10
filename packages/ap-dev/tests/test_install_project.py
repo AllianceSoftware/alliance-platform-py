@@ -178,6 +178,7 @@ class ProjectInstallationTests(unittest.TestCase):
                 if uses_editable_local_source:
                     self.assertEqual(runner, "uv")
                     self.assertIn("--no-project", arguments)
+                    self.assertIn("--offline", arguments)
                     editable_option = arguments.index("--with-editable")
                     self.assertEqual(arguments[editable_option + 1], source)
                     self.assertNotIn("--from", arguments)
@@ -222,10 +223,89 @@ class ProjectInstallationTests(unittest.TestCase):
 
             runner, *arguments = capture.read_text().splitlines()
             self.assertEqual(runner, "uv")
+            self.assertIn("--offline", arguments)
             self.assertIn(str(local_source), arguments)
             editable_option = arguments.index("--with-editable")
             self.assertEqual(arguments[editable_option + 1], str(local_source))
             self.assertNotIn("--from", arguments)
+
+    def test_local_launcher_falls_back_online_only_when_offline_bootstrap_fails(self) -> None:
+        with TemporaryDirectory() as directory:
+            repo = self.make_project(directory)
+            install_project(
+                repo,
+                assume_yes=True,
+                tool_source="/tmp/local-ap-dev",
+                console=self.console(),
+            )
+            fake_bin = repo / "fake-bin"
+            fake_bin.mkdir()
+            uv = fake_bin / "uv"
+            uv.write_text(
+                "#!/bin/sh\n"
+                'printf "%s\\n" "$*" >> "$CAPTURE_FILE"\n'
+                'for argument in "$@"; do\n'
+                '    if [ "$argument" = "--offline" ]; then\n'
+                "        exit 1\n"
+                "    fi\n"
+                "done\n"
+            )
+            uv.chmod(0o755)
+            capture = repo / "uv-calls"
+            environment = {
+                **os.environ,
+                "PATH": f"{fake_bin}{os.pathsep}{os.environ['PATH']}",
+                "CAPTURE_FILE": str(capture),
+            }
+
+            subprocess.run([repo / "bin" / "dev", "doctor"], env=environment, check=True)
+
+            probe, fallback = capture.read_text().splitlines()
+            self.assertIn("--offline", probe)
+            self.assertTrue(probe.endswith("alliance-dev --version"))
+            self.assertNotIn("--offline", fallback)
+            self.assertTrue(fallback.endswith("alliance-dev doctor"))
+
+    def test_local_launcher_does_not_retry_a_failed_delegated_command(self) -> None:
+        with TemporaryDirectory() as directory:
+            repo = self.make_project(directory)
+            install_project(
+                repo,
+                assume_yes=True,
+                tool_source="/tmp/local-ap-dev",
+                console=self.console(),
+            )
+            fake_bin = repo / "fake-bin"
+            fake_bin.mkdir()
+            uv = fake_bin / "uv"
+            uv.write_text(
+                "#!/bin/sh\n"
+                'printf "%s\\n" "$*" >> "$CAPTURE_FILE"\n'
+                'case "$*" in\n'
+                '    *"alliance-dev --version") exit 0 ;;\n'
+                "    *) exit 23 ;;\n"
+                "esac\n"
+            )
+            uv.chmod(0o755)
+            capture = repo / "uv-calls"
+            environment = {
+                **os.environ,
+                "PATH": f"{fake_bin}{os.pathsep}{os.environ['PATH']}",
+                "CAPTURE_FILE": str(capture),
+            }
+
+            completed = subprocess.run(
+                [repo / "bin" / "dev", "doctor"],
+                env=environment,
+                check=False,
+            )
+
+            self.assertEqual(completed.returncode, 23)
+            probe, delegated = capture.read_text().splitlines()
+            self.assertIn("--offline", probe)
+            self.assertTrue(probe.endswith("alliance-dev --version"))
+            self.assertIn("--offline", delegated)
+            self.assertTrue(delegated.endswith("alliance-dev doctor"))
 
     def test_launcher_respects_uv_cache_overrides(self) -> None:
         with TemporaryDirectory() as directory:
