@@ -121,11 +121,15 @@ class ProjectInstallationTests(unittest.TestCase):
 
     def test_launcher_uses_a_stable_cache_for_pypi_git_and_local_tool_sources(self) -> None:
         sources = {
-            "pypi": "alliance-platform-dev==1.2.3",
-            "git": "git+https://github.com/example/project.git@branch#subdirectory=packages/ap-dev",
-            "local": "/tmp/local-ap-dev",
+            "pypi": ("alliance-platform-dev==1.2.3", False),
+            "git": (
+                "git+https://github.com/example/project.git@branch#subdirectory=packages/ap-dev",
+                False,
+            ),
+            "local": ("/tmp/local-ap-dev", True),
+            "file-url": ("file:///tmp/local-ap-dev", True),
         }
-        for source_type, source in sources.items():
+        for source_type, (source, uses_editable_local_source) in sources.items():
             with self.subTest(source_type=source_type), TemporaryDirectory() as directory:
                 repo = self.make_project(directory)
                 install_project(
@@ -137,8 +141,14 @@ class ProjectInstallationTests(unittest.TestCase):
                 fake_bin = repo / "fake-bin"
                 fake_bin.mkdir()
                 for name, contents in (
-                    ("uv", "#!/bin/sh\nexit 0\n"),
-                    ("uvx", '#!/bin/sh\nprintf "%s\\n" "$@" > "$CAPTURE_FILE"\n'),
+                    (
+                        "uv",
+                        '#!/bin/sh\n{ printf "uv\\n"; printf "%s\\n" "$@"; } > "$CAPTURE_FILE"\n',
+                    ),
+                    (
+                        "uvx",
+                        '#!/bin/sh\n{ printf "uvx\\n"; printf "%s\\n" "$@"; } > "$CAPTURE_FILE"\n',
+                    ),
                 ):
                     executable = fake_bin / name
                     executable.write_text(contents)
@@ -153,7 +163,7 @@ class ProjectInstallationTests(unittest.TestCase):
 
                 subprocess.run([repo / "bin" / "dev", "doctor"], env=environment, check=True)
 
-                arguments = capture.read_text().splitlines()
+                runner, *arguments = capture.read_text().splitlines()
                 expected_cache = repo / "sandbox-tmp" / f"alliance-dev-{os.getuid()}" / "uv-cache"
                 cache_option = arguments.index("--cache-dir")
                 self.assertEqual(arguments[cache_option + 1], str(expected_cache))
@@ -165,6 +175,57 @@ class ProjectInstallationTests(unittest.TestCase):
                 self.assertIn("--no-env-file", arguments)
                 self.assertIn(source, arguments)
                 self.assertEqual(arguments[-2:], ["alliance-dev", "doctor"])
+                if uses_editable_local_source:
+                    self.assertEqual(runner, "uv")
+                    self.assertIn("--no-project", arguments)
+                    editable_option = arguments.index("--with-editable")
+                    self.assertEqual(arguments[editable_option + 1], source)
+                    self.assertNotIn("--from", arguments)
+                else:
+                    self.assertEqual(runner, "uvx")
+                    self.assertNotIn("--no-project", arguments)
+                    from_option = arguments.index("--from")
+                    self.assertEqual(arguments[from_option + 1], source)
+                    self.assertNotIn("--with-editable", arguments)
+
+    def test_launcher_refreshes_a_local_runtime_source_override(self) -> None:
+        with TemporaryDirectory() as directory:
+            repo = self.make_project(directory)
+            install_project(
+                repo,
+                assume_yes=True,
+                tool_source="alliance-platform-dev==1.2.3",
+                console=self.console(),
+            )
+            fake_bin = repo / "fake-bin"
+            fake_bin.mkdir()
+            for name, contents in (
+                (
+                    "uv",
+                    '#!/bin/sh\n{ printf "uv\\n"; printf "%s\\n" "$@"; } > "$CAPTURE_FILE"\n',
+                ),
+                ("uvx", '#!/bin/sh\nprintf "%s\\n" "$@" > "$CAPTURE_FILE"\n'),
+            ):
+                executable = fake_bin / name
+                executable.write_text(contents)
+                executable.chmod(0o755)
+            capture = repo / "uvx-args"
+            local_source = repo / "local-ap-dev"
+            environment = {
+                **os.environ,
+                "PATH": f"{fake_bin}{os.pathsep}{os.environ['PATH']}",
+                "CAPTURE_FILE": str(capture),
+                "ALLIANCE_DEV_TOOL_SOURCE": str(local_source),
+            }
+
+            subprocess.run([repo / "bin" / "dev", "doctor"], env=environment, check=True)
+
+            runner, *arguments = capture.read_text().splitlines()
+            self.assertEqual(runner, "uv")
+            self.assertIn(str(local_source), arguments)
+            editable_option = arguments.index("--with-editable")
+            self.assertEqual(arguments[editable_option + 1], str(local_source))
+            self.assertNotIn("--from", arguments)
 
     def test_launcher_respects_uv_cache_overrides(self) -> None:
         with TemporaryDirectory() as directory:

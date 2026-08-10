@@ -42,9 +42,16 @@ temporary directories, after which the next invocation bootstraps the cache agai
 
 The first invocation with an uncached source still needs network access for the package and any
 missing dependencies. Subsequent invocations can reuse the isolated tool environment and cached
-artifacts without contacting the package index. An explicitly selected local directory remains
-fresh: uv checks and reinstalls the local project when its source changes, while reusing cached
-build dependencies and artifacts.
+artifacts without contacting the package index.
+
+A local path supplied by the generated launcher or ``ALLIANCE_DEV_TOOL_SOURCE`` is mutable while
+its requirement string remains unchanged. ``uvx`` can consequently retain a stale tool environment
+for that path. For local paths and ``file://`` URLs, the launcher instead uses
+``uv run --isolated --no-project --with-editable``. The environment remains separate from the
+application, but imports ap-dev directly from the checkout so committed and uncommitted source
+changes are visible immediately. uv continues to reuse cached build and runtime dependencies.
+Git URLs and versioned PyPI requirements retain the normal ``uvx`` cache policy; use an immutable
+Git revision when reproducibility matters.
 
 Published Alliance Platform Dev releases include a Python wheel. Installing that compatible wheel
 does not invoke the project's PEP 517 build backend (``pdm-backend``), although the first uncached

@@ -223,7 +223,18 @@ if ! mkdir -p "$uv_cache_dir"; then
     exit 1
 fi
 
-exec uvx --cache-dir "$uv_cache_dir" --isolated --no-env-file --from "$tool_source" alliance-dev "$@"
+case "$tool_source" in
+    /*|./*|../*|file://*)
+        # uvx keys its disposable tool environment by requirement, so a mutable
+        # path can keep running an older build. An isolated editable environment
+        # reads current source while retaining uv's dependency and build cache.
+        exec uv run --cache-dir "$uv_cache_dir" --isolated --no-project --no-env-file \
+            --with-editable "$tool_source" alliance-dev "$@"
+        ;;
+esac
+
+exec uvx --cache-dir "$uv_cache_dir" --isolated --no-env-file \
+    --from "$tool_source" alliance-dev "$@"
 """
 
 
