@@ -11,6 +11,7 @@ import signal
 import socket
 import ssl
 import time
+from typing import Callable
 from typing import Iterable
 from typing import Iterator
 from urllib.parse import urlparse
@@ -500,11 +501,19 @@ class DevEnvironment:
                 )
             time.sleep(0.2)
 
-    def start(self, *, no_portless: bool = False) -> StartResult:
+    def start(
+        self,
+        *,
+        no_portless: bool = False,
+        on_progress: Callable[[str], None] | None = None,
+    ) -> StartResult:
         timeout = max(600.0, self.config.startup_timeout * 2)
         with interrupt_on_termination():
             with worktree_lock(self.config.project_slug, self.identity.worktree_id, timeout):
-                return self._start_locked(no_portless=no_portless)
+                return self._start_locked(
+                    no_portless=no_portless,
+                    on_progress=on_progress,
+                )
 
     def _recover_interrupted_database(self) -> bool:
         state = self.store.load()
@@ -654,7 +663,12 @@ class DevEnvironment:
                 database_retained=database_retained,
             )
 
-    def _start_locked(self, *, no_portless: bool = False) -> StartResult:
+    def _start_locked(
+        self,
+        *,
+        no_portless: bool = False,
+        on_progress: Callable[[str], None] | None = None,
+    ) -> StartResult:
         # Reject incompatible or corrupt state before starting an otherwise
         # empty dedicated tmux server or performing any other mutation.
         self.store.load()
@@ -732,6 +746,7 @@ class DevEnvironment:
 
             preparation = self.database.ensure(
                 on_database_creation=database_creation_started,
+                on_progress=on_progress,
                 dev_base_host=dev_base_host,
             )
             self.registry.database_ready(created=preparation.created)
@@ -794,8 +809,7 @@ class DevEnvironment:
                                 self.registry.database_removed()
                             except DevError as cleanup_error:
                                 error.add_note(
-                                    "could not record the failed startup database cleanup: "
-                                    f"{cleanup_error}"
+                                    f"could not record the failed startup database cleanup: {cleanup_error}"
                                 )
                             else:
                                 database_cleaned_up = True

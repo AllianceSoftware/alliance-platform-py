@@ -210,6 +210,7 @@ class DevConfig:
     vite_port_base: int
     portless: str
     database_template: str | None
+    database_template_strategy: str
     createdevdata_args: tuple[str, ...]
     db_prepare_command: tuple[str, ...]
     django_cwd: str

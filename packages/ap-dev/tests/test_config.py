@@ -59,6 +59,7 @@ SHARED = "local"
             self.assertEqual(config.django_port_base, 8200)
             self.assertEqual(config.vite_port_base, 5300)
             self.assertEqual(config.portless, "off")
+            self.assertEqual(config.database_template_strategy, "default")
             self.assertEqual(config.createdevdata_args, ("global", "value with spaces"))
             self.assertEqual(
                 config.environment,
@@ -168,6 +169,10 @@ class ConfigValidationTests(unittest.TestCase):
             "boolean port": ("django_port_base = true\n", "must be int"),
             "port out of range": ("vite_port_base = 65536\n", "between 1 and 65535"),
             "invalid Portless policy": ('portless = "sometimes"\n', "auto.*off.*required"),
+            "invalid database template strategy": (
+                'database_template_strategy = "instant"\n',
+                "default.*wal_log.*file_copy",
+            ),
             "empty command": ("django_command = []\n", "must not be empty"),
             "zero timeout": ("startup_timeout = 0\n", "must be a positive number"),
             "invalid environment name": (

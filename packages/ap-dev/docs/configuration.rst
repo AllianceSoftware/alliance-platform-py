@@ -16,13 +16,43 @@ Settings
 
 ``project_id`` is a committed lowercase slug. Port allocation uses ``django_port_base`` and
 ``vite_port_base``. ``portless`` is ``auto``, ``off``, or ``required``. Database setup uses
-``database_template``, ``createdevdata_args``, and ``db_prepare_command``.
+``database_template``, ``database_template_strategy``, ``createdevdata_args``, and
+``db_prepare_command``.
 
 When ``database_template`` is set, a missing worktree database is cloned from that PostgreSQL
 database and ``createdevdata`` is skipped. Migrations still run. ``db_prepare_command`` is a list
 of Django management-command arguments that runs only after a new worktree database has been
 created. It receives the generated database environment and, when Portless is selected, the
-worktree hostname in ``DEV_BASE_HOST``.
+worktree hostname in ``DEV_BASE_HOST``. ``up`` prints and times database cloning, migrations,
+development-data creation, and worktree-specific preparation so long-running setup remains
+visible.
+
+.. _faster-template-database-clones:
+
+Faster template database clones
+-------------------------------
+
+By default, the runner lets PostgreSQL select the strategy used to clone ``database_template``.
+For a local or otherwise dedicated PostgreSQL server, ``FILE_COPY`` can be selected explicitly:
+
+.. code-block:: toml
+
+   database_template = "my_project_dev_template"
+   database_template_strategy = "file_copy"
+
+The supported values are ``default``, ``wal_log``, and ``file_copy``. Non-default values require
+PostgreSQL 15 or newer and are passed to ``createdb --strategy``.
+
+``FILE_COPY`` can be much faster for large templates, but it forces a checkpoint before and after
+the copy. Those checkpoints affect the whole PostgreSQL cluster, so this strategy is intended for
+local or dedicated development servers, not a shared or production-like server.
+
+On PostgreSQL 18 or newer, ``FILE_COPY`` can use filesystem copy-on-write cloning when the server
+has ``file_copy_method = clone`` and its data directory is on a compatible filesystem. Without
+that server setting and filesystem support, ``FILE_COPY`` still performs a regular file copy. See
+the PostgreSQL documentation for `CREATE DATABASE strategy
+<https://www.postgresql.org/docs/current/sql-createdatabase.html>`_ and
+`file_copy_method <https://www.postgresql.org/docs/current/runtime-config-resource.html>`_.
 
 Project layout and commands are controlled by:
 
