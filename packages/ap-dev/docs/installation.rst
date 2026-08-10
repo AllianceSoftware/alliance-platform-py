@@ -13,7 +13,15 @@ From the root of an existing Django project, run the installer from PyPI:
    uvx --from alliance-platform-dev alliance-dev install
 
 The installer discovers the Django working directory and assumes Vite uses the repository-root
-``package.json``. It prints, but does not apply, the development-only Django settings needed by
+``package.json``. It retains existing ``bin/run-tests-django.sh``,
+``bin/run-tests-frontend.sh``, ``bin/lint.sh``, and ``bin/check.sh`` delegates when present. If
+the Django test wrapper is absent, it generates a direct ``manage.py test`` command. It also
+recognises package scripts that clearly invoke Vitest and ensures they run once rather than in
+watch mode. Ambiguous frontend, lint, and full-check commands are left unconfigured instead of
+referencing files that do not exist. Interactive installation prompts for those unresolved
+commands; ``--yes`` leaves them disabled for later configuration.
+
+The installer prints, but does not apply, the development-only Django settings needed by
 Portless. Run it from the project root or pass the project path as the final argument. ``--yes``
 enables non-interactive defaults. ``--force`` permits replacement of an existing launcher or
 project configuration.
@@ -31,9 +39,12 @@ worktree has been started. Message-only hooks such as ``commit-msg`` and
 Post-install setup
 ------------------
 
-Review the generated command arrays in ``config/dev.toml`` and adjust them to match the project.
-In the development settings module, normally ``dev.py``, add the settings printed by the
-installer:
+Review the verification-command summary and generated arrays in ``config/dev.toml``. An empty
+``test_command``, ``jstest_command``, ``lint_command``, or ``check_command`` disables that verb;
+invoking it explains which setting to add. ``bin/dev doctor`` reports disabled commands as
+warnings and configured entry points that are missing or non-executable as errors.
+
+In the development settings module, normally ``dev.py``, add the settings printed by the installer:
 
 .. code-block:: python
 

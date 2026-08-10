@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -56,13 +57,65 @@ class ProjectInstallationTests(unittest.TestCase):
             self.assertIn('project_id = "example-app"', config.read_text())
             self.assertIn('django_cwd = "django-root"', config.read_text())
             self.assertIn('vite_cwd = "."', config.read_text())
+            self.assertIn(
+                'test_command = ["uv", "run", "python", "django-root/manage.py", "test"]',
+                config.read_text(),
+            )
+            self.assertIn("jstest_command = []", config.read_text())
+            self.assertIn("lint_command = []", config.read_text())
+            self.assertIn("check_command = []", config.read_text())
             self.assertIn("default_tool_source='/tmp/alliance platform dev'", launcher.read_text())
+            self.assertIn("Verification commands", output.getvalue())
+            self.assertIn("Full check:       not configured", output.getvalue())
             self.assertIn("CSRF_TRUSTED_ORIGINS = [", output.getvalue())
             self.assertIn("USE_X_FORWARDED_HOST = True", output.getvalue())
             self.assertIn("SECURE_PROXY_SSL_HEADER", output.getvalue())
             self.assertIn("preserves the browser hostname", output.getvalue())
             self.assertTrue(os.access(launcher, os.X_OK))
             subprocess.run(["bash", "-n", launcher], check=True)
+
+    def test_install_prefers_existing_verification_wrappers(self) -> None:
+        with TemporaryDirectory() as directory:
+            repo = self.make_project(directory)
+            (repo / "bin").mkdir()
+            for name in (
+                "run-tests-django.sh",
+                "run-tests-frontend.sh",
+                "lint.sh",
+                "check.sh",
+            ):
+                script = repo / "bin" / name
+                script.write_text("#!/bin/sh\n")
+                script.chmod(0o755)
+
+            install_project(repo, assume_yes=True, console=self.console())
+
+            contents = (repo / "config" / "dev.toml").read_text()
+            self.assertIn('test_command = ["bin/run-tests-django.sh"]', contents)
+            self.assertIn('jstest_command = ["bin/run-tests-frontend.sh"]', contents)
+            self.assertIn('lint_command = ["bin/lint.sh"]', contents)
+            self.assertIn('check_command = ["bin/check.sh"]', contents)
+
+    def test_install_detects_a_vitest_package_script_and_forces_single_run(self) -> None:
+        with TemporaryDirectory() as directory:
+            repo = self.make_project(directory)
+            (repo / "package.json").write_text(
+                json.dumps({"scripts": {"test": "cross-env NODE_ENV=test vitest"}})
+            )
+
+            install_project(repo, assume_yes=True, console=self.console())
+
+            contents = (repo / "config" / "dev.toml").read_text()
+            self.assertIn('jstest_command = ["yarn", "test", "--run"]', contents)
+
+    def test_install_does_not_guess_from_an_unrelated_package_test_script(self) -> None:
+        with TemporaryDirectory() as directory:
+            repo = self.make_project(directory)
+            (repo / "package.json").write_text(json.dumps({"scripts": {"test": "jest"}}))
+
+            install_project(repo, assume_yes=True, console=self.console())
+
+            self.assertIn("jstest_command = []", (repo / "config" / "dev.toml").read_text())
 
     def test_launcher_runs_with_pypi_git_and_local_tool_sources_under_nounset(self) -> None:
         sources = {
@@ -166,7 +219,7 @@ class ProjectInstallationTests(unittest.TestCase):
             with (
                 patch(
                     "alliance_platform.dev.install_project.Prompt.ask",
-                    return_value="example-app",
+                    side_effect=["example-app", "", "", ""],
                 ),
                 patch(
                     "alliance_platform.dev.install_project.Confirm.ask",

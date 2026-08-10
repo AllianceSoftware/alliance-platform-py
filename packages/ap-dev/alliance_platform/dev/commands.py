@@ -73,17 +73,36 @@ class CommandDelegates:
             raise DevError(f"Missing command '{argv[0]}'") from error
         raise AssertionError("exec unexpectedly returned")
 
+    def _verification_command(self, name: str, configured: Sequence[str]) -> Sequence[str]:
+        if not configured:
+            raise DevError(
+                f"{name} is not configured for this project. "
+                f"Set {name}_command in config/dev.toml, then run {invocation_name()} doctor."
+            )
+        return configured
+
     def test(self, args: Sequence[str]) -> NoReturn:
-        self._exec_argv(self.config.test_command, args, verification=True)
+        self._exec_argv(
+            self._verification_command("test", self.config.test_command),
+            args,
+            verification=True,
+        )
 
     def jstest(self, args: Sequence[str]) -> NoReturn:
-        self._exec_argv(self.config.jstest_command, args)
+        self._exec_argv(self._verification_command("jstest", self.config.jstest_command), args)
 
     def lint(self, args: Sequence[str]) -> NoReturn:
-        self._exec_argv(self.config.lint_command, args, verification=True)
+        self._exec_argv(
+            self._verification_command("lint", self.config.lint_command),
+            args,
+            verification=True,
+        )
 
     def check(self) -> NoReturn:
-        self._exec_argv(self.config.check_command, verification=True)
+        self._exec_argv(
+            self._verification_command("check", self.config.check_command),
+            verification=True,
+        )
 
     def run(
         self,

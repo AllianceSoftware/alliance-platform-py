@@ -6,6 +6,7 @@ import errno
 import http.client
 import json
 from json import JSONDecodeError
+import os
 from pathlib import Path
 import signal
 import socket
@@ -1159,6 +1160,48 @@ class DevEnvironment:
             base_host = self._runtime_view(state).dev_base_host
         return self.database.run_manage(args, dev_base_host=base_host).returncode
 
+    def _verification_command_check(
+        self,
+        name: str,
+        configured: tuple[str, ...],
+    ) -> DoctorCheck:
+        setting = f"{name}_command"
+        if not configured:
+            return DoctorCheck(
+                f"command:{name}",
+                "warning",
+                f"not configured; set {setting} in config/dev.toml",
+            )
+        executable = configured[0]
+        if Path(executable).is_absolute() or "/" in executable:
+            path = Path(executable)
+            if not path.is_absolute():
+                path = self.repo / path
+            path = path.resolve()
+            if not path.is_file():
+                return DoctorCheck(
+                    f"command:{name}",
+                    "error",
+                    f"configured entry point does not exist: {path}",
+                )
+            if not os.access(path, os.X_OK):
+                return DoctorCheck(
+                    f"command:{name}",
+                    "error",
+                    f"configured entry point is not executable: {path}",
+                )
+            detail = str(path)
+        else:
+            resolved = self.runner.which(executable, self.environment)
+            if resolved is None:
+                return DoctorCheck(
+                    f"command:{name}",
+                    "error",
+                    f"configured entry point is not on PATH: {executable}",
+                )
+            detail = resolved
+        return DoctorCheck(f"command:{name}", "ok", detail)
+
     def doctor_report(self) -> DoctorReport:
         tools = tuple(
             ToolRecord(command, self.runner.which(command, self.environment))
@@ -1191,6 +1234,15 @@ class DevEnvironment:
                     detail=tool.path or ("optional; not installed" if optional else "not found on PATH"),
                 )
             )
+        checks.extend(
+            self._verification_command_check(name, command)
+            for name, command in (
+                ("test", self.config.test_command),
+                ("jstest", self.config.jstest_command),
+                ("lint", self.config.lint_command),
+                ("check", self.config.check_command),
+            )
+        )
         checks.append(
             DoctorCheck(
                 name="dropdb:force",

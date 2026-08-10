@@ -60,6 +60,9 @@ SHARED = "local"
             self.assertEqual(config.vite_port_base, 5300)
             self.assertEqual(config.portless, "off")
             self.assertEqual(config.database_template_strategy, "default")
+            self.assertEqual(config.jstest_command, ())
+            self.assertEqual(config.lint_command, ())
+            self.assertEqual(config.check_command, ())
             self.assertEqual(config.createdevdata_args, ("global", "value with spaces"))
             self.assertEqual(
                 config.environment,
@@ -174,6 +177,7 @@ class ConfigValidationTests(unittest.TestCase):
                 "default.*wal_log.*file_copy",
             ),
             "empty command": ("django_command = []\n", "must not be empty"),
+            "optional command string": ('check_command = "bin/check.sh"\n', "must be list"),
             "zero timeout": ("startup_timeout = 0\n", "must be a positive number"),
             "invalid environment name": (
                 '[environment]\n"BAD-NAME" = "value"\n',

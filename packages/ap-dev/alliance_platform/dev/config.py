@@ -48,10 +48,10 @@ DEFAULTS: dict[str, Any] = {
     "django_cwd": "django-root",
     "vite_cwd": ".",
     "manage_command": ["uv", "run", "python", "manage.py"],
-    "test_command": ["bin/run-tests-django.sh"],
-    "jstest_command": ["bin/run-tests-frontend.sh"],
-    "lint_command": ["bin/lint.sh"],
-    "check_command": ["bin/check.sh"],
+    "test_command": [],
+    "jstest_command": [],
+    "lint_command": [],
+    "check_command": [],
     "django_command": ["uv", "run", "python", "manage.py", "runserver"],
     "vite_command": ["yarn", "dev"],
     "startup_timeout": 60.0,
@@ -81,14 +81,16 @@ RESERVED_ENVIRONMENT_NAMES = {
 }
 
 CWD_KEYS = {"django_cwd", "vite_cwd"}
-COMMAND_KEYS = {
+REQUIRED_COMMAND_KEYS = {
     "manage_command",
+    "django_command",
+    "vite_command",
+}
+OPTIONAL_COMMAND_KEYS = {
     "test_command",
     "jstest_command",
     "lint_command",
     "check_command",
-    "django_command",
-    "vite_command",
 }
 
 
@@ -193,9 +195,12 @@ def validate_layer(value: dict[str, Any], path: Path, repo: Path, *, allow_proje
     for key in ("createdevdata_args", "db_prepare_command"):
         if key in value:
             _validate_string_list(value[key], f"{key} in {path}")
-    for key in COMMAND_KEYS:
+    for key in REQUIRED_COMMAND_KEYS:
         if key in value:
             _validate_string_list(value[key], f"{key} in {path}", allow_empty=False)
+    for key in OPTIONAL_COMMAND_KEYS:
+        if key in value:
+            _validate_string_list(value[key], f"{key} in {path}")
     for key in CWD_KEYS:
         if key in value:
             cwd = value[key]

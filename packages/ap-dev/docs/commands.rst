@@ -41,7 +41,8 @@ Foreground commands
 argv. ``check`` accepts no passthrough arguments. ``run [--cwd PATH] -- COMMAND ...`` replaces
 the current process with arbitrary argv inside the repository and supplies the managed
 worktree environment. These foreground commands are terminal: a successful invocation uses
-``exec`` rather than returning to the runner.
+``exec`` rather than returning to the runner. A verification command configured as an empty argv
+is disabled and reports the corresponding ``config/dev.toml`` setting when invoked.
 
 Configuration and initialization
 --------------------------------
@@ -51,6 +52,9 @@ Configuration and initialization
 ``$EDITOR``; user-owned layers are created privately. ``init-project REPOSITORY-NAME`` narrowly
 updates a template's project name and ID and intentionally runs before normal project-ID
 validation.
+
+``doctor`` reports disabled verification commands and validates each configured command's entry
+point in addition to checking the development environment dependencies.
 
 ``install [PATH]`` bootstraps an existing Django project before normal project discovery is
 available. It creates ``bin/dev`` and ``config/dev.toml``, discovers the Django working directory,

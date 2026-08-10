@@ -482,6 +482,31 @@ class CommandEnvironmentTests(unittest.TestCase):
 
 
 class DoctorTests(unittest.TestCase):
+    def test_doctor_reports_disabled_and_missing_verification_commands(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            repo = make_repo(
+                root / "repo",
+                config=(
+                    'test_command = ["uv", "run", "python", "django-root/manage.py", "test"]\n'
+                    'check_command = ["bin/missing-check.sh"]\n'
+                ),
+            )
+            config = load_config(repo, {"XDG_CONFIG_HOME": str(root / "xdg")})
+            identity = resolve_identity(repo, config)
+            runner = LifecycleRunner()
+            environment = {"HOME": str(root / "home")}
+            dev = make_dev_environment(runner, repo, config, identity, environment, environment)
+
+            checks = {check.name: check for check in dev.doctor_report().checks}
+
+            self.assertEqual(checks["command:test"].status, "ok")
+            self.assertEqual(checks["command:jstest"].status, "warning")
+            self.assertIn("not configured", checks["command:jstest"].detail)
+            self.assertEqual(checks["command:lint"].status, "warning")
+            self.assertEqual(checks["command:check"].status, "error")
+            self.assertIn("does not exist", checks["command:check"].detail)
+
     def test_doctor_reports_when_dropdb_cannot_force_connection_termination(self) -> None:
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
