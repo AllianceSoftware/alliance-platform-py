@@ -58,6 +58,12 @@ Configuration and initialization
 updates a template's project name and ID and intentionally runs before normal project-ID
 validation.
 
+Use ``config edit global`` for environment values that should apply to every worktree without
+copying a ``.env`` file. It edits the private
+``~/.config/alliance/dev/<project_id>/config.toml`` file; add values under ``[environment]``.
+``config edit worktree`` instead edits the ignored ``.dev-server/config.toml`` for only the current
+worktree.
+
 ``doctor`` reports disabled verification commands, validates each configured command's entry
 point, and checks that the required verification virtualenv is provisioned.
 

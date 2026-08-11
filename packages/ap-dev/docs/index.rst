@@ -55,6 +55,36 @@ owned by the application can still come from a worktree ``.env``, the invoking s
 user-level configuration layer. This keeps secret handling explicit while removing the repetitive
 runtime wiring that is safe to derive.
 
+Share environment values across every worktree
+-----------------------------------------------
+
+You do not need to copy the same ``.env`` into every worktree. Each project has a private,
+user-level configuration file outside all of its checkouts. Open it from any worktree with:
+
+.. code-block:: bash
+
+   bin/dev config edit global
+
+Add an ``environment`` table using TOML syntax:
+
+.. code-block:: toml
+
+   [environment]
+   DB_HOST = "localhost"
+   EXTERNAL_API_TOKEN = "..."
+
+The file is stored at
+``~/.config/alliance/dev/<project_id>/config.toml`` (or beneath ``XDG_CONFIG_HOME``), is created
+with private permissions, and is loaded for every worktree with that committed ``project_id``.
+This is the project-wide equivalent of a machine-local ``.env``; it is TOML rather than dotenv
+syntax and is not committed or copied into worktrees. Human developers and agents running as the
+same operating-system user receive the same values.
+
+Use ``bin/dev config paths`` to print the exact file location and ``bin/dev config show`` to check
+which layer supplied each variable. Values are redacted by default. An invoking shell can still
+override the shared value, and ``.dev-server/config.toml`` can override it for one worktree. Do not
+set generated values such as ``DB_NAME`` here—the runner owns those to preserve worktree isolation.
+
 What it brings
 --------------
 

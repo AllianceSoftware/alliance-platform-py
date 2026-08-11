@@ -11,6 +11,43 @@ Scalar and argv settings replace lower layers. ``environment`` tables merge by v
 ``config show`` reports the winning layer for every setting; environment values remain
 redacted unless explicitly requested from an interactive terminal.
 
+Shared environment outside worktrees
+------------------------------------
+
+The global layer is project-specific despite living outside the repository. Its directory is
+keyed by the committed ``project_id``, so one file supplies machine-local environment values to
+the main checkout and every Git worktree for that project:
+
+.. code-block:: bash
+
+   bin/dev config edit global
+
+.. code-block:: toml
+
+   [environment]
+   DB_HOST = "localhost"
+   SERVICE_API_KEY = "..."
+
+The default path is ``~/.config/alliance/dev/<project_id>/config.toml``. If
+``XDG_CONFIG_HOME`` is set, that directory replaces ``~/.config``. ``config edit global`` creates
+the file and its parent directories with private permissions. It is not committed and is not
+shared with other machines or operating-system users.
+
+This provides the behavior of a project-wide ``.env`` without placing a dotenv file in every
+worktree. The syntax is TOML and values belong under ``[environment]``. These values are supplied
+to Django, Vite, extra processes, and foreground commands. They are also available to database
+control operations. The invoking shell has final precedence, while a worktree-level
+``.dev-server/config.toml`` overrides the global layer but remains below the shell.
+
+``bin/dev config paths`` prints the resolved paths for all three layers. ``bin/dev config show``
+shows environment names and provenance while redacting their values. In an interactive terminal,
+``bin/dev config show --show-environment-values`` displays the effective values.
+
+The repository-root ``.env`` remains separate: ap-dev reads it for PostgreSQL control settings,
+and the application may load it through its normal settings machinery. Reserved generated values,
+including ``DB_NAME`` and worktree identity/port variables, cannot be configured in any
+``[environment]`` table.
+
 Settings
 --------
 
@@ -98,8 +135,8 @@ Python verification wrappers manage their own environment with commands such as 
 Configured working directories must stay inside the repository and exist when used.
 ``startup_timeout`` controls readiness. ``extra_processes`` entries contain ``name``, ``command``,
 optional ``cwd``, and optional ``required``. The ``environment`` table supplies non-secret project
-overrides; application secrets remain in ``.env`` and are loaded only for control/database
-operations.
+defaults in committed configuration. Put private machine-local values in the global layer or use
+the application's established secret mechanism.
 
 Launcher and generated worktree variables, including ``VIRTUAL_ENV``, are reserved and cannot be
 set through the ``environment`` table.
