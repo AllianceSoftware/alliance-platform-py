@@ -171,10 +171,10 @@ def build_parser() -> argparse.ArgumentParser:
         ("test", "run Django tests"),
         ("jstest", "run Vitest once"),
         ("lint", "delegate to the repository lint command"),
+        ("check", "run the complete local Definition-of-Done gate"),
     ):
         command = subparsers.add_parser(name, help=help_text)
         command.add_argument("args", nargs=argparse.REMAINDER)
-    subparsers.add_parser("check", help="run the complete local Definition-of-Done gate")
 
     init_project = subparsers.add_parser("init-project", help="replace template project identity")
     init_project.add_argument("repository_name")
@@ -655,7 +655,7 @@ def _print_doctor(report: DoctorReport, *, as_json: bool) -> None:
 
 def dispatch(argv: list[str], parser: argparse.ArgumentParser | None = None) -> int:
     parser = build_parser() if parser is None else parser
-    passthrough = {"manage", "test", "jstest", "lint"}
+    passthrough = {"manage", "test", "jstest", "lint", "check"}
     command_index = 0
     if argv[:1] == ["--project-dir"]:
         if len(argv) < 2:
@@ -781,7 +781,7 @@ def dispatch(argv: list[str], parser: argparse.ArgumentParser | None = None) -> 
     elif command == "lint":
         commands.lint(args.args)
     elif command == "check":
-        commands.check()
+        commands.check(args.args)
     elif command == "config":
         return _handle_config(context, args)
     else:

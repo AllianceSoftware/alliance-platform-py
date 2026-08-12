@@ -468,7 +468,7 @@ class CommandLineInteractionTests(unittest.TestCase):
             context = Context(repo, config, identity, {}, {})
             native_args = ["--help", "--json", "argument with spaces", "$(not-executed)"]
 
-            for verb in ("test", "jstest", "lint"):
+            for verb in ("test", "jstest", "lint", "check"):
                 with (
                     self.subTest(verb=verb),
                     patch("alliance_platform.dev.cli.make_context", return_value=context),
@@ -697,10 +697,15 @@ class CommandDelegateTests(unittest.TestCase):
             verification=True,
         )
 
-    def test_check_delegates_to_the_authoritative_script(self) -> None:
+    def test_check_delegates_to_the_authoritative_script_with_native_arguments(self) -> None:
         delegates = self.delegates()
+        arguments = ["--all", "--step", "django"]
 
-        self.assert_exec(delegates.check, ("bin/check.sh",), verification=True)
+        self.assert_exec(
+            lambda: delegates.check(arguments),
+            ("bin/check.sh", *arguments),
+            verification=True,
+        )
 
     def test_disabled_verification_command_has_an_actionable_error(self) -> None:
         config = replace(self.config, check_command=())
@@ -710,7 +715,7 @@ class CommandDelegateTests(unittest.TestCase):
             DevError,
             "check is not configured.*Set check_command in config/dev.toml.*doctor",
         ):
-            delegates.check()
+            delegates.check([])
 
     def test_missing_project_virtualenv_fails_before_executing_verification_script(self) -> None:
         (self.repo / ".venv" / "bin" / "python").unlink()
