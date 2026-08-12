@@ -116,9 +116,10 @@ class CommandDelegates:
             python_verification=True,
         )
 
-    def check(self) -> NoReturn:
+    def check(self, args: Sequence[str]) -> NoReturn:
         self._exec_argv(
             self._verification_command("check", self.config.check_command),
+            args,
             verification=True,
             python_verification=True,
         )
