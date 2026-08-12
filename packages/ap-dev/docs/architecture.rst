@@ -76,8 +76,7 @@ operations, while application processes remain responsible for their normal sett
 Application secrets are not loaded into the ``uvx`` environment that installs the runner.
 
 Generated values such as ``DB_NAME``/``PGDATABASE``, service ports, worktree identity, and
-``DEV_BASE_HOST`` take precedence where required for isolation. Keep application secrets in the
-project's established secret mechanism rather than committing them to ``config/dev.toml``.
+``DEV_BASE_HOST`` take precedence where required for isolation.
 
 Compatibility and cleanup
 -------------------------
@@ -86,7 +85,8 @@ Stopping an environment leaves its database available for the next ``up``. Use
 ``bin/dev down --drop-db`` for a clean reset, with ``--yes`` in non-interactive automation.
 Prefer dropping the database before removing a worktree. If the worktree is removed first, its
 machine-wide registry record retains the database name and ownership information needed by
-``bin/dev env remove``; do not put passwords or other application configuration in that record.
+``bin/dev env remove``.
+
 Before adopting a release with documented compatibility changes, stop active environments and
 follow its changelog instructions. Invalid worktree state under ``.dev-server`` can be regenerated
 after confirming that no interrupted database setup needs recovery.

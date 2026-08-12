@@ -282,7 +282,7 @@ The command receives the generated database environment. When Portless is select
 receives ``DEV_BASE_HOST``, containing the worktree's bare hostname.
 
 For example, a multi-tenant application may store one ``http_host`` per organisation. Its normal
-seed data might use canonical hosts such as ``council-a.my-project.localhost``. A small,
+seed data might use canonical hosts such as ``org-a.my-project.localhost``. A small,
 project-owned ``prepare_worktree_db`` command can preserve the organisation prefix while replacing
 the canonical suffix with the current ``DEV_BASE_HOST``. The result is that every organisation in
 every worktree remains reachable through a unique Portless subdomain, without manually editing
@@ -315,9 +315,11 @@ arrays so every human and agent starts the same required stack:
    cwd = "django-root"
    required = true
 
-Required processes participate in readiness and failure reporting. Optional supporting processes
-can set ``required = false``. Commands are passed as argv rather than interpolated into shell
-source.
+Every configured extra process is started. ``required`` defaults to ``true``; if a required
+process exits, ``up`` fails and the environment is not considered ready. Set ``required = false``
+for a supporting process whose failure should not block startup or readiness. Its failure remains
+visible in ``status`` and its logs, but it is not restarted automatically. Commands are passed as
+argv rather than interpolated into shell source.
 
 Reference
 ---------

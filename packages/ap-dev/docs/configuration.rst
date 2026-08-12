@@ -51,10 +51,76 @@ including ``DB_NAME`` and worktree identity/port variables, cannot be configured
 Settings
 --------
 
-``project_id`` is a committed lowercase slug. Port allocation uses ``django_port_base`` and
-``vite_port_base``. ``portless`` is ``auto``, ``off``, or ``required``. Database setup uses
-``database_template``, ``database_template_strategy``, ``createdevdata_args``, and
-``db_prepare_command``.
+.. list-table::
+   :header-rows: 1
+   :widths: 24 56 20
+
+   * - Setting
+     - Description
+     - Default
+   * - ``project_id``
+     - Committed lowercase slug that identifies the project across all of its worktrees.
+     - Required; no default
+   * - ``django_port_base``
+     - First port considered when allocating a port for Django.
+     - ``8000``
+   * - ``vite_port_base``
+     - First port considered when allocating a port for Vite.
+     - ``5173``
+   * - ``portless``
+     - Portless mode: ``auto``, ``off``, or ``required``.
+     - ``"auto"``
+   * - ``database_template``
+     - PostgreSQL database to clone when creating a worktree database.
+     - ``""`` (disabled)
+   * - ``database_template_strategy``
+     - PostgreSQL clone strategy: ``default``, ``wal_log``, or ``file_copy``.
+     - ``"default"``
+   * - ``createdevdata_args``
+     - Extra arguments passed to the ``createdevdata`` management command.
+     - ``[]``
+   * - ``db_prepare_command``
+     - Management-command arguments to run after creating a worktree database.
+     - ``[]`` (disabled)
+   * - ``django_cwd``
+     - Repository-relative working directory for Django commands.
+     - ``"django-root"``
+   * - ``vite_cwd``
+     - Repository-relative working directory for Vite commands.
+     - ``"."``
+   * - ``verification_virtualenv``
+     - Repository-relative virtualenv used by Python-backed verification commands.
+     - ``".venv"``
+   * - ``manage_command``
+     - Command prefix used to invoke Django management commands.
+     - ``["uv", "run", "python", "manage.py"]``
+   * - ``django_command``
+     - Command used to start the Django development server.
+     - ``["uv", "run", "python", "manage.py", "runserver"]``
+   * - ``vite_command``
+     - Command used to start the Vite development server.
+     - ``["yarn", "dev"]``
+   * - ``test_command``
+     - Command delegated to by ``bin/dev test``.
+     - ``[]`` (disabled)
+   * - ``jstest_command``
+     - Command delegated to by ``bin/dev jstest``.
+     - ``[]`` (disabled)
+   * - ``lint_command``
+     - Command delegated to by ``bin/dev lint``.
+     - ``[]`` (disabled)
+   * - ``check_command``
+     - Command delegated to by ``bin/dev check``.
+     - ``[]`` (disabled)
+   * - ``startup_timeout``
+     - Seconds to wait for required processes to become ready.
+     - ``60.0``
+   * - ``environment``
+     - Environment variables supplied to managed and foreground commands.
+     - ``{}``
+   * - ``extra_processes``
+     - Additional processes to run alongside Django and Vite.
+     - ``[]``
 
 When ``database_template`` is set, a missing worktree database is cloned from that PostgreSQL
 database and ``createdevdata`` is skipped. Migrations still run. ``db_prepare_command`` is a list
@@ -64,51 +130,9 @@ worktree hostname in ``DEV_BASE_HOST``. ``up`` prints and times database cloning
 development-data creation, and worktree-specific preparation so long-running setup remains
 visible.
 
-.. _faster-template-database-clones:
-
-Faster template database clones
--------------------------------
-
-By default, the runner lets PostgreSQL select the strategy used to clone ``database_template``.
-For a local or otherwise dedicated PostgreSQL server, ``FILE_COPY`` can be selected explicitly:
-
-.. code-block:: toml
-
-   database_template = "my_project_dev_template"
-   database_template_strategy = "file_copy"
-
-The supported values are ``default``, ``wal_log``, and ``file_copy``. Non-default values require
-PostgreSQL 15 or newer and are passed to ``createdb --strategy``.
-
-``FILE_COPY`` can be much faster for large templates, but it forces a checkpoint before and after
-the copy. Those checkpoints affect the whole PostgreSQL cluster, so this strategy is intended for
-local or dedicated development servers, not a shared or production-like server.
-
-On PostgreSQL 18 or newer, ``FILE_COPY`` can use filesystem copy-on-write cloning when the server
-has ``file_copy_method = clone`` and its data directory is on a compatible filesystem. Without
-that server setting and filesystem support, ``FILE_COPY`` still performs a regular file copy. See
-the PostgreSQL documentation for `CREATE DATABASE strategy
-<https://www.postgresql.org/docs/current/sql-createdatabase.html>`_ and
-`file_copy_method <https://www.postgresql.org/docs/current/runtime-config-resource.html>`_.
-
-Project layout and commands are controlled by:
-
-.. code-block:: toml
-
-   django_cwd = "django-root"
-   vite_cwd = "."
-   verification_virtualenv = ".venv"
-   manage_command = ["uv", "run", "python", "manage.py"]
-   django_command = ["uv", "run", "python", "manage.py", "runserver"]
-   vite_command = ["yarn", "dev"]
-   test_command = ["bin/run-tests-django.sh"]
-   jstest_command = ["bin/run-tests-frontend.sh"]
-   lint_command = ["bin/lint.sh"]
-   check_command = ["bin/check.sh"]
-
-Commands are argv arrays and never joined shell strings. ``manage_command``, ``django_command``,
-and ``vite_command`` must be non-empty. The four verification delegates may be empty to disable
-verbs that the project has not configured:
+Command settings are argv arrays and never joined shell strings. ``manage_command``,
+``django_command``, and ``vite_command`` must be non-empty. The four verification delegates may
+be empty to disable verbs that the project has not configured:
 
 .. code-block:: toml
 
@@ -140,3 +164,30 @@ the application's established secret mechanism.
 
 Launcher and generated worktree variables, including ``VIRTUAL_ENV``, are reserved and cannot be
 set through the ``environment`` table.
+
+.. _faster-template-database-clones:
+
+Faster template database clones
+-------------------------------
+
+By default, the runner lets PostgreSQL select the strategy used to clone ``database_template``.
+For a local or otherwise dedicated PostgreSQL server, ``FILE_COPY`` can be selected explicitly:
+
+.. code-block:: toml
+
+   database_template = "my_project_dev_template"
+   database_template_strategy = "file_copy"
+
+The supported values are ``default``, ``wal_log``, and ``file_copy``. Non-default values require
+PostgreSQL 15 or newer and are passed to ``createdb --strategy``.
+
+``FILE_COPY`` can be much faster for large templates, but it forces a checkpoint before and after
+the copy. Those checkpoints affect the whole PostgreSQL cluster, but given this is a dev tool this
+is mostly fine.
+
+On PostgreSQL 18 or newer, ``FILE_COPY`` can use filesystem copy-on-write cloning when the server
+has ``file_copy_method = clone`` and its data directory is on a compatible filesystem. Without
+that server setting and filesystem support, ``FILE_COPY`` still performs a regular file copy. See
+the PostgreSQL documentation for `CREATE DATABASE strategy
+<https://www.postgresql.org/docs/current/sql-createdatabase.html>`_ and
+`file_copy_method <https://www.postgresql.org/docs/current/runtime-config-resource.html>`_.
