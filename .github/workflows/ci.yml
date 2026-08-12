@@ -18,10 +18,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
+          prune-cache: true
       - name: Set up Python
         run: uv python install ${{ matrix.python-version }}
       - name: Install project
@@ -81,10 +82,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
+          prune-cache: true
 
       - name: Set up Python
         run: uv python install ${{ matrix.python-version }}
@@ -181,10 +183,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
+          prune-cache: true
       - name: Set up Python
         run: uv python install ${{ matrix.python-version }}
       - name: Install tmux on Ubuntu
