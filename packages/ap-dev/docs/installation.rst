@@ -1,10 +1,94 @@
 Installation
 ============
 
-Supported platforms are macOS and Linux with Python 3.11 or newer. Projects also require
-``uv``, PostgreSQL client tools (``psql``, ``createdb``, and ``dropdb``), ``tmux``, Node.js,
-Yarn, and the project-specific Django and Vite commands. Portless is optional unless configured
-as required.
+These instructions target macOS and assume an existing Git repository containing a Django and
+Vite project. ``alliance-platform-dev`` requires Python 3.11 or newer; ``uv`` can download a
+compatible Python automatically when necessary.
+
+Prerequisites
+-------------
+
+The runner checks its dependencies with ``bin/dev doctor`` after it has been installed.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 18 16 66
+
+   * - Dependency
+     - Requirement
+     - Purpose
+   * - ``uv``
+     - Required
+     - Runs the pinned ``alliance-platform-dev`` release and provisions the project environment.
+   * - PostgreSQL
+     - Required
+     - Use `Postgres.app <https://postgresapp.com/>`_ on macOS rather than a Homebrew-managed
+       PostgreSQL installation.
+   * - ``tmux``
+     - Required
+     - Hosts Django, Vite, and extra processes in a worktree-specific background session.
+   * - Node.js and Yarn
+     - Required
+     - Run Vite and install frontend dependencies. Use the Node.js version selected by the
+       project; the standard project template uses Node.js 20.
+   * - Portless
+     - Optional
+     - Provides stable HTTPS ``*.localhost`` URLs. Without it, Django remains available on an
+       allocated ``http://localhost:<port>`` URL.
+
+Install ``uv`` by following the `official installation instructions
+<https://docs.astral.sh/uv/getting-started/installation/>`_. Install ``tmux`` with
+`Homebrew <https://brew.sh/>`_:
+
+.. code-block:: bash
+
+   brew install tmux
+
+Confirm that ``tmux`` is available:
+
+.. code-block:: bash
+
+   tmux -V
+
+Use the project's existing Node.js version manager. For a project with an ``.nvmrc`` file, for
+example:
+
+.. code-block:: bash
+
+   nvm install
+   nvm use
+   corepack enable
+   node --version
+   yarn --version
+
+Optional: install Portless
+--------------------------
+
+Install Portless globally after Node.js is available:
+
+.. code-block:: bash
+
+   npm install --global portless
+   portless trust
+
+To start the proxy
+
+.. code-block:: bash
+
+    portless proxy start --https --wildcard
+
+``--wildcard`` can be useful if you have multi-tenant setup where different tenants get a different subdomain.
+
+Portless creates and trusts a local certificate authority and runs its HTTPS proxy on port 443,
+so macOS may request administrator approval unless you explicitly use an unprivileged port with the ``--port`` option.
+
+The default ``portless = "auto"`` policy uses Portless when a compatible CLI is installed and
+otherwise falls back to allocated localhost ports. Set it to ``"off"`` when the project should
+never use Portless, or ``"required"`` when startup should fail rather than fall back. See
+:doc:`configuration` for the full setting reference.
+
+Install into a project
+----------------------
 
 From the root of an existing Django project, run the installer from PyPI:
 
@@ -30,47 +114,14 @@ The generated ``bin/dev`` launcher pins the installed package version, so every 
 worktree uses the same release without adding it to the application's Python environment. Commit
 both ``bin/dev`` and ``config/dev.toml``.
 
-Launcher cache and first run
-----------------------------
-
-The launcher runs the tool through ``uvx --isolated`` but retains uv's cache between invocations.
-Its default cache is ``${TMPDIR:-/tmp}/alliance-dev-$UID/uv-cache``: a user-scoped temporary
-location that remains writable in managed worktree sandboxes and can be shared by worktrees on
-the same machine. ``ALLIANCE_DEV_UV_CACHE_DIR`` overrides this launcher default; when it is not
-set, the standard ``UV_CACHE_DIR`` override is respected. Operating systems may eventually clean
-temporary directories, after which the next invocation bootstraps the cache again.
-
-The first invocation with an uncached source still needs network access for the package and any
-missing dependencies. Subsequent invocations can reuse the isolated tool environment and cached
-artifacts without contacting the package index.
-
-A local path supplied by the generated launcher or ``ALLIANCE_DEV_TOOL_SOURCE`` is mutable while
-its requirement string remains unchanged. ``uvx`` can consequently retain a stale tool environment
-for that path. For local paths and ``file://`` URLs, the launcher instead uses
-``uv run --isolated --no-project --with-editable``. The environment remains separate from the
-application, but imports ap-dev directly from the checkout so committed and uncommitted source
-changes are visible immediately. uv continues to reuse cached build and runtime dependencies.
-The launcher first probes that environment in offline mode. Once it is provisioned, normal local
-invocations remain offline and avoid package-index or DNS delays. If the probe finds that the tool,
-build backend, or another required artifact is absent, the launcher retries the requested command
-online to bootstrap it. A failed delegated command is not retried.
-Git URLs and versioned PyPI requirements retain the normal ``uvx`` cache policy; use an immutable
-Git revision when reproducibility matters.
-
-Published Alliance Platform Dev releases include a Python wheel. Installing that compatible wheel
-does not invoke the project's PEP 517 build backend (``pdm-backend``), although the first uncached
-installation still needs network access for the wheel and its runtime dependencies. A source
-distribution or local source checkout does require its build backend when that dependency is not
-already cached.
-
 If the project has ``.husky/pre-commit`` or ``.husky/pre-push``, the interactive installer offers
 to route their final project command through ``bin/run-with-dev-env-if-managed``. Accept this so
 hooks run against the current worktree's generated database and environment whenever that
 worktree has been started. Message-only hooks such as ``commit-msg`` and
 ``prepare-commit-msg`` are left unchanged.
 
-Post-install setup
-------------------
+Configure and start the project
+-------------------------------
 
 Review the verification-command summary and generated arrays in ``config/dev.toml``. An empty
 ``test_command``, ``jstest_command``, ``lint_command``, or ``check_command`` disables that verb;
@@ -80,7 +131,8 @@ warnings and configured entry points that are missing or non-executable as error
 commands work without manually sourcing ``.venv/bin/activate`` after dependencies are provisioned
 with ``uv sync``. An intentionally active caller virtualenv still takes precedence.
 
-In the development settings module, normally ``dev.py``, add the settings printed by the installer:
+When using Portless, add the settings printed by the installer to the development settings module,
+normally ``dev.py``:
 
 .. code-block:: python
 
@@ -98,7 +150,7 @@ These settings trust Portless development origins, preserve the browser hostname
 subdomain or tenant routing, and tell Django when the original browser request was HTTPS. Keep
 them in development settings, where Portless is the trusted proxy.
 
-Then verify the installation and start the environment:
+Provision the project dependencies, verify the complete setup, and start the environment:
 
 .. code-block:: bash
 
@@ -106,6 +158,10 @@ Then verify the installation and start the environment:
    bin/dev doctor
    bin/dev up
    bin/dev url
+
+The first uncached ``bin/dev`` invocation needs network access to obtain the pinned tool release.
+``doctor`` reports missing required tools as errors and a missing optional Portless installation as
+a warning when the policy is ``"auto"``.
 
 Git hooks
 ---------
@@ -129,3 +185,19 @@ Upgrading
 The exact package version in ``bin/dev`` is the project's tool version. Upgrade it deliberately,
 review the package changelog, update that pin, and commit the launcher change so the whole team
 adopts the release together.
+
+Launcher implementation notes
+-----------------------------
+
+Most users do not need to configure the launcher. It runs the pinned tool through an isolated
+``uvx`` environment and keeps a user-scoped cache under
+``${TMPDIR:-/tmp}/alliance-dev-$UID/uv-cache``. The operating system may eventually clear that
+cache, in which case the next invocation downloads the tool again. Set
+``ALLIANCE_DEV_UV_CACHE_DIR`` to override this location; the standard ``UV_CACHE_DIR`` is used when
+the launcher-specific variable is unset.
+
+For package development, a local path or ``file://`` source supplied through
+``ALLIANCE_DEV_TOOL_SOURCE`` is loaded as an isolated editable installation so uncommitted source
+changes are visible. The launcher probes an already provisioned local environment offline and
+only retries online when a required build or runtime artifact is missing. Git and PyPI sources use
+normal ``uvx`` caching; use an immutable Git revision when reproducibility matters.
