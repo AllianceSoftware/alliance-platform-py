@@ -138,6 +138,15 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
     def get_resources_for_bundling(self) -> list[FrontendResource]:
         return self.resolve_component_resources()
 
+    def get_resources_to_embed(self) -> list[FrontendResource]:
+        """Return resources that should be embedded into the rendered document.
+
+        Resource discovery and document embedding usually use the same resources, so the default
+        preserves that behaviour. Renderers with build-only dependencies can override this hook
+        without removing those dependencies from :meth:`get_resources_for_bundling`.
+        """
+        return self.get_resources_for_bundling()
+
     def get_slot_name(self) -> str | None:
         return self.slot_name
 
@@ -372,7 +381,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         return merge_slot_props(slot_context.get(slot_name), child_props)
 
     def _queue_resources(self):
-        for item in self.bundler.get_embed_items(self.get_resources_for_bundling()):
+        for item in self.bundler.get_embed_items(self.get_resources_to_embed()):
             self.bundler_asset_context.queue_embed_file(item)
 
     def _render_tag(self, tag_name: str, attrs: dict[str, Any], children_html: str = "") -> str:

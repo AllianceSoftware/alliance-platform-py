@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+import json
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import cast
 from unittest import mock
 import warnings
@@ -13,6 +16,7 @@ from alliance_platform.ui.templatetags.alliance_platform.html_components.compone
 )
 from allianceutils.auth.permission import AmbiguousGlobalPermissionWarning
 from allianceutils.tests.util import warning_filter
+from django.conf import settings
 from django.contrib.sessions.backends.base import SessionBase
 from django.http import HttpRequest
 from django.template import Context
@@ -27,6 +31,8 @@ from tests.parity.base import HtmlUIParityTestCase
 from tests.parity.base import test_development_bundler
 from tests.parity.style_mocks import make_style_mapping_resolver
 from tests.test_utils import override_ap_frontend_settings
+from tests.test_utils.bundler import TestViteBundler
+from tests.test_utils.bundler import bundler_kwargs
 from tests.test_utils.bundler import bypass_frontend_resource_registry
 
 BASIC_MENUBAR_TEMPLATE = (
@@ -615,6 +621,107 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
                 any(path.endswith(expected) for path in resource_paths),
                 f"{expected} not found in {resource_paths}",
             )
+
+    def test_collected_assets_document_does_not_embed_chevron_images(self):
+        with self.setup_render_context():
+            output = self.render_ui_document(BASIC_MENUBAR_TEMPLATE)
+
+        self.assertEqual(output.count("<svg"), 1)
+        self.assertNotIn("<img", output)
+        self.assertIn("Menubar.attach.ts", output)
+        self.assertIn('<script type="module">', output)
+        self.assertIn("Menubar_menubar", output)
+
+    def test_collected_assets_document_with_explicit_icon_has_only_inline_svgs(self):
+        template = (
+            '{% ui "menubar" aria_label="Primary navigation" %}'
+            '{% ui "menubar_item" href="/settings/" text_value="Settings" %}'
+            '{% ui "icon" name="Pencil01Outlined" %}{% endui %}'
+            "Settings"
+            "{% endui %}"
+            '{% ui "menubar_submenu" key="users" title="Users" %}'
+            '{% ui "menubar_item" href="/users/" %}Users{% endui %}'
+            "{% endui %}"
+            "{% endui %}"
+        )
+        with self.setup_render_context():
+            output = self.render_ui_document(template)
+
+        self.assertEqual(output.count("<svg"), 2)
+        self.assertNotIn("<img", output)
+        self.assertIn("Icon_sizes_xs", output)
+        self.assertIn("Menubar.attach.ts", output)
+
+    def test_collected_assets_document_in_production_keeps_chevrons_build_only(self):
+        manifest: dict[str, dict[str, object]] = {}
+        style_paths = (
+            "@alliancesoftware/ui/components/menu-bar/Menubar.css.ts",
+            "@alliancesoftware/ui/components/overlay/Popover.css.ts",
+            "@alliancesoftware/icons/Icon.css.ts",
+        )
+        runtime_path = "@alliancesoftware/ui/components/menu-bar/Menubar.attach.ts"
+
+        with TemporaryDirectory() as temp_dir:
+            build_dir = Path(temp_dir)
+            assets_dir = build_dir / "assets"
+            assets_dir.mkdir(parents=True)
+            for style_path in style_paths:
+                style_name = Path(style_path).name.removesuffix(".css.ts")
+                manifest[style_path] = {
+                    "file": f"assets/{style_name}-built.js",
+                    "src": style_path,
+                    "css": [f"assets/{style_name}-built.css"],
+                }
+            manifest[runtime_path] = {
+                "file": "assets/Menubar.attach-built.js",
+                "src": runtime_path,
+            }
+
+            for icon_name in (
+                "ChevronDownOutlined",
+                "ChevronRightOutlined",
+                "ChevronUpOutlined",
+            ):
+                icon_source = (
+                    Path(__file__).resolve().parent / f"fixtures/icons/static-svg/outlined/{icon_name}.svg"
+                )
+                icon_manifest_path = str(icon_source.relative_to(settings.PROJECT_DIR))
+                built_icon_path = assets_dir / f"{icon_name}-built.svg"
+                built_icon_path.write_text(icon_source.read_text())
+                manifest[icon_manifest_path] = {
+                    "file": f"assets/{built_icon_path.name}",
+                    "src": icon_manifest_path,
+                }
+
+            (build_dir / "manifest.json").write_text(json.dumps(manifest))
+            production_bundler = TestViteBundler(
+                **{**bundler_kwargs, "build_dir": build_dir, "mode": "production"}
+            )
+
+            with override_ap_frontend_settings(BUNDLER=production_bundler):
+                with BundlerAssetContext(
+                    skip_checks=True,
+                    frontend_resource_registry=bypass_frontend_resource_registry,
+                ) as asset_context:
+                    with mock.patch(
+                        "alliance_platform.ui.templatetags.alliance_platform.html_components.base.resolve_vanilla_extract_class_mapping",
+                        side_effect=make_style_mapping_resolver(),
+                    ):
+                        output = self.render_ui_document(BASIC_MENUBAR_TEMPLATE)
+                    resource_paths = [
+                        str(resource.path) for resource in asset_context.get_resources_for_bundling()
+                    ]
+
+        self.assertEqual(output.count("<svg"), 1)
+        self.assertNotIn("<img", output)
+        self.assertIn("/static/assets/Menubar.attach-built.js", output)
+        self.assertIn("/static/assets/Menubar-built.css", output)
+        for icon_name in (
+            "ChevronDownOutlined.svg",
+            "ChevronRightOutlined.svg",
+            "ChevronUpOutlined.svg",
+        ):
+            self.assertTrue(any(path.endswith(icon_name) for path in resource_paths))
 
     def test_resource_discovery_does_not_require_asset_context(self):
         # The dispatcher resolves resources through renderers created with register_asset=False;

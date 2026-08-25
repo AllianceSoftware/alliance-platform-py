@@ -48,6 +48,7 @@ from django.utils.html import strip_tags
 from django.utils.safestring import mark_safe
 
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
+from alliance_platform.frontend.bundler.frontend_resource import ImageResource
 from alliance_platform.ui.icons import get_static_icon_resource
 
 from ..base import BaseHtmlUIComponentRenderer
@@ -459,6 +460,15 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
         if runtime_resource is not None:
             resources.append(runtime_resource)
         return resources
+
+    def get_resources_to_embed(self) -> list[FrontendResource]:
+        # Chevron SVGs are read and rendered inline by render_static_icon. They must remain in
+        # resource discovery for production builds without becoming standalone image elements.
+        return [
+            resource
+            for resource in self.get_resources_for_bundling()
+            if not isinstance(resource, ImageResource)
+        ]
 
     def _resolve_runtime_resource(self) -> FrontendResource | None:
         runtime_path = self.resolve_optional_resource_path(

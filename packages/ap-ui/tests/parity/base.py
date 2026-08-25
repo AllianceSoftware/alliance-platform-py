@@ -56,6 +56,18 @@ class HtmlUIParityTestCase(SimpleTestCase):
         context_obj.template = template_obj
         return template_obj.render(context_obj)
 
+    def render_ui_document(self, template_body: str, context_kwargs: dict[str, Any] | None = None) -> str:
+        """Render and post-process a complete document with collected assets embedded."""
+        template_obj = Template(
+            "{% load alliance_platform.ui bundler %}"
+            "<html><head>{% bundler_embed_collected_assets %}</head>"
+            f"<body>{template_body}</body></html>"
+        )
+        context_obj = Context(context_kwargs or {})
+        context_obj.template = template_obj
+        output = template_obj.render(context_obj)
+        return BundlerAssetContext.get_current().post_process(output)
+
     def assert_parity_case(self, case: dict[str, Any], context_kwargs: dict[str, Any] | None = None):
         with self.setup_render_context() as _asset_context:
             with warnings.catch_warnings(record=True) as caught_warnings:

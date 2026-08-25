@@ -1,13 +1,22 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest import mock
 import warnings
 
+from alliance_platform.frontend.bundler.context import BundlerAssetContext
 from alliance_platform.ui.icons import reset_static_icon_cache
+from django.conf import settings
 from django.template import TemplateSyntaxError
 
 from tests.parity.base import HtmlUIParityTestCase
+from tests.parity.style_mocks import make_style_mapping_resolver
+from tests.test_utils import override_ap_frontend_settings
+from tests.test_utils.bundler import TestViteBundler
+from tests.test_utils.bundler import bundler_kwargs
+from tests.test_utils.bundler import bypass_frontend_resource_registry
 
 
 class UIIconComponentTestCase(HtmlUIParityTestCase):
@@ -30,6 +39,33 @@ class UIIconComponentTestCase(HtmlUIParityTestCase):
         self.assertIn("<svg", output)
         self.assertIn('focusable="false"', output)
         self.assertIn('stroke-width="2"', output)
+
+    def test_collected_assets_document_emits_only_one_inline_icon(self):
+        with self.setup_render_context():
+            output = self.render_ui_document('{% ui "icon" name="Pencil01Outlined" size="sm" %}{% endui %}')
+
+        self.assertEqual(output.count("<svg"), 1)
+        self.assertNotIn("<img", output)
+        self.assertIn('class="Icon_icon Icon_variants_plain Icon_sizes_sm"', output)
+        self.assertIn('<svg width="24" height="24"', output)
+
+    def test_collected_assets_document_does_not_embed_distinct_icon_images(self):
+        with self.setup_render_context():
+            output = self.render_ui_document(
+                '{% ui "icon" name="Pencil01Outlined" %}{% endui %}'
+                '{% ui "icon" name="CheckCircleSolid" %}{% endui %}'
+                '{% ui "icon" name="AlertCircleDuoTone" %}{% endui %}'
+            )
+
+        self.assertEqual(output.count("<svg"), 3)
+        self.assertNotIn("<img", output)
+
+    def test_collected_assets_document_does_not_embed_repeated_icon_images(self):
+        with self.setup_render_context():
+            output = self.render_ui_document('{% ui "icon" name="Pencil01Outlined" %}{% endui %}' * 3)
+
+        self.assertEqual(output.count("<svg"), 3)
+        self.assertNotIn("<img", output)
 
     def test_renders_solid_duotone_and_duocolor_icons(self):
         output, caught, _ = self.render_with_warnings(
@@ -119,3 +155,53 @@ class UIIconComponentTestCase(HtmlUIParityTestCase):
         self.assertIn("Pencil01Outlined", str(read_icon_paths[0]))
         self.assertEqual(len(read_icon_paths), 1)
         self.assertIn("<svg", output)
+
+    def test_collected_assets_in_production_resolve_svg_without_embedding_an_image(self):
+        icon_source = (
+            Path(__file__).resolve().parent / "fixtures/icons/static-svg/outlined/Pencil01Outlined.svg"
+        )
+        icon_manifest_path = str(icon_source.relative_to(settings.PROJECT_DIR))
+        style_manifest_path = "@alliancesoftware/icons/Icon.css.ts"
+
+        with TemporaryDirectory() as temp_dir:
+            build_dir = Path(temp_dir)
+            icon_output = build_dir / "assets/Pencil01Outlined-built.svg"
+            icon_output.parent.mkdir(parents=True)
+            icon_output.write_text(icon_source.read_text())
+            (build_dir / "manifest.json").write_text(
+                json.dumps(
+                    {
+                        icon_manifest_path: {
+                            "file": "assets/Pencil01Outlined-built.svg",
+                            "src": icon_manifest_path,
+                        },
+                        style_manifest_path: {
+                            "file": "assets/Icon-built.js",
+                            "src": style_manifest_path,
+                            "css": ["assets/Icon-built.css"],
+                        },
+                    }
+                )
+            )
+            production_bundler = TestViteBundler(
+                **{**bundler_kwargs, "build_dir": build_dir, "mode": "production"}
+            )
+
+            with override_ap_frontend_settings(BUNDLER=production_bundler):
+                with BundlerAssetContext(
+                    skip_checks=True,
+                    frontend_resource_registry=bypass_frontend_resource_registry,
+                ) as asset_context:
+                    with mock.patch(
+                        "alliance_platform.ui.templatetags.alliance_platform.html_components.base.resolve_vanilla_extract_class_mapping",
+                        side_effect=make_style_mapping_resolver(),
+                    ):
+                        output = self.render_ui_document('{% ui "icon" name="Pencil01Outlined" %}{% endui %}')
+                    resource_paths = [
+                        str(resource.path) for resource in asset_context.get_resources_for_bundling()
+                    ]
+
+        self.assertEqual(output.count("<svg"), 1)
+        self.assertNotIn("<img", output)
+        self.assertIn("/static/assets/Icon-built.css", output)
+        self.assertTrue(any(path.endswith("Pencil01Outlined.svg") for path in resource_paths))

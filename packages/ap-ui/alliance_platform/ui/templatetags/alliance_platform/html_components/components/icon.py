@@ -9,6 +9,7 @@ from django.template import TemplateSyntaxError
 from django.template.base import FilterExpression
 
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
+from alliance_platform.frontend.bundler.frontend_resource import ImageResource
 from alliance_platform.ui.icons import get_static_icon_resource
 from alliance_platform.ui.icons import validate_icon_name
 
@@ -27,6 +28,15 @@ class UIIconRenderer(BaseHtmlUIComponentRenderer):
         return [
             self.resolve_frontend_resource(ICON_STYLE_PATH),
             get_static_icon_resource(name, origin=self.origin),
+        ]
+
+    def get_resources_to_embed(self) -> list[FrontendResource]:
+        # The SVG remains a bundling dependency, but render_static_icon reads it and emits its
+        # markup inline. Passing it to the bundler's embed pipeline would emit a second <img>.
+        return [
+            resource
+            for resource in self.get_resources_for_bundling()
+            if not isinstance(resource, ImageResource)
         ]
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
