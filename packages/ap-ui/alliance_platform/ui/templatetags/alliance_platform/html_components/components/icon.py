@@ -12,9 +12,9 @@ from alliance_platform.frontend.bundler.frontend_resource import FrontendResourc
 from alliance_platform.ui.icons import get_static_icon_resource
 from alliance_platform.ui.icons import validate_icon_name
 
-from ..base import ICON_STYLE_PATH
 from ..base import BaseHtmlUIComponentRenderer
 from ..base import to_html_attr_name
+from ..static_icon import ICON_STYLE_PATH
 from ..static_icon import is_event_handler_attr
 from ..static_icon import render_static_icon
 

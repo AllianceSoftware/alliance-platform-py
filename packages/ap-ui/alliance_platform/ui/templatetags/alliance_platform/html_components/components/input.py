@@ -15,11 +15,11 @@ from django.utils.safestring import mark_safe
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from alliance_platform.ui.icons import get_static_icon_resource
 
-from ..base import ICON_STYLE_PATH
 from ..base import BaseHtmlUIComponentRenderer
 from ..content import has_renderable_content
 from ..content import is_rich_content_value
 from ..content import render_content
+from ..static_icon import ICON_STYLE_PATH
 
 if TYPE_CHECKING:
     # The mixin is only ever combined with BaseHtmlUIComponentRenderer; declaring it as the type
