@@ -50,11 +50,11 @@ from django.utils.safestring import mark_safe
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from alliance_platform.ui.icons import get_static_icon_resource
 
-from ..base import ICON_STYLE_PATH
 from ..base import BaseHtmlUIComponentRenderer
 from ..base import to_html_attr_name
 from ..content import render_content
 from ..runtime import attach_module_script
+from ..static_icon import ICON_STYLE_PATH
 
 _MENUBAR_STYLE_PATH = "@alliancesoftware/ui/components/menu-bar/Menubar.css.ts"
 _POPOVER_STYLE_PATH = "@alliancesoftware/ui/components/overlay/Popover.css.ts"

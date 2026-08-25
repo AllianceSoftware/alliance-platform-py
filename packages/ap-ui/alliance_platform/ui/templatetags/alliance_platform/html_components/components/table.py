@@ -41,11 +41,11 @@ from django.utils.safestring import mark_safe
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from alliance_platform.ui.icons import get_static_icon_resource
 
-from ..base import ICON_STYLE_PATH
 from ..base import BaseHtmlUIComponentRenderer
 from ..base import style_dict_to_string
 from ..base import to_html_attr_name
 from ..content import render_content
+from ..static_icon import ICON_STYLE_PATH
 
 _TABLE_STYLE_PATH = "@alliancesoftware/ui/components/table/Table.css.ts"
 
