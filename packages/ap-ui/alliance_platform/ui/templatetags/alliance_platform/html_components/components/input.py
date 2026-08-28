@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
+import json
 import re
 from typing import TYPE_CHECKING
 from typing import Any
@@ -13,12 +14,14 @@ from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
 
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
+from alliance_platform.frontend.bundler.frontend_resource import ImageResource
 from alliance_platform.ui.icons import get_static_icon_resource
 
 from ..base import BaseHtmlUIComponentRenderer
 from ..content import has_renderable_content
 from ..content import is_rich_content_value
 from ..content import render_content
+from ..runtime import attach_module_script
 from ..static_icon import ICON_STYLE_PATH
 
 if TYPE_CHECKING:
@@ -39,6 +42,7 @@ _LABEL_STYLE_PATH = "@alliancesoftware/ui/components/form/Label.css.ts"
 _FORM_SECTION_STYLE_PATH = "@alliancesoftware/ui/components/form/FormSection.css.ts"
 _FOCUS_RING_STYLE_PATH = "@alliancesoftware/ui/styles/base/focusRing.css.ts"
 _NUMBER_INPUT_STYLE_PATH = "@alliancesoftware/ui/components/number-input/NumberInput.css.ts"
+_NUMBER_INPUT_RUNTIME_MODULE_PATH = "@alliancesoftware/ui/components/number-input/NumberInput.attach.ts"
 
 # Key used in ``context.render_context`` to keep generated ids unique within a template render.
 _HTML_ID_COUNTER_KEY = "alliance_platform_ui_html_id_counter"
@@ -125,6 +129,8 @@ class LabeledInputState:
     error_id: str | None = None
     #: full aria-describedby value for the control (generated ids plus any caller supplied value)
     described_by: str | None = None
+    #: id of NumberInput's hidden native-form value input when its attach runtime is available
+    runtime_value_input_id: str | None = None
 
     @property
     def error_rendered(self) -> bool:
@@ -388,6 +394,16 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
             get_static_icon_resource(_CHECK_ICON, origin=self.origin),
         ]
 
+    def get_resources_to_embed(self) -> list[FrontendResource]:
+        # Static icons are read and rendered inline; their ImageResources are build dependencies,
+        # not standalone document images. Passing them through the embed pipeline emits detached
+        # SVG/image elements at the document's asset insertion point.
+        return [
+            resource
+            for resource in self.get_resources_for_bundling()
+            if not isinstance(resource, ImageResource)
+        ]
+
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
         if children_html.strip():
             warnings.warn(
@@ -402,7 +418,7 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
         control_html = self.render_control(context, props, state, text_input_base_styles)
 
         validation_icon_html = ""
-        if state.validation_state and not state.is_disabled:
+        if self.should_render_validation_icon(props, state):
             icon_name = _CHECK_ICON if state.validation_state == "valid" else _ALERT_CIRCLE_ICON
             validation_icon_html = self.render_icon(
                 icon_name,
@@ -411,6 +427,7 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
                     self.get_style_class(text_input_base_styles, "adornmentIcon"),
                     self.get_style_class(text_input_base_styles, "validationIcon"),
                 ],
+                slot=False,
             )
 
         input_wrapper_attrs: dict[str, Any] = {
@@ -443,10 +460,14 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
             "data-has-addon-before": "true" if addon_before_html else None,
             "data-has-addon-after": "true" if addon_after_html else None,
         }
-        container_html = self._render_tag(
-            "div",
+        container_runtime_html = self.render_container_runtime(
+            props,
+            state,
             container_attrs,
-            f"{addon_before_html}{input_wrapper_html}{addon_after_html}",
+        )
+        container_children_html = f"{addon_before_html}{input_wrapper_html}{addon_after_html}"
+        container_html = mark_safe(
+            f"{self._render_tag('div', container_attrs, container_children_html)}{container_runtime_html}"
         )
 
         labeled_input_html = self.render_labeled_input(context, props, state, container_html)
@@ -484,6 +505,17 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
 
     def get_container_extra_attrs(self, props: dict[str, Any], state: LabeledInputState) -> dict[str, Any]:
         return {}
+
+    def should_render_validation_icon(self, props: dict[str, Any], state: LabeledInputState) -> bool:
+        return bool(state.validation_state) and not state.is_disabled
+
+    def render_container_runtime(
+        self,
+        props: dict[str, Any],
+        state: LabeledInputState,
+        container_attrs: dict[str, Any],
+    ) -> str:
+        return ""
 
     def render_addon_before(
         self, props: dict[str, Any], state: LabeledInputState, text_input_base_styles: Any
@@ -612,30 +644,90 @@ class UINumberInputRenderer(UITextInputBaseRenderer):
     }
 
     def resolve_component_resources(self) -> list[FrontendResource]:
-        return [
+        resources = [
             *super().resolve_component_resources(),
             self.resolve_frontend_resource(_NUMBER_INPUT_STYLE_PATH),
             get_static_icon_resource(_CHEVRON_UP_ICON, origin=self.origin),
             get_static_icon_resource(_CHEVRON_DOWN_ICON, origin=self.origin),
         ]
+        runtime_resource = self._resolve_runtime_resource()
+        if runtime_resource is not None:
+            resources.append(runtime_resource)
+        return resources
+
+    def _resolve_runtime_resource(self) -> FrontendResource | None:
+        runtime_path = self.resolve_optional_resource_path(
+            _NUMBER_INPUT_RUNTIME_MODULE_PATH,
+            resolve_extensions=[".ts", ".tsx", ".js", ".mjs"],
+        )
+        if runtime_path is None:
+            return None
+        return FrontendResource.from_path(runtime_path)
 
     def allow_non_scalar_prop(self, key: str, value: Any) -> bool:
-        # formatOptions is dict valued; it gets its own more specific warning in render_control
+        # formatOptions is dict valued; it gets its own more specific validation before rendering.
         return key == "formatOptions" or super().allow_non_scalar_prop(key, value)
 
     def get_container_extra_attrs(self, props: dict[str, Any], state: LabeledInputState) -> dict[str, Any]:
         # useNumberField renders the container as a labelled group
+        initial_value = props.get("value")
+        if initial_value is None:
+            initial_value = props.get("defaultValue")
         return {
             "role": "group",
             "aria-disabled": "true" if state.is_disabled else "false",
             "aria-invalid": "true" if state.is_invalid else None,
+            # Static-only configuration consumed by NumberInput.attach.ts. The React component
+            # receives these values directly as props instead.
+            "data-apui-number-input-min-value": props.get("minValue"),
+            "data-apui-number-input-max-value": props.get("maxValue"),
+            "data-apui-number-input-step": props.get("step"),
+            "data-apui-number-input-locale": props.get("locale"),
+            "data-apui-number-input-initial-value": self.format_number_value(initial_value),
+            "data-apui-number-input-format-options": self.serialize_format_options(
+                props.get("formatOptions")
+            ),
         }
+
+    def serialize_format_options(self, value: Any) -> str | None:
+        if value is None:
+            return None
+        if not isinstance(value, dict):
+            warnings.warn("Prop 'formatOptions' must be a dict; it will be ignored")
+            return None
+        try:
+            return json.dumps(value, separators=(",", ":"), sort_keys=True)
+        except (TypeError, ValueError):
+            warnings.warn("Prop 'formatOptions' must contain JSON-serializable values; it will be ignored")
+            return None
+
+    def should_render_validation_icon(self, props: dict[str, Any], state: LabeledInputState) -> bool:
+        # NumberInput's documented contract reserves the input's trailing visual slot for step
+        # controls. Validation state still colours the field, but its icon only appears when the
+        # step controls are hidden.
+        return bool(props.get("hideStepButtons")) and super().should_render_validation_icon(props, state)
+
+    def render_container_runtime(
+        self,
+        props: dict[str, Any],
+        state: LabeledInputState,
+        container_attrs: dict[str, Any],
+    ) -> str:
+        runtime_resource = self._resolve_runtime_resource()
+        if runtime_resource is None:
+            return ""
+        script_html = attach_module_script(runtime_resource, container_attrs)
+        if props.get("name"):
+            component_id = container_attrs["data-djid"]
+            state.runtime_value_input_id = f"{component_id}-value"
+            container_attrs["data-apui-number-input-value-id"] = state.runtime_value_input_id
+        return script_html
 
     def format_number_value(self, value: Any) -> str:
         """Format a numeric value the way the React component displays it.
 
-        Locale specific formatting (e.g. thousand separators, ``formatOptions``) is not supported
-        in the static renderer.
+        Locale-specific display formatting is applied by the attach runtime. The server-rendered
+        fallback and the hidden native-form value remain an unformatted numeric string.
         """
         if value is None:
             return ""
@@ -650,11 +742,6 @@ class UINumberInputRenderer(UITextInputBaseRenderer):
         state: LabeledInputState,
         text_input_base_styles: Any,
     ) -> str:
-        if props.get("formatOptions") is not None:
-            warnings.warn("'formatOptions' cannot be mapped to static HTML attributes and will be ignored")
-        if props.get("locale") is not None:
-            warnings.warn("'locale' is not supported by the static number_input renderer; ignoring")
-
         value = props.get("value")
         if value is None:
             value = props.get("defaultValue")
@@ -677,12 +764,13 @@ class UINumberInputRenderer(UITextInputBaseRenderer):
     def render_addon_after(
         self, props: dict[str, Any], state: LabeledInputState, text_input_base_styles: Any
     ) -> str:
-        # NumberInput always renders the addonAfter container: it holds the caller addon (if any)
-        # followed by the step buttons (unless hidden). Note this means data-has-addon-after is
-        # always set, matching the React component.
+        # The addonAfter container holds the caller addon (if any) followed by the step buttons.
+        # When both are absent React returns null so TextInputBase keeps its rounded trailing edge.
         addon = props.get("addonAfter")
         addon_content = conditional_escape(addon) if addon else ""
         step_buttons_html = "" if props.get("hideStepButtons") else self.render_step_buttons(props, state)
+        if not addon_content and not step_buttons_html:
+            return ""
         addon_class = self.get_style_class(text_input_base_styles, "addonAfter")
         return f'<div class="{conditional_escape(addon_class)}">{addon_content}{step_buttons_html}</div>'
 
@@ -701,14 +789,14 @@ class UINumberInputRenderer(UITextInputBaseRenderer):
                 aria_label = f"{aria_label_prefix} {state.label}"
             attrs: dict[str, Any] = {
                 "type": "button",
-                "disabled": state.is_disabled,
+                "disabled": state.is_disabled or state.is_readonly,
                 "tabindex": "-1",
                 "aria-label": aria_label,
                 "aria-controls": state.input_id,
                 "className": button_class,
                 "data-direction": direction,
             }
-            buttons.append(self._render_tag("button", attrs, self.render_icon(icon_name, "xxs")))
+            buttons.append(self._render_tag("button", attrs, self.render_icon(icon_name, "xxs", slot=False)))
         return f'<div class="{conditional_escape(container_class)}">{"".join(buttons)}</div>'
 
     def render_after_root(self, props: dict[str, Any], state: LabeledInputState) -> str:
@@ -720,6 +808,7 @@ class UINumberInputRenderer(UITextInputBaseRenderer):
             value = props.get("defaultValue")
         attrs: dict[str, Any] = {
             "type": "hidden",
+            "id": state.runtime_value_input_id,
             "name": name,
             "value": self.format_number_value(value),
         }

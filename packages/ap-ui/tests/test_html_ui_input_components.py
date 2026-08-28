@@ -226,32 +226,39 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         output, _ = self.render_with_warnings('{% ui "text_area" label="Notes" height=120 %}{% endui %}')
         self.assertIn('style="height: 120px"', output)
 
-    def test_number_input_format_options_warns_and_is_ignored(self):
+    def test_number_input_format_options_are_serialized_for_the_attach_runtime(self):
         output, caught = self.render_with_warnings(
             '{% ui "number_input" label="Price" formatOptions=format_options defaultValue=12.5 %}{% endui %}',
             {"format_options": {"style": "currency", "currency": "AUD"}},
         )
+        self.assertEqual(caught, [])
         self.assertIn(
-            "'formatOptions' cannot be mapped to static HTML attributes and will be ignored", caught
+            'data-apui-number-input-format-options="{&quot;currency&quot;:&quot;AUD&quot;,'
+            '&quot;style&quot;:&quot;currency&quot;}"',
+            output,
         )
         self.assertIn('value="12.5"', output)
-        self.assertNotIn("currency", output)
+        self.assertIn('data-apui-number-input-initial-value="12.5"', output)
 
-    def test_number_input_min_max_step_accepted_without_dom_output(self):
+    def test_number_input_min_max_step_are_serialized_for_the_attach_runtime(self):
         output, caught = self.render_with_warnings(
             '{% ui "number_input" label="Qty" minValue=1 maxValue=20 step=2 %}{% endui %}'
         )
         self.assertEqual(caught, [])
-        self.assertNotIn("minValue", output)
+        self.assertIn('data-apui-number-input-min-value="1"', output)
+        self.assertIn('data-apui-number-input-max-value="20"', output)
+        self.assertIn('data-apui-number-input-step="2"', output)
+        # The visible text input deliberately does not expose native number constraints.
         self.assertNotIn("min=", output)
         self.assertNotIn("max=", output)
-        self.assertNotIn("step=", output)
 
     def test_number_input_hidden_input_only_when_name_given(self):
         output_with_name, _ = self.render_with_warnings(
             '{% ui "number_input" label="Qty" name="qty" %}{% endui %}'
         )
-        self.assertIn('<input type="hidden" name="qty" value=""', output_with_name)
+        self.assertIn('type="hidden"', output_with_name)
+        self.assertIn('name="qty"', output_with_name)
+        self.assertIn("data-apui-number-input-value-id=", output_with_name)
         # The visible input must not carry the name so only the hidden input value is submitted
         self.assertEqual(output_with_name.count('name="qty"'), 1)
 
@@ -262,7 +269,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         output, _ = self.render_with_warnings(
             '{% ui "number_input" label="Qty" name="qty" value=0 %}{% endui %}'
         )
-        self.assertIn('<input type="hidden" name="qty" value="0"', output)
+        self.assertIn('name="qty" value="0"', output)
 
     def test_number_input_integer_float_value_renders_without_decimal(self):
         output, _ = self.render_with_warnings(
@@ -275,15 +282,97 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
             '{% ui "number_input" label="Qty" hideStepButtons=True %}{% endui %}'
         )
         self.assertNotIn("data-direction", output)
-        # The addon-after container still renders (and data-has-addon-after is still set),
-        # matching the React component
-        self.assertIn('data-has-addon-after="true"', output)
+        self.assertNotIn('data-has-addon-after="true"', output)
+        self.assertNotIn("TextInputBase_addonAfter", output)
 
     def test_number_input_step_buttons_disabled_when_input_disabled(self):
         output, _ = self.render_with_warnings(
             '{% ui "number_input" label="Qty" isDisabled=True %}{% endui %}'
         )
         self.assertIn('<button type="button" disabled', output)
+
+    def test_number_input_step_buttons_disabled_when_input_readonly(self):
+        output, _ = self.render_with_warnings(
+            '{% ui "number_input" label="Qty" isReadOnly=True %}{% endui %}'
+        )
+        self.assertEqual(output.count('<button type="button" disabled'), 2)
+
+    def test_number_input_validation_icon_is_mutually_exclusive_with_step_buttons(self):
+        with_steps, _ = self.render_with_warnings(
+            '{% ui "number_input" label="Qty" validationState="invalid" %}{% endui %}'
+        )
+        self.assertIn('data-invalid="true"', with_steps)
+        self.assertIn('data-direction="up"', with_steps)
+        self.assertNotIn("TextInputBase_validationIcon", with_steps)
+        self.assertEqual(with_steps.count("<svg"), 2)
+
+        without_steps_invalid, _ = self.render_with_warnings(
+            '{% ui "number_input" label="Qty" validationState="invalid" hideStepButtons=True %}{% endui %}'
+        )
+        self.assertNotIn("data-direction", without_steps_invalid)
+        self.assertIn("TextInputBase_validationIcon", without_steps_invalid)
+        self.assertIn('d="M12 8V12M12 16H12.01', without_steps_invalid)
+        self.assertEqual(without_steps_invalid.count("<svg"), 1)
+
+        without_steps_valid, _ = self.render_with_warnings(
+            '{% ui "number_input" label="Qty" validationState="valid" hideStepButtons=True %}{% endui %}'
+        )
+        self.assertIn('data-valid="true"', without_steps_valid)
+        self.assertIn("TextInputBase_validationIcon", without_steps_valid)
+        self.assertIn('d="M20 6L9 17L4 12"', without_steps_valid)
+        self.assertEqual(without_steps_valid.count("<svg"), 1)
+
+    def test_number_input_validation_icon_remains_hidden_when_disabled(self):
+        output, _ = self.render_with_warnings(
+            '{% ui "number_input" label="Qty" validationState="invalid" hideStepButtons=True '
+            "isDisabled=True %}{% endui %}"
+        )
+        self.assertNotIn("TextInputBase_validationIcon", output)
+        self.assertEqual(output.count("<svg"), 0)
+
+    def test_number_input_sm_and_md_size_contract(self):
+        output, _ = self.render_with_warnings(
+            '{% ui "number_input" label="Small" inputSize="sm" %}{% endui %}'
+            '{% ui "number_input" label="Medium" inputSize="md" %}{% endui %}'
+        )
+        self.assertIn("TextInputBase_sizes_sm", output)
+        self.assertIn("TextInputBase_sizes_md", output)
+        self.assertIn('data-size="sm"', output)
+        self.assertIn('data-size="md"', output)
+
+    def test_number_input_runtime_script_attaches_to_number_input_root(self):
+        output, _ = self.render_with_warnings(
+            '{% ui "number_input" label="Qty" name="qty" defaultValue=5 %}{% endui %}'
+        )
+        self.assertIn('<script type="module">', output)
+        self.assertIn("NumberInput.attach.ts", output)
+        component_id = output.split('data-djid="')[1].split('"')[0]
+        self.assertIn(f"[data-djid='{component_id}']", output)
+        self.assertIn(f'data-apui-number-input-value-id="{component_id}-value"', output)
+        self.assertIn(f'id="{component_id}-value"', output)
+
+    def test_number_input_collected_assets_do_not_emit_detached_icon_images(self):
+        with self.setup_render_context():
+            output = self.render_ui_document(
+                '{% ui "number_input" label="Qty" validationState="invalid" %}{% endui %}'
+            )
+
+        # Only the two inline step chevrons render. The validation/build dependency SVGs must not
+        # be emitted at the collected-assets insertion point.
+        self.assertEqual(output.count("<svg"), 2)
+        self.assertNotIn("<img", output)
+        self.assertNotIn("TextInputBase_validationIcon", output)
+        self.assertIn("NumberInput.attach.ts", output)
+
+    def test_number_input_collected_assets_keep_hide_step_validation_icon_in_place(self):
+        with self.setup_render_context():
+            output = self.render_ui_document(
+                '{% ui "number_input" label="Qty" validationState="valid" hideStepButtons=True %}{% endui %}'
+            )
+
+        self.assertEqual(output.count("<svg"), 1)
+        self.assertNotIn("<img", output)
+        self.assertIn("TextInputBase_validationIcon", output)
 
     def test_bulk_props_accept_html_attribute_names(self):
         # Simulates a Django form widget template passing `props=widget.attrs`
@@ -377,7 +466,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         )
         self.assertEqual(caught, [])
         self.assertIn('value="12.50"', output)
-        self.assertIn('<input type="hidden" name="price" value="12.50"', output)
+        self.assertIn('name="price" value="12.50"', output)
 
     def test_none_valued_props_are_treated_as_unset(self):
         output, caught = self.render_with_warnings(

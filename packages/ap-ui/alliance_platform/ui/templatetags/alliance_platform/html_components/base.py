@@ -364,11 +364,24 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
                 classes.append(variant_class)
         return classes
 
-    def render_icon(self, name: str, size: str, extra_class_names: list[str] | None = None) -> str:
+    def render_icon(
+        self,
+        name: str,
+        size: str,
+        extra_class_names: list[str] | None = None,
+        *,
+        slot: str | None | bool = "icon",
+    ) -> str:
         """Render a named static icon using the shared static icon renderer."""
         from .static_icon import render_static_icon
 
-        return render_static_icon(self, name=name, size=size, extra_class_names=extra_class_names)
+        return render_static_icon(
+            self,
+            name=name,
+            size=size,
+            extra_class_names=extra_class_names,
+            slot=slot,
+        )
 
     def build_attrs_string(self, attrs: dict[str, Any]) -> str:
         return build_attrs_string(attrs)
