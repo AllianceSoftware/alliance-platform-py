@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import re
 from typing import Any
+from typing import cast
 import warnings
 
 from allianceutils.util import underscore_to_camel
@@ -105,6 +106,17 @@ def build_attrs_string(attrs: dict[str, Any]) -> str:
         else:
             rendered_attrs.append(f' {conditional_escape(attr_name)}="{conditional_escape(value)}"')
     return "".join(rendered_attrs)
+
+
+def get_document_render_context(context: Context) -> dict[str, Any]:
+    """Return render state shared by the root template and all included templates.
+
+    Django intentionally isolates the top layer of ``context.render_context`` for every template
+    render, including ``{% include %}``. Its base layer lives for the whole document render and is
+    the same layer Django itself uses for include-template caching, making it the appropriate home
+    for cross-template component composition state and document-unique counters.
+    """
+    return cast(dict[str, Any], context.render_context.dicts[0])
 
 
 class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):

@@ -175,11 +175,14 @@ toggle through `data-open-class` / `data-focused-class` / `data-popover-open-cla
 
 ### Cross-component render state
 
-The components coordinate through a `MenubarRenderState` stack in `context.render_context`
-(`_MENUBAR_STATE_KEY`), with one `MenubarRenderFrame` per menu grouping (root menu, submenu popup,
-section). `menubar`, `menubar_submenu` and `menubar_section` render their children from inside
-`render_component()` (returning `""` from `render_children_for_component()`) so the frame wraps
-the children and the child counts are available when deciding what to render:
+The components coordinate through a `MenubarRenderState` stack in the document-level base layer
+of `context.render_context` (`_MENUBAR_STATE_KEY`), with one `MenubarRenderFrame` per menu grouping
+(root menu, submenu popup, section). Django gives every included template a fresh top render-context
+layer, so component state and generated-ID counters must use `get_document_render_context()` to
+survive `{% include %}` (including `only`). `menubar`, `menubar_submenu` and `menubar_section`
+render their children from inside `render_component()` (returning `""` from
+`render_children_for_component()`) so the frame wraps the children and the child counts are
+available when deciding what to render:
 
 1. Items increment the current frame's `item_count` only when they actually render — a denied
    `url_with_perm` href raises `OmitComponentFromRendering`, which the static renderer base now
@@ -191,6 +194,11 @@ the children and the child counts are available when deciding what to render:
    ancestor submenu triggers and sections.
 4. The first enabled root-level item claims `tabindex="0"` (or the `default_focused_key` item);
    everything else renders `tabindex="-1"` and the runtime moves the roving tab stop.
+5. Leading static icons receive the `itemIcon` slot class, adjacent plain text is wrapped like the
+   React `Text` component, and `hasLeadingIcon` class/data state is propagated to the containing
+   root or submenu `<ul>` for consistent indentation. The item wrapper and content span emit the
+   shared `data-apui-menu-item-content-wrapper` and `data-apui-menu-item-content` markers used by
+   `Menubar.css.ts` to space leading icons.
 
 Section separators are decided *after* pruning (`is_first` = parent frame count at render time),
 so a pruned first section never leaves a leading separator behind.
@@ -210,11 +218,12 @@ menu only.
 Reconciled by `normalizeMenubarComponentHtml()` in the fixture generator (React side) and
 `strip_static_menubar_extensions()` in `tests/test_html_ui_menubar_parity.py` (static side):
 
-- **Closed submenu popups**: React renders open menus in a portal and closed menus not at all;
-  the static renderer renders every popup in place, hidden — flyouts in a `Popover.css`-styled
-  wrapper (`data-apui-menu-popover`), inline menus as a hidden `<ul>` (`data-apui-menu-popup`).
-  Content parity for submenu menus comes from `layout="inline"` + `defaultExpandedKeys` fixture
-  cases, which React does render during SSR.
+- **Stable submenu popups**: React renders open flyouts in a portal and closed menus not at all;
+  the static renderer always renders a `Popover.css`-styled wrapper
+  (`data-apui-menu-popover`) in place. Inline layout uses the same wrapper with the CSS
+  `display: contents` contract, so `MenubarController.setLayout()` can switch that DOM tree to a
+  positioned flyout. Closed wrappers are stripped for parity; visible inline wrappers are
+  unwrapped so the `defaultExpandedKeys` fixtures still compare their submenu content.
 - **Submenu trigger element**: React defaults to `<div>` for triggers without `href`; the static
   renderer uses `<button type="button">` so menus work without React synthetic events. Fixture
   cases pass `elementType="button"` on the React side; the `type="button"` attribute is stripped
@@ -222,9 +231,10 @@ Reconciled by `normalizeMenubarComponentHtml()` in the fixture generator (React 
 - **`aria-controls`/popup ids, roving `tabindex`, `data-open="false"`, `data-current`,
   `data-key`**: static extensions (or explicit values React leaves implicit); stripped and unit
   tested instead.
-- **`hasLeadingIcon`**: React SSRs the class + `data-has-leading-icon` optimistically as true and
-  corrects it client-side via `useHasChild`; the static renderer doesn't render it at all (a
-  follow-up could compute it in `Menubar.attach.ts`).
+- **`hasLeadingIcon` during SSR**: React initially emits this state optimistically before
+  `useHasChild` inspects the DOM. The static renderer computes the actual value from rendered
+  leading icon slots, so the React SSR value is stripped for fixture parity and focused unit tests
+  cover the shared class/data contract.
 - **Overflow measurement placeholders**: React SSRs an offscreen dummy "more items" node for
   measuring; removed from fixtures.
 - **react-aria ids**: unlike the input components, `aria-labelledby` references (section heading
@@ -239,9 +249,13 @@ tests live in the JS repo: `packages/ui/components/menu-bar/tests/Menubar.attach
 
 `nav_primary.html` can migrate from the React `PrimaryNav` to the static path following the
 example in `docs/templatetags.rst` (the `Users` submenu's `component:omit_if_empty=True` becomes
-automatic empty-pruning, logout stays a POST `<button form="logout-form">`). Don't remove
-`PrimaryNav.tsx` until its responsive mobile drawer behaviour is accounted for — the static
-menubar deliberately doesn't reproduce it; that needs a static drawer/disclosure component first.
+automatic empty-pruning, logout stays a POST `<button form="logout-form">`). The standalone
+runtime's `attach(root)` returns a controller with `setLayout(layout)`, so one rendered menubar can
+switch between horizontal, vertical and inline layout without duplicating menu markup. Submenus
+always keep the same popover/inner/menu subtree, including when the initial layout is inline, so a
+later vertical or horizontal layout can position them as flyouts. A responsive mobile drawer still
+requires its own static drawer/disclosure behaviour; layout switching alone does not supply that
+container interaction.
 
 ## HTML parity fixture workflow
 

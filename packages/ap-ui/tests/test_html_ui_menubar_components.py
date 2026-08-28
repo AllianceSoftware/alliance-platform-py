@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 import json
 from pathlib import Path
+import re
 from tempfile import TemporaryDirectory
 from typing import cast
 from unittest import mock
@@ -21,6 +22,7 @@ from django.contrib.sessions.backends.base import SessionBase
 from django.http import HttpRequest
 from django.template import Context
 from django.template import Template
+from django.template import TemplateSyntaxError
 from django.template.base import NodeList
 from django.test import TestCase
 from django.test import override_settings
@@ -84,7 +86,9 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
             '<li role="none" data-key="dashboard">'
             '<a role="menuitem" class="Menubar_menubarMenuItem Menubar_menubarMenuItemBase Menubar_rootMenuItem" data-level="0" '
             'aria-label="Dashboard" tabindex="0" href="/dashboard/">'
-            '<div><span class="Menubar_menubarMenuItemContent" data-contentlevel="0">'
+            '<div data-apui-menu-item-content-wrapper="">'
+            '<span class="Menubar_menubarMenuItemContent" data-contentlevel="0" '
+            'data-apui-menu-item-content="">'
             "<span>Dashboard</span></span></div></a></li>",
             output,
         )
@@ -165,15 +169,41 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn('data-layout="inline"', output)
         self.assertIn('data-orientation="vertical"', output)
         self.assertIn('class="Menubar_menubar Menubar_vertical Menubar_inline"', output)
-        # Inline submenus render the menu directly (no popover wrapper), hidden by default
-        self.assertNotIn("data-apui-menu-popover", output)
+        # Inline presentation uses the same stable popover subtree as flyout layouts. CSS makes
+        # the shell display: contents while inline; the wrapper still owns closed/open visibility.
         self.assertIn(
+            '<div class="Popover_popover_right" role="presentation" hidden '
+            'data-apui-menu-popover data-placement="right"><div class="Popover_inner">'
             '<ul role="menu" id="apui-menu-users" class="Menubar_menubarMenu Menubar_vertical" '
-            'style="--level: 1" hidden data-apui-menu-popup>',
+            'style="--level: 1">',
             output,
         )
+        self.assertNotIn("data-apui-menu-popup", output)
         # Inline submenu chevron points down while closed
         self.assertIn('d="M6 9L12 15L18 9"', output)
+
+    def test_initial_inline_layout_keeps_popup_tree_for_runtime_layout_switch(self):
+        template = (
+            '{% ui "menubar" aria_label="Nav" layout="inline" default_expanded_keys="users" %}'
+            '{% ui "menubar_submenu" key="users" title="Users" %}'
+            '{% ui "menubar_item" href="/admin/" %}Admin{% endui %}'
+            "{% endui %}"
+            "{% endui %}"
+        )
+        output, caught = self.render_with_warnings(template)
+
+        self.assertEqual(caught, [])
+        self.assertEqual(output.count("data-apui-menu-popover"), 1)
+        self.assertEqual(output.count('id="apui-menu-users"'), 1)
+        self.assertNotIn("data-apui-menu-popup", output)
+        self.assertIn(
+            'class="Popover_popover_right Popover_isOpen" role="presentation" '
+            'data-apui-menu-popover data-placement="right"',
+            output,
+        )
+        self.assertNotIn(" hidden ", output)
+        self.assertIn('data-layout="inline"', output)
+        self.assertIn("attach(el)", output)
 
     def test_button_item_passes_through_form_attributes(self):
         template = (
@@ -604,6 +634,75 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
             ],
         )
 
+    def test_included_section_and_items_keep_enclosing_menubar_context(self):
+        with self.setup_render_context():
+            partial = Template(
+                "{% load alliance_platform.ui %}"
+                '{% ui "menubar_item" href="/dashboard/" %}Dashboard{% endui %}'
+                '{% ui "menubar_section" title="Account" %}'
+                '{% ui "menubar_item" href="/profile/" %}Profile{% endui %}'
+                "{% endui %}"
+            )
+            with warnings.catch_warnings(record=True) as caught_warnings:
+                warnings.simplefilter("always")
+                output = self.render_ui_template(
+                    '{% ui "menubar" aria_label="Nav" %}{% include nav_items only %}{% endui %}',
+                    {"nav_items": partial},
+                )
+
+        self.assertEqual([str(item.message) for item in caught_warnings], [])
+        self.assertIn("Menubar_section", output)
+        self.assertIn('href="/dashboard/"', output)
+        self.assertIn('href="/profile/"', output)
+        self.assertIn('aria-label="Dashboard" tabindex="0"', output)
+
+    def test_repeated_included_menubars_generate_document_unique_heading_ids(self):
+        with self.setup_render_context():
+            partial = Template(
+                "{% load alliance_platform.ui %}"
+                '{% ui "menubar" aria_label="Nav" %}'
+                '{% ui "menubar_section" title="Account" %}'
+                '{% ui "menubar_submenu" key="manage" title="Manage" %}'
+                '{% ui "menubar_item" href="/profile/" %}Profile{% endui %}'
+                "{% endui %}"
+                "{% endui %}"
+                "{% endui %}"
+            )
+            with warnings.catch_warnings(record=True) as caught_warnings:
+                warnings.simplefilter("always")
+                output = self.render_ui_template(
+                    "{% include navbar %}{% include navbar %}",
+                    {"navbar": partial},
+                )
+
+        self.assertEqual([str(item.message) for item in caught_warnings], [])
+        heading_ids = re.findall(r'id="(apui-menubar-\d+)"', output)
+        self.assertEqual(heading_ids, ["apui-menubar-1", "apui-menubar-2"])
+        self.assertEqual(
+            re.findall(r'aria-labelledby="(apui-menubar-\d+)"', output),
+            heading_ids,
+        )
+        popup_ids = re.findall(r'id="(apui-menu-manage(?:-\d+)?)"', output)
+        self.assertEqual(popup_ids, ["apui-menu-manage", "apui-menu-manage-2"])
+        self.assertEqual(
+            re.findall(r'aria-controls="(apui-menu-manage(?:-\d+)?)"', output),
+            popup_ids,
+        )
+
+    def test_section_supports_explicit_heading_id(self):
+        template = (
+            '{% ui "menubar" aria_label="Nav" %}'
+            '{% ui "menubar_section" title="Account" heading_id="account-heading" %}'
+            '{% ui "menubar_item" href="/profile/" %}Profile{% endui %}'
+            "{% endui %}"
+            "{% endui %}"
+        )
+        output, caught = self.render_with_warnings(template)
+
+        self.assertEqual(caught, [])
+        self.assertIn('id="account-heading"', output)
+        self.assertIn('aria-labelledby="account-heading"', output)
+
     def test_resources_are_registered(self):
         with self.setup_render_context() as asset_context:
             self.render_ui_template(BASIC_MENUBAR_TEMPLATE)
@@ -649,8 +748,72 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
 
         self.assertEqual(output.count("<svg"), 2)
         self.assertNotIn("<img", output)
-        self.assertIn("Icon_sizes_xs", output)
+        self.assertIn(
+            'class="Icon_icon Icon_variants_plain Icon_sizes_xs Menubar_itemIcon"',
+            output,
+        )
+        self.assertIn(
+            '<div data-apui-menu-item-content-wrapper="">'
+            '<span class="Menubar_menubarMenuItemContent" data-contentlevel="0" '
+            'data-apui-menu-item-content=""><span role="img"',
+            output,
+        )
+        self.assertIn("</span><span>Settings</span>", output)
+        self.assertIn('data-has-leading-icon="true"', output)
+        self.assertIn("Menubar_hasLeadingIcon", output)
         self.assertIn("Menubar.attach.ts", output)
+
+    def test_submenu_popup_tracks_leading_icons(self):
+        template = (
+            '{% ui "menubar" aria_label="Nav" %}'
+            '{% ui "menubar_submenu" key="users" title="Users" %}'
+            '{% ui "menubar_item" href="/profile/" text_value="Profile" %}'
+            '{% ui "icon" name="Pencil01Outlined" %}{% endui %}Profile'
+            "{% endui %}"
+            "{% endui %}"
+            "{% endui %}"
+        )
+        output, caught = self.render_with_warnings(template)
+
+        self.assertEqual(caught, [])
+        self.assertIn(
+            'class="Menubar_menubarMenu Menubar_vertical Menubar_hasLeadingIcon"',
+            output,
+        )
+        self.assertIn('data-has-leading-icon="true"', output)
+
+    def test_icon_props_render_safe_submenu_and_section_titles(self):
+        template = (
+            '{% ui "menubar" aria_label="Nav" %}'
+            '{% ui "menubar_submenu" key="manage" title="Manage" icon="Pencil01Outlined" %}'
+            '{% ui "menubar_item" href="/profile/" %}Profile{% endui %}'
+            "{% endui %}"
+            '{% ui "menubar_section" title="Account" icon="AlertCircleOutlined" %}'
+            '{% ui "menubar_item" href="/logout/" %}Logout{% endui %}'
+            "{% endui %}"
+            "{% endui %}"
+        )
+        with self.setup_render_context() as asset_context:
+            output = self.render_ui_document(template)
+            resource_paths = [str(resource.path) for resource in asset_context.get_resources_for_bundling()]
+
+        self.assertNotIn("<img", output)
+        self.assertIn("Menubar_itemIcon", output)
+        self.assertIn("Menubar_sectionHeadingIcon", output)
+        self.assertIn("Menubar_sectionHeadingText", output)
+        self.assertIn("</span><span>Manage</span>", output)
+        for icon_name in ("Pencil01Outlined.svg", "AlertCircleOutlined.svg"):
+            self.assertTrue(any(path.endswith(icon_name) for path in resource_paths))
+
+    def test_icon_props_must_be_static(self):
+        with self.setup_render_context():
+            with self.assertRaisesMessage(TemplateSyntaxError, "static string literal"):
+                self.render_ui_template(
+                    '{% ui "menubar_submenu" title="Manage" icon=icon_name %}'
+                    '{% ui "menubar_item" %}Profile{% endui %}'
+                    "{% endui %}",
+                    {"icon_name": "Pencil01Outlined"},
+                )
 
     def test_collected_assets_document_in_production_keeps_chevrons_build_only(self):
         manifest: dict[str, dict[str, object]] = {}
@@ -748,6 +911,18 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         # The script targets the generated data-djid on the menubar root
         djid = output.split('data-djid="')[1].split('"')[0]
         self.assertIn(f"[data-djid='{djid}']", output)
+
+    def test_runtime_layout_contract_uses_one_mutable_menu_tree(self):
+        with self.setup_render_context():
+            output = self.render_ui_template(BASIC_MENUBAR_TEMPLATE)
+
+        self.assertEqual(output.count('data-apui="menubar"'), 1)
+        self.assertEqual(output.count('id="apui-menu-users"'), 1)
+        self.assertEqual(output.count("data-apui-menu-submenu"), 1)
+        self.assertIn('data-layout="horizontal"', output)
+        self.assertIn('data-orientation="horizontal"', output)
+        self.assertIn('aria-orientation="horizontal"', output)
+        self.assertIn("attach(el)", output)
 
     def test_no_script_rendered_for_empty_menubar(self):
         template = (
