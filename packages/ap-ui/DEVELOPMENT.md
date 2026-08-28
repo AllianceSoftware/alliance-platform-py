@@ -83,21 +83,41 @@ intentional extensions, so they will not show up as parity failures:
 - **`rows`/`cols` on `text_area`**: the React component drops these in favour of runtime
   autosizing; the static renderer passes them through as normal textarea attributes since there is
   no autosize behaviour. They are covered by unit tests, not parity fixtures.
-- **`minValue`/`maxValue`/`step` on `number_input`**: accepted but produce no DOM output, matching
-  React (clamping/stepping is client-side behaviour). Step buttons are rendered statically with no
-  increment/decrement behaviour and are not disabled at min/max boundaries.
-- **Number formatting**: the static renderer renders numeric values with `str()` (integral floats
-  collapse to integers). Locale-aware formatting (`formatOptions`, thousand separators, `locale`)
-  is not supported; `formatOptions` and `locale` warn and are ignored. Keep fixture values below
-  1000 so the en-US formatted React output matches.
+- **`number_input` runtime configuration**: `minValue`, `maxValue`, `step`, `locale` and
+  `formatOptions` are serialized as `data-apui-number-input-*` attributes for the standalone
+  `NumberInput.attach.ts` runtime. These static-only attributes and the per-root attach script are
+  removed by the NumberInput parity test before comparison with React SSR.
+- **Number formatting and submission**: the server fallback renders the unformatted numeric value
+  with `str()` (integral floats collapse to integers). The attach runtime applies `Intl.NumberFormat`
+  display formatting, parses supported locale/currency/unit/percent input, and keeps the hidden
+  named input synchronized for native form submission. It also implements step-button and arrow-key
+  increments with min/max clamping and dynamic boundary state.
 - **Validation icons / step button chevrons**: rendered as static SVG markup copied from
   `@alliancesoftware/icons` (`AlertCircleOutlined`, `CheckOutlined`, `ChevronUpOutlined`,
-  `ChevronDownOutlined`). If those icons change upstream the fixture drift check will catch it.
+  `ChevronDownOutlined`). Matching NumberInput's documented React contract, validation state still
+  colours the input while step controls are visible but the validation icon is only rendered when
+  `hideStepButtons=True`. If those icons change upstream the fixture drift check will catch it.
+- **Inline icon resources**: icon SVG files stay in frontend resource discovery for production
+  builds, but are excluded from collected-asset embedding because the renderer already emits their
+  markup inline. This prevents detached icon images from appearing at the document asset insertion
+  point.
 - **`font_*` classes**: excluded from fixture `class_prefixes`. In production the composed font
   classes come through automatically because the real vanilla-extract mappings store the full
   composite class strings; the test style mocks return single tokens.
 - **Boolean attributes**: React SSR renders `disabled=""`/`readonly=""`; the Python renderer emits
   bare `disabled`/`readonly`. The parity normalizer treats these as equivalent (they are in HTML).
+
+### Static NumberInput attach runtime
+
+`number_input` attaches
+`@alliancesoftware/ui/components/number-input/NumberInput.attach.ts` to its
+`data-apui="number-input"` container with the same per-root `data-djid` + module-script pattern used
+by Menubar and SmartOrientation. The runtime finds the hidden named input through the explicit
+`data-apui-number-input-value-id` link, so multiple fields and external DOM composition do not rely
+on sibling position. It synchronizes on `input`, `change`, and form `submit` (the last also covers a
+script assigning the visible value without dispatching an input event), formats on attach/blur,
+handles the rendered step buttons and arrow keys, and keeps cleanup state in a `WeakMap` so repeated
+attachment does not duplicate listeners.
 
 ## Table components (`table`, `table_header`, `table_body`, `table_column`, `table_row`, `table_cell`)
 
