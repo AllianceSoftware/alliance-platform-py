@@ -22,6 +22,7 @@ from ..static_icon import render_static_icon
 
 class UIIconRenderer(BaseHtmlUIComponentRenderer):
     apui_component_name = "icon"
+    slot_name = "icon"
 
     def resolve_component_resources(self) -> list[FrontendResource]:
         name = self._resolve_static_icon_name()

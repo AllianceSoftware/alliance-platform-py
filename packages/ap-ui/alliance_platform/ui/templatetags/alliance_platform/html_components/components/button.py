@@ -133,6 +133,7 @@ class UIButtonRenderer(BaseHtmlUIComponentRenderer):
             "children",
             "slot",
             "autoFocus",
+            "isIconOnly",
         }
 
         for key, value in props.items():
@@ -142,7 +143,10 @@ class UIButtonRenderer(BaseHtmlUIComponentRenderer):
                 attrs[key] = value
 
         normalized_children = self._normalize_children(children_html)
-        if self._is_icon_only(normalized_children):
+        explicit_icon_only = props.get("isIconOnly")
+        if explicit_icon_only is True or (
+            explicit_icon_only is None and self._is_icon_only(normalized_children)
+        ):
             attrs["data-icon-only"] = "true"
 
         return self._render_tag(tag_name, attrs, normalized_children)

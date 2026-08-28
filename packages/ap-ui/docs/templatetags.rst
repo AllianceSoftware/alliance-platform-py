@@ -51,6 +51,21 @@ The dispatcher also supports ``as <var>``:
     {% ui "button" as save_button_html %}Save{% endui %}
     {{ save_button_html }}
 
+Static buttons
+~~~~~~~~~~~~~~
+
+Static ``button`` components automatically emit ``data-icon-only="true"`` when their only direct
+child is an ``icon``. When the icon-only visual contains multiple wrappers (for example separate
+open and closed state icons), pass ``is_icon_only=True`` explicitly. This is the template-facing
+form of the Alliance UI ``isIconOnly`` prop. Icon-only buttons must have an accessible label:
+
+.. code-block:: html+django
+
+    {% ui "button" is_icon_only=True aria_label="Toggle navigation" %}
+      <span data-state="closed">{% ui "icon" name="Menu01Outlined" %}{% endui %}</span>
+      <span data-state="open">{% ui "icon" name="XCloseOutlined" %}{% endui %}</span>
+    {% endui %}
+
 Static HTML table components
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -167,6 +182,35 @@ renders nothing, a submenu or section whose visible children were all denied is 
 nothing at all (pass ``render_when_empty=True`` to keep it). In the example above the whole
 Users menu disappears for users who can access neither list, without any extra template logic.
 
+Menubar children compose across normal Django includes, including ``include ... only``. This is
+the supported way to reuse groups of navigation items without duplicating their markup:
+
+.. code-block:: html+django
+
+    {% ui "menubar" aria_label="Primary navigation" %}
+      {% include "navigation/account_items.html" only %}
+    {% endui %}
+
+``account_items.html`` can contain ``menubar_item``, ``menubar_submenu`` and
+``menubar_section`` components directly; they retain the enclosing menu's pruning, current-item,
+nesting and keyboard state.
+
+Use the first-class ``icon`` prop for safe icon-plus-text submenu or section titles. Icon names
+must be static string literals so their SVGs can be discovered for production builds:
+
+.. code-block:: html+django
+
+    {% ui "menubar_submenu" key="manage" title="Manage" icon="Settings01Outlined" %}
+      {% ui "menubar_item" href="my_app:settings"|url_with_perm %}Settings{% endui %}
+    {% endui %}
+
+    {% ui "menubar_section" title="Account" icon="User01Outlined" heading_id="account-heading" %}
+      {% ui "menubar_item" href="my_app:profile"|url_with_perm %}Profile{% endui %}
+    {% endui %}
+
+``heading_id`` is optional; generated heading and submenu popup IDs are document-unique even when
+the same partial is included more than once.
+
 Other notable behaviour:
 
 * ``layout`` can be ``"horizontal"`` (default), ``"vertical"`` or ``"inline"``. Horizontal and
@@ -178,12 +222,20 @@ Other notable behaviour:
   those submenus open initially — also useful as a no-JS fallback for inline menus.
 * Submenu ``title`` accepts plain text; pass ``text_value`` whenever the title or an item's
   content is not plain text so the item has an accessible label (and typeahead works).
+  Prefer the ``icon`` prop above for the common icon-plus-text title rather than concatenating
+  marked-safe HTML.
 * Disabled items (``is_disabled=True``) render with ``aria-disabled="true"`` (anchors become
   non-navigable ``<div>`` elements, matching React) and are skipped by keyboard navigation.
 * Unsupported interactive props (``on_action`` and other callbacks, selection props, ``items``
   collections, overflow props) warn and are ignored rather than rendering broken interactivity.
 * JavaScript is required for the dropdown interactivity only; closed submenu contents are
   rendered hidden in the page and links inside them still work once opened.
+* The renderer emits one menu tree whose root can be passed directly to the standalone runtime's
+  ``attach(root)`` function. The returned controller supports ``setLayout("horizontal" |
+  "vertical" | "inline")`` for responsive layout changes without rendering a second menu. The
+  runtime updates ``data-layout``, ``data-orientation`` and ``aria-orientation`` in place. Submenus
+  keep one stable popover/inner/menu subtree in every layout; inline CSS presents that subtree in
+  place, while a later vertical or horizontal layout can position the same submenu as a flyout.
 
 .. templatetag:: Button
 

@@ -493,8 +493,9 @@ function normalizeTableComponentHtml(html, component) {
  *   `data-collection` is react-aria bookkeeping.
  * - React renders `aria-disabled="false"` on enabled items and `aria-hidden="false"` on
  *   non-placeholder sections; the static renderer omits both.
- * - `hasLeadingIcon` (class + data attribute) is SSR'd optimistically as true and corrected
- *   client-side by `useHasChild`; the static renderer does not render it.
+ * - React SSR emits `hasLeadingIcon` optimistically before `useHasChild` inspects the DOM. The
+ *   static renderer computes the real value, so the SSR-only value is removed for parity and the
+ *   shared leading-icon contract is covered by focused static tests.
  * - Unreferenced react-aria element ids are dropped (the static renderer only generates ids
  *   something points at); surviving ids (section heading ids referenced from `aria-labelledby`)
  *   are remapped in order of first appearance to the deterministic static ids. Unlike the input

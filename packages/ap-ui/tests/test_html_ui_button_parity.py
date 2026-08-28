@@ -26,3 +26,27 @@ class UIButtonParityTestCase(HtmlUIParityTestCase):
         self.assertTrue(
             any(path.endswith("@alliancesoftware/ui/styles/base/focusRing.css.ts") for path in resource_paths)
         )
+
+    def test_explicit_icon_only_supports_multiple_state_wrappers(self):
+        with self.setup_render_context():
+            output = self.render_ui_template(
+                '{% ui "button" is_icon_only=True aria_label="Toggle navigation" %}'
+                '<span data-state="closed">Closed</span>'
+                '<span data-state="open">Open</span>'
+                "{% endui %}"
+            )
+
+        self.assertIn('data-icon-only="true"', output)
+        self.assertIn('aria-label="Toggle navigation"', output)
+        self.assertIn('data-state="closed"', output)
+        self.assertIn('data-state="open"', output)
+
+    def test_explicit_false_overrides_automatic_icon_only_detection(self):
+        with self.setup_render_context():
+            output = self.render_ui_template(
+                '{% ui "button" is_icon_only=False aria_label="Approve" %}'
+                '{% ui "icon" name="CheckOutlined" %}{% endui %}'
+                "{% endui %}"
+            )
+
+        self.assertNotIn("data-icon-only", output)

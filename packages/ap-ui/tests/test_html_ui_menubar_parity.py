@@ -14,13 +14,17 @@ from tests.parity.normalizers import normalize_html_fragment
 # by unit tests (test_html_ui_menubar_components) and stripped here before comparison.
 
 _RUNTIME_SCRIPT_RE = re.compile(r'<script type="module">.*?</script>', re.DOTALL)
-_POPOVER_OPEN_TAG_RE = re.compile(r"<div\b[^>]*\bdata-apui-menu-popover\b[^>]*>")
-_HIDDEN_INLINE_POPUP_OPEN_TAG_RE = re.compile(r"<ul\b[^>]*\bhidden\b[^>]*\bdata-apui-menu-popup\b[^>]*>")
+_HIDDEN_POPOVER_OPEN_TAG_RE = re.compile(
+    r"<div\b(?=[^>]*\bdata-apui-menu-popover\b)(?=[^>]*\bhidden\b)[^>]*>"
+)
+_VISIBLE_POPOVER_OPEN_TAG_RE = re.compile(
+    r"<div\b(?=[^>]*\bdata-apui-menu-popover\b)(?![^>]*\bhidden\b)[^>]*>"
+)
+_INNER_POPOVER_OPEN_TAG_RE = re.compile(r"^<div\b[^>]*>")
 
 _STATIC_ATTR_RES = [
     re.compile(r'\sdata-djid="[^"]*"'),
     re.compile(r"\sdata-apui-menu-submenu(?=[\s>])"),
-    re.compile(r"\sdata-apui-menu-popup(?=[\s>])"),
     re.compile(r'\saria-controls="[^"]*"'),
     re.compile(r'\sid="apui-menu-[^"]*"'),
     re.compile(r'\sdata-open="false"'),
@@ -65,11 +69,56 @@ def _strip_subtrees(html: str, open_tag_re: re.Pattern[str], tag_name: str) -> s
     return "".join(result)
 
 
+def _find_closing_tag(html: str, start: int, tag_name: str) -> tuple[int, int] | None:
+    scanner = _TAG_SCANNERS[tag_name]
+    depth = 1
+    pos = start
+    while depth:
+        match = scanner.search(html, pos)
+        if match is None:
+            return None
+        depth += -1 if match.group(0).startswith("</") else 1
+        pos = match.end()
+    assert match is not None
+    return match.start(), match.end()
+
+
+def _unwrap_visible_popovers(html: str) -> str:
+    """Remove stable static popover shells while retaining open inline submenu content."""
+    result: list[str] = []
+    index = 0
+    while True:
+        match = _VISIBLE_POPOVER_OPEN_TAG_RE.search(html, index)
+        if match is None:
+            result.append(html[index:])
+            break
+        result.append(html[index : match.start()])
+        outer_close = _find_closing_tag(html, match.end(), "div")
+        if outer_close is None:
+            result.append(html[match.start() :])
+            break
+        outer_body = html[match.end() : outer_close[0]]
+        inner_match = _INNER_POPOVER_OPEN_TAG_RE.match(outer_body)
+        if inner_match is None:
+            result.append(html[match.start() : outer_close[1]])
+            index = outer_close[1]
+            continue
+        inner_close = _find_closing_tag(outer_body, inner_match.end(), "div")
+        if inner_close is None:
+            result.append(html[match.start() : outer_close[1]])
+            index = outer_close[1]
+            continue
+        result.append(_unwrap_visible_popovers(outer_body[inner_match.end() : inner_close[0]]))
+        index = outer_close[1]
+    return "".join(result)
+
+
 def strip_static_menubar_extensions(value: str) -> str:
     normalized = _RUNTIME_SCRIPT_RE.sub("", value)
-    # Closed flyout popovers and closed inline menus have no React SSR counterpart at all
-    normalized = _strip_subtrees(normalized, _POPOVER_OPEN_TAG_RE, "div")
-    normalized = _strip_subtrees(normalized, _HIDDEN_INLINE_POPUP_OPEN_TAG_RE, "ul")
+    # Closed static popovers have no React SSR counterpart. Open inline menus do, so retain their
+    # menu content while removing the stable shell that lets the attachment switch layouts.
+    normalized = _strip_subtrees(normalized, _HIDDEN_POPOVER_OPEN_TAG_RE, "div")
+    normalized = _unwrap_visible_popovers(normalized)
     for attr_re in _STATIC_ATTR_RES:
         normalized = attr_re.sub("", normalized)
     return normalized

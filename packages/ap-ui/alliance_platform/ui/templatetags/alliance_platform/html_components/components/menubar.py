@@ -20,8 +20,8 @@ covered by unit tests instead):
 
 - Empty submenus/sections are pruned after permission checks (``url_with_perm`` denials raise
   :class:`~alliance_platform.frontend.templatetags.react.OmitComponentFromRendering`).
-- Closed submenu popups are rendered hidden in place (React renders them in a portal only while
-  open) and are marked with ``data-apui-menu-popover``/``data-apui-menu-popup`` for the runtime.
+- Submenu popups keep one in-place ``data-apui-menu-popover``/inner/menu subtree in every layout;
+  closed wrappers are hidden, and inline presentation is supplied by CSS rather than alternate DOM.
 - The root exposes the ``isOpen``/``isFocused``/popover-``isOpen`` class names through
   ``data-*-class`` attributes so the runtime can toggle them without importing the CSS mapping.
 - ``data-current`` marks current items and their ancestors.
@@ -41,7 +41,10 @@ from typing import Literal
 from typing import Mapping
 import warnings
 
+from allianceutils.template import is_static_expression
 from django.template import Context
+from django.template import TemplateSyntaxError
+from django.template.base import FilterExpression
 from django.utils.functional import Promise
 from django.utils.html import conditional_escape
 from django.utils.html import strip_tags
@@ -50,8 +53,10 @@ from django.utils.safestring import mark_safe
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from alliance_platform.frontend.bundler.frontend_resource import ImageResource
 from alliance_platform.ui.icons import get_static_icon_resource
+from alliance_platform.ui.icons import validate_icon_name
 
 from ..base import BaseHtmlUIComponentRenderer
+from ..base import get_document_render_context
 from ..base import to_html_attr_name
 from ..content import render_content
 from ..runtime import attach_module_script
@@ -68,6 +73,7 @@ _MENUBAR_STATE_KEY = "alliance_platform_ui_menubar_state"
 # Key used in ``context.render_context`` to keep generated ids unique within a template render.
 # Shared with the input components so ids never collide within one render.
 _HTML_ID_COUNTER_KEY = "alliance_platform_ui_html_id_counter"
+_HTML_ID_CLAIMS_KEY = "alliance_platform_ui_html_id_claims"
 
 VALID_LAYOUTS = ("horizontal", "vertical", "inline")
 VALID_ITEM_ELEMENT_TYPES = ("a", "button", "div")
@@ -75,6 +81,12 @@ VALID_ITEM_ELEMENT_TYPES = ("a", "button", "div")
 _CHEVRON_DOWN_ICON = "ChevronDownOutlined"
 _CHEVRON_RIGHT_ICON = "ChevronRightOutlined"
 _CHEVRON_UP_ICON = "ChevronUpOutlined"
+
+_LEADING_ICON_RE = re.compile(
+    r"^(?P<icon>\s*<span\b(?=[^>]*\bdata-apui-slot=(?P<quote>['\"])icon(?P=quote))[^>]*>"
+    r".*?</span>)(?P<rest>.*)$",
+    re.DOTALL,
+)
 
 # Matches event handler props in any of the forms they can reach us in after prop normalization
 # (onClick, onclick, on_click -> onClick). These must never be rendered: a string value would
@@ -138,6 +150,8 @@ class MenubarRenderFrame:
     item_count: int = 0
     #: True when any rendered child (or descendant, via propagation) is marked current
     contains_current: bool = False
+    #: True when this menu grouping contains an item whose first content child is an icon
+    has_leading_icon: bool = False
 
 
 @dataclass
@@ -158,7 +172,7 @@ class MenubarRenderState:
 
 
 def get_current_menubar_state(context: Context) -> MenubarRenderState | None:
-    stack = context.render_context.get(_MENUBAR_STATE_KEY)
+    stack = get_document_render_context(context).get(_MENUBAR_STATE_KEY)
     if not stack:
         return None
     return stack[-1]
@@ -166,10 +180,11 @@ def get_current_menubar_state(context: Context) -> MenubarRenderState | None:
 
 @contextmanager
 def _push_menubar_state(context: Context, state: MenubarRenderState) -> Iterator[None]:
-    stack = context.render_context.get(_MENUBAR_STATE_KEY)
+    document_context = get_document_render_context(context)
+    stack = document_context.get(_MENUBAR_STATE_KEY)
     if stack is None:
         stack = []
-        context.render_context[_MENUBAR_STATE_KEY] = stack
+        document_context[_MENUBAR_STATE_KEY] = stack
     stack.append(state)
     try:
         yield
@@ -210,6 +225,28 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
     extra_allowed_aria_props: frozenset[str] = frozenset()
     #: supported props that may hold non-scalar values
     non_scalar_props: frozenset[str] = frozenset()
+    #: static icon-name props whose SVGs must be included in resource discovery
+    static_icon_props: tuple[str, ...] = ()
+
+    def resolve_component_resources(self) -> list[FrontendResource]:
+        resources: list[FrontendResource] = []
+        for prop_name in self.static_icon_props:
+            icon_name = self.resolve_static_icon_prop(prop_name)
+            if icon_name is None:
+                continue
+            if not resources:
+                resources.append(self.resolve_frontend_resource(ICON_STYLE_PATH))
+            resources.append(get_static_icon_resource(icon_name, origin=self.origin))
+        return resources
+
+    def get_resources_to_embed(self) -> list[FrontendResource]:
+        # Static icons are read and rendered inline; their ImageResources are build dependencies,
+        # not standalone document images.
+        return [
+            resource
+            for resource in self.get_resources_for_bundling()
+            if not isinstance(resource, ImageResource)
+        ]
 
     def resolve_props(self, context: Context) -> dict[str, Any]:
         return self.filter_component_props(super().resolve_props(context))
@@ -272,10 +309,43 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
 
     def generate_html_id(self, context: Context, prefix: str) -> str:
         """Generate a deterministic id, unique within the current template render."""
-        render_context = context.render_context
+        render_context = get_document_render_context(context)
         counter = (render_context.get(_HTML_ID_COUNTER_KEY) or 0) + 1
         render_context[_HTML_ID_COUNTER_KEY] = counter
         return f"{prefix}-{counter}"
+
+    def claim_html_id(self, context: Context, preferred_id: str) -> str:
+        """Claim a stable preferred id, suffixing repeated claims within the document."""
+        render_context = get_document_render_context(context)
+        claims = render_context.setdefault(_HTML_ID_CLAIMS_KEY, {})
+        count = claims.get(preferred_id, 0) + 1
+        claims[preferred_id] = count
+        return preferred_id if count == 1 else f"{preferred_id}-{count}"
+
+    def resolve_static_icon_prop(self, prop_name: str) -> str | None:
+        raw_name = self.props.get(prop_name)
+        if raw_name is None:
+            return None
+        if isinstance(raw_name, FilterExpression):
+            if not is_static_expression(raw_name):
+                raise TemplateSyntaxError(
+                    f"'{self.component_name}' requires '{prop_name}' to be a static string literal"
+                )
+            raw_name = raw_name.resolve(Context())
+        if not isinstance(raw_name, str):
+            raise TemplateSyntaxError(
+                f"'{self.component_name}' static '{prop_name}' prop must resolve to a string, "
+                f"received {type(raw_name).__name__}"
+            )
+        if raw_name != raw_name.strip():
+            raise TemplateSyntaxError(
+                f"'{self.component_name}' {prop_name} cannot contain leading or trailing whitespace"
+            )
+        try:
+            validate_icon_name(raw_name)
+        except ValueError as exc:
+            raise TemplateSyntaxError(str(exc)) from exc
+        return raw_name
 
     def get_state_or_warn(self, context: Context) -> MenubarRenderState | None:
         state = get_current_menubar_state(context)
@@ -331,14 +401,27 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
         derived = " ".join(html_module.unescape(strip_tags(content_html)).split())
         return derived or None
 
-    def wrap_plain_text_content(self, content_html: str) -> str:
-        """Wrap plain text content in a ``<span>``, matching React's ``Text`` wrapping."""
+    def normalize_item_content(self, content_html: str) -> str:
+        """Apply the React item-content contract to static child markup.
+
+        React flattens fragments and wraps every top-level text node in ``Text``. The common
+        static icon-plus-text shape can be normalized without reparsing or rewriting arbitrary
+        consumer HTML: preserve the icon element and wrap its adjacent plain text in a span.
+        """
         stripped = content_html.strip()
         if not stripped:
             return ""
         if "<" in stripped:
+            leading_icon = _LEADING_ICON_RE.match(stripped)
+            if leading_icon is not None:
+                rest = leading_icon.group("rest").strip()
+                if rest and "<" not in rest:
+                    return f"{leading_icon.group('icon').strip()}<span>{rest}</span>"
             return content_html
         return f"<span>{stripped}</span>"
+
+    def has_leading_icon(self, content_html: str) -> bool:
+        return _LEADING_ICON_RE.match(content_html.strip()) is not None
 
     def claim_tab_index(self, state: MenubarRenderState | None, key: str | None, is_disabled: bool) -> int:
         """Assign the roving tabindex tab stop for root-level menu items.
@@ -354,13 +437,21 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
         state.has_tab_stop = True
         return 0
 
-    def track_rendered_child(self, state: MenubarRenderState | None, is_current: bool):
+    def track_rendered_child(
+        self,
+        state: MenubarRenderState | None,
+        is_current: bool,
+        *,
+        has_leading_icon: bool = False,
+    ):
         if state is None:
             return
         frame = state.current_frame
         frame.item_count += 1
         if is_current:
             frame.contains_current = True
+        if has_leading_icon:
+            frame.has_leading_icon = True
 
     def resolve_is_current(self, props: dict[str, Any]) -> tuple[bool, str | None]:
         """Resolve the current marker and the ``aria-current`` value to render."""
@@ -386,10 +477,14 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
     ) -> str:
         """Render the interactive menu item element with the shared content wrapper structure.
 
-        The plain ``<div>`` wrapper matches the React implementation (it holds the selected-state
-        icon when selection is supported; without selection it renders without a class).
+        The wrapper and content data markers are part of the shared DOM/CSS contract. The wrapper
+        holds the selected-state icon when selection is supported; without selection it still
+        needs its marker even though it has no class.
         """
-        children = f"<div><span{self.build_attrs_string(content_attrs)}>{content_html}</span></div>"
+        children = (
+            '<div data-apui-menu-item-content-wrapper="">'
+            f"<span{self.build_attrs_string(content_attrs)}>{content_html}</span></div>"
+        )
         return self._render_tag(element_type, attrs, f"{children}{chevron_html}")
 
     def build_item_class_name(
@@ -422,6 +517,7 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
         return {
             "className": self.get_style_class(menubar_styles, "menubarMenuItemContent"),
             "data-contentlevel": level,
+            "data-apui-menu-item-content": "",
         }
 
 
@@ -460,15 +556,6 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
         if runtime_resource is not None:
             resources.append(runtime_resource)
         return resources
-
-    def get_resources_to_embed(self) -> list[FrontendResource]:
-        # Chevron SVGs are read and rendered inline by render_static_icon. They must remain in
-        # resource discovery for production builds without becoming standalone image elements.
-        return [
-            resource
-            for resource in self.get_resources_for_bundling()
-            if not isinstance(resource, ImageResource)
-        ]
 
     def _resolve_runtime_resource(self) -> FrontendResource | None:
         runtime_path = self.resolve_optional_resource_path(
@@ -540,12 +627,14 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
             self.get_style_class(menubar_styles, "vertical") if state.orientation == "vertical" else None,
             self.get_style_class(menubar_styles, "inline") if layout == "inline" else None,
             self.get_style_class(menubar_styles, "horizontal") if layout == "horizontal" else None,
+            self.get_style_class(menubar_styles, "hasLeadingIcon") if root_frame.has_leading_icon else None,
         )
 
         attrs: dict[str, Any] = {
             "data-apui": "menubar",
             "data-layout": layout,
             "data-orientation": state.orientation,
+            "data-has-leading-icon": "true" if root_frame.has_leading_icon else None,
             "role": "menubar",
             "aria-orientation": state.orientation,
             "className": class_name,
@@ -621,6 +710,13 @@ class UIMenubarItemRenderer(UIMenubarComponentRendererBase):
         }
     )
 
+    def render_children_for_component(self, context: Context, props: dict[str, Any]) -> str:
+        menubar_styles = self.resolve_menubar_styles()
+        return self.render_children(
+            context,
+            {"icon": {"className": self.get_style_class(menubar_styles, "itemIcon")}},
+        )
+
     def resolve_element_type(self, props: dict[str, Any], is_disabled: bool) -> str:
         element_type = self.validate_optional_enum_prop(
             props, prop_name="elementType", valid_values=VALID_ITEM_ELEMENT_TYPES
@@ -694,13 +790,18 @@ class UIMenubarItemRenderer(UIMenubarComponentRendererBase):
                         "element and will be ignored"
                     )
 
-        self.track_rendered_child(state, is_current)
+        normalized_content = self.normalize_item_content(children_html)
+        self.track_rendered_child(
+            state,
+            is_current,
+            has_leading_icon=self.has_leading_icon(normalized_content),
+        )
 
         item_html = self.render_menu_item_element(
             element_type=element_type,
             attrs=attrs,
             content_attrs=self.build_content_attrs(menubar_styles, level),
-            content_html=self.wrap_plain_text_content(children_html),
+            content_html=normalized_content,
         )
         li_attrs: dict[str, Any] = {"role": "none", "data-key": key}
         return self._render_tag("li", li_attrs, item_html)
@@ -715,6 +816,7 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
             "className",
             "style",
             "title",
+            "icon",
             "textValue",
             "href",
             "elementType",
@@ -729,6 +831,7 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
     }
     prop_aliases = {"disabled": "isDisabled", "current": "isCurrent"}
     non_scalar_props = frozenset({"title"})
+    static_icon_props = ("icon",)
 
     def render_children_for_component(self, context: Context, props: dict[str, Any]) -> str:
         # Children are rendered in render_component inside the nested frame
@@ -794,7 +897,20 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
         menubar_styles = self.resolve_menubar_styles()
         popover_styles = self.resolve_vanilla_extract_mapping(_POPOVER_STYLE_PATH)
 
-        popup_id = f"apui-menu-{key}" if key is not None else self.generate_html_id(context, "apui-menu")
+        icon_name = props.get("icon")
+        if isinstance(icon_name, str):
+            title_icon_html = self.render_icon(
+                icon_name,
+                "xs",
+                [self.get_style_class(menubar_styles, "itemIcon")],
+            )
+            title_html = mark_safe(f"{title_icon_html}{self.normalize_item_content(title_html)}")
+        normalized_title = self.normalize_item_content(title_html)
+
+        preferred_popup_id = (
+            f"apui-menu-{key}" if key is not None else self.generate_html_id(context, "apui-menu")
+        )
+        popup_id = self.claim_html_id(context, preferred_popup_id)
 
         chevron_direction = self.resolve_chevron_direction(effective_state, level, is_open)
         chevron_icon_name = {
@@ -848,7 +964,7 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
             element_type=element_type,
             attrs=trigger_attrs,
             content_attrs=self.build_content_attrs(menubar_styles, level),
-            content_html=self.wrap_plain_text_content(title_html),
+            content_html=normalized_title,
             chevron_html=chevron_html,
         )
 
@@ -861,9 +977,14 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
             children_html=children_html,
             menubar_styles=menubar_styles,
             popover_styles=popover_styles,
+            has_leading_icon=child_frame.has_leading_icon,
         )
 
-        self.track_rendered_child(state, is_current)
+        self.track_rendered_child(
+            state,
+            is_current,
+            has_leading_icon=self.has_leading_icon(normalized_title),
+        )
 
         li_attrs: dict[str, Any] = {
             "role": "none",
@@ -883,6 +1004,7 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
         children_html: str,
         menubar_styles: Any,
         popover_styles: Any,
+        has_leading_icon: bool,
     ) -> str:
         menu_style: Any = None
         level_var_reference = self.get_nested_style_class(menubar_styles, "vars", "level")
@@ -896,14 +1018,11 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
             "className": self.join_classes(
                 self.get_style_class(menubar_styles, "menubarMenu"),
                 self.get_style_class(menubar_styles, "vertical"),
+                self.get_style_class(menubar_styles, "hasLeadingIcon") if has_leading_icon else None,
             ),
+            "data-has-leading-icon": "true" if has_leading_icon else None,
             "style": menu_style,
         }
-
-        if state.layout == "inline":
-            menu_attrs["hidden"] = not is_open
-            menu_attrs["data-apui-menu-popup"] = True
-            return self._render_tag("ul", menu_attrs, children_html)
 
         menu_html = self._render_tag("ul", menu_attrs, children_html)
         placement = "bottom" if level == 0 and state.orientation == "horizontal" else "right"
@@ -932,11 +1051,14 @@ class UIMenubarSectionRenderer(UIMenubarComponentRendererBase):
             "style",
             "separatorClassName",
             "title",
+            "icon",
+            "headingId",
             "hideWhenEmpty",
         }
     )
     unsupported_prop_reasons = {"items": _COLLECTION_REASON}
     non_scalar_props = frozenset({"title"})
+    static_icon_props = ("icon",)
 
     def render_children_for_component(self, context: Context, props: dict[str, Any]) -> str:
         # Children are rendered in render_component inside the nested frame
@@ -974,12 +1096,25 @@ class UIMenubarSectionRenderer(UIMenubarComponentRendererBase):
         heading_html = ""
         heading_id: str | None = None
         if title_html.strip():
-            heading_id = self.generate_html_id(context, "apui-menubar")
+            explicit_heading_id = props.get("headingId")
+            heading_id = (
+                str(explicit_heading_id)
+                if explicit_heading_id
+                else self.generate_html_id(context, "apui-menubar")
+            )
             if "<" not in title_html.strip():
                 heading_text_class = conditional_escape(
                     self.get_style_class(menubar_styles, "sectionHeadingText")
                 )
                 title_html = mark_safe(f'<span class="{heading_text_class}">{title_html.strip()}</span>')
+            icon_name = props.get("icon")
+            if isinstance(icon_name, str):
+                title_icon_html = self.render_icon(
+                    icon_name,
+                    "xs",
+                    [self.get_style_class(menubar_styles, "sectionHeadingIcon")],
+                )
+                title_html = mark_safe(f"{title_icon_html}{title_html}")
             heading_attrs: dict[str, Any] = {
                 "className": self.get_style_class(menubar_styles, "sectionHeading"),
                 "id": heading_id,
@@ -1022,6 +1157,10 @@ class UIMenubarSectionRenderer(UIMenubarComponentRendererBase):
         }
         section_html = self._render_tag("li", section_attrs, f"{heading_html}{group_html}")
 
-        self.track_rendered_child(state, child_frame.contains_current)
+        self.track_rendered_child(
+            state,
+            child_frame.contains_current,
+            has_leading_icon=child_frame.has_leading_icon,
+        )
 
         return mark_safe(f"{separator_html}{section_html}")
