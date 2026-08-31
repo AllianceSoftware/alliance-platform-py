@@ -223,6 +223,15 @@ Other notable behaviour:
   to ancestor submenu triggers and sections for styling active trails.
 * ``default_expanded_keys`` (list or comma-separated string of submenu ``key`` values) renders
   those submenus open initially — also useful as a no-JS fallback for inline menus.
+* ``expanded_keys_storage_key`` opts an inline menu into saving its expanded submenu keys in
+  a cookie. When ``request`` is available in the template context, the renderer applies that cookie
+  to the original HTML response so reloads do not flash the default state before attachment. Stored
+  state takes precedence over ``default_expanded_keys``. Stale keys are removed automatically,
+  nested stored keys reopen their ancestor path, and an application can temporarily switch the
+  runtime controller to a flyout layout without losing the saved inline state. Use a distinct,
+  valid cookie name for each independently persisted menu (letters, numbers, hyphens and
+  underscores are recommended). The cookie is available across the site, lasts one year and uses
+  ``SameSite=Lax``; HTTPS pages also mark it ``Secure``.
 * Submenu ``title`` accepts plain text; pass ``text_value`` whenever the title or an item's
   content is not plain text so the item has an accessible label (and typeahead works).
   Prefer the ``icon`` prop above for the common icon-plus-text title rather than concatenating
