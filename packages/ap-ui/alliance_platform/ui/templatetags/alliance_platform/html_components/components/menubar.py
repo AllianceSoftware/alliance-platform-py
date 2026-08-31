@@ -34,11 +34,14 @@ from dataclasses import dataclass
 from dataclasses import field
 from decimal import Decimal
 import html as html_module
+import json
+import math
 import re
 from typing import Any
 from typing import Iterator
 from typing import Literal
 from typing import Mapping
+from urllib.parse import unquote
 import warnings
 
 from allianceutils.template import is_static_expression
@@ -87,6 +90,7 @@ _LEADING_ICON_RE = re.compile(
     r".*?</span>)(?P<rest>.*)$",
     re.DOTALL,
 )
+_COOKIE_NAME_RE = re.compile(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$")
 
 # Matches event handler props in any of the forms they can reach us in after prop normalization
 # (onClick, onclick, on_click -> onClick). These must never be rendered: a string value would
@@ -150,6 +154,8 @@ class MenubarRenderFrame:
     item_count: int = 0
     #: True when any rendered child (or descendant, via propagation) is marked current
     contains_current: bool = False
+    #: True when any rendered submenu in this frame (or a descendant) is expanded
+    contains_expanded: bool = False
     #: True when this menu grouping contains an item whose first content child is an icon
     has_leading_icon: bool = False
 
@@ -443,6 +449,7 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
         is_current: bool,
         *,
         has_leading_icon: bool = False,
+        contains_expanded: bool = False,
     ):
         if state is None:
             return
@@ -450,6 +457,8 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
         frame.item_count += 1
         if is_current:
             frame.contains_current = True
+        if contains_expanded:
+            frame.contains_expanded = True
         if has_leading_icon:
             frame.has_leading_icon = True
 
@@ -532,6 +541,7 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
             "shouldFocusWrap",
             "defaultFocusedKey",
             "defaultExpandedKeys",
+            "expandedKeysStorageKey",
             "renderWhenEmpty",
         }
     )
@@ -571,7 +581,7 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
         # needs for empty pruning) wraps them.
         return ""
 
-    def resolve_expanded_keys(self, props: dict[str, Any]) -> frozenset[str]:
+    def resolve_default_expanded_keys(self, props: dict[str, Any]) -> frozenset[str]:
         raw = props.get("defaultExpandedKeys")
         if raw is None:
             return frozenset()
@@ -585,14 +595,64 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
         )
         return frozenset()
 
-    def build_render_state(self, props: dict[str, Any], layout: str) -> MenubarRenderState:
+    def resolve_expanded_keys(
+        self,
+        context: Context,
+        props: dict[str, Any],
+        layout: str,
+    ) -> frozenset[str]:
+        default_expanded_keys = self.resolve_default_expanded_keys(props)
+        storage_key = props.get("expandedKeysStorageKey")
+        if layout != "inline" or not isinstance(storage_key, str):
+            return default_expanded_keys
+
+        request = context.get("request")
+        cookies = getattr(request, "COOKIES", None)
+        if not isinstance(cookies, Mapping):
+            return default_expanded_keys
+        raw_cookie = cookies.get(storage_key)
+        if raw_cookie is None:
+            return default_expanded_keys
+
+        try:
+            value = json.loads(unquote(raw_cookie))
+        except (TypeError, ValueError):
+            return default_expanded_keys
+        if not isinstance(value, list):
+            return default_expanded_keys
+
+        keys: list[str] = []
+        for key in value:
+            if isinstance(key, str):
+                keys.append(key)
+            elif isinstance(key, (int, float)) and not isinstance(key, bool) and math.isfinite(key):
+                keys.append(str(key))
+            else:
+                return default_expanded_keys
+        return frozenset(keys)
+
+    def resolve_expanded_keys_storage_key(self, props: dict[str, Any]) -> str | None:
+        raw_storage_key = props.get("expandedKeysStorageKey")
+        if raw_storage_key is None:
+            return None
+        if not isinstance(raw_storage_key, str) or not _COOKIE_NAME_RE.fullmatch(raw_storage_key):
+            warnings.warn("Prop 'expandedKeysStorageKey' must be a valid cookie name; it will be ignored")
+            return None
+        return raw_storage_key
+
+    def build_render_state(
+        self,
+        context: Context,
+        props: dict[str, Any],
+        layout: str,
+    ) -> MenubarRenderState:
         default_focused_key = props.get("defaultFocusedKey")
         return MenubarRenderState(
             layout=layout,  # type: ignore[arg-type] # validated by caller
             orientation="horizontal" if layout == "horizontal" else "vertical",
             should_focus_wrap=props.get("shouldFocusWrap") is not False,
             default_focused_key=str(default_focused_key) if default_focused_key is not None else None,
-            expanded_keys=self.resolve_expanded_keys(props),
+            expanded_keys=self.resolve_expanded_keys(context, props, layout),
             frame_stack=[MenubarRenderFrame(level=0)],
         )
 
@@ -609,7 +669,13 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
                 "for accessibility"
             )
 
-        state = self.build_render_state(props, layout)
+        expanded_keys_storage_key = self.resolve_expanded_keys_storage_key(props)
+        if expanded_keys_storage_key is None:
+            props.pop("expandedKeysStorageKey", None)
+        else:
+            props["expandedKeysStorageKey"] = expanded_keys_storage_key
+
+        state = self.build_render_state(context, props, layout)
         with _push_menubar_state(context, state):
             children_html = self.render_children(context)
 
@@ -642,6 +708,7 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
             "style": props.get("style"),
             "data-should-focus-wrap": "false" if not state.should_focus_wrap else None,
             "data-default-focused-key": state.default_focused_key,
+            "data-expanded-keys-storage-key": props.get("expandedKeysStorageKey"),
             # State class names the runtime toggles; it cannot resolve the CSS mapping itself.
             "data-open-class": self.get_style_class(menubar_styles, "isOpen") or None,
             "data-focused-class": self.get_style_class(menubar_styles, "isFocused") or None,
@@ -891,7 +958,9 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
         text_value = self.resolve_text_value(props, title_html, content_description="'title' content")
         is_current_self, aria_current = self.resolve_is_current(props)
         is_current = is_current_self or child_frame.contains_current
-        is_open = key is not None and key in effective_state.expanded_keys and not is_disabled
+        is_open = (
+            (key is not None and key in effective_state.expanded_keys) or child_frame.contains_expanded
+        ) and not is_disabled
 
         menubar_styles = self.resolve_menubar_styles()
         popover_styles = self.resolve_vanilla_extract_mapping(_POPOVER_STYLE_PATH)
@@ -983,6 +1052,7 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
             state,
             is_current,
             has_leading_icon=self.has_leading_icon(normalized_title),
+            contains_expanded=is_open,
         )
 
         li_attrs: dict[str, Any] = {
@@ -1160,6 +1230,7 @@ class UIMenubarSectionRenderer(UIMenubarComponentRendererBase):
             state,
             child_frame.contains_current,
             has_leading_icon=child_frame.has_leading_icon,
+            contains_expanded=child_frame.contains_expanded,
         )
 
         return mark_safe(f"{separator_html}{section_html}")

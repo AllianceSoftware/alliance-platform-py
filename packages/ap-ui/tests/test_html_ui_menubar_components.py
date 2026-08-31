@@ -7,6 +7,7 @@ import re
 from tempfile import TemporaryDirectory
 from typing import cast
 from unittest import mock
+from urllib.parse import quote
 import warnings
 
 from alliance_platform.frontend.bundler.context import BundlerAssetContext
@@ -205,6 +206,120 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn('data-layout="inline"', output)
         self.assertIn('data-apui-attach="menubar"', output)
         self.assertNotIn("<script", output)
+
+    def test_expanded_keys_storage_key_is_exposed_to_the_static_runtime(self):
+        template = (
+            '{% ui "menubar" aria_label="Nav" layout="inline" '
+            'expanded_keys_storage_key="primary-navigation-expanded" %}'
+            '{% ui "menubar_submenu" key="users" title="Users" %}'
+            '{% ui "menubar_item" href="/admin/" %}Admin{% endui %}'
+            "{% endui %}"
+            "{% endui %}"
+        )
+        output, caught = self.render_with_warnings(template)
+
+        self.assertEqual(caught, [])
+        self.assertIn(
+            'data-expanded-keys-storage-key="primary-navigation-expanded"',
+            output,
+        )
+        self.assertIn('data-apui-attach="menubar"', output)
+
+    def test_expanded_keys_cookie_is_applied_during_the_server_render(self):
+        request = HttpRequest()
+        request.COOKIES["primary-navigation-expanded"] = quote(json.dumps(["reports"]), safe="")
+        template = (
+            '{% ui "menubar" aria_label="Nav" layout="inline" '
+            'default_expanded_keys="manage" '
+            'expanded_keys_storage_key="primary-navigation-expanded" %}'
+            '{% ui "menubar_submenu" key="users" title="Users" %}'
+            '{% ui "menubar_submenu" key="reports" title="Reports" %}'
+            '{% ui "menubar_item" href="/weekly/" %}Weekly{% endui %}'
+            "{% endui %}"
+            "{% endui %}"
+            '{% ui "menubar_submenu" key="manage" title="Manage" %}'
+            '{% ui "menubar_item" href="/account/" %}Account{% endui %}'
+            "{% endui %}"
+            "{% endui %}"
+        )
+
+        output, caught = self.render_with_warnings(template, {"request": request})
+
+        self.assertEqual(caught, [])
+        # The nested stored key opens its ancestor path in the HTML response, before JavaScript.
+        self.assertRegex(
+            output,
+            re.compile(
+                r'data-key="users" data-apui-menu-submenu><button[^>]+aria-expanded="true"',
+                re.DOTALL,
+            ),
+        )
+        self.assertRegex(
+            output,
+            re.compile(
+                r'data-key="reports" data-apui-menu-submenu><button[^>]+aria-expanded="true"',
+                re.DOTALL,
+            ),
+        )
+        self.assertRegex(
+            output,
+            re.compile(
+                r'data-key="manage" data-apui-menu-submenu><button[^>]+aria-expanded="false"',
+                re.DOTALL,
+            ),
+        )
+
+    def test_empty_expanded_keys_cookie_overrides_defaults(self):
+        request = HttpRequest()
+        request.COOKIES["primary-navigation-expanded"] = quote(json.dumps([]), safe="")
+        template = (
+            '{% ui "menubar" aria_label="Nav" layout="inline" '
+            'default_expanded_keys="users" '
+            'expanded_keys_storage_key="primary-navigation-expanded" %}'
+            '{% ui "menubar_submenu" key="users" title="Users" %}'
+            '{% ui "menubar_item" href="/admin/" %}Admin{% endui %}'
+            "{% endui %}"
+            "{% endui %}"
+        )
+
+        output, caught = self.render_with_warnings(template, {"request": request})
+
+        self.assertEqual(caught, [])
+        self.assertIn('aria-label="Users" aria-haspopup="true" aria-expanded="false"', output)
+
+    def test_invalid_expanded_keys_cookie_falls_back_to_defaults(self):
+        request = HttpRequest()
+        request.COOKIES["primary-navigation-expanded"] = "%7Binvalid"
+        template = (
+            '{% ui "menubar" aria_label="Nav" layout="inline" '
+            'default_expanded_keys="users" '
+            'expanded_keys_storage_key="primary-navigation-expanded" %}'
+            '{% ui "menubar_submenu" key="users" title="Users" %}'
+            '{% ui "menubar_item" href="/admin/" %}Admin{% endui %}'
+            "{% endui %}"
+            "{% endui %}"
+        )
+
+        output, caught = self.render_with_warnings(template, {"request": request})
+
+        self.assertEqual(caught, [])
+        self.assertIn('aria-label="Users" aria-haspopup="true" aria-expanded="true"', output)
+
+    def test_invalid_expanded_keys_cookie_name_is_ignored(self):
+        template = (
+            '{% ui "menubar" aria_label="Nav" layout="inline" '
+            'expanded_keys_storage_key="not a cookie" %}'
+            '{% ui "menubar_item" href="/admin/" %}Admin{% endui %}'
+            "{% endui %}"
+        )
+
+        output, caught = self.render_with_warnings(template)
+
+        self.assertEqual(
+            caught,
+            ["Prop 'expandedKeysStorageKey' must be a valid cookie name; it will be ignored"],
+        )
+        self.assertNotIn("data-expanded-keys-storage-key", output)
 
     def test_button_item_passes_through_form_attributes(self):
         template = (
