@@ -7,9 +7,8 @@ import warnings
 from tests.parity.base import HtmlUIParityTestCase
 from tests.parity.normalizers import normalize_html_fragment
 
-_RUNTIME_SCRIPT_RE = re.compile(r'<script type="module">.*?</script>', re.DOTALL)
 _STATIC_EXTENSION_ATTR_RES = [
-    re.compile(r'\sdata-djid="[^"]*"'),
+    re.compile(r'\sdata-apui-attach="number-input"'),
     re.compile(
         r'\sdata-apui-number-input-(?:initial-value|min-value|max-value|step|locale|format-options|value-id)="[^"]*"'
     ),
@@ -18,7 +17,7 @@ _STATIC_EXTENSION_ATTR_RES = [
 
 
 def strip_static_number_input_extensions(value: str) -> str:
-    normalized = _RUNTIME_SCRIPT_RE.sub("", value)
+    normalized = value
     for attr_re in _STATIC_EXTENSION_ATTR_RES:
         normalized = attr_re.sub("", normalized)
     return normalized
@@ -56,7 +55,7 @@ class UINumberInputParityTestCase(HtmlUIParityTestCase):
             "@alliancesoftware/ui/components/text-input/TextInputBase.css.ts",
             "@alliancesoftware/ui/components/form/LabeledInput.css.ts",
             "@alliancesoftware/ui/components/number-input/NumberInput.css.ts",
-            "@alliancesoftware/ui/components/number-input/NumberInput.attach.ts",
+            "@alliancesoftware/ui/components/number-input/NumberInput.auto.ts",
             "@alliancesoftware/ui/styles/base/focusRing.css.ts",
         ]:
             with self.subTest(resource=expected_suffix):

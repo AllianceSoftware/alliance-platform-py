@@ -212,6 +212,23 @@ class TestViteBundlerTestCase(TestCase):
             self.assertEqual("http://localhost:5273/ssr/cancel", bundler.get_ssr_cancel_url())
 
     @override_settings(STATIC_URL="/test-static/")
+    def test_development_javascript_embed_uses_package_resolver_for_node_modules(self):
+        bundler = self.create_bundler(mode="development")
+        bundler.node_modules_dir = settings.PROJECT_DIR / "node_modules"
+        resource = JavascriptResource(
+            bundler.node_modules_dir / "@alliancesoftware/ui/components/menu-bar/Menubar.auto.ts"
+        )
+
+        items = bundler.get_embed_items(resource)
+
+        self.assertEqual(len(items), 1)
+        self.assertEqual(
+            items[0].generate_code(html_target_browser),
+            '<script src="http://localhost:5273/redirect-package-url/'
+            '@alliancesoftware/ui/components/menu-bar/Menubar.auto.ts" type="module"></script>',
+        )
+
+    @override_settings(STATIC_URL="/test-static/")
     def test_preview_url(self):
         bundler = self.create_bundler(mode="preview")
         self.assertEqual(

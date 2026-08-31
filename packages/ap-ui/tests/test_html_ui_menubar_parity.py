@@ -9,11 +9,10 @@ from tests.parity.normalizers import normalize_html_fragment
 
 # The static renderer produces extensions the React SSR output cannot contain: hidden popup
 # wrappers for closed submenus (React portals/omits them), aria-controls/popup id wiring, the
-# runtime bootstrap script and the state attributes it reads, roving tabindex assignment, explicit
+# external runtime marker and the state attributes it reads, roving tabindex assignment, explicit
 # data-open="false"/type="button" on triggers and data-key/data-current markers. These are covered
 # by unit tests (test_html_ui_menubar_components) and stripped here before comparison.
 
-_RUNTIME_SCRIPT_RE = re.compile(r'<script type="module">.*?</script>', re.DOTALL)
 _HIDDEN_POPOVER_OPEN_TAG_RE = re.compile(
     r"<div\b(?=[^>]*\bdata-apui-menu-popover\b)(?=[^>]*\bhidden\b)[^>]*>"
 )
@@ -23,7 +22,7 @@ _VISIBLE_POPOVER_OPEN_TAG_RE = re.compile(
 _INNER_POPOVER_OPEN_TAG_RE = re.compile(r"^<div\b[^>]*>")
 
 _STATIC_ATTR_RES = [
-    re.compile(r'\sdata-djid="[^"]*"'),
+    re.compile(r'\sdata-apui-attach="menubar"'),
     re.compile(r"\sdata-apui-menu-submenu(?=[\s>])"),
     re.compile(r'\saria-controls="[^"]*"'),
     re.compile(r'\sid="apui-menu-[^"]*"'),
@@ -114,7 +113,7 @@ def _unwrap_visible_popovers(html: str) -> str:
 
 
 def strip_static_menubar_extensions(value: str) -> str:
-    normalized = _RUNTIME_SCRIPT_RE.sub("", value)
+    normalized = value
     # Closed static popovers have no React SSR counterpart. Open inline menus do, so retain their
     # menu content while removing the stable shell that lets the attachment switch layouts.
     normalized = _strip_subtrees(normalized, _HIDDEN_POPOVER_OPEN_TAG_RE, "div")

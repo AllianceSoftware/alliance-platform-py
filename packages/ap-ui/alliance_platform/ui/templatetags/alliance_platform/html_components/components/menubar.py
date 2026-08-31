@@ -3,9 +3,9 @@
 These mirror ``@alliancesoftware/ui``'s ``Menubar`` (see ``components/menu-bar/Menubar.tsx``) for
 server-rendered navigation menus: the same markup structure, vanilla-extract classes and state
 data attributes, with interactivity provided by a small standalone runtime
-(``Menubar.attach.ts``) rather than React. Links are real anchors and form actions are real
-buttons, so navigation and submission work without JavaScript; the runtime only adds menu
-open/close and keyboard behaviour.
+(``Menubar.auto.ts``/``Menubar.attach.ts``) rather than React. Links are real anchors and form
+actions are real buttons, so navigation and submission work without JavaScript; the runtime only
+adds menu open/close and keyboard behaviour.
 
 Client-side selection state, dynamic collections (``items``), callbacks (``onAction``) and width
 overflow into a "More" submenu are intentionally unsupported.
@@ -59,14 +59,14 @@ from ..base import BaseHtmlUIComponentRenderer
 from ..base import get_document_render_context
 from ..base import to_html_attr_name
 from ..content import render_content
-from ..runtime import attach_module_script
+from ..runtime import add_auto_attach_marker
 from ..static_icon import ICON_STYLE_PATH
 
 _MENUBAR_STYLE_PATH = "@alliancesoftware/ui/components/menu-bar/Menubar.css.ts"
 _POPOVER_STYLE_PATH = "@alliancesoftware/ui/components/overlay/Popover.css.ts"
 # The runtime module is optional during resource resolution; if unresolved rendering degrades
 # gracefully to static HTML without script output.
-_RUNTIME_MODULE_PATH = "@alliancesoftware/ui/components/menu-bar/Menubar.attach.ts"
+_RUNTIME_MODULE_PATH = "@alliancesoftware/ui/components/menu-bar/Menubar.auto.ts"
 
 # Key used in ``context.render_context`` for the stack of in-progress menubar renders.
 _MENUBAR_STATE_KEY = "alliance_platform_ui_menubar_state"
@@ -416,9 +416,9 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
             if leading_icon is not None:
                 rest = leading_icon.group("rest").strip()
                 if rest and "<" not in rest:
-                    return f"{leading_icon.group('icon').strip()}<span>{rest}</span>"
+                    return f'{leading_icon.group("icon").strip()}<span data-apui-slot="label">{rest}</span>'
             return content_html
-        return f"<span>{stripped}</span>"
+        return f'<span data-apui-slot="label">{stripped}</span>'
 
     def has_leading_icon(self, content_html: str) -> bool:
         return _LEADING_ICON_RE.match(content_html.strip()) is not None
@@ -650,11 +650,10 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
         }
 
         runtime_resource = self._resolve_runtime_resource()
-        script_html = ""
         if runtime_resource is not None:
-            script_html = attach_module_script(runtime_resource, attrs)
+            add_auto_attach_marker(attrs, "menubar")
 
-        return f"{self._render_tag('ul', attrs, children_html)}{script_html}"
+        return self._render_tag("ul", attrs, children_html)
 
 
 class UIMenubarItemRenderer(UIMenubarComponentRendererBase):

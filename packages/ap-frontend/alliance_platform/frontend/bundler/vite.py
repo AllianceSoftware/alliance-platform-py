@@ -661,7 +661,7 @@ class ViteJavaScriptEmbed(ViteEmbed):
             return ""
         if self.bundler.is_development():
             return _create_html_tag(
-                "script", {"src": self.bundler.resolve_url(self.resource.path), "type": "module"}
+                "script", {"src": self.bundler.get_url(self.resource.path), "type": "module"}
             )
         asset = self.bundler.build_manifest.get_asset(self.resource.path)
         return _create_html_tag(

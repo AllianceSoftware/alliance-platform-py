@@ -22,7 +22,7 @@ from ..base import get_document_render_context
 from ..content import has_renderable_content
 from ..content import is_rich_content_value
 from ..content import render_content
-from ..runtime import attach_module_script
+from ..runtime import add_auto_attach_marker
 from ..static_icon import ICON_STYLE_PATH
 
 if TYPE_CHECKING:
@@ -43,7 +43,7 @@ _LABEL_STYLE_PATH = "@alliancesoftware/ui/components/form/Label.css.ts"
 _FORM_SECTION_STYLE_PATH = "@alliancesoftware/ui/components/form/FormSection.css.ts"
 _FOCUS_RING_STYLE_PATH = "@alliancesoftware/ui/styles/base/focusRing.css.ts"
 _NUMBER_INPUT_STYLE_PATH = "@alliancesoftware/ui/components/number-input/NumberInput.css.ts"
-_NUMBER_INPUT_RUNTIME_MODULE_PATH = "@alliancesoftware/ui/components/number-input/NumberInput.attach.ts"
+_NUMBER_INPUT_RUNTIME_MODULE_PATH = "@alliancesoftware/ui/components/number-input/NumberInput.auto.ts"
 
 # Key used in the document render context to keep generated ids unique within a document render.
 _HTML_ID_COUNTER_KEY = "alliance_platform_ui_html_id_counter"
@@ -461,15 +461,14 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
             "data-has-addon-before": "true" if addon_before_html else None,
             "data-has-addon-after": "true" if addon_after_html else None,
         }
-        container_runtime_html = self.render_container_runtime(
+        self.configure_container_runtime(
+            context,
             props,
             state,
             container_attrs,
         )
         container_children_html = f"{addon_before_html}{input_wrapper_html}{addon_after_html}"
-        container_html = mark_safe(
-            f"{self._render_tag('div', container_attrs, container_children_html)}{container_runtime_html}"
-        )
+        container_html = mark_safe(self._render_tag("div", container_attrs, container_children_html))
 
         labeled_input_html = self.render_labeled_input(context, props, state, container_html)
         return mark_safe(f"{labeled_input_html}{self.render_after_root(props, state)}")
@@ -510,13 +509,14 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
     def should_render_validation_icon(self, props: dict[str, Any], state: LabeledInputState) -> bool:
         return bool(state.validation_state) and not state.is_disabled
 
-    def render_container_runtime(
+    def configure_container_runtime(
         self,
+        context: Context,
         props: dict[str, Any],
         state: LabeledInputState,
         container_attrs: dict[str, Any],
-    ) -> str:
-        return ""
+    ) -> None:
+        """Add any runtime-specific state to the container before it is rendered."""
 
     def render_addon_before(
         self, props: dict[str, Any], state: LabeledInputState, text_input_base_styles: Any
@@ -708,21 +708,20 @@ class UINumberInputRenderer(UITextInputBaseRenderer):
         # step controls are hidden.
         return bool(props.get("hideStepButtons")) and super().should_render_validation_icon(props, state)
 
-    def render_container_runtime(
+    def configure_container_runtime(
         self,
+        context: Context,
         props: dict[str, Any],
         state: LabeledInputState,
         container_attrs: dict[str, Any],
-    ) -> str:
+    ) -> None:
         runtime_resource = self._resolve_runtime_resource()
         if runtime_resource is None:
-            return ""
-        script_html = attach_module_script(runtime_resource, container_attrs)
+            return
+        add_auto_attach_marker(container_attrs, "number-input")
         if props.get("name"):
-            component_id = container_attrs["data-djid"]
-            state.runtime_value_input_id = f"{component_id}-value"
+            state.runtime_value_input_id = f"{self.generate_html_id(context)}-value"
             container_attrs["data-apui-number-input-value-id"] = state.runtime_value_input_id
-        return script_html
 
     def format_number_value(self, value: Any) -> str:
         """Format a numeric value the way the React component displays it.
