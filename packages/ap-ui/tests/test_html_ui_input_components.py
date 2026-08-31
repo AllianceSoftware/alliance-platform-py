@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from decimal import Decimal
+import re
 import warnings
 
+from django.template import Context
+from django.template import Template
 from django.utils.translation import gettext_lazy
 
 from tests.parity.base import HtmlUIParityTestCase
@@ -133,6 +136,95 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn('for="apui-text-input-3"', output)
         self.assertIn('aria-describedby="apui-text-input-2"', output)
         self.assertIn('aria-describedby="apui-text-input-4"', output)
+
+    def test_repeated_included_input_partial_generates_document_unique_associated_ids(self):
+        with self.setup_render_context():
+            partial = Template(
+                "{% load alliance_platform.ui %}"
+                '{% ui "text_input" label=label description=description '
+                "errorMessage=error validationState=validation_state %}{% endui %}"
+            )
+            output = self.render_ui_template(
+                '{% include input with label="First" description="First help" validation_state=None %}'
+                '{% include input with label="Second" description="Second help" '
+                'error="Second error" validation_state="invalid" %}',
+                {"input": partial},
+            )
+
+        generated_ids = re.findall(r'id="(apui-text-input-\d+)"', output)
+        self.assertEqual(
+            generated_ids,
+            [
+                "apui-text-input-1",
+                "apui-text-input-2",
+                "apui-text-input-3",
+                "apui-text-input-4",
+            ],
+        )
+        self.assertEqual(
+            re.findall(r'<label[^>]+for="(apui-text-input-\d+)"', output),
+            ["apui-text-input-1", "apui-text-input-3"],
+        )
+        self.assertEqual(
+            re.findall(r'<input[^>]+aria-describedby="(apui-text-input-\d+)"', output),
+            ["apui-text-input-2", "apui-text-input-4"],
+        )
+        self.assertIn('id="apui-text-input-2">First help</div>', output)
+        self.assertIn('id="apui-text-input-4">Second error</div>', output)
+
+    def test_generated_ids_survive_nested_include_only_boundaries(self):
+        with self.setup_render_context():
+            input_partial = Template(
+                '{% load alliance_platform.ui %}{% ui "text_input" label="Included input" %}{% endui %}'
+            )
+            outer_partial = Template("{% include input_partial only %}")
+            output = self.render_ui_template(
+                "{% include outer_partial with input_partial=input_partial only %}"
+                "{% include outer_partial with input_partial=input_partial only %}",
+                {"outer_partial": outer_partial, "input_partial": input_partial},
+            )
+
+        self.assertEqual(
+            re.findall(r'<input[^>]+id="(apui-text-input-\d+)"', output),
+            ["apui-text-input-1", "apui-text-input-2"],
+        )
+        self.assertEqual(
+            re.findall(r'<label[^>]+for="(apui-text-input-\d+)"', output),
+            ["apui-text-input-1", "apui-text-input-2"],
+        )
+
+    def test_independent_template_renders_reset_generated_id_counter(self):
+        with self.setup_render_context():
+            template = Template(
+                "{% load alliance_platform.ui %}"
+                '{% ui "text_input" label="Email" description="Help" %}{% endui %}'
+            )
+            first = template.render(Context())
+            second = template.render(Context())
+
+        expected_ids = ["apui-text-input-1", "apui-text-input-2"]
+        self.assertEqual(re.findall(r'id="(apui-text-input-\d+)"', first), expected_ids)
+        self.assertEqual(re.findall(r'id="(apui-text-input-\d+)"', second), expected_ids)
+
+    def test_generated_ids_share_document_counter_with_menubar(self):
+        output, caught = self.render_with_warnings(
+            '{% ui "text_input" label="First" description="Help" %}{% endui %}'
+            '{% ui "menubar" aria_label="Nav" %}'
+            '{% ui "menubar_section" title="Account" %}'
+            '{% ui "menubar_item" href="/profile/" %}Profile{% endui %}'
+            "{% endui %}"
+            "{% endui %}"
+            '{% ui "text_input" label="Second" errorMessage="Required" '
+            'validationState="invalid" %}{% endui %}'
+        )
+
+        self.assertEqual(caught, [])
+        self.assertIn('id="apui-text-input-1"', output)
+        self.assertIn('aria-describedby="apui-text-input-2"', output)
+        self.assertIn('id="apui-menubar-3"', output)
+        self.assertIn('aria-labelledby="apui-menubar-3"', output)
+        self.assertIn('id="apui-text-input-4"', output)
+        self.assertIn('aria-describedby="apui-text-input-5"', output)
 
     def test_caller_aria_describedby_is_preserved_and_generated_ids_appended(self):
         output, _ = self.render_with_warnings(

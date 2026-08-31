@@ -18,6 +18,7 @@ from alliance_platform.frontend.bundler.frontend_resource import ImageResource
 from alliance_platform.ui.icons import get_static_icon_resource
 
 from ..base import BaseHtmlUIComponentRenderer
+from ..base import get_document_render_context
 from ..content import has_renderable_content
 from ..content import is_rich_content_value
 from ..content import render_content
@@ -44,7 +45,7 @@ _FOCUS_RING_STYLE_PATH = "@alliancesoftware/ui/styles/base/focusRing.css.ts"
 _NUMBER_INPUT_STYLE_PATH = "@alliancesoftware/ui/components/number-input/NumberInput.css.ts"
 _NUMBER_INPUT_RUNTIME_MODULE_PATH = "@alliancesoftware/ui/components/number-input/NumberInput.attach.ts"
 
-# Key used in ``context.render_context`` to keep generated ids unique within a template render.
+# Key used in the document render context to keep generated ids unique within a document render.
 _HTML_ID_COUNTER_KEY = "alliance_platform_ui_html_id_counter"
 
 _ALERT_CIRCLE_ICON = "AlertCircleOutlined"
@@ -154,8 +155,8 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
     apui_component_name: str
 
     def generate_html_id(self, context: Context) -> str:
-        """Generate a deterministic id, unique within the current template render."""
-        render_context = context.render_context
+        """Generate a deterministic id, unique within the current document render."""
+        render_context = get_document_render_context(context)
         counter = (render_context.get(_HTML_ID_COUNTER_KEY) or 0) + 1
         render_context[_HTML_ID_COUNTER_KEY] = counter
         return f"apui-{self.apui_component_name}-{counter}"
