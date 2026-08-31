@@ -432,16 +432,14 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn('data-size="sm"', output)
         self.assertIn('data-size="md"', output)
 
-    def test_number_input_runtime_script_attaches_to_number_input_root(self):
+    def test_number_input_is_marked_for_collected_external_auto_attachment(self):
         output, _ = self.render_with_warnings(
             '{% ui "number_input" label="Qty" name="qty" defaultValue=5 %}{% endui %}'
         )
-        self.assertIn('<script type="module">', output)
-        self.assertIn("NumberInput.attach.ts", output)
-        component_id = output.split('data-djid="')[1].split('"')[0]
-        self.assertIn(f"[data-djid='{component_id}']", output)
-        self.assertIn(f'data-apui-number-input-value-id="{component_id}-value"', output)
-        self.assertIn(f'id="{component_id}-value"', output)
+        self.assertIn('data-apui-attach="number-input"', output)
+        self.assertNotIn("<script", output)
+        value_input_id = re.search(r'data-apui-number-input-value-id="([^"]+)"', output).group(1)
+        self.assertIn(f'id="{value_input_id}"', output)
 
     def test_number_input_collected_assets_do_not_emit_detached_icon_images(self):
         with self.setup_render_context():
@@ -454,7 +452,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         self.assertEqual(output.count("<svg"), 2)
         self.assertNotIn("<img", output)
         self.assertNotIn("TextInputBase_validationIcon", output)
-        self.assertIn("NumberInput.attach.ts", output)
+        self.assertIn("NumberInput.auto.ts", output)
 
     def test_number_input_collected_assets_keep_hide_step_validation_icon_in_place(self):
         with self.setup_render_context():

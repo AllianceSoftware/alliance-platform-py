@@ -7,7 +7,7 @@ from django.template import Context
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 
 from ..base import BaseHtmlUIComponentRenderer
-from ..runtime import attach_module_script
+from ..runtime import add_auto_attach_marker
 
 VALID_ORIENTATIONS = ("horizontal", "vertical")
 VALID_ALIGNS = ("start", "center", "end")
@@ -16,7 +16,7 @@ VALID_DENSITIES = ("compact", "xxs", "xs", "sm", "md", "lg", "xl", "xxl", "xxxl"
 _BUTTON_GROUP_STYLE_PATH = "@alliancesoftware/ui/components/button/ButtonGroup.css.ts"
 _SMART_ORIENTATION_STYLE_PATH = "@alliancesoftware/ui/components/layout/SmartOrientation.css.ts"
 # The runtime module is optional for now; if unresolved at parse time we degrade gracefully to static HTML.
-_RUNTIME_MODULE_PATH = "@alliancesoftware/ui/components/layout/SmartOrientation.attach.ts"
+_RUNTIME_MODULE_PATH = "@alliancesoftware/ui/components/layout/SmartOrientation.auto.ts"
 
 
 class UIButtonGroupRenderer(BaseHtmlUIComponentRenderer):
@@ -92,11 +92,10 @@ class UIButtonGroupRenderer(BaseHtmlUIComponentRenderer):
         }
 
         runtime_resource = self._resolve_runtime_resource()
-        script_html = ""
         if runtime_resource is not None:
-            script_html = attach_module_script(runtime_resource, attrs)
+            add_auto_attach_marker(attrs, "smart-orientation")
 
-        return f"{self._render_tag('div', attrs, children_html)}{script_html}"
+        return self._render_tag("div", attrs, children_html)
 
     def _resolve_runtime_resource(self) -> FrontendResource | None:
         runtime_path = self.resolve_optional_resource_path(

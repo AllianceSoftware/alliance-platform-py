@@ -13,12 +13,11 @@ class UIButtonGroupParityTestCase(HtmlUIParityTestCase):
             with self.subTest(case=case["name"]):
                 self.assert_parity_case(case)
 
-    def test_runtime_bootstrap_script_is_appended(self):
+    def test_runtime_is_marked_for_collected_external_auto_attachment(self):
         with self.setup_render_context() as _asset_context:
             output = self.render_ui_template(
                 '{% ui "button_group" %}{% ui "button" %}One{% endui %}{% endui %}'
             )
         normalized = normalize_html_fragment(output)
-        self.assertIn('<script type="module">', normalized)
-        self.assertIn("import attach from", normalized)
-        self.assertIn("document.querySelector", normalized)
+        self.assertIn('data-apui-attach="smart-orientation"', normalized)
+        self.assertNotIn("<script", normalized)

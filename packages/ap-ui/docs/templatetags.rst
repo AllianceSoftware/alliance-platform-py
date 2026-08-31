@@ -138,8 +138,9 @@ Static menubar components
 HTML with the same visual classes, layout and state data attributes as the React component.
 Links are real ``<a href>`` elements and form actions are real ``<button>`` elements, so
 top-level navigation works even with JavaScript disabled; a small standalone runtime module
-(loaded automatically, no React) adds the dropdown behaviour: opening/closing submenus, keyboard
-navigation with roving tabindex, Escape/outside-click handling and typeahead.
+(loaded automatically once per page, no inline script and no React) adds the dropdown behaviour:
+opening/closing submenus, keyboard navigation with roving tabindex, Escape/outside-click handling,
+typeahead and viewport-aware flyout positioning.
 
 Use it for server-rendered navigation menus. Use the React-backed :ttag:`Menubar` tag instead
 when you need client-side callbacks (``on_action``), selection state, dynamic ``items``
@@ -214,7 +215,9 @@ the same partial is included more than once.
 Other notable behaviour:
 
 * ``layout`` can be ``"horizontal"`` (default), ``"vertical"`` or ``"inline"``. Horizontal and
-  vertical menus open submenus in flyout popovers; inline menus expand submenus in place.
+  vertical menus open submenus in viewport-aware flyout popovers; inline menus expand submenus in
+  place. Application code that changes the layout can use the public, idempotent
+  ``attachMenubar(root)`` controller from ``Menubar.attach.ts`` without duplicating listeners.
 * Set ``is_current=True`` on the item for the current page: it renders ``aria-current="page"``
   (override with ``aria_current``) plus a ``data-current="true"`` attribute that also propagates
   to ancestor submenu triggers and sections for styling active trails.

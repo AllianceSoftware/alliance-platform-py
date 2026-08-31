@@ -89,7 +89,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
             '<div data-apui-menu-item-content-wrapper="">'
             '<span class="Menubar_menubarMenuItemContent" data-contentlevel="0" '
             'data-apui-menu-item-content="">'
-            "<span>Dashboard</span></span></div></a></li>",
+            '<span data-apui-slot="label">Dashboard</span></span></div></a></li>',
             output,
         )
         # Submenu trigger: button with popup wiring and a chevron icon
@@ -203,7 +203,8 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         )
         self.assertNotIn(" hidden ", output)
         self.assertIn('data-layout="inline"', output)
-        self.assertIn("attach(el)", output)
+        self.assertIn('data-apui-attach="menubar"', output)
+        self.assertNotIn("<script", output)
 
     def test_button_item_passes_through_form_attributes(self):
         template = (
@@ -714,7 +715,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
             "static-svg/outlined/ChevronDownOutlined.svg",
             "static-svg/outlined/ChevronRightOutlined.svg",
             "static-svg/outlined/ChevronUpOutlined.svg",
-            "@alliancesoftware/ui/components/menu-bar/Menubar.attach.ts",
+            "@alliancesoftware/ui/components/menu-bar/Menubar.auto.ts",
         ):
             self.assertTrue(
                 any(path.endswith(expected) for path in resource_paths),
@@ -727,9 +728,17 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
 
         self.assertEqual(output.count("<svg"), 1)
         self.assertNotIn("<img", output)
-        self.assertIn("Menubar.attach.ts", output)
-        self.assertIn('<script type="module">', output)
+        self.assertIn("Menubar.auto.ts", output)
+        self.assertIn("<script src=", output)
         self.assertIn("Menubar_menubar", output)
+
+    def test_collected_auto_attach_runtime_is_deduplicated_for_multiple_menubars(self):
+        with self.setup_render_context():
+            output = self.render_ui_document(BASIC_MENUBAR_TEMPLATE + BASIC_MENUBAR_TEMPLATE)
+
+        self.assertEqual(output.count("Menubar.auto.ts"), 1)
+        self.assertEqual(output.count('data-apui-attach="menubar"'), 2)
+        self.assertNotIn('<script type="module">', output)
 
     def test_collected_assets_document_with_explicit_icon_has_only_inline_svgs(self):
         template = (
@@ -758,10 +767,10 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
             'data-apui-menu-item-content=""><span role="img"',
             output,
         )
-        self.assertIn("</span><span>Settings</span>", output)
+        self.assertIn('</span><span data-apui-slot="label">Settings</span>', output)
         self.assertIn('data-has-leading-icon="true"', output)
         self.assertIn("Menubar_hasLeadingIcon", output)
-        self.assertIn("Menubar.attach.ts", output)
+        self.assertIn("Menubar.auto.ts", output)
 
     def test_submenu_popup_tracks_leading_icons(self):
         template = (
@@ -801,7 +810,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn("Menubar_itemIcon", output)
         self.assertIn("Menubar_sectionHeadingIcon", output)
         self.assertIn("Menubar_sectionHeadingText", output)
-        self.assertIn("</span><span>Manage</span>", output)
+        self.assertIn('</span><span data-apui-slot="label">Manage</span>', output)
         for icon_name in ("Pencil01Outlined.svg", "AlertCircleOutlined.svg"):
             self.assertTrue(any(path.endswith(icon_name) for path in resource_paths))
 
@@ -822,7 +831,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
             "@alliancesoftware/ui/components/overlay/Popover.css.ts",
             "@alliancesoftware/icons/Icon.css.ts",
         )
-        runtime_path = "@alliancesoftware/ui/components/menu-bar/Menubar.attach.ts"
+        runtime_path = "@alliancesoftware/ui/components/menu-bar/Menubar.auto.ts"
 
         with TemporaryDirectory() as temp_dir:
             build_dir = Path(temp_dir)
@@ -836,7 +845,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
                     "css": [f"assets/{style_name}-built.css"],
                 }
             manifest[runtime_path] = {
-                "file": "assets/Menubar.attach-built.js",
+                "file": "assets/Menubar.auto-built.js",
                 "src": runtime_path,
             }
 
@@ -877,7 +886,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
 
         self.assertEqual(output.count("<svg"), 1)
         self.assertNotIn("<img", output)
-        self.assertIn("/static/assets/Menubar.attach-built.js", output)
+        self.assertIn("/static/assets/Menubar.auto-built.js", output)
         self.assertIn("/static/assets/Menubar-built.css", output)
         for icon_name in (
             "ChevronDownOutlined.svg",
@@ -899,18 +908,15 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
             )
             resource_paths = [str(resource.path) for resource in renderer.get_resources_for_bundling()]
         self.assertEqual(len(resource_paths), 7)
-        self.assertTrue(any("Menubar.attach" in path for path in resource_paths))
+        self.assertTrue(any("Menubar.auto" in path for path in resource_paths))
         self.assertTrue(any("ChevronDownOutlined.svg" in path for path in resource_paths))
 
-    def test_runtime_script_attaches_to_rendered_root(self):
+    def test_runtime_marks_rendered_root_for_external_auto_attachment(self):
         with self.setup_render_context():
             output = self.render_ui_template(BASIC_MENUBAR_TEMPLATE)
-        self.assertIn('<script type="module">', output)
-        self.assertIn("import attach from", output)
-        self.assertIn("Menubar.attach", output)
-        # The script targets the generated data-djid on the menubar root
-        djid = output.split('data-djid="')[1].split('"')[0]
-        self.assertIn(f"[data-djid='{djid}']", output)
+        self.assertIn('data-apui-attach="menubar"', output)
+        self.assertNotIn("data-djid", output)
+        self.assertNotIn("<script", output)
 
     def test_runtime_layout_contract_uses_one_mutable_menu_tree(self):
         with self.setup_render_context():
@@ -922,7 +928,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn('data-layout="horizontal"', output)
         self.assertIn('data-orientation="horizontal"', output)
         self.assertIn('aria-orientation="horizontal"', output)
-        self.assertIn("attach(el)", output)
+        self.assertIn('data-apui-attach="menubar"', output)
 
     def test_no_script_rendered_for_empty_menubar(self):
         template = (
