@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
 import warnings
 
@@ -25,18 +24,11 @@ from .registry import built_in_registry
 _DISPATCHER_WARNING_KEYS: set[tuple[str, str]] = set()
 
 
-@dataclass(frozen=True)
-class ComponentSelector:
-    expression: FilterExpression
-    is_static: bool
-    static_value: str | None
-
-
 class UIComponentDispatcherNode(template.Node, BundlerAsset):
     def __init__(
         self,
         *,
-        selector: ComponentSelector,
+        selector: FilterExpression,
         props: dict[str, Any],
         nodelist: NodeList,
         allowed_components: list[str] | None,
@@ -47,32 +39,19 @@ class UIComponentDispatcherNode(template.Node, BundlerAsset):
         self.selector = selector
         self.props = props
         self.nodelist = nodelist
-        self.allowed_components = allowed_components or []
+        self.allowed_components = allowed_components
         self.target_var = target_var
         self.registry = registry
         super().__init__(origin or Origin(UNKNOWN_SOURCE))
 
     def get_resources_for_bundling(self) -> list[FrontendResource]:
-        if self.selector.is_static and self.selector.static_value is not None:
-            spec = self.registry.get(self.selector.static_value)
-            if spec is None:
-                return []
-            renderer = spec.renderer_cls(
-                props=self.props,
-                nodelist=self.nodelist,
-                origin=self.origin,
-                target_var=self.target_var,
-                register_asset=False,
-            )
-            return renderer.get_resources_for_bundling()
-
         resources: list[FrontendResource] = []
         seen_keys: set[tuple[type[FrontendResource], str]] = set()
-        for component_name in self.allowed_components:
-            spec = self.registry.get(component_name)
-            if spec is None:
+        for component_name in self.allowed_components or []:
+            renderer_cls = self.registry.get(component_name)
+            if renderer_cls is None:
                 continue
-            renderer = spec.renderer_cls(
+            renderer = renderer_cls(
                 props=self.props,
                 nodelist=self.nodelist,
                 origin=self.origin,
@@ -98,20 +77,18 @@ class UIComponentDispatcherNode(template.Node, BundlerAsset):
             )
             return ""
 
-        if not self.selector.is_static:
-            if component_name not in self.allowed_components:
-                self._warn_dispatcher(
-                    warning_type="ui_dispatcher_disallowed_dynamic_component",
-                    component_identifier=component_name,
-                    message=(
-                        f"Resolved ui component '{component_name}' is not allowed by "
-                        f"{ALLOWED_COMPONENTS_KWARG}."
-                    ),
-                )
-                return ""
+        if self.allowed_components is not None and component_name not in self.allowed_components:
+            self._warn_dispatcher(
+                warning_type="ui_dispatcher_disallowed_dynamic_component",
+                component_identifier=component_name,
+                message=(
+                    f"Resolved ui component '{component_name}' is not allowed by {ALLOWED_COMPONENTS_KWARG}."
+                ),
+            )
+            return ""
 
-        spec = self.registry.get(component_name)
-        if spec is None:
+        renderer_cls = self.registry.get(component_name)
+        if renderer_cls is None:
             if settings.DEBUG:
                 raise TemplateSyntaxError(f"Unknown ui component '{component_name}'")
             self._warn_dispatcher(
@@ -121,7 +98,7 @@ class UIComponentDispatcherNode(template.Node, BundlerAsset):
             )
             return ""
 
-        renderer = spec.renderer_cls(
+        renderer = renderer_cls(
             props=self.props,
             nodelist=self.nodelist,
             origin=self.origin,
@@ -130,10 +107,7 @@ class UIComponentDispatcherNode(template.Node, BundlerAsset):
         return renderer.render(context)
 
     def _resolve_component_name(self, context: Context) -> str:
-        if self.selector.is_static:
-            return self.selector.static_value or ""
-
-        value = self.selector.expression.resolve(context)
+        value = self.selector.resolve(context)
         return "" if value is None else str(value).strip()
 
     def _warn_dispatcher(self, warning_type: str, component_identifier: str, message: str):
@@ -191,15 +165,21 @@ def parse_ui_tag(
     nodelist = parser.parse((f"end{tag_name}",))
     parser.delete_first_token()
 
+    if static_selector_value is not None:
+        renderer_cls = registry.get(static_selector_value)
+        if renderer_cls is not None:
+            return renderer_cls(
+                props=kwargs,
+                nodelist=nodelist,
+                target_var=target_var,
+                origin=parser.origin,
+            )
+
     return UIComponentDispatcherNode(
-        selector=ComponentSelector(
-            expression=selector_expr,
-            is_static=selector_is_static,
-            static_value=static_selector_value,
-        ),
+        selector=selector_expr,
         props=kwargs,
         nodelist=nodelist,
-        allowed_components=allowed_components,
+        allowed_components=allowed_components if not selector_is_static else None,
         target_var=target_var,
         origin=parser.origin,
         registry=registry,
