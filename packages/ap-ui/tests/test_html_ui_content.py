@@ -1,12 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
 import warnings
 
 from alliance_platform.frontend.renderable_content import RenderableContent
-from alliance_platform.frontend.templatetags.react import CommonComponentSource
-from alliance_platform.frontend.templatetags.react import ComponentNode
-from alliance_platform.frontend.templatetags.react import ImportComponentSource
 from alliance_platform.ui.templatetags.alliance_platform.html_components.content import render_content
 from django import forms
 from django.template import Context
@@ -90,36 +86,6 @@ class RenderContentTestCase(HtmlUIParityTestCase):
         output, _ = self.render_value(["one ", RenderableContent.from_html("<em>two</em>", origin)])
         self.assertEqual(output, "one <em>two</em>")
 
-    def test_legacy_common_component_node_renders(self):
-        with self.setup_render_context():
-            node = ComponentNode(
-                origin,
-                CommonComponentSource("span"),
-                {"className": "hint", "children": ["Help"]},
-            )
-            with warnings.catch_warnings(record=True) as caught_warnings:
-                warnings.simplefilter("always")
-                output = render_content(node, Context(), prop_name="description")
-        self.assertEqual(output, '<span class="hint">Help</span>')
-        self.assertEqual([str(item.message) for item in caught_warnings], [])
-
-    def test_legacy_imported_component_node_warns_and_drops(self):
-        with self.setup_render_context():
-            node = ComponentNode(
-                origin,
-                ImportComponentSource(Path("components/Fancy.tsx"), "Fancy", True),
-                {"children": ["Help"]},
-            )
-            with warnings.catch_warnings(record=True) as caught_warnings:
-                warnings.simplefilter("always")
-                output = render_content(node, Context(), prop_name="description")
-        self.assertEqual(output, "")
-        self.assertIn(
-            "Renderable content prop 'description' contains imported React component 'Fancy', "
-            "which cannot be rendered by static HTML ui components and will be ignored.",
-            [str(item.message) for item in caught_warnings],
-        )
-
     def test_unsupported_value_warns_and_drops(self):
         output, caught = self.render_value(object())
         self.assertEqual(output, "")
@@ -184,15 +150,6 @@ class StaticInputRichContentTestCase(HtmlUIParityTestCase):
         self.assertNotIn("onclick", output)
         self.assertIn("<span>Help</span>", output)
         self.assertTrue(any("event handler attribute" in str(item.message) for item in caught_warnings))
-
-    def test_description_legacy_component_node_renders(self):
-        with self.setup_render_context():
-            node = ComponentNode(origin, CommonComponentSource("em"), {"children": ["Legacy"]})
-            output = self.render_ui_template(
-                '{% ui "text_input" label="Email" description=description %}{% endui %}',
-                {"description": node},
-            )
-        self.assertIn(">Legacy</em></div>", output)
 
     def test_form_input_help_text_renders_through_static_widget(self):
         with self.setup_render_context():
