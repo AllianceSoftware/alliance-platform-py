@@ -1,44 +1,26 @@
 from __future__ import annotations
 
-from collections import OrderedDict
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
-from typing import Iterable
-from typing import TypeVar
 
 if TYPE_CHECKING:
     from .base import BaseHtmlUIComponentRenderer
 
-RendererType = TypeVar("RendererType", bound="BaseHtmlUIComponentRenderer")
-
-
-@dataclass(frozen=True)
-class HtmlUIComponentSpec:
-    name: str
-    renderer_cls: type["BaseHtmlUIComponentRenderer"]
-
 
 class HtmlUIComponentRegistry:
     def __init__(self):
-        self._specs: OrderedDict[str, HtmlUIComponentSpec] = OrderedDict()
-
-    def register(self, spec: HtmlUIComponentSpec):
-        self._specs[spec.name] = spec
+        self._renderers: dict[str, type["BaseHtmlUIComponentRenderer"]] = {}
 
     def register_renderer(self, name: str, renderer_cls: type["BaseHtmlUIComponentRenderer"]):
-        self.register(HtmlUIComponentSpec(name=name, renderer_cls=renderer_cls))
+        self._renderers[name] = renderer_cls
 
-    def get(self, name: str) -> HtmlUIComponentSpec | None:
-        return self._specs.get(name)
+    def get(self, name: str) -> type["BaseHtmlUIComponentRenderer"] | None:
+        return self._renderers.get(name)
 
     def exists(self, name: str) -> bool:
-        return name in self._specs
+        return name in self._renderers
 
     def list_names(self) -> list[str]:
-        return list(self._specs.keys())
-
-    def list_specs(self) -> Iterable[HtmlUIComponentSpec]:
-        return self._specs.values()
+        return list(self._renderers)
 
 
 built_in_registry = HtmlUIComponentRegistry()

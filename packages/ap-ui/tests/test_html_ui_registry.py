@@ -27,10 +27,8 @@ class HtmlUIComponentRegistryTestCase(SimpleTestCase):
         registry = HtmlUIComponentRegistry()
         registry.register_renderer("button", UIButtonRenderer)
 
-        spec = registry.get("button")
-        assert spec is not None
-        self.assertEqual(spec.name, "button")
-        self.assertIs(spec.renderer_cls, UIButtonRenderer)
+        renderer_cls = registry.get("button")
+        self.assertIs(renderer_cls, UIButtonRenderer)
         self.assertTrue(registry.exists("button"))
 
     def test_list_names_preserves_registration_order(self):
@@ -45,9 +43,8 @@ class HtmlUIComponentRegistryTestCase(SimpleTestCase):
         registry.register_renderer("button", UIButtonRenderer)
         registry.register_renderer("button", UIButtonGroupRenderer)
 
-        spec = registry.get("button")
-        assert spec is not None
-        self.assertIs(spec.renderer_cls, UIButtonGroupRenderer)
+        renderer_cls = registry.get("button")
+        self.assertIs(renderer_cls, UIButtonGroupRenderer)
 
     def test_built_in_registry_includes_input_components(self):
         for name, renderer_cls in [
@@ -56,6 +53,4 @@ class HtmlUIComponentRegistryTestCase(SimpleTestCase):
             ("text_area", UITextAreaRenderer),
         ]:
             with self.subTest(component=name):
-                spec = built_in_registry.get(name)
-                assert spec is not None
-                self.assertIs(spec.renderer_cls, renderer_cls)
+                self.assertIs(built_in_registry.get(name), renderer_cls)
