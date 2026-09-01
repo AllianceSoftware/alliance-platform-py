@@ -1,8 +1,5 @@
 {
-  "generated_by": "scripts/generateHtmlUiParityFixtures.mjs",
-  "generated_at_utc": "2026-04-08T00:00:00.000Z",
   "component": "button",
-  "styles": {},
   "cases": [
     {
       "name": "default",

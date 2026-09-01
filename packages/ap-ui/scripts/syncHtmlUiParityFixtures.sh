@@ -87,7 +87,6 @@ fi
 
 (
     cd "${UI_PACKAGE_DIR}"
-    AP_UI_JS_REPO="${JS_REPO}" \
-        AP_UI_UI_PACKAGE_DIR="${UI_PACKAGE_DIR}" \
+    AP_UI_UI_PACKAGE_DIR="${UI_PACKAGE_DIR}" \
         "${COMMAND[@]}"
 )

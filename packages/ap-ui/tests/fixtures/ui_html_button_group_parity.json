@@ -1,20 +1,17 @@
 {
-  "generated_by": "scripts/generateHtmlUiParityFixtures.mjs",
-  "generated_at_utc": "2026-04-08T00:00:00.000Z",
   "component": "button_group",
-  "styles": {},
   "cases": [
     {
       "name": "default",
       "template": "{% ui \"button_group\" %}{% ui \"button\" %}One{% endui %}{% endui %}",
-      "expected_html": "<div data-apui=\"button-group\" data-apui-attach=\"smart-orientation\" data-orientation=\"horizontal\" class=\"SmartOrientation_containerBase SmartOrientation_align_start SmartOrientation_density_md ButtonGroup_buttonGroup\"><button class=\"focusRing_base Button_baseButton Button_sizes_md ButtonGroup_button\" data-apui=\"button\" data-variant=\"solid\" data-color=\"primary\" data-size=\"md\" data-shape=\"default\"><span>One</span></button></div>",
+      "expected_html": "<div data-apui=\"button-group\" data-orientation=\"horizontal\" class=\"SmartOrientation_containerBase SmartOrientation_align_start SmartOrientation_density_md ButtonGroup_buttonGroup\" data-apui-attach=\"smart-orientation\"><button class=\"focusRing_base Button_baseButton Button_sizes_md ButtonGroup_button\" data-apui=\"button\" data-variant=\"solid\" data-color=\"primary\" data-size=\"md\" data-shape=\"default\"><span>One</span></button></div>",
       "expected_warnings": [],
       "meta": {}
     },
     {
       "name": "slot_defaults_and_child_class_merge",
       "template": "{% ui \"button_group\" variant=\"outlined\" color=\"gray\" size=\"lg\" density=\"compact\" align=\"end\" %}{% ui \"button\" className=\"custom\" %}Two{% endui %}{% endui %}",
-      "expected_html": "<div data-apui=\"button-group\" data-apui-attach=\"smart-orientation\" data-density=\"compact\" data-align=\"end\" data-orientation=\"horizontal\" class=\"SmartOrientation_containerBase SmartOrientation_align_end SmartOrientation_density_compact ButtonGroup_buttonGroup\"><button class=\"focusRing_base Button_baseButton Button_sizes_lg ButtonGroup_button custom\" data-apui=\"button\" data-variant=\"outlined\" data-color=\"gray\" data-size=\"lg\" data-shape=\"default\"><span>Two</span></button></div>",
+      "expected_html": "<div data-apui=\"button-group\" data-density=\"compact\" data-align=\"end\" data-orientation=\"horizontal\" class=\"SmartOrientation_containerBase SmartOrientation_align_end SmartOrientation_density_compact ButtonGroup_buttonGroup\" data-apui-attach=\"smart-orientation\"><button class=\"focusRing_base Button_baseButton Button_sizes_lg ButtonGroup_button custom\" data-apui=\"button\" data-variant=\"outlined\" data-color=\"gray\" data-size=\"lg\" data-shape=\"default\"><span>Two</span></button></div>",
       "expected_warnings": [],
       "meta": {}
     },
