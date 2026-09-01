@@ -188,10 +188,7 @@ def convert_html_to_renderable_content(
     # NOTE: I tried lxml initially (with & without BeautifulSoup), and it was slower for our specific use case.
     # In general, it's considered very fast, but we don't need most of its features and this simple parser was
     # faster.
-    parser = HtmlTreeParser()
     source_html = str(html)
-    # Parse the HTML
-    parser.feed(source_html)
 
     def handle_placeholders(content: str):
         if not replacements:
@@ -226,28 +223,53 @@ def convert_html_to_renderable_content(
             tuple(attribute_template_nodes),
         )
 
-    def convert_tree(tree) -> tuple[RenderablePart, ...]:
-        parts: list[RenderablePart] = []
-        for el in tree:
-            if isinstance(el, str):
-                for part in handle_placeholders(el):
-                    if isinstance(part, str):
-                        parts.append(RenderableText(part))
-                    else:
-                        parts.append(RenderableTemplateNode(part))
-            else:
-                attrs, attribute_template_nodes = convert_attributes(el.tag, el.attributes)
-                parts.append(
-                    RenderableElement(
-                        tag=el.tag,
-                        attrs=attrs,
-                        children=RenderableContent(convert_tree(el.children), source_html=source_html),
-                        attribute_template_nodes=attribute_template_nodes,
-                    )
-                )
-        return tuple(parts)
+    @dataclass
+    class OpenElement:
+        tag: str
+        attrs: dict[str, Any]
+        attribute_template_nodes: tuple[Node | str, ...]
+        children: list[RenderablePart] = field(default_factory=list)
 
-    return RenderableContent(convert_tree(parser.root.children), source_html=source_html)
+    class RenderableContentParser(HTMLParser):
+        def __init__(self):
+            super().__init__(convert_charrefs=True)
+            self.parts: list[RenderablePart] = []
+            self.stack: list[OpenElement] = []
+
+        def append(self, part: RenderablePart):
+            (self.stack[-1].children if self.stack else self.parts).append(part)
+
+        def handle_starttag(self, tag, attrs):
+            cleaned_attrs, attribute_template_nodes = convert_attributes(tag, dict(attrs))
+            self.stack.append(OpenElement(tag, cleaned_attrs, attribute_template_nodes))
+            if tag in void_elements:
+                self.handle_endtag(tag)
+
+        def handle_endtag(self, tag):
+            if not self.stack or self.stack[-1].tag != tag:
+                return
+            element = self.stack.pop()
+            self.append(
+                RenderableElement(
+                    tag=element.tag,
+                    attrs=element.attrs,
+                    children=RenderableContent(tuple(element.children), source_html=source_html),
+                    attribute_template_nodes=element.attribute_template_nodes,
+                )
+            )
+
+        def handle_data(self, data):
+            for part in handle_placeholders(data):
+                self.append(RenderableText(part) if isinstance(part, str) else RenderableTemplateNode(part))
+
+        def finish(self):
+            while self.stack:
+                self.handle_endtag(self.stack[-1].tag)
+            return RenderableContent(tuple(self.parts), source_html=source_html)
+
+    parser = RenderableContentParser()
+    parser.feed(source_html)
+    return parser.finish()
 
 
 def renderable_content_to_component_nodes(

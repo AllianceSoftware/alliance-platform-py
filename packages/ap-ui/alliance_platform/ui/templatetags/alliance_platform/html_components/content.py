@@ -5,9 +5,6 @@ values (e.g. form ``help_text`` produced by ``{% form_input %}``). It renders tr
 authored fragments directly to HTML, with the same guardrails as the rest of the HTML component
 rendering: text and attribute values are escaped and event handler attributes are refused.
 
-Legacy React ``ComponentNode`` values built from plain HTML (``CommonComponentSource``) are also
-supported during migration; imported React components cannot be rendered statically and are
-dropped with a warning.
 """
 
 from __future__ import annotations
@@ -30,8 +27,6 @@ from alliance_platform.frontend.renderable_content import RenderableContent
 from alliance_platform.frontend.renderable_content import RenderableElement
 from alliance_platform.frontend.renderable_content import RenderableTemplateNode
 from alliance_platform.frontend.renderable_content import RenderableText
-from alliance_platform.frontend.templatetags.react import CommonComponentSource
-from alliance_platform.frontend.templatetags.react import ComponentNode
 
 from .base import build_attrs_string
 from .base import to_html_attr_name
@@ -42,7 +37,7 @@ _EVENT_HANDLER_ATTR_RE = re.compile(r"^on", re.IGNORECASE)
 
 def is_rich_content_value(value: Any) -> bool:
     """Whether a prop value is renderable rich content (as opposed to a plain scalar)."""
-    return isinstance(value, (RenderableContent, ComponentNode, list, tuple))
+    return isinstance(value, (RenderableContent, list, tuple))
 
 
 def has_renderable_content(value: Any) -> bool:
@@ -71,8 +66,8 @@ def render_content(
     """Render a renderable-content prop value to static HTML.
 
     Accepts ``None``, plain/lazy strings (escaped; ``SafeString`` preserved),
-    :class:`RenderableContent`, lists/tuples of any of these, and legacy ``ComponentNode`` values
-    created from plain HTML. Anything unsupported warns and renders nothing.
+    :class:`RenderableContent`, and lists/tuples of any of these. Anything unsupported warns and
+    renders nothing.
     """
     if value is None:
         return mark_safe("")
@@ -85,8 +80,6 @@ def render_content(
         return mark_safe(
             "".join(render_content(item, context, prop_name=prop_name, origin=origin) for item in value)
         )
-    if isinstance(value, ComponentNode):
-        return _render_legacy_component_node(value, context, prop_name=prop_name)
     warnings.warn(
         f"Renderable content prop '{prop_name}' contains a {type(value).__name__} value which "
         "cannot be rendered by static HTML ui components and will be ignored"
@@ -160,43 +153,3 @@ def _render_element(element: RenderableElement, context: Context, *, prop_name: 
         _render_part(part, context, prop_name=prop_name) for part in element.children.parts
     )
     return f"<{element.tag}{attrs_html}>{children_html}</{element.tag}>"
-
-
-def _render_legacy_component_node(node: ComponentNode, context: Context, *, prop_name: str) -> SafeString:
-    """Render a legacy plain-HTML ``ComponentNode`` (from ``convert_html_string``) statically.
-
-    Only common (DOM tag) components can be rendered; imported React components warn and render
-    nothing. This exists for transition compatibility while producers move to
-    ``RenderableContent`` and must not call ``ComponentNode.render()`` (that enters the
-    React/bundler rendering path).
-    """
-    if not isinstance(node.source, CommonComponentSource):
-        warnings.warn(
-            f"Renderable content prop '{prop_name}' contains imported React component "
-            f"'{node.source.as_tag()}', which cannot be rendered by static HTML ui components "
-            "and will be ignored."
-        )
-        return mark_safe("")
-    tag = node.source.name
-    if not _VALID_TAG_RE.match(tag):
-        warnings.warn(
-            f"Renderable content prop '{prop_name}' contains invalid tag '{tag}' which will be ignored"
-        )
-        return mark_safe("")
-    # Legacy nodes carry React style prop names; build_attrs_string converts them back to HTML names
-    attrs = {key: value for key, value in node.props.items() if key != "children"}
-    if node.html_attribute_template_nodes:
-        attrs.update(node.html_attribute_template_nodes.resolve(context))
-    children = node.props.get("children", [])
-    attrs_html = build_attrs_string(_clean_content_attrs(attrs, context, prop_name=prop_name))
-    if tag in void_elements:
-        return mark_safe(f"<{tag}{attrs_html}/>")
-
-    def render_child(child: Any) -> str:
-        if isinstance(child, Node) and not isinstance(child, ComponentNode):
-            # Plain template nodes (placeholder replacements) compose like template content
-            return child.render(context)
-        return render_content(child, context, prop_name=prop_name)
-
-    children_html = "".join(render_child(child) for child in children)
-    return mark_safe(f"<{tag}{attrs_html}>{children_html}</{tag}>")
