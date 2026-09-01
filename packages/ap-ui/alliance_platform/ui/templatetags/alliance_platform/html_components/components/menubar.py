@@ -55,6 +55,7 @@ from django.utils.safestring import mark_safe
 
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from alliance_platform.frontend.bundler.frontend_resource import ImageResource
+from alliance_platform.frontend.templatetags.react import OmitComponentFromRendering
 from alliance_platform.ui.icons import get_static_icon_resource
 from alliance_platform.ui.icons import validate_icon_name
 
@@ -233,6 +234,7 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
     non_scalar_props: frozenset[str] = frozenset()
     #: static icon-name props whose SVGs must be included in resource discovery
     static_icon_props: tuple[str, ...] = ()
+    requires_menubar = True
 
     def resolve_component_resources(self) -> list[FrontendResource]:
         resources: list[FrontendResource] = []
@@ -255,6 +257,12 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
         ]
 
     def resolve_props(self, context: Context) -> dict[str, Any]:
+        if self.requires_menubar and get_current_menubar_state(context) is None:
+            warnings.warn(
+                f"'{self.component_name}' was rendered outside of a '{{% ui \"menubar\" %}}' "
+                "component; rendering nothing"
+            )
+            raise OmitComponentFromRendering()
         return self.filter_component_props(super().resolve_props(context))
 
     def filter_component_props(self, props: dict[str, Any]) -> dict[str, Any]:
@@ -353,24 +361,10 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
             raise TemplateSyntaxError(str(exc)) from exc
         return raw_name
 
-    def get_state_or_warn(self, context: Context) -> MenubarRenderState | None:
+    def get_state(self, context: Context) -> MenubarRenderState:
         state = get_current_menubar_state(context)
-        if state is None:
-            warnings.warn(
-                f"'{self.component_name}' was rendered outside of a '{{% ui \"menubar\" %}}' component; "
-                "rendering fallback markup"
-            )
+        assert state is not None
         return state
-
-    def make_fallback_state(self) -> MenubarRenderState:
-        return MenubarRenderState(
-            layout="horizontal",
-            orientation="horizontal",
-            should_focus_wrap=True,
-            default_focused_key=None,
-            expanded_keys=frozenset(),
-            frame_stack=[MenubarRenderFrame(level=0)],
-        )
 
     def resolve_key(self, props: dict[str, Any]) -> str | None:
         key = props.get("key")
@@ -429,14 +423,14 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
     def has_leading_icon(self, content_html: str) -> bool:
         return _LEADING_ICON_RE.match(content_html.strip()) is not None
 
-    def claim_tab_index(self, state: MenubarRenderState | None, key: str | None, is_disabled: bool) -> int:
+    def claim_tab_index(self, state: MenubarRenderState, key: str | None, is_disabled: bool) -> int:
         """Assign the roving tabindex tab stop for root-level menu items.
 
         ``defaultFocusedKey`` claims the tab stop when set (and visible); otherwise the first
         enabled root item does. Everything else gets ``tabindex="-1"`` and the runtime moves the
         tab stop as focus roves.
         """
-        if state is None or state.current_frame.level != 0 or is_disabled or state.has_tab_stop:
+        if state.current_frame.level != 0 or is_disabled or state.has_tab_stop:
             return -1
         if state.default_focused_key is not None and key != state.default_focused_key:
             return -1
@@ -445,14 +439,12 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
 
     def track_rendered_child(
         self,
-        state: MenubarRenderState | None,
+        state: MenubarRenderState,
         is_current: bool,
         *,
         has_leading_icon: bool = False,
         contains_expanded: bool = False,
     ):
-        if state is None:
-            return
         frame = state.current_frame
         frame.item_count += 1
         if is_current:
@@ -532,6 +524,7 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
 
 class UIMenubarRenderer(UIMenubarComponentRendererBase):
     component_name = "menubar"
+    requires_menubar = False
     supported_props = frozenset(
         {
             "id",
@@ -795,9 +788,8 @@ class UIMenubarItemRenderer(UIMenubarComponentRendererBase):
         return element_type
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
-        state = self.get_state_or_warn(context)
-        effective_state = state or self.make_fallback_state()
-        level = effective_state.current_frame.level
+        state = self.get_state(context)
+        level = state.current_frame.level
 
         is_disabled = bool(props.get("isDisabled"))
         element_type = self.resolve_element_type(props, is_disabled)
@@ -923,24 +915,13 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
         return "right"
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
-        state = self.get_state_or_warn(context)
-        ephemeral_state = None
-        if state is None:
-            # Render children with a fallback state so nested components still work
-            ephemeral_state = self.make_fallback_state()
-        effective_state = state or ephemeral_state
-        assert effective_state is not None
-        parent_frame = effective_state.current_frame
+        state = self.get_state(context)
+        parent_frame = state.current_frame
         level = parent_frame.level
         child_frame = MenubarRenderFrame(level=level + 1)
 
-        if ephemeral_state is not None:
-            with _push_menubar_state(context, ephemeral_state):
-                with _push_menubar_frame(ephemeral_state, child_frame):
-                    children_html = self.render_children(context)
-        else:
-            with _push_menubar_frame(effective_state, child_frame):
-                children_html = self.render_children(context)
+        with _push_menubar_frame(state, child_frame):
+            children_html = self.render_children(context)
 
         hide_when_empty = props.get("hideWhenEmpty") is not False
         if child_frame.item_count == 0 and hide_when_empty:
@@ -959,7 +940,7 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
         is_current_self, aria_current = self.resolve_is_current(props)
         is_current = is_current_self or child_frame.contains_current
         is_open = (
-            (key is not None and key in effective_state.expanded_keys) or child_frame.contains_expanded
+            (key is not None and key in state.expanded_keys) or child_frame.contains_expanded
         ) and not is_disabled
 
         menubar_styles = self.resolve_menubar_styles()
@@ -980,7 +961,7 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
         )
         popup_id = self.claim_html_id(context, preferred_popup_id)
 
-        chevron_direction = self.resolve_chevron_direction(effective_state, level, is_open)
+        chevron_direction = self.resolve_chevron_direction(state, level, is_open)
         chevron_icon_name = {
             "up": _CHEVRON_UP_ICON,
             "down": _CHEVRON_DOWN_ICON,
@@ -1038,7 +1019,7 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
 
         popup_html = self.render_popup(
             context,
-            state=effective_state,
+            state=state,
             level=level,
             popup_id=popup_id,
             is_open=is_open,
@@ -1134,24 +1115,14 @@ class UIMenubarSectionRenderer(UIMenubarComponentRendererBase):
         return ""
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
-        state = self.get_state_or_warn(context)
-        ephemeral_state = None
-        if state is None:
-            ephemeral_state = self.make_fallback_state()
-        effective_state = state or ephemeral_state
-        assert effective_state is not None
-        parent_frame = effective_state.current_frame
+        state = self.get_state(context)
+        parent_frame = state.current_frame
         # Sections group items within the same menu so the level does not increase
         child_frame = MenubarRenderFrame(level=parent_frame.level)
         is_first = parent_frame.item_count == 0
 
-        if ephemeral_state is not None:
-            with _push_menubar_state(context, ephemeral_state):
-                with _push_menubar_frame(ephemeral_state, child_frame):
-                    children_html = self.render_children(context)
-        else:
-            with _push_menubar_frame(effective_state, child_frame):
-                children_html = self.render_children(context)
+        with _push_menubar_frame(state, child_frame):
+            children_html = self.render_children(context)
 
         hide_when_empty = props.get("hideWhenEmpty") is not False
         if child_frame.item_count == 0 and hide_when_empty:
@@ -1194,7 +1165,7 @@ class UIMenubarSectionRenderer(UIMenubarComponentRendererBase):
         separator_html = ""
         if not is_first:
             # Root level horizontal menus use a vertical separator, matching useSeparator usage
-            is_vertical_separator = effective_state.layout == "horizontal" and parent_frame.level == 0
+            is_vertical_separator = state.layout == "horizontal" and parent_frame.level == 0
             separator_attrs: dict[str, Any] = {
                 "role": "separator",
                 "aria-orientation": "vertical" if is_vertical_separator else None,

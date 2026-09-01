@@ -39,6 +39,7 @@ from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
 
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
+from alliance_platform.frontend.templatetags.react import OmitComponentFromRendering
 from alliance_platform.ui.icons import get_static_icon_resource
 
 from ..base import BaseHtmlUIComponentRenderer
@@ -207,8 +208,12 @@ class UITableComponentRendererBase(BaseHtmlUIComponentRenderer):
     non_scalar_props: frozenset[str] = frozenset()
     #: supported props where an explicit None is meaningful (kept) rather than treated as unset
     none_meaningful_props: frozenset[str] = frozenset()
+    requires_table = True
 
     def resolve_props(self, context: Context) -> dict[str, Any]:
+        if self.requires_table and get_current_table_state(context) is None:
+            self.warn_outside_table()
+            raise OmitComponentFromRendering()
         return self.filter_component_props(super().resolve_props(context))
 
     def filter_component_props(self, props: dict[str, Any]) -> dict[str, Any]:
@@ -266,7 +271,7 @@ class UITableComponentRendererBase(BaseHtmlUIComponentRenderer):
     def warn_outside_table(self):
         warnings.warn(
             f"'{self.component_name}' was rendered outside of a '{{% ui \"table\" %}}' component; "
-            "rendering fallback markup"
+            "rendering nothing"
         )
 
     def collect_data_aria_attrs(self, props: dict[str, Any]) -> dict[str, Any]:
@@ -277,6 +282,7 @@ class UITableComponentRendererBase(BaseHtmlUIComponentRenderer):
 
 class UITableRenderer(UITableComponentRendererBase):
     component_name = "table"
+    requires_table = False
     supported_props = frozenset(
         {
             "id",
@@ -419,8 +425,6 @@ class UITableHeaderRenderer(UITableComponentRendererBase):
     unsupported_prop_reasons = {"columns": _COLLECTION_REASON}
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
-        if get_current_table_state(context) is None:
-            self.warn_outside_table()
         # Header rows carry no class; the stylesheet targets `thead tr` under the tableWrapper.
         return mark_safe(f"<thead><tr>{children_html}</tr></thead>")
 
@@ -449,8 +453,7 @@ class UITableColumnRenderer(UITableComponentRendererBase):
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
         state = get_current_table_state(context)
-        if state is None:
-            self.warn_outside_table()
+        assert state is not None
 
         align = self.validate_optional_enum_prop(props, prop_name="align", valid_values=VALID_ALIGNMENTS)
         explicit_direction = self.validate_optional_enum_prop(
@@ -464,19 +467,17 @@ class UITableColumnRenderer(UITableComponentRendererBase):
         spans_multiple = col_span is not None and col_span > 1
 
         descriptor: TableSortDescriptor | None = None
-        if state is not None and key is not None:
+        if key is not None:
             descriptor = next((entry for entry in state.sort_order if entry.column == key), None)
 
         sort_direction = explicit_direction or (descriptor.direction if descriptor else None)
         sort_position = _coerce_int(props.get("sortPosition"))
-        if sort_position is None and descriptor is not None and state is not None:
+        if sort_position is None and descriptor is not None:
             sort_position = state.sort_order.index(descriptor) + 1
         if "showSortPosition" in props:
             show_sort_position = bool(props["showSortPosition"])
         else:
-            show_sort_position = (
-                state is not None and state.sort_mode == "multiple" and len(state.sort_order) > 1
-            )
+            show_sort_position = state.sort_mode == "multiple" and len(state.sort_order) > 1
 
         column_state = TableColumnState(
             key=key,
@@ -487,10 +488,9 @@ class UITableColumnRenderer(UITableComponentRendererBase):
             sort_position=sort_position,
             show_sort_position=show_sort_position,
         )
-        if state is not None:
-            state.columns.append(column_state)
-            if is_row_header:
-                state.has_explicit_row_header = True
+        state.columns.append(column_state)
+        if is_row_header:
+            state.has_explicit_row_header = True
 
         table_styles = self.resolve_table_styles()
 
@@ -499,7 +499,7 @@ class UITableColumnRenderer(UITableComponentRendererBase):
             sort_href = props.get("sortHref")
             if sort_href is not None:
                 href = str(sort_href)
-            elif state is not None and key is not None:
+            elif key is not None:
                 href = self.build_sort_url(context, state, key)
             if href is None:
                 warnings.warn(
@@ -662,15 +662,14 @@ class UITableBodyRenderer(UITableComponentRendererBase):
         # self: this renderer is a template node, and per-render state on the instance would leak
         # between concurrent renders of a shared compiled template.
         state = get_current_table_state(context)
-        if state is None:
-            self.warn_outside_table()
-        else:
-            state.body_start_row_counts.append(state.row_count)
+        assert state is not None
+        state.body_start_row_counts.append(state.row_count)
         return self.render_children(context)
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
         state = get_current_table_state(context)
-        if state is not None and state.body_start_row_counts:
+        assert state is not None
+        if state.body_start_row_counts:
             rows_before = state.body_start_row_counts.pop()
             if state.row_count == rows_before and state.empty_state_html is not None:
                 children_html += self.render_empty_state(state)
@@ -701,9 +700,7 @@ class UITableRowRenderer(UITableComponentRendererBase):
 
     def render_children_for_component(self, context: Context, props: dict[str, Any]) -> str:
         state = get_current_table_state(context)
-        if state is None:
-            self.warn_outside_table()
-            return self.render_children(context)
+        assert state is not None
         previous_cell_index = state.current_row_cell_index
         state.current_row_cell_index = 0
         try:
@@ -733,12 +730,13 @@ class UITableCellRenderer(UITableComponentRendererBase):
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
         state = get_current_table_state(context)
+        assert state is not None
         col_span = _coerce_int(props.get("colSpan"))
         row_span = _coerce_int(props.get("rowSpan"))
 
         column: TableColumnState | None = None
         cell_index: int | None = None
-        if state is None or state.current_row_cell_index is None:
+        if state.current_row_cell_index is None:
             warnings.warn(
                 "'table_cell' was rendered outside of a '{% ui \"table_row\" %}' component; "
                 "column metadata (alignment, row header) will not be applied"
@@ -758,7 +756,7 @@ class UITableCellRenderer(UITableComponentRendererBase):
 
         align = column.align if column else None
         is_row_header = False
-        if column is not None and state is not None and cell_index is not None:
+        if column is not None and cell_index is not None:
             is_row_header = column.is_row_header if state.has_explicit_row_header else cell_index == 0
 
         attrs: dict[str, Any] = {
