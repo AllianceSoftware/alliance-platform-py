@@ -549,21 +549,21 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
         )
         self.assertNotIn("data-key", output)
 
-    # --- Fallback behaviour ---
+    # --- Orphan child behaviour ---
 
-    def test_cell_outside_row_warns_and_renders_fallback(self):
+    def test_cell_outside_table_warns_and_renders_nothing(self):
         output, caught = self.render_with_warnings('{% ui "table_cell" %}Orphan{% endui %}')
         self.assertTrue(
             any("'table_cell' was rendered outside" in item for item in caught),
             caught,
         )
-        self.assertIn("<td>Orphan</td>", output)
+        self.assertEqual(output, "")
 
-    def test_child_components_outside_table_warn_and_render_fallback(self):
-        for template, expected_fragment in (
-            ('{% ui "table_header" %}{% endui %}', "<thead>"),
-            ('{% ui "table_body" %}{% endui %}', "<tbody>"),
-            ('{% ui "table_row" %}{% endui %}', "<tr></tr>"),
+    def test_child_components_outside_table_warn_and_render_nothing(self):
+        for template in (
+            '{% ui "table_header" %}{% endui %}',
+            '{% ui "table_body" %}{% endui %}',
+            '{% ui "table_row" %}{% endui %}',
         ):
             with self.subTest(template=template):
                 output, caught = self.render_with_warnings(template)
@@ -571,7 +571,7 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
                     any("was rendered outside of a" in item for item in caught),
                     caught,
                 )
-                self.assertIn(expected_fragment, output)
+                self.assertEqual(output, "")
 
     def test_extra_cells_warn_once_per_table_and_render(self):
         template = (

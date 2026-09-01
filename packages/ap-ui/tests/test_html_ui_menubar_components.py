@@ -737,17 +737,13 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn('data-testid="primary-nav"', output)
         self.assertIn('data-testid="home-link"', output)
 
-    def test_item_outside_menubar_warns_and_renders_fallback(self):
+    def test_item_outside_menubar_warns_and_renders_nothing(self):
         template = '{% ui "menubar_item" href="/x/" %}Home{% endui %}'
         output, caught = self.render_with_warnings(template)
-        self.assertIn('role="menuitem"', output)
-        self.assertIn('href="/x/"', output)
+        self.assertEqual(output, "")
         self.assertEqual(
             caught,
-            [
-                "'menubar_item' was rendered outside of a '{% ui \"menubar\" %}' component; "
-                "rendering fallback markup"
-            ],
+            ["'menubar_item' was rendered outside of a '{% ui \"menubar\" %}' component; rendering nothing"],
         )
 
     def test_included_section_and_items_keep_enclosing_menubar_context(self):

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 import re
 from typing import Literal
@@ -14,7 +15,6 @@ from django.template import Origin
 IconStyle = Literal["outlined", "solid", "duotone", "duocolor"]
 
 _ICON_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9]*$")
-_STATIC_ICON_CACHE: dict[tuple[str, Path, Path, int | None], "StaticIconDefinition"] = {}
 
 
 @dataclass(frozen=True)
@@ -26,7 +26,7 @@ class StaticIconDefinition:
 
 def reset_static_icon_cache():
     """Clear the static icon cache. Intended for tests and development tooling."""
-    _STATIC_ICON_CACHE.clear()
+    _load_static_icon.cache_clear()
 
 
 def validate_icon_name(name: str):
@@ -71,11 +71,13 @@ def get_static_icon_definition(name: str, *, origin: Origin | None = None) -> St
         mtime_ns = resource_path.stat().st_mtime_ns
     except FileNotFoundError:
         mtime_ns = None
-    cache_key = (name, source_path, resource_path, mtime_ns)
-    cached = _STATIC_ICON_CACHE.get(cache_key)
-    if cached is not None:
-        return cached
+    return _load_static_icon(name, style, resource_path, mtime_ns)
+
+
+@lru_cache(maxsize=512)
+def _load_static_icon(
+    name: str, style: IconStyle, resource_path: Path, mtime_ns: int | None
+) -> StaticIconDefinition:
+    """Load an icon, with path and mtime in the cache key for development invalidation."""
     svg_markup = resource_path.read_text()
-    definition = StaticIconDefinition(name=name, style=style, svg_markup=svg_markup)
-    _STATIC_ICON_CACHE[cache_key] = definition
-    return definition
+    return StaticIconDefinition(name=name, style=style, svg_markup=svg_markup)
