@@ -58,6 +58,7 @@ from alliance_platform.ui.icons import get_static_icon_resource
 from alliance_platform.ui.icons import validate_icon_name
 
 from ..base import BaseHtmlUIComponentRenderer
+from ..base import enum_prop_rule
 from ..base import get_document_render_context
 from ..content import render_content
 from ..runtime import add_auto_attach_marker
@@ -251,15 +252,10 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
                 "component; rendering nothing"
             )
             raise OmitComponentFromRendering()
-        return self.filter_component_props(super().resolve_props(context))
+        return super().resolve_props(context)
 
     def resolve_menubar_styles(self) -> Any:
         return self.resolve_vanilla_extract_mapping(_MENUBAR_STYLE_PATH)
-
-    def collect_data_aria_attrs(self, props: dict[str, Any]) -> dict[str, Any]:
-        return {
-            key: value for key, value in props.items() if key.startswith("data-") or key.startswith("aria-")
-        }
 
     def generate_html_id(self, context: Context, prefix: str) -> str:
         """Generate a deterministic id, unique within the current template render."""
@@ -482,6 +478,7 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
     allow_aria_props = False
     extra_allowed_aria_props = frozenset({"aria-label", "aria-labelledby", "aria-describedby"})
     non_scalar_props = frozenset({"defaultExpandedKeys"})
+    prop_rules = {"layout": enum_prop_rule(VALID_LAYOUTS, invalid_fallback="horizontal")}
 
     def resolve_component_resources(self) -> list[FrontendResource]:
         # Icon.css and Popover.css are included unconditionally: submenu chevrons and flyout
@@ -591,12 +588,7 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
         )
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
-        layout = self.validate_enum_prop(
-            props,
-            prop_name="layout",
-            valid_values=VALID_LAYOUTS,
-            default_value="horizontal",
-        )
+        layout = str(props.get("layout", "horizontal"))
         if not props.get("aria-label") and not props.get("aria-labelledby"):
             warnings.warn(
                 "The 'menubar' component should have an 'aria_label' or 'aria_labelledby' prop "
@@ -647,7 +639,7 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
             "data-open-class": self.get_style_class(menubar_styles, "isOpen") or None,
             "data-focused-class": self.get_style_class(menubar_styles, "isFocused") or None,
             "data-popover-open-class": self.get_style_class(popover_styles, "isOpen") or None,
-            **self.collect_data_aria_attrs(props),
+            **self.collect_forwarded_props(props),
         }
 
         add_auto_attach_marker(attrs, "menubar")
@@ -690,6 +682,7 @@ class UIMenubarItemRenderer(UIMenubarComponentRendererBase):
         "hasChildItems": _COLLECTION_REASON,
     }
     prop_aliases = {"disabled": "isDisabled", "current": "isCurrent"}
+    prop_rules = {"elementType": enum_prop_rule(VALID_ITEM_ELEMENT_TYPES)}
 
     #: props only rendered for anchor items
     anchor_only_props = frozenset({"target", "rel", "download"})
@@ -716,9 +709,7 @@ class UIMenubarItemRenderer(UIMenubarComponentRendererBase):
         )
 
     def resolve_element_type(self, props: dict[str, Any], is_disabled: bool) -> str:
-        element_type = self.validate_optional_enum_prop(
-            props, prop_name="elementType", valid_values=VALID_ITEM_ELEMENT_TYPES
-        )
+        element_type = props.get("elementType")
         if element_type is None:
             element_type = "a" if props.get("href") and not is_disabled else "div"
         if is_disabled and element_type == "a":
@@ -761,7 +752,7 @@ class UIMenubarItemRenderer(UIMenubarComponentRendererBase):
             "tabIndex": tab_index,
             "data-current": "true" if is_current else None,
             "title": props.get("title"),
-            **self.collect_data_aria_attrs(props),
+            **self.collect_forwarded_props(props),
         }
         if aria_current is not None:
             attrs["aria-current"] = aria_current
@@ -827,6 +818,7 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
         "childItems": _COLLECTION_REASON,
     }
     prop_aliases = {"disabled": "isDisabled", "current": "isCurrent"}
+    prop_rules = {"elementType": enum_prop_rule(VALID_ITEM_ELEMENT_TYPES)}
     non_scalar_props = frozenset({"title"})
     static_icon_props = ("icon",)
 
@@ -835,9 +827,7 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
         return ""
 
     def resolve_trigger_element_type(self, props: dict[str, Any], is_disabled: bool) -> str:
-        element_type = self.validate_optional_enum_prop(
-            props, prop_name="elementType", valid_values=VALID_ITEM_ELEMENT_TYPES
-        )
+        element_type = props.get("elementType")
         if element_type is None:
             element_type = "a" if props.get("href") and not is_disabled else "button"
         if is_disabled and element_type == "a":
@@ -939,7 +929,7 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
             "aria-controls": popup_id,
             "tabIndex": tab_index,
             "data-current": "true" if is_current else None,
-            **self.collect_data_aria_attrs(props),
+            **self.collect_forwarded_props(props),
         }
         if aria_current is not None:
             trigger_attrs["aria-current"] = aria_current
@@ -1132,7 +1122,7 @@ class UIMenubarSectionRenderer(UIMenubarComponentRendererBase):
             "style": props.get("style"),
             "data-key": self.resolve_key(props),
             "data-current": "true" if child_frame.contains_current else None,
-            **self.collect_data_aria_attrs({k: v for k, v in props.items() if k != "aria-label"}),
+            **self.collect_forwarded_props({k: v for k, v in props.items() if k != "aria-label"}),
         }
         section_html = self._render_tag("li", section_attrs, f"{heading_html}{group_html}")
 

@@ -262,8 +262,8 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
             caught,
             [
                 "Invalid 'labelPosition' prop passed: middle",
-                "Invalid 'labelAlign' prop passed: center",
                 "Invalid 'inputSize' prop passed: xl",
+                "Invalid 'labelAlign' prop passed: center",
                 "Invalid 'validationState' prop passed: unknown",
             ],
         )

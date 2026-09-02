@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
 import re
 from typing import Any
+from typing import Callable
 from typing import Mapping
 from typing import cast
 import warnings
@@ -54,6 +56,7 @@ _REACT_ATTR_TO_HTML_ATTR = {
 }
 
 _CAMEL_CASE_SPLIT_RE = re.compile(r"([a-z0-9])([A-Z])")
+_OMIT_INVALID_PROP = object()
 
 # Extra key adaptations applied to bulk ``props`` dicts (after the standard HTML -> React attribute
 # name conversion). Bulk props typically come from HTML attribute dicts such as Django's
@@ -64,6 +67,53 @@ _BULK_PROP_STATE_ALIASES = {
     "required": "isRequired",
     "readOnly": "isReadOnly",
 }
+
+
+@dataclass(frozen=True)
+class PropRule:
+    """Declarative validation for a supplied component prop.
+
+    Rules validate values that were actually supplied; they deliberately do not add a prop when
+    it is absent. This keeps default rendering separate from explicit-prop detection used by slot
+    inheritance and data attributes.
+    """
+
+    accepted_types: tuple[type, ...] | None = None
+    choices: tuple[Any, ...] | None = None
+    validator: Callable[[Any], bool] | None = None
+    invalid_fallback: Any = _OMIT_INVALID_PROP
+    allow_none: bool = False
+
+    def accepts(self, value: Any) -> bool:
+        if self.accepted_types is not None and not isinstance(value, self.accepted_types):
+            return False
+        if self.choices is not None and value not in self.choices:
+            return False
+        return self.validator(value) if self.validator is not None else True
+
+
+def enum_prop_rule(
+    valid_values: tuple[Any, ...],
+    *,
+    invalid_fallback: Any = _OMIT_INVALID_PROP,
+) -> PropRule:
+    """Return a rule for an enum-like prop, optionally normalising invalid values."""
+    return PropRule(choices=valid_values, invalid_fallback=invalid_fallback)
+
+
+def typed_prop_rule(
+    *accepted_types: type,
+    validator: Callable[[Any], bool] | None = None,
+    invalid_fallback: Any = _OMIT_INVALID_PROP,
+    allow_none: bool = False,
+) -> PropRule:
+    """Return a rule for a typed prop with an optional additional validator."""
+    return PropRule(
+        accepted_types=accepted_types,
+        validator=validator,
+        invalid_fallback=invalid_fallback,
+        allow_none=allow_none,
+    )
 
 
 def camel_to_kebab(value: str) -> str:
@@ -142,6 +192,11 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
     supported_props: frozenset[str] | None = None
     unsupported_prop_reasons: Mapping[str, str] = {}
     prop_aliases: Mapping[str, str] = {}
+    deprecated_prop_aliases: Mapping[str, str] = {}
+    prop_rules: Mapping[str, PropRule] = {}
+    #: Ordinary element props copied by :meth:`collect_forwarded_props`. Data/aria props use the
+    #: separate allow flags because their names are open-ended.
+    forwarded_props: frozenset[str] = frozenset()
     allow_data_props = False
     allow_aria_props = False
     extra_allowed_aria_props: frozenset[str] = frozenset()
@@ -198,6 +253,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         try:
             props = self.resolve_props(context)
             props = self._merge_slot_props(context, props)
+            props = self.filter_component_props(props)
             children_html = self.render_children_for_component(context, props)
             rendered = self.render_component(context, props, children_html)
         except OmitComponentFromRendering:
@@ -238,13 +294,25 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         """
         filtered: dict[str, Any] = {}
         component_name = self.get_component_prop_name()
+        aliased_props: dict[str, Any] = {}
         for original_key, value in props.items():
-            key = self.prop_aliases.get(original_key, original_key)
+            key = self.deprecated_prop_aliases.get(
+                original_key,
+                self.prop_aliases.get(original_key, original_key),
+            )
+            if original_key in self.deprecated_prop_aliases:
+                warnings.warn(f"You passed '{original_key}' - use '{key}' instead")
+            if key != original_key and key in props:
+                # The canonical spelling always wins when both forms are supplied.
+                continue
+            aliased_props[key] = value
+
+        for key, value in aliased_props.items():
+            rule = self.prop_rules.get(key)
             if value is None:
-                if key in self.none_meaningful_props and (
-                    self.supported_props is None or key in self.supported_props
-                ):
-                    filtered[key] = value
+                if (rule is not None and rule.allow_none) or key in self.none_meaningful_props:
+                    if self.is_supported_prop(key):
+                        filtered[key] = value
                 continue
             reason = self.unsupported_prop_reasons.get(key)
             if reason:
@@ -271,14 +339,23 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
                     continue
                 filtered[attr_name] = value
                 continue
-            if self.supported_props is not None and key not in self.supported_props:
+            if not self.is_supported_prop(key):
                 warnings.warn(f"Prop '{key}' is not a supported '{component_name}' prop and will be ignored")
                 continue
+            if rule is not None and not rule.accepts(value):
+                warnings.warn(f"Invalid '{key}' prop passed: {value}")
+                if rule.invalid_fallback is _OMIT_INVALID_PROP:
+                    continue
+                value = rule.invalid_fallback
             if key == "style":
                 if not isinstance(value, (str, dict)):
                     warnings.warn("Prop 'style' must be a string or dict; it will be ignored")
                     continue
-            elif not is_scalar_prop_value(value) and not self.allow_non_scalar_prop(key, value):
+            elif (
+                not is_scalar_prop_value(value)
+                and rule is None
+                and not self.allow_non_scalar_prop(key, value)
+            ):
                 warnings.warn(
                     f"Prop '{key}' with non-scalar value is not supported by "
                     f"{self.prop_filter_context} and will be ignored"
@@ -286,6 +363,28 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
                 continue
             filtered[key] = value
         return filtered
+
+    def is_supported_prop(self, key: str) -> bool:
+        return (
+            self.supported_props is None
+            or key in self.supported_props
+            or key in self.prop_rules
+            or key in self.forwarded_props
+        )
+
+    def collect_forwarded_props(self, props: Mapping[str, Any]) -> dict[str, Any]:
+        """Collect validated props that a renderer forwards to its root/control element."""
+        forwarded: dict[str, Any] = {}
+        for key, value in props.items():
+            if key in self.forwarded_props:
+                forwarded[key] = value
+                continue
+            if key.startswith("data-") and self.allow_data_props:
+                forwarded[key] = value
+                continue
+            if key.startswith("aria-") and (self.allow_aria_props or key in self.extra_allowed_aria_props):
+                forwarded[key] = value
+        return forwarded
 
     def get_component_prop_name(self) -> str:
         name = getattr(self, "component_name", None) or getattr(self, "apui_component_name", None)
@@ -402,36 +501,6 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
             nested_value = mapping_value.get(nested_key, "")
             return nested_value if isinstance(nested_value, str) else ""
         return ""
-
-    def validate_enum_prop(
-        self,
-        props: dict[str, Any],
-        *,
-        prop_name: str,
-        valid_values: tuple[str, ...],
-        default_value: str,
-    ) -> str:
-        value = props.get(prop_name, default_value)
-        if value in valid_values:
-            return str(value)
-        warnings.warn(f"Invalid '{prop_name}' prop passed: {value}")
-        return default_value
-
-    def validate_optional_enum_prop(
-        self,
-        props: dict[str, Any],
-        *,
-        prop_name: str,
-        valid_values: tuple[str, ...],
-    ) -> str | None:
-        """Like :meth:`validate_enum_prop` but for props that are omitted entirely when unset or invalid."""
-        value = props.get(prop_name)
-        if value is None:
-            return None
-        if value in valid_values:
-            return str(value)
-        warnings.warn(f"Invalid '{prop_name}' prop passed: {value}")
-        return None
 
     def get_recipe_classes(self, mapping: Any, key: str, selections: dict[str, str]) -> list[str]:
         """Resolve classes for a vanilla-extract recipe export.

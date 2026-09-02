@@ -14,8 +14,6 @@ from alliance_platform.ui.icons import get_static_icon_resource
 from alliance_platform.ui.icons import validate_icon_name
 
 from ..base import BaseHtmlUIComponentRenderer
-from ..base import is_event_handler_attr
-from ..base import to_html_attr_name
 from ..static_icon import ICON_STYLE_PATH
 from ..static_icon import render_static_icon
 
@@ -23,6 +21,12 @@ from ..static_icon import render_static_icon
 class UIIconRenderer(BaseHtmlUIComponentRenderer):
     apui_component_name = "icon"
     slot_name = "icon"
+    supported_props = frozenset({"name", "size", "variant", "color", "slot", "className"})
+    forwarded_props = frozenset({"id", "title", "style"})
+    allow_data_props = True
+    allow_aria_props = True
+    prop_filter_context = "static icon components"
+    event_handler_prop_reason = "event handlers are not supported by static icon components"
 
     def resolve_component_resources(self) -> list[FrontendResource]:
         name = self._resolve_static_icon_name()
@@ -55,21 +59,9 @@ class UIIconRenderer(BaseHtmlUIComponentRenderer):
         color = props.pop("color", None)
         slot = props.pop("slot", "icon")
         class_name = props.pop("className", None)
-        aria_label = self._pop_first(props, "aria-label", "ariaLabel")
-        aria_hidden = self._pop_first(props, "aria-hidden", "ariaHidden")
-
-        attrs: dict[str, Any] = {}
-        for key, value in props.items():
-            html_attr = to_html_attr_name(key)
-            if is_event_handler_attr(key) or is_event_handler_attr(html_attr):
-                warnings.warn(
-                    f"Event handler prop '{key}' is not supported by static icon components and will be ignored"
-                )
-                continue
-            if html_attr in {"id", "title", "style"} or html_attr.startswith(("data-", "aria-")):
-                attrs[html_attr] = value
-                continue
-            warnings.warn(f"Prop '{key}' is not a supported 'icon' prop and will be ignored")
+        aria_label = props.pop("aria-label", None)
+        aria_hidden = props.pop("aria-hidden", None)
+        attrs = self.collect_forwarded_props(props)
 
         try:
             return render_static_icon(
@@ -107,10 +99,3 @@ class UIIconRenderer(BaseHtmlUIComponentRenderer):
         except ValueError as exc:
             raise TemplateSyntaxError(str(exc)) from exc
         return raw_name
-
-    @staticmethod
-    def _pop_first(props: dict[str, Any], *keys: str) -> Any:
-        for key in keys:
-            if key in props:
-                return props.pop(key)
-        return None

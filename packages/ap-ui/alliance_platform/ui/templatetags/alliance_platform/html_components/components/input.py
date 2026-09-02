@@ -15,6 +15,7 @@ from alliance_platform.frontend.bundler.frontend_resource import ImageResource
 from alliance_platform.ui.icons import get_static_icon_resource
 
 from ..base import BaseHtmlUIComponentRenderer
+from ..base import enum_prop_rule
 from ..base import get_document_render_context
 from ..content import has_renderable_content
 from ..content import is_rich_content_value
@@ -148,32 +149,12 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
         return f"apui-{self.apui_component_name}-{counter}"
 
     def resolve_labeled_input_state(self, context: Context, props: dict[str, Any]) -> LabeledInputState:
-        label_position = self.validate_enum_prop(
-            props,
-            prop_name="labelPosition",
-            valid_values=VALID_LABEL_POSITIONS,
-            default_value="top",
-        )
-        label_align = self.validate_optional_enum_prop(
-            props,
-            prop_name="labelAlign",
-            valid_values=VALID_LABEL_ALIGNS,
-        )
-        input_size = self.validate_enum_prop(
-            props,
-            prop_name="inputSize",
-            valid_values=VALID_INPUT_SIZES,
-            default_value="sm",
-        )
-        validation_state = self.validate_optional_enum_prop(
-            props,
-            prop_name="validationState",
-            valid_values=VALID_VALIDATION_STATES,
-        )
+        label_position = str(props.get("labelPosition", "top"))
+        label_align = props.get("labelAlign")
+        input_size = str(props.get("inputSize", "sm"))
+        validation_state = props.get("validationState")
 
-        if "disabled" in props and "isDisabled" not in props:
-            warnings.warn("You passed 'disabled' - use 'isDisabled' instead")
-        is_disabled = bool(props.get("isDisabled") or props.get("disabled"))
+        is_disabled = bool(props.get("isDisabled"))
         is_readonly = bool(props.get("isReadOnly") or props.get("readOnly"))
         is_required = bool(props.get("isRequired") or props.get("required"))
         is_invalid = bool(props.get("isInvalid")) or validation_state == "invalid"
@@ -332,6 +313,13 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
     }
     allow_data_props = True
     allow_aria_props = True
+    deprecated_prop_aliases = {"disabled": "isDisabled"}
+    prop_rules = {
+        "labelPosition": enum_prop_rule(VALID_LABEL_POSITIONS, invalid_fallback="top"),
+        "labelAlign": enum_prop_rule(VALID_LABEL_ALIGNS),
+        "inputSize": enum_prop_rule(VALID_INPUT_SIZES, invalid_fallback="sm"),
+        "validationState": enum_prop_rule(VALID_VALIDATION_STATES),
+    }
     prop_filter_context = "static input components"
     event_handler_prop_reason = "event handlers are not supported by static input components"
 
@@ -404,7 +392,6 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
             warnings.warn(
                 f"'{self.apui_component_name}' does not support children; the content will be ignored"
             )
-        props = self.filter_component_props(props)
         state = self.resolve_labeled_input_state(context, props)
 
         text_input_base_styles = self.resolve_vanilla_extract_mapping(_TEXT_INPUT_BASE_STYLE_PATH)
