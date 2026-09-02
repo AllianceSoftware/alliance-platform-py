@@ -25,7 +25,6 @@ from __future__ import annotations
 from contextlib import contextmanager
 from dataclasses import dataclass
 from dataclasses import field
-from decimal import Decimal
 import re
 from typing import Any
 from typing import Iterator
@@ -34,7 +33,6 @@ from typing import Mapping
 import warnings
 
 from django.template import Context
-from django.utils.functional import Promise
 from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
 
@@ -44,7 +42,6 @@ from alliance_platform.ui.icons import get_static_icon_resource
 
 from ..base import BaseHtmlUIComponentRenderer
 from ..base import style_dict_to_string
-from ..base import to_html_attr_name
 from ..content import render_content
 from ..static_icon import ICON_STYLE_PATH
 
@@ -71,11 +68,6 @@ _VISUALLY_HIDDEN_STYLE = (
     "overflow: hidden; padding: 0; position: absolute; width: 1px; white-space: nowrap"
 )
 
-# Matches event handler props in any of the forms they can reach us in after prop normalization
-# (onClick, onclick, on_click -> onClick). These must never be rendered: a string value would
-# become a live inline event handler attribute, which React never renders.
-_EVENT_HANDLER_PROP_RE = re.compile(r"^on[A-Za-z]")
-
 _EVENT_HANDLER_REASON = "event handlers are not supported by static table components"
 _SELECTION_REASON = "row selection is not supported by static table components yet"
 _SORT_CALLBACK_REASON = "client-side sort callbacks are not supported by static table components"
@@ -100,10 +92,6 @@ _TABLE_UNSUPPORTED_PROPS: Mapping[str, str] = {
         "custom column header element types are not supported by static table components"
     ),
 }
-
-
-def _is_scalar_prop_value(value: Any) -> bool:
-    return isinstance(value, (str, int, float, bool, Decimal, Promise)) or value is None
 
 
 def _pixelify(value: Any) -> str:
@@ -200,14 +188,14 @@ class UITableComponentRendererBase(BaseHtmlUIComponentRenderer):
     supported_props: frozenset[str] = frozenset()
     #: props rejected with a specific reason instead of the generic unknown-prop warning
     unsupported_prop_reasons: Mapping[str, str] = {}
-    #: whether arbitrary data-*/aria-* attributes pass through to the rendered element
-    allow_data_aria_props = False
-    #: aria-* attribute names allowed even when allow_data_aria_props is False
+    #: aria-* attribute names allowed even when arbitrary aria-* attributes are refused
     extra_allowed_aria_props: frozenset[str] = frozenset()
     #: supported props that may hold non-scalar values
     non_scalar_props: frozenset[str] = frozenset()
     #: supported props where an explicit None is meaningful (kept) rather than treated as unset
     none_meaningful_props: frozenset[str] = frozenset()
+    prop_filter_context = "static table components"
+    event_handler_prop_reason = _EVENT_HANDLER_REASON
     requires_table = True
 
     def resolve_props(self, context: Context) -> dict[str, Any]:
@@ -215,55 +203,6 @@ class UITableComponentRendererBase(BaseHtmlUIComponentRenderer):
             self.warn_outside_table()
             raise OmitComponentFromRendering()
         return self.filter_component_props(super().resolve_props(context))
-
-    def filter_component_props(self, props: dict[str, Any]) -> dict[str, Any]:
-        filtered: dict[str, Any] = {}
-        for key, value in props.items():
-            if value is None:
-                # Treat None the same as an unset prop, mirroring undefined in JSX. Props in
-                # none_meaningful_props mirror React props where null overrides a default.
-                if key in self.none_meaningful_props and key in self.supported_props:
-                    filtered[key] = value
-                continue
-            reason = self.unsupported_prop_reasons.get(key)
-            if reason:
-                warnings.warn(f"Prop '{key}' will be ignored: {reason}")
-                continue
-            if _EVENT_HANDLER_PROP_RE.match(key):
-                warnings.warn(f"Prop '{key}' will be ignored: {_EVENT_HANDLER_REASON}")
-                continue
-            attr_name = to_html_attr_name(key)
-            if attr_name.startswith("data-") or attr_name.startswith("aria-"):
-                if not self.allow_data_aria_props and attr_name not in self.extra_allowed_aria_props:
-                    warnings.warn(
-                        f"Prop '{key}' is not supported on '{self.component_name}' and will be ignored"
-                    )
-                    continue
-                if not _is_scalar_prop_value(value):
-                    warnings.warn(
-                        f"Prop '{key}' with non-scalar value is not supported by static table "
-                        "components and will be ignored"
-                    )
-                    continue
-                filtered[attr_name] = value
-                continue
-            if key not in self.supported_props:
-                warnings.warn(
-                    f"Prop '{key}' is not a supported '{self.component_name}' prop and will be ignored"
-                )
-                continue
-            if key == "style":
-                if not isinstance(value, (str, dict)):
-                    warnings.warn("Prop 'style' must be a string or dict; it will be ignored")
-                    continue
-            elif not _is_scalar_prop_value(value) and key not in self.non_scalar_props:
-                warnings.warn(
-                    f"Prop '{key}' with non-scalar value is not supported by static table "
-                    "components and will be ignored"
-                )
-                continue
-            filtered[key] = value
-        return filtered
 
     def resolve_table_styles(self) -> Any:
         return self.resolve_vanilla_extract_mapping(_TABLE_STYLE_PATH)
@@ -655,7 +594,8 @@ class UITableBodyRenderer(UITableComponentRendererBase):
     component_name = "table_body"
     supported_props = frozenset({"id", "className", "style"})
     unsupported_prop_reasons = {"items": _COLLECTION_REASON}
-    allow_data_aria_props = True
+    allow_data_props = True
+    allow_aria_props = True
 
     def render_children_for_component(self, context: Context, props: dict[str, Any]) -> str:
         # The row-count snapshot lives on the render state (in context.render_context), not on
@@ -696,7 +636,8 @@ class UITableRowRenderer(UITableComponentRendererBase):
     component_name = "table_row"
     supported_props = frozenset({"id", "key", "className", "style"})
     unsupported_prop_reasons = {"isSelected": _SELECTION_REASON, "isDisabled": _SELECTION_REASON}
-    allow_data_aria_props = True
+    allow_data_props = True
+    allow_aria_props = True
 
     def render_children_for_component(self, context: Context, props: dict[str, Any]) -> str:
         state = get_current_table_state(context)
@@ -726,7 +667,8 @@ class UITableRowRenderer(UITableComponentRendererBase):
 class UITableCellRenderer(UITableComponentRendererBase):
     component_name = "table_cell"
     supported_props = frozenset({"id", "className", "style", "colSpan", "rowSpan"})
-    allow_data_aria_props = True
+    allow_data_props = True
+    allow_aria_props = True
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
         state = get_current_table_state(context)

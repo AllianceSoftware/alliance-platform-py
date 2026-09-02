@@ -50,8 +50,14 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
             '{% ui "text_input" label="Email" renderInput=render_input inputProps=input_props %}{% endui %}',
             {"render_input": lambda data: data, "input_props": {"rows": 4}},
         )
-        self.assertIn("Prop 'renderInput' is not supported by HTML ui components and will be ignored", caught)
-        self.assertIn("Prop 'inputProps' is not supported by HTML ui components and will be ignored", caught)
+        self.assertIn(
+            "Prop 'renderInput' will be ignored: React-only props are not supported by static input components",
+            caught,
+        )
+        self.assertIn(
+            "Prop 'inputProps' will be ignored: React-only props are not supported by static input components",
+            caught,
+        )
         self.assertNotIn("renderInput", output)
         self.assertNotIn("rows", output)
 
@@ -61,7 +67,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
             {"bad_value": {"nested": "dict"}},
         )
         self.assertIn(
-            "Prop 'someProp' with non-scalar value is not supported by HTML ui components "
+            "Prop 'someProp' with non-scalar value is not supported by static input components "
             "and will be ignored",
             caught,
         )
@@ -92,11 +98,11 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
             '{% ui "text_input" label="Email" onClick="alert(1)" on_input="alert(2)" %}{% endui %}'
         )
         self.assertIn(
-            "Event handler prop 'onClick' is not supported by HTML ui components and will be ignored",
+            "Prop 'onClick' will be ignored: event handlers are not supported by static input components",
             caught,
         )
         self.assertIn(
-            "Event handler prop 'onInput' is not supported by HTML ui components and will be ignored",
+            "Prop 'onInput' will be ignored: event handlers are not supported by static input components",
             caught,
         )
         self.assertNotIn("onclick", output.lower())

@@ -8,6 +8,8 @@ from django.utils.safestring import mark_safe
 
 from alliance_platform.ui.icons import get_static_icon_definition
 
+from .base import is_event_handler_attr
+
 if TYPE_CHECKING:
     from .base import BaseHtmlUIComponentRenderer
 
@@ -16,10 +18,6 @@ ICON_STYLE_PATH = "@alliancesoftware/icons/Icon.css.ts"
 ICON_SIZES = ("xxs", "xs", "sm", "md", "lg", "xl")
 ICON_VARIANTS = ("plain", "circle", "circle-outlined")
 ICON_COLORS = ("primary", "secondary", "warning", "destructive", "success")
-
-
-def is_event_handler_attr(name: str) -> bool:
-    return name.lower().startswith("on")
 
 
 def render_static_icon(

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from decimal import Decimal
 from pathlib import Path
 import re
 from typing import Any
+from typing import Mapping
 from typing import cast
 import warnings
 
@@ -13,6 +15,7 @@ from django.template import Origin
 from django.template.base import UNKNOWN_SOURCE
 from django.template.base import FilterExpression
 from django.template.base import NodeList
+from django.utils.functional import Promise
 from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
 
@@ -80,6 +83,17 @@ def to_html_attr_name(key: str) -> str:
     return key.lower()
 
 
+def is_event_handler_attr(name: str) -> bool:
+    """Return whether an attribute/prop name could create an inline event handler."""
+    return to_html_attr_name(str(name)).lower().startswith("on")
+
+
+def is_scalar_prop_value(value: Any) -> bool:
+    """Return whether a prop can be safely serialized as an HTML attribute value."""
+    # Promise covers lazy translation proxies; Decimal covers Django DecimalField values.
+    return isinstance(value, (str, int, float, bool, Decimal, Promise)) or value is None
+
+
 def style_dict_to_string(style: dict[str, Any]) -> str:
     declarations = []
     for key, value in style.items():
@@ -123,6 +137,18 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
     """Base node for HTML-only UI components dispatched by ``{% ui %}``."""
 
     slot_name: str | None = None
+    #: Props accepted by :meth:`filter_component_props`. ``None`` defers the final prop-name
+    #: allowlist to the component (useful for inputs, which split props across several elements).
+    supported_props: frozenset[str] | None = None
+    unsupported_prop_reasons: Mapping[str, str] = {}
+    prop_aliases: Mapping[str, str] = {}
+    allow_data_props = False
+    allow_aria_props = False
+    extra_allowed_aria_props: frozenset[str] = frozenset()
+    non_scalar_props: frozenset[str] = frozenset()
+    none_meaningful_props: frozenset[str] = frozenset()
+    prop_filter_context = "static HTML ui components"
+    event_handler_prop_reason = "event handlers are not supported by static HTML ui components"
 
     def __init__(
         self,
@@ -202,6 +228,71 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
                 continue
             resolved_props[normalized_key] = resolved_value
         return self._merge_bulk_props(resolved_props, bulk_props)
+
+    def filter_component_props(self, props: dict[str, Any]) -> dict[str, Any]:
+        """Apply the shared static-component prop policy.
+
+        Component families configure the policy through the class attributes above. The common
+        implementation keeps event-handler refusal, data/aria handling, style validation and
+        scalar-value checks consistent while leaving component-specific allowlists declarative.
+        """
+        filtered: dict[str, Any] = {}
+        component_name = self.get_component_prop_name()
+        for original_key, value in props.items():
+            key = self.prop_aliases.get(original_key, original_key)
+            if value is None:
+                if key in self.none_meaningful_props and (
+                    self.supported_props is None or key in self.supported_props
+                ):
+                    filtered[key] = value
+                continue
+            reason = self.unsupported_prop_reasons.get(key)
+            if reason:
+                warnings.warn(f"Prop '{key}' will be ignored: {reason}")
+                continue
+            if is_event_handler_attr(key):
+                warnings.warn(f"Prop '{key}' will be ignored: {self.event_handler_prop_reason}")
+                continue
+            attr_name = to_html_attr_name(key)
+            if attr_name.startswith("data-") or attr_name.startswith("aria-"):
+                allowed = (
+                    self.allow_data_props
+                    if attr_name.startswith("data-")
+                    else (self.allow_aria_props or attr_name in self.extra_allowed_aria_props)
+                )
+                if not allowed:
+                    warnings.warn(f"Prop '{key}' is not supported on '{component_name}' and will be ignored")
+                    continue
+                if not is_scalar_prop_value(value):
+                    warnings.warn(
+                        f"Prop '{key}' with non-scalar value is not supported by "
+                        f"{self.prop_filter_context} and will be ignored"
+                    )
+                    continue
+                filtered[attr_name] = value
+                continue
+            if self.supported_props is not None and key not in self.supported_props:
+                warnings.warn(f"Prop '{key}' is not a supported '{component_name}' prop and will be ignored")
+                continue
+            if key == "style":
+                if not isinstance(value, (str, dict)):
+                    warnings.warn("Prop 'style' must be a string or dict; it will be ignored")
+                    continue
+            elif not is_scalar_prop_value(value) and not self.allow_non_scalar_prop(key, value):
+                warnings.warn(
+                    f"Prop '{key}' with non-scalar value is not supported by "
+                    f"{self.prop_filter_context} and will be ignored"
+                )
+                continue
+            filtered[key] = value
+        return filtered
+
+    def get_component_prop_name(self) -> str:
+        name = getattr(self, "component_name", None) or getattr(self, "apui_component_name", None)
+        return str(name or self.__class__.__name__)
+
+    def allow_non_scalar_prop(self, key: str, value: Any) -> bool:
+        return key in self.non_scalar_props
 
     def _merge_bulk_props(self, resolved_props: dict[str, Any], bulk_props: Any) -> dict[str, Any]:
         """Merge a dict passed via the ``props`` kwarg into the individually passed props.
