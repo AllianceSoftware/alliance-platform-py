@@ -102,7 +102,7 @@ class UIIconComponentTestCase(HtmlUIParityTestCase):
 
         self.assertIn("'icon' does not support children; the content will be ignored", caught)
         self.assertIn(
-            "Event handler prop 'onClick' is not supported by static icon components and will be ignored",
+            "Prop 'onClick' will be ignored: event handlers are not supported by static icon components",
             caught,
         )
         self.assertNotIn("alert", output)

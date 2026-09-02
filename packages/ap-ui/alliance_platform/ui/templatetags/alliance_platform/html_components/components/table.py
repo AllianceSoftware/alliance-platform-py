@@ -41,6 +41,7 @@ from alliance_platform.frontend.templatetags.react import OmitComponentFromRende
 from alliance_platform.ui.icons import get_static_icon_resource
 
 from ..base import BaseHtmlUIComponentRenderer
+from ..base import enum_prop_rule
 from ..base import style_dict_to_string
 from ..content import render_content
 from ..static_icon import ICON_STYLE_PATH
@@ -202,7 +203,7 @@ class UITableComponentRendererBase(BaseHtmlUIComponentRenderer):
         if self.requires_table and get_current_table_state(context) is None:
             self.warn_outside_table()
             raise OmitComponentFromRendering()
-        return self.filter_component_props(super().resolve_props(context))
+        return super().resolve_props(context)
 
     def resolve_table_styles(self) -> Any:
         return self.resolve_vanilla_extract_mapping(_TABLE_STYLE_PATH)
@@ -212,11 +213,6 @@ class UITableComponentRendererBase(BaseHtmlUIComponentRenderer):
             f"'{self.component_name}' was rendered outside of a '{{% ui \"table\" %}}' component; "
             "rendering nothing"
         )
-
-    def collect_data_aria_attrs(self, props: dict[str, Any]) -> dict[str, Any]:
-        return {
-            key: value for key, value in props.items() if key.startswith("data-") or key.startswith("aria-")
-        }
 
 
 class UITableRenderer(UITableComponentRendererBase):
@@ -242,6 +238,11 @@ class UITableRenderer(UITableComponentRendererBase):
     extra_allowed_aria_props = frozenset({"aria-label", "aria-labelledby", "aria-describedby"})
     non_scalar_props = frozenset({"sortOrder", "header", "footer", "renderEmptyState", "emptyState"})
     none_meaningful_props = frozenset({"renderEmptyState", "emptyState"})
+    prop_rules = {
+        "mode": enum_prop_rule(VALID_TABLE_MODES, invalid_fallback="default"),
+        "sortMode": enum_prop_rule(VALID_SORT_MODES, invalid_fallback="single"),
+        "sortBehavior": enum_prop_rule(VALID_SORT_BEHAVIORS, invalid_fallback="toggle"),
+    }
 
     def resolve_component_resources(self) -> list[FrontendResource]:
         # Icon.css is included unconditionally (sortable columns may render sort icons) to keep
@@ -258,18 +259,8 @@ class UITableRenderer(UITableComponentRendererBase):
             return self.render_children(context)
 
     def build_table_state(self, context: Context, props: dict[str, Any]) -> TableRenderState:
-        sort_mode = self.validate_enum_prop(
-            props,
-            prop_name="sortMode",
-            valid_values=VALID_SORT_MODES,
-            default_value="single",
-        )
-        sort_behavior = self.validate_enum_prop(
-            props,
-            prop_name="sortBehavior",
-            valid_values=VALID_SORT_BEHAVIORS,
-            default_value="toggle",
-        )
+        sort_mode = str(props.get("sortMode", "single"))
+        sort_behavior = str(props.get("sortBehavior", "toggle"))
         sort_query_param = str(props.get("sortQueryParam") or DEFAULT_SORT_QUERY_PARAM)
         return TableRenderState(
             sort_order=self.resolve_sort_order(props),
@@ -316,12 +307,7 @@ class UITableRenderer(UITableComponentRendererBase):
         return render_content(value, context, prop_name="renderEmptyState", origin=self.origin)
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
-        mode = self.validate_enum_prop(
-            props,
-            prop_name="mode",
-            valid_values=VALID_TABLE_MODES,
-            default_value="default",
-        )
+        mode = str(props.get("mode", "default"))
         table_styles = self.resolve_table_styles()
 
         header_html = render_content(props.get("header"), context, prop_name="header", origin=self.origin)
@@ -389,15 +375,17 @@ class UITableColumnRenderer(UITableComponentRendererBase):
         }
     )
     unsupported_prop_reasons = {"childColumns": _NESTED_COLUMNS_REASON}
+    prop_rules = {
+        "align": enum_prop_rule(VALID_ALIGNMENTS),
+        "sortDirection": enum_prop_rule(VALID_SORT_DIRECTIONS),
+    }
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
         state = get_current_table_state(context)
         assert state is not None
 
-        align = self.validate_optional_enum_prop(props, prop_name="align", valid_values=VALID_ALIGNMENTS)
-        explicit_direction = self.validate_optional_enum_prop(
-            props, prop_name="sortDirection", valid_values=VALID_SORT_DIRECTIONS
-        )
+        align = props.get("align")
+        explicit_direction = props.get("sortDirection")
         key = props.get("key")
         key = str(key) if key is not None else None
         allows_sorting = bool(props.get("allowsSorting"))
@@ -420,10 +408,10 @@ class UITableColumnRenderer(UITableComponentRendererBase):
 
         column_state = TableColumnState(
             key=key,
-            align=align,  # type: ignore[arg-type] # validated above
+            align=align,
             is_row_header=is_row_header,
             allows_sorting=allows_sorting,
-            sort_direction=sort_direction,  # type: ignore[arg-type] # validated above
+            sort_direction=sort_direction,
             sort_position=sort_position,
             show_sort_position=show_sort_position,
         )
@@ -617,7 +605,7 @@ class UITableBodyRenderer(UITableComponentRendererBase):
             "className": props.get("className"),
             "id": props.get("id"),
             "style": props.get("style"),
-            **self.collect_data_aria_attrs(props),
+            **self.collect_forwarded_props(props),
         }
         return self._render_tag("tbody", attrs, children_html)
 
@@ -659,7 +647,7 @@ class UITableRowRenderer(UITableComponentRendererBase):
             "id": props.get("id"),
             "style": props.get("style"),
             "data-key": str(key) if key is not None else None,
-            **self.collect_data_aria_attrs(props),
+            **self.collect_forwarded_props(props),
         }
         return self._render_tag("tr", attrs, children_html)
 
@@ -713,6 +701,6 @@ class UITableCellRenderer(UITableComponentRendererBase):
             # Rendered as <td role="rowheader"> rather than <th scope="row"> so browser default
             # <th> styling (bold, centered) cannot diverge from the React table's appearance.
             "role": "rowheader" if is_row_header else None,
-            **self.collect_data_aria_attrs(props),
+            **self.collect_forwarded_props(props),
         }
         return self._render_tag("td", attrs, children_html)

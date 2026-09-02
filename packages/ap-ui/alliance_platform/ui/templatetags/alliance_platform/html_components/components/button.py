@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import re
 from typing import Any
-import warnings
 
 from django.template import Context
 from django.utils.html import conditional_escape
@@ -11,20 +10,78 @@ from django.utils.safestring import mark_safe
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 
 from ..base import BaseHtmlUIComponentRenderer
+from ..base import enum_prop_rule
+from ..base import typed_prop_rule
 
 VALID_VARIANTS = ("solid", "outlined", "plain", "light", "link")
 VALID_COLORS = ("primary", "secondary", "destructive", "gray")
 VALID_SIZES = ("sm", "md", "lg", "xl", "2xl")
 VALID_SHAPES = ("default", "circle")
 
+BUTTON_PROP_RULES = {
+    "variant": enum_prop_rule(VALID_VARIANTS, invalid_fallback="solid"),
+    "color": enum_prop_rule(VALID_COLORS, invalid_fallback="primary"),
+    "size": enum_prop_rule(VALID_SIZES, invalid_fallback="md"),
+    "shape": enum_prop_rule(VALID_SHAPES, invalid_fallback="default"),
+}
+
 _BUTTON_STYLE_PATH = "@alliancesoftware/ui/components/button/Button.css.ts"
 _FOCUS_RING_STYLE_PATH = "@alliancesoftware/ui/styles/base/focusRing.css.ts"
 
 _ICON_ONLY_RE = re.compile(r"^\s*<[^>]+data-apui-slot=([\"'])icon\1[^>]*>.*</[^>]+>\s*$", re.DOTALL)
+_HTML_TAG_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9-]*$")
+
+_BUTTON_FORWARDED_PROPS = frozenset(
+    {
+        "id",
+        "name",
+        "type",
+        "value",
+        "title",
+        "role",
+        "target",
+        "rel",
+        "tabIndex",
+        "form",
+        "formAction",
+        "formMethod",
+        "formEncType",
+        "formNoValidate",
+        "formTarget",
+        "autoFocus",
+    }
+)
 
 
 class UIButtonRenderer(BaseHtmlUIComponentRenderer):
+    apui_component_name = "button"
     slot_name = "button"
+    supported_props = frozenset(
+        {
+            "variant",
+            "color",
+            "size",
+            "shape",
+            "className",
+            "style",
+            "isDisabled",
+            "href",
+            "elementType",
+            "children",
+            "slot",
+            "isIconOnly",
+        }
+    )
+    forwarded_props = _BUTTON_FORWARDED_PROPS
+    allow_data_props = True
+    allow_aria_props = True
+    prop_filter_context = "static button components"
+    event_handler_prop_reason = "event handlers are not supported by static button components"
+    deprecated_prop_aliases = {"disabled": "isDisabled"}
+    prop_rules = {
+        **BUTTON_PROP_RULES,
+        "elementType": typed_prop_rule(str, validator=lambda value: bool(_HTML_TAG_NAME_RE.fullmatch(value))),
+    }
 
     def resolve_component_resources(self) -> list[FrontendResource]:
         return [
@@ -33,35 +90,11 @@ class UIButtonRenderer(BaseHtmlUIComponentRenderer):
         ]
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
-        variant = self.validate_enum_prop(
-            props,
-            prop_name="variant",
-            valid_values=VALID_VARIANTS,
-            default_value="solid",
-        )
-        color = self.validate_enum_prop(
-            props,
-            prop_name="color",
-            valid_values=VALID_COLORS,
-            default_value="primary",
-        )
-        size = self.validate_enum_prop(
-            props,
-            prop_name="size",
-            valid_values=VALID_SIZES,
-            default_value="md",
-        )
-        shape = self.validate_enum_prop(
-            props,
-            prop_name="shape",
-            valid_values=VALID_SHAPES,
-            default_value="default",
-        )
-
-        if "disabled" in props and "isDisabled" not in props:
-            warnings.warn("You passed 'disabled' - use 'isDisabled' instead")
-
-        is_disabled = bool(props.get("isDisabled") or props.get("disabled"))
+        variant = str(props.get("variant", "solid"))
+        color = str(props.get("color", "primary"))
+        size = str(props.get("size", "md"))
+        shape = str(props.get("shape", "default"))
+        is_disabled = bool(props.get("isDisabled"))
 
         button_styles = self.resolve_vanilla_extract_mapping(_BUTTON_STYLE_PATH)
         focus_ring_styles = self.resolve_vanilla_extract_mapping(_FOCUS_RING_STYLE_PATH)
@@ -75,6 +108,7 @@ class UIButtonRenderer(BaseHtmlUIComponentRenderer):
         )
 
         attrs: dict[str, Any] = {
+            **self.collect_forwarded_props(props),
             "className": class_name,
             "data-apui": "button",
             "data-variant": variant,
@@ -86,61 +120,12 @@ class UIButtonRenderer(BaseHtmlUIComponentRenderer):
         }
 
         href = props.get("href")
-        element_type = props.get("elementType")
-        if not isinstance(element_type, str):
-            element_type = "a" if href else "button"
-        tag_name = element_type
+        tag_name = str(props.get("elementType") or ("a" if href else "button"))
 
         if href is not None:
             attrs["href"] = href
         if is_disabled and tag_name == "button":
             attrs["disabled"] = True
-
-        pass_through_keys = {
-            "id",
-            "name",
-            "type",
-            "value",
-            "title",
-            "role",
-            "target",
-            "rel",
-            "tabIndex",
-            "form",
-            "formAction",
-            "formMethod",
-            "formEncType",
-            "formNoValidate",
-            "formTarget",
-            "aria-label",
-            "aria-describedby",
-            "aria-controls",
-            "aria-expanded",
-            "aria-current",
-            "data-testid",
-        }
-        handled_props = {
-            "variant",
-            "color",
-            "size",
-            "shape",
-            "className",
-            "style",
-            "isDisabled",
-            "disabled",
-            "href",
-            "elementType",
-            "children",
-            "slot",
-            "autoFocus",
-            "isIconOnly",
-        }
-
-        for key, value in props.items():
-            if key in handled_props:
-                continue
-            if key in pass_through_keys or key.startswith("data-") or key.startswith("aria-"):
-                attrs[key] = value
 
         normalized_children = self._normalize_children(children_html)
         explicit_icon_only = props.get("isIconOnly")
