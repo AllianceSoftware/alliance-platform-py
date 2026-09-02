@@ -1022,6 +1022,33 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertTrue(any("Menubar.auto" in path for path in resource_paths))
         self.assertTrue(any("ChevronDownOutlined.svg" in path for path in resource_paths))
 
+    def test_missing_runtime_resource_is_an_incompatible_ui_version_error(self):
+        with override_ap_frontend_settings(BUNDLER=test_development_bundler):
+            renderer = UIMenubarRenderer(
+                props={},
+                nodelist=NodeList(),
+                origin=None,
+                target_var=None,
+                register_asset=False,
+            )
+            resolve_frontend_resource = renderer.resolve_frontend_resource
+
+            def resolve_with_missing_runtime(path, resolve_extensions=None):
+                if path.endswith("Menubar.auto.ts"):
+                    raise TemplateSyntaxError("module not found")
+                return resolve_frontend_resource(path, resolve_extensions)
+
+            with mock.patch.object(
+                renderer,
+                "resolve_frontend_resource",
+                side_effect=resolve_with_missing_runtime,
+            ):
+                with self.assertRaisesMessage(
+                    TemplateSyntaxError,
+                    "Upgrade @alliancesoftware/ui to a compatible version",
+                ):
+                    renderer.get_resources_for_bundling()
+
     def test_runtime_marks_rendered_root_for_external_auto_attachment(self):
         with self.setup_render_context():
             output = self.render_ui_template(BASIC_MENUBAR_TEMPLATE)

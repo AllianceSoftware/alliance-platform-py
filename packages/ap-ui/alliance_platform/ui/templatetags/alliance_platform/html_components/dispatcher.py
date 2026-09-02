@@ -148,7 +148,7 @@ def parse_ui_tag(
                 f"'{tag_name}' static selector must resolve to a string, received {type(resolved_selector).__name__}"
             )
         static_selector_value = resolved_selector
-        if settings.DEBUG and not registry.exists(static_selector_value):
+        if not registry.exists(static_selector_value):
             raise TemplateSyntaxError(f"Unknown ui component '{static_selector_value}'")
 
     allowed_components = _parse_allowed_components_literal(
@@ -167,13 +167,16 @@ def parse_ui_tag(
 
     if static_selector_value is not None:
         renderer_cls = registry.get(static_selector_value)
-        if renderer_cls is not None:
-            return renderer_cls(
-                props=kwargs,
-                nodelist=nodelist,
-                target_var=target_var,
-                origin=parser.origin,
-            )
+        if renderer_cls is None:
+            # The registry was checked above, but keep this defensive error in case a custom
+            # registry is mutated while the tag is being parsed.
+            raise TemplateSyntaxError(f"Unknown ui component '{static_selector_value}'")
+        return renderer_cls(
+            props=kwargs,
+            nodelist=nodelist,
+            target_var=target_var,
+            origin=parser.origin,
+        )
 
     return UIComponentDispatcherNode(
         selector=selector_expr,

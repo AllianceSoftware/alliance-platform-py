@@ -29,10 +29,9 @@ from alliance_platform.frontend.renderable_content import RenderableTemplateNode
 from alliance_platform.frontend.renderable_content import RenderableText
 
 from .base import build_attrs_string
-from .base import to_html_attr_name
+from .base import is_event_handler_attr
 
 _VALID_TAG_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9-]*$")
-_EVENT_HANDLER_ATTR_RE = re.compile(r"^on", re.IGNORECASE)
 
 
 def is_rich_content_value(value: Any) -> bool:
@@ -110,7 +109,7 @@ def _clean_content_attrs(attrs: dict[str, Any], context: Context, *, prop_name: 
     """
     cleaned: dict[str, Any] = {}
     for key, value in attrs.items():
-        if _EVENT_HANDLER_ATTR_RE.match(to_html_attr_name(str(key))):
+        if is_event_handler_attr(str(key)):
             warnings.warn(
                 f"Renderable content prop '{prop_name}' contains event handler attribute "
                 f"'{key}' which will not be rendered by static HTML ui components"

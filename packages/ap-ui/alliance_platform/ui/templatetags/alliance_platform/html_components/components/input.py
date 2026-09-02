@@ -1,15 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal
 import json
-import re
 from typing import TYPE_CHECKING
 from typing import Any
 import warnings
 
 from django.template import Context
-from django.utils.functional import Promise
 from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
 
@@ -72,11 +69,6 @@ _REACT_ONLY_PROPS = frozenset(
     }
 )
 
-# Matches event handler props in any of the forms they can reach us in after prop normalization
-# (onClick, onclick, on_click -> onClick). These must never be rendered: a string value would
-# become a live inline event handler attribute, which React never renders.
-_EVENT_HANDLER_PROP_RE = re.compile(r"^on[A-Za-z]")
-
 # Attributes that may be passed through to the control element for all input components, in
 # addition to data-*/aria-* attributes. Anything else that is not explicitly handled is rejected
 # with a warning rather than rendered (mirroring how react-aria's filterDOMProps drops unknown
@@ -99,12 +91,6 @@ _SHARED_CONTROL_PASS_THROUGH_PROPS = frozenset(
         "title",
     }
 )
-
-
-def _is_scalar_prop_value(value: Any) -> bool:
-    # Promise covers lazy translation proxies (e.g. gettext_lazy form field labels), which render
-    # like plain strings. Decimal covers Django DecimalField values.
-    return isinstance(value, (str, int, float, bool, Decimal, Promise)) or value is None
 
 
 @dataclass
@@ -341,6 +327,14 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
 class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRenderer):
     """Shared rendering for text-like inputs, mirroring ``TextInputBase.tsx``."""
 
+    unsupported_prop_reasons = {
+        key: "React-only props are not supported by static input components" for key in _REACT_ONLY_PROPS
+    }
+    allow_data_props = True
+    allow_aria_props = True
+    prop_filter_context = "static input components"
+    event_handler_prop_reason = "event handlers are not supported by static input components"
+
     #: tag rendered for the actual control
     control_tag = "input"
     #: attrs that may pass through to the control element (plus data-*/aria-*); anything else
@@ -410,7 +404,7 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
             warnings.warn(
                 f"'{self.apui_component_name}' does not support children; the content will be ignored"
             )
-        props = self.filter_unsupported_props(props)
+        props = self.filter_component_props(props)
         state = self.resolve_labeled_input_state(context, props)
 
         text_input_base_styles = self.resolve_vanilla_extract_mapping(_TEXT_INPUT_BASE_STYLE_PATH)
@@ -472,33 +466,6 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
 
         labeled_input_html = self.render_labeled_input(context, props, state, container_html)
         return mark_safe(f"{labeled_input_html}{self.render_after_root(props, state)}")
-
-    def filter_unsupported_props(self, props: dict[str, Any]) -> dict[str, Any]:
-        filtered: dict[str, Any] = {}
-        for key, value in props.items():
-            if value is None:
-                # Treat None the same as an unset prop, mirroring undefined in JSX
-                continue
-            if key in _REACT_ONLY_PROPS:
-                warnings.warn(f"Prop '{key}' is not supported by HTML ui components and will be ignored")
-                continue
-            if _EVENT_HANDLER_PROP_RE.match(key):
-                warnings.warn(
-                    f"Event handler prop '{key}' is not supported by HTML ui components and will be ignored"
-                )
-                continue
-            if key == "style":
-                if not isinstance(value, (str, dict)):
-                    warnings.warn("Prop 'style' must be a string or dict; it will be ignored")
-                    continue
-            elif not _is_scalar_prop_value(value) and not self.allow_non_scalar_prop(key, value):
-                warnings.warn(
-                    f"Prop '{key}' with non-scalar value is not supported by HTML ui components "
-                    "and will be ignored"
-                )
-                continue
-            filtered[key] = value
-        return filtered
 
     def allow_non_scalar_prop(self, key: str, value: Any) -> bool:
         return key in self.rich_content_props and is_rich_content_value(value)

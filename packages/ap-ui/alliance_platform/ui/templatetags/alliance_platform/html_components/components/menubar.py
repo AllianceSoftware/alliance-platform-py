@@ -32,7 +32,6 @@ from __future__ import annotations
 from contextlib import contextmanager
 from dataclasses import dataclass
 from dataclasses import field
-from decimal import Decimal
 import html as html_module
 import json
 import math
@@ -48,7 +47,6 @@ from allianceutils.template import is_static_expression
 from django.template import Context
 from django.template import TemplateSyntaxError
 from django.template.base import FilterExpression
-from django.utils.functional import Promise
 from django.utils.html import conditional_escape
 from django.utils.html import strip_tags
 from django.utils.safestring import mark_safe
@@ -61,15 +59,14 @@ from alliance_platform.ui.icons import validate_icon_name
 
 from ..base import BaseHtmlUIComponentRenderer
 from ..base import get_document_render_context
-from ..base import to_html_attr_name
 from ..content import render_content
 from ..runtime import add_auto_attach_marker
 from ..static_icon import ICON_STYLE_PATH
 
 _MENUBAR_STYLE_PATH = "@alliancesoftware/ui/components/menu-bar/Menubar.css.ts"
 _POPOVER_STYLE_PATH = "@alliancesoftware/ui/components/overlay/Popover.css.ts"
-# The runtime module is optional during resource resolution; if unresolved rendering degrades
-# gracefully to static HTML without script output.
+# Menubar's DOM and CSS contracts rely on this runtime for submenu and keyboard behaviour. Treat a
+# missing module as an incompatible @alliancesoftware/ui version instead of silently degrading.
 _RUNTIME_MODULE_PATH = "@alliancesoftware/ui/components/menu-bar/Menubar.auto.ts"
 
 # Key used in ``context.render_context`` for the stack of in-progress menubar renders.
@@ -92,11 +89,6 @@ _LEADING_ICON_RE = re.compile(
     re.DOTALL,
 )
 _COOKIE_NAME_RE = re.compile(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$")
-
-# Matches event handler props in any of the forms they can reach us in after prop normalization
-# (onClick, onclick, on_click -> onClick). These must never be rendered: a string value would
-# become a live inline event handler attribute, which React never renders.
-_EVENT_HANDLER_PROP_RE = re.compile(r"^on[A-Za-z]")
 
 _EVENT_HANDLER_REASON = "event handlers are not supported by static menubar components"
 _CALLBACK_REASON = "client-side action callbacks are not supported by static menubar components"
@@ -123,12 +115,6 @@ _MENUBAR_UNSUPPORTED_PROPS: Mapping[str, str] = {
     "overflowTextLabel": _OVERFLOW_REASON,
     "closeOnSelect": "close-on-select behaviour is not configurable for static menubar components",
 }
-
-
-def _is_scalar_prop_value(value: Any) -> bool:
-    # Promise covers lazy translation proxies (e.g. gettext_lazy labels), which render like plain
-    # strings. Decimal covers Django DecimalField values.
-    return isinstance(value, (str, int, float, bool, Decimal, Promise)) or value is None
 
 
 def _extract_css_var_name(value: str) -> str | None:
@@ -232,6 +218,8 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
     extra_allowed_aria_props: frozenset[str] = frozenset()
     #: supported props that may hold non-scalar values
     non_scalar_props: frozenset[str] = frozenset()
+    prop_filter_context = "static menubar components"
+    event_handler_prop_reason = _EVENT_HANDLER_REASON
     #: static icon-name props whose SVGs must be included in resource discovery
     static_icon_props: tuple[str, ...] = ()
     requires_menubar = True
@@ -264,54 +252,6 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
             )
             raise OmitComponentFromRendering()
         return self.filter_component_props(super().resolve_props(context))
-
-    def filter_component_props(self, props: dict[str, Any]) -> dict[str, Any]:
-        filtered: dict[str, Any] = {}
-        for key, value in props.items():
-            key = self.prop_aliases.get(key, key)
-            if value is None:
-                # Treat None the same as an unset prop, mirroring undefined in JSX
-                continue
-            reason = self.unsupported_prop_reasons.get(key)
-            if reason:
-                warnings.warn(f"Prop '{key}' will be ignored: {reason}")
-                continue
-            if _EVENT_HANDLER_PROP_RE.match(key):
-                warnings.warn(f"Prop '{key}' will be ignored: {_EVENT_HANDLER_REASON}")
-                continue
-            attr_name = to_html_attr_name(key)
-            if attr_name.startswith("data-") or attr_name.startswith("aria-"):
-                allowed = self.allow_data_props if attr_name.startswith("data-") else self.allow_aria_props
-                if not allowed and attr_name not in self.extra_allowed_aria_props:
-                    warnings.warn(
-                        f"Prop '{key}' is not supported on '{self.component_name}' and will be ignored"
-                    )
-                    continue
-                if not _is_scalar_prop_value(value):
-                    warnings.warn(
-                        f"Prop '{key}' with non-scalar value is not supported by static menubar "
-                        "components and will be ignored"
-                    )
-                    continue
-                filtered[attr_name] = value
-                continue
-            if key not in self.supported_props:
-                warnings.warn(
-                    f"Prop '{key}' is not a supported '{self.component_name}' prop and will be ignored"
-                )
-                continue
-            if key == "style":
-                if not isinstance(value, (str, dict)):
-                    warnings.warn("Prop 'style' must be a string or dict; it will be ignored")
-                    continue
-            elif not _is_scalar_prop_value(value) and key not in self.non_scalar_props:
-                warnings.warn(
-                    f"Prop '{key}' with non-scalar value is not supported by static menubar "
-                    "components and will be ignored"
-                )
-                continue
-            filtered[key] = value
-        return filtered
 
     def resolve_menubar_styles(self) -> Any:
         return self.resolve_vanilla_extract_mapping(_MENUBAR_STYLE_PATH)
@@ -555,19 +495,20 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
             get_static_icon_resource(_CHEVRON_RIGHT_ICON, origin=self.origin),
             get_static_icon_resource(_CHEVRON_UP_ICON, origin=self.origin),
         ]
-        runtime_resource = self._resolve_runtime_resource()
-        if runtime_resource is not None:
-            resources.append(runtime_resource)
+        resources.append(self._resolve_runtime_resource())
         return resources
 
-    def _resolve_runtime_resource(self) -> FrontendResource | None:
-        runtime_path = self.resolve_optional_resource_path(
-            _RUNTIME_MODULE_PATH,
-            resolve_extensions=[".ts", ".tsx", ".js", ".mjs"],
-        )
-        if runtime_path is None:
-            return None
-        return FrontendResource.from_path(runtime_path)
+    def _resolve_runtime_resource(self) -> FrontendResource:
+        try:
+            return self.resolve_frontend_resource(
+                _RUNTIME_MODULE_PATH,
+                resolve_extensions=[".ts", ".tsx", ".js", ".mjs"],
+            )
+        except TemplateSyntaxError as exc:
+            raise TemplateSyntaxError(
+                "Static menubar rendering requires "
+                f"'{_RUNTIME_MODULE_PATH}'. Upgrade @alliancesoftware/ui to a compatible version."
+            ) from exc
 
     def render_children_for_component(self, context: Context, props: dict[str, Any]) -> str:
         # Children are rendered in render_component so the render state (which render_component
@@ -709,9 +650,7 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
             **self.collect_data_aria_attrs(props),
         }
 
-        runtime_resource = self._resolve_runtime_resource()
-        if runtime_resource is not None:
-            add_auto_attach_marker(attrs, "menubar")
+        add_auto_attach_marker(attrs, "menubar")
 
         return self._render_tag("ul", attrs, children_html)
 

@@ -77,18 +77,9 @@ class UIDispatcherTemplateTagTestCase(SimpleTestCase):
             Template('{% load alliance_platform.ui %}{% ui "missing" %}{% endui %}')
 
     @override_settings(DEBUG=False)
-    def test_unknown_static_component_warns_once_and_renders_empty(self):
-        with self.setup_render_context():
-            template_obj = Template('{% load alliance_platform.ui %}{% ui "missing" %}X{% endui %}')
-            with warnings.catch_warnings(record=True) as caught:
-                warnings.simplefilter("always")
-                first = template_obj.render(Context())
-                second = template_obj.render(Context())
-
-        self.assertEqual(first, "")
-        self.assertEqual(second, "")
-        self.assertEqual(len(caught), 1)
-        self.assertEqual(str(caught[0].message), "Unknown ui component 'missing'")
+    def test_unknown_static_component_is_error_outside_debug(self):
+        with self.assertRaisesMessage(TemplateSyntaxError, "Unknown ui component 'missing'"):
+            Template('{% load alliance_platform.ui %}{% ui "missing" %}X{% endui %}')
 
     def test_dynamic_component_value_not_in_allowed_components_warns_and_renders_empty(self):
         with self.setup_render_context():
