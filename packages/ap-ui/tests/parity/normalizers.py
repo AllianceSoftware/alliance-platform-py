@@ -10,7 +10,7 @@ _TAG_GAP_RE = re.compile(r">\s+<")
 _WHITESPACE_RE = re.compile(r"\s+")
 
 
-def _normalize_tag_attributes(value: str) -> str:
+def _normalize_tag_attributes(value: str, ignored_attributes: frozenset[str]) -> str:
     def _replace(match: re.Match[str]) -> str:
         tag_name = match.group(1)
         attrs_part = (match.group(2) or "").strip()
@@ -19,6 +19,8 @@ def _normalize_tag_attributes(value: str) -> str:
 
         attrs: list[tuple[str, str | None]] = []
         for attr_match in _ATTR_RE.finditer(attrs_part):
+            if attr_match.group(1) in ignored_attributes:
+                continue
             attrs.append((attr_match.group(1), attr_match.group(2)))
         attrs.sort(key=lambda item: item[0])
 
@@ -35,11 +37,15 @@ def _normalize_tag_attributes(value: str) -> str:
     return _OPENING_TAG_RE.sub(_replace, value)
 
 
-def normalize_html_fragment(value: str) -> str:
+def normalize_html_fragment(
+    value: str,
+    *,
+    ignored_attributes: frozenset[str] = frozenset(),
+) -> str:
     normalized = value.strip()
     normalized = _DJID_HTML_RE.sub('data-djid="__DJID__"', normalized)
     normalized = _DJID_SELECTOR_RE.sub("[data-djid='__DJID__']", normalized)
-    normalized = _normalize_tag_attributes(normalized)
+    normalized = _normalize_tag_attributes(normalized, ignored_attributes)
     normalized = _TAG_GAP_RE.sub("><", normalized)
     normalized = _WHITESPACE_RE.sub(" ", normalized)
     return normalized.strip()

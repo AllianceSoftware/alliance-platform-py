@@ -28,6 +28,7 @@ test_development_bundler = TestViteBundler(
 
 class HtmlUIParityTestCase(SimpleTestCase):
     fixture_component: str
+    parity_ignored_attributes: frozenset[str] = frozenset()
 
     @contextmanager
     def setup_render_context(self):
@@ -74,8 +75,14 @@ class HtmlUIParityTestCase(SimpleTestCase):
                 warnings.simplefilter("always")
                 output = self.render_ui_template(case["template"], context_kwargs)
 
-        actual_html = normalize_html_fragment(output)
-        expected_html = normalize_html_fragment(case["expected_html"])
+        actual_html = normalize_html_fragment(
+            output,
+            ignored_attributes=self.parity_ignored_attributes,
+        )
+        expected_html = normalize_html_fragment(
+            case["expected_html"],
+            ignored_attributes=self.parity_ignored_attributes,
+        )
         self.assertEqual(actual_html, expected_html)
 
         expected_warnings = case.get("expected_warnings", [])

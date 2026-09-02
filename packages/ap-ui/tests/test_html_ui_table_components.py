@@ -60,7 +60,7 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
         # Structural styling hangs off the tableWrapper class; rows/cells are styled through
         # element/data-attribute selectors and carry no classes of their own.
         self.assertIn(
-            '<div data-apui="table" data-mode="default" class="Table_tableWrapper">',
+            '<div data-apui="table" class="Table_tableWrapper">',
             output,
         )
         self.assertIn('<div><table aria-label="User list">', output)
@@ -384,13 +384,19 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn("&lt;b&gt;unsafe&lt;/b&gt;", output)
         self.assertNotIn("<b>unsafe</b>", output)
 
-    def test_mode_edit_renders_data_attribute_only(self):
+    def test_react_edit_mode_warns_and_is_ignored(self):
         template = (
             '{% ui "table" aria_label="Users" mode="edit" %}{% ui "table_body" %}{% endui %}{% endui %}'
         )
         output, caught = self.render_with_warnings(template)
-        self.assertEqual(caught, [])
-        self.assertIn('data-mode="edit"', output)
+        self.assertEqual(
+            caught,
+            [
+                "Prop 'mode' will be ignored: React Aria edit-mode keyboard handling is not used "
+                "by static table components"
+            ],
+        )
+        self.assertNotIn("data-mode", output)
 
     # --- Prop validation ---
 

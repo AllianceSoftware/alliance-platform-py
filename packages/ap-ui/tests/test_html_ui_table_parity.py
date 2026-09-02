@@ -7,6 +7,9 @@ from tests.parity.base import HtmlUIParityTestCase
 
 class UITableParityTestCase(HtmlUIParityTestCase):
     fixture_component = "table"
+    # React always emits this attribute, but its value only selects React Aria keyboard/event
+    # behaviour. The static table deliberately uses native table and input behaviour instead.
+    parity_ignored_attributes = frozenset({"data-mode"})
 
     request_factory = RequestFactory()
 
