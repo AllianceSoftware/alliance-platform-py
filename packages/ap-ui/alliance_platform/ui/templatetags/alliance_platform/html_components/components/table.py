@@ -53,7 +53,6 @@ _TABLE_STATE_KEY = "alliance_platform_ui_table_state"
 
 VALID_SORT_MODES = ("single", "multiple")
 VALID_SORT_BEHAVIORS = ("toggle", "replace")
-VALID_TABLE_MODES = ("default", "edit")
 VALID_ALIGNMENTS = ("start", "center", "end")
 VALID_SORT_DIRECTIONS = ("ascending", "descending")
 
@@ -76,6 +75,7 @@ _COLLECTION_REASON = "collection render props are not supported by static table 
 _NESTED_COLUMNS_REASON = "nested/grouped columns are not supported by static table components"
 
 _TABLE_UNSUPPORTED_PROPS: Mapping[str, str] = {
+    "mode": "React Aria edit-mode keyboard handling is not used by static table components",
     "selectionMode": _SELECTION_REASON,
     "selectionBehavior": _SELECTION_REASON,
     "selectedKeys": _SELECTION_REASON,
@@ -225,7 +225,6 @@ class UITableRenderer(UITableComponentRendererBase):
             "style",
             "header",
             "footer",
-            "mode",
             "sortOrder",
             "sortMode",
             "sortBehavior",
@@ -239,7 +238,6 @@ class UITableRenderer(UITableComponentRendererBase):
     non_scalar_props = frozenset({"sortOrder", "header", "footer", "renderEmptyState", "emptyState"})
     none_meaningful_props = frozenset({"renderEmptyState", "emptyState"})
     prop_rules = {
-        "mode": enum_prop_rule(VALID_TABLE_MODES, invalid_fallback="default"),
         "sortMode": enum_prop_rule(VALID_SORT_MODES, invalid_fallback="single"),
         "sortBehavior": enum_prop_rule(VALID_SORT_BEHAVIORS, invalid_fallback="toggle"),
     }
@@ -307,7 +305,6 @@ class UITableRenderer(UITableComponentRendererBase):
         return render_content(value, context, prop_name="renderEmptyState", origin=self.origin)
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
-        mode = str(props.get("mode", "default"))
         table_styles = self.resolve_table_styles()
 
         header_html = render_content(props.get("header"), context, prop_name="header", origin=self.origin)
@@ -317,7 +314,6 @@ class UITableRenderer(UITableComponentRendererBase):
 
         wrapper_attrs: dict[str, Any] = {
             "data-apui": "table",
-            "data-mode": mode,
             # These are load-bearing for styling: the stylesheet keys header/footer chrome off
             # [data-has-header]/[data-has-footer] on the tableWrapper class.
             "data-has-header": "true" if has_header else None,
