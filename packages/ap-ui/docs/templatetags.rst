@@ -104,6 +104,14 @@ Nested static icons inherit the same default size as React: ``sm`` and ``md`` bu
 ``size`` overrides the button default. This also applies when a Button inherits its size from a
 ``button_group``.
 
+Static number inputs
+~~~~~~~~~~~~~~~~~~~~
+
+Static ``number_input`` components treat numeric NaN values as empty. This includes both Python
+``float`` and ``Decimal`` NaN values, so the ``none_as_nan`` compatibility value used by legacy
+Django number widgets does not appear as ``nan`` in the visible input, runtime initial value or
+hidden native-form input. Zero and finite numeric values retain their normal string representation.
+
 Static HTML table components
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

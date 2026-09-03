@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from decimal import Decimal
 import re
 from typing import Any
 import warnings
@@ -60,3 +61,42 @@ class UINumberInputParityTestCase(HtmlUIParityTestCase):
         ]:
             with self.subTest(resource=expected_suffix):
                 self.assertTrue(any(path.endswith(expected_suffix) for path in resource_paths))
+
+    def assert_rendered_values(self, output: str, expected: str):
+        self.assertIn(f'data-apui-number-input-initial-value="{expected}"', output)
+        self.assertRegex(
+            output,
+            rf'<input(?=[^>]*type="text")(?=[^>]*value="{re.escape(expected)}")[^>]*/>',
+        )
+        self.assertRegex(
+            output,
+            rf'<input(?=[^>]*type="hidden")(?=[^>]*name="quantity")'
+            rf'(?=[^>]*value="{re.escape(expected)}")[^>]*/>',
+        )
+
+    def render_number_input_value(self, value: Any) -> str:
+        with self.setup_render_context():
+            return self.render_ui_template(
+                '{% ui "number_input" label="Quantity" name="quantity" default_value=value %}{% endui %}',
+                {"value": value},
+            )
+
+    def test_nan_initial_values_render_as_empty(self):
+        for value in (float("nan"), Decimal("NaN")):
+            with self.subTest(value_type=type(value).__name__):
+                output = self.render_number_input_value(value)
+
+                self.assert_rendered_values(output, "")
+                self.assertNotRegex(output, r'(?i)(?:value|initial-value)="nan"')
+
+    def test_finite_numeric_initial_values_are_preserved(self):
+        for value, expected in (
+            (0, "0"),
+            (0.0, "0"),
+            (12.5, "12.5"),
+            (Decimal("12.50"), "12.50"),
+        ):
+            with self.subTest(value=value):
+                output = self.render_number_input_value(value)
+
+                self.assert_rendered_values(output, expected)
