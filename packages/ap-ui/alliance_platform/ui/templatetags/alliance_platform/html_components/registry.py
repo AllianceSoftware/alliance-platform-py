@@ -37,6 +37,7 @@ from .components.menubar import UIMenubarItemRenderer  # noqa: E402
 from .components.menubar import UIMenubarRenderer  # noqa: E402
 from .components.menubar import UIMenubarSectionRenderer  # noqa: E402
 from .components.menubar import UIMenubarSubMenuRenderer  # noqa: E402
+from .components.pagination import UIPaginationRenderer  # noqa: E402
 from .components.table import UITableBodyRenderer  # noqa: E402
 from .components.table import UITableCellRenderer  # noqa: E402
 from .components.table import UITableColumnRenderer  # noqa: E402
@@ -50,6 +51,7 @@ built_in_registry.register_renderer("icon", UIIconRenderer)
 built_in_registry.register_renderer("text_input", UITextInputRenderer)
 built_in_registry.register_renderer("number_input", UINumberInputRenderer)
 built_in_registry.register_renderer("text_area", UITextAreaRenderer)
+built_in_registry.register_renderer("pagination", UIPaginationRenderer)
 built_in_registry.register_renderer("table", UITableRenderer)
 built_in_registry.register_renderer("table_header", UITableHeaderRenderer)
 built_in_registry.register_renderer("table_body", UITableBodyRenderer)
