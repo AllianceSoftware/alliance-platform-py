@@ -145,7 +145,9 @@ the configured page-size parameter is removed from navigation links, matching
 ``renderPaginationItemAsLink`` when ``isPageSizeSelectable`` is false.
 
 Both ``variant="default"`` and ``variant="compact"`` and the ``sm``/``md`` sizes use the React
-component's CSS classes. Its container-query styles provide the no-JavaScript responsive baseline.
+component's CSS classes. Static pagination precomputes page ranges for the React defaults and uses
+container queries to select sibling/boundary counts of 1/1 at 620px and 1/0 at 450px, providing
+responsive behaviour without JavaScript. Custom ``breakpoints`` remain unsupported.
 Previous and next controls at the range limits, and every control when ``is_disabled=True``, omit
 ``href`` and render ``aria-disabled="true"`` with ``tabindex="-1"`` so they are noninteractive
 without relying on React's event handling.
