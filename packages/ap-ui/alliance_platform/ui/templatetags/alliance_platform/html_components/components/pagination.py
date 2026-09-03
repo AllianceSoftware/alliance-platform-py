@@ -115,11 +115,13 @@ class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
     }
 
     def resolve_component_resources(self) -> list[FrontendResource]:
+        # Keep shared/base styles before Pagination so its equal-specificity button overrides win
+        # when production manifests emit each Vanilla Extract module as a separate stylesheet.
         return [
-            self.resolve_frontend_resource(_PAGINATION_STYLE_PATH),
             self.resolve_frontend_resource(_BUTTON_STYLE_PATH),
             self.resolve_frontend_resource(_FOCUS_RING_STYLE_PATH),
             self.resolve_frontend_resource(ICON_STYLE_PATH),
+            self.resolve_frontend_resource(_PAGINATION_STYLE_PATH),
             get_static_icon_resource(_ARROW_LEFT_ICON, origin=self.origin),
             get_static_icon_resource(_ARROW_RIGHT_ICON, origin=self.origin),
         ]

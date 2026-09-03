@@ -1,13 +1,24 @@
 from __future__ import annotations
 
 from html import unescape
+import json
+from pathlib import Path
 import re
+from tempfile import TemporaryDirectory
 from typing import Any
+from unittest import mock
 import warnings
 
+from alliance_platform.frontend.bundler.context import BundlerAssetContext
+from django.conf import settings
 from django.test import RequestFactory
 
 from tests.parity.base import HtmlUIParityTestCase
+from tests.parity.style_mocks import make_style_mapping_resolver
+from tests.test_utils import override_ap_frontend_settings
+from tests.test_utils.bundler import TestViteBundler
+from tests.test_utils.bundler import bundler_kwargs
+from tests.test_utils.bundler import bypass_frontend_resource_registry
 
 
 class UIPaginationRendererTestCase(HtmlUIParityTestCase):
@@ -299,6 +310,71 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
         self.assertIn("Pagination.css.ts", output)
         self.assertIn("Button.css.ts", output)
         self.assertIn("Icon.css.ts", output)
+
+    def test_production_styles_embed_base_dependencies_before_pagination_overrides(self):
+        style_paths = (
+            "@alliancesoftware/ui/components/button/Button.css.ts",
+            "@alliancesoftware/ui/styles/base/focusRing.css.ts",
+            "@alliancesoftware/icons/Icon.css.ts",
+            "@alliancesoftware/ui/components/pagination/Pagination.css.ts",
+        )
+        manifest: dict[str, dict[str, object]] = {}
+
+        with TemporaryDirectory() as temp_dir:
+            build_dir = Path(temp_dir)
+            assets_dir = build_dir / "assets"
+            assets_dir.mkdir(parents=True)
+            expected_css_urls: list[str] = []
+            for style_path in style_paths:
+                style_name = Path(style_path).name.removesuffix(".css.ts")
+                css_file = f"assets/{style_name}-built.css"
+                manifest[style_path] = {
+                    "file": f"assets/{style_name}-built.js",
+                    "src": style_path,
+                    "css": [css_file],
+                }
+                expected_css_urls.append(f"/static/{css_file}")
+
+            for icon_name in ("ArrowLeftOutlined", "ArrowRightOutlined"):
+                icon_source = (
+                    Path(__file__).resolve().parent / f"fixtures/icons/static-svg/outlined/{icon_name}.svg"
+                )
+                icon_manifest_path = str(icon_source.relative_to(settings.PROJECT_DIR))
+                built_icon_path = assets_dir / f"{icon_name}-built.svg"
+                built_icon_path.write_text(icon_source.read_text())
+                manifest[icon_manifest_path] = {
+                    "file": f"assets/{built_icon_path.name}",
+                    "src": icon_manifest_path,
+                }
+
+            (build_dir / "manifest.json").write_text(json.dumps(manifest))
+            production_bundler = TestViteBundler(
+                **{**bundler_kwargs, "build_dir": build_dir, "mode": "production"}
+            )
+
+            with override_ap_frontend_settings(BUNDLER=production_bundler):
+                with BundlerAssetContext(
+                    skip_checks=True,
+                    frontend_resource_registry=bypass_frontend_resource_registry,
+                ):
+                    with mock.patch(
+                        "alliance_platform.ui.templatetags.alliance_platform.html_components.base.resolve_vanilla_extract_class_mapping",
+                        side_effect=make_style_mapping_resolver(),
+                    ):
+                        output = self.render_ui_document(
+                            '{% ui "pagination" page=2 total=30 aria_label="Pagination" %}{% endui %}'
+                        )
+
+        embedded_css_urls = re.findall(r'<link rel="stylesheet" href="([^"]+)">', output)
+        self.assertEqual(embedded_css_urls, expected_css_urls)
+        self.assertNotIn("<img", output)
+
+        inactive_link = self.get_link(output, "Go to page 1")
+        current_link = self.get_link(output, "Current Page, Page 2")
+        self.assertIn("Pagination_pageButton", inactive_link)
+        self.assertNotIn("Pagination_currentPage", inactive_link)
+        self.assertIn("Pagination_pageButton", current_link)
+        self.assertIn("Pagination_currentPage", current_link)
 
     def test_capture_can_render_as_static_table_footer_content(self):
         template = (
