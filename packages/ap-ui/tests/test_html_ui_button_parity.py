@@ -100,6 +100,27 @@ class UIButtonParityTestCase(HtmlUIParityTestCase):
         self.assertNotIn("unknown", output)
         self.assertNotIn("alert", output)
 
+    def test_anchor_forwards_boolean_download_attribute(self):
+        output, caught = self.render_with_warnings(
+            '{% ui "button" href="/exports/latest/" download=True %}Download{% endui %}'
+        )
+
+        self.assertEqual(caught, [])
+        self.assertTrue(output.startswith("<a "))
+        self.assertIn('href="/exports/latest/"', output)
+        self.assertIn(" download ", output)
+        self.assertNotIn('download="', output)
+
+    def test_anchor_forwards_filename_download_attribute(self):
+        output, caught = self.render_with_warnings(
+            '{% ui "button" href="/exports/latest/" download="waste-composition.csv" %}Download{% endui %}'
+        )
+
+        self.assertEqual(caught, [])
+        self.assertTrue(output.startswith("<a "))
+        self.assertIn('href="/exports/latest/"', output)
+        self.assertIn('download="waste-composition.csv"', output)
+
     def test_invalid_element_type_cannot_change_the_tag_structure(self):
         output, caught = self.render_with_warnings(
             '{% ui "button" element_type=element_type %}Save{% endui %}',

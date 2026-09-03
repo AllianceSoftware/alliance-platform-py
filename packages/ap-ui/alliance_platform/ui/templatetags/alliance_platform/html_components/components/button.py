@@ -41,6 +41,7 @@ _BUTTON_FORWARDED_PROPS = frozenset(
         "role",
         "target",
         "rel",
+        "download",
         "tabIndex",
         "form",
         "formAction",
