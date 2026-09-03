@@ -51,6 +51,39 @@ The dispatcher also supports ``as <var>``:
     {% ui "button" as save_button_html %}Save{% endui %}
     {{ save_button_html }}
 
+Finding legacy component usages
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Run the opt-in migration checker to find React-rendered Alliance UI template components that can
+move to static ``{% ui %}`` renderers:
+
+.. code-block:: console
+
+    python manage.py ui_migration_check
+    python manage.py ui_migration_check templates/ app/templates/navigation.html
+    python manage.py ui_migration_check --strict
+
+With no paths it scans ``settings.BASE_DIR`` recursively for ``.html`` templates. Explicit file or
+directory paths narrow the scan. Virtual environments, ``node_modules``, static/generated build
+directories and common tool cache directories are skipped.
+
+Each finding includes a project-relative file and line number, the legacy source tag/component,
+the suggested static renderer (or native element), and one of these statuses:
+
+* ``READY`` — a static renderer exists and every explicit prop is accepted by its current
+  renderer contract.
+* ``REVIEW`` — migration is available but needs attention, for example because a prop is
+  unsupported, ``props=`` keys are unknowable, or an icon name is dynamic.
+* ``NATIVE`` — a generic intrinsic component such as ``{% component "a" %}`` should become native
+  HTML rather than a static UI renderer. Deferred ``url``/``url_with_perm`` values are marked
+  ``REVIEW`` because native markup does not preserve automatic component omission.
+* ``NO-STATIC-EQUIVALENT`` — the Alliance UI component is recognised but has no static renderer
+  yet.
+
+Findings are informational and the command normally exits successfully. ``--strict`` makes any
+finding produce a nonzero exit status for an explicitly opted-in migration gate. Missing paths and
+template read failures always fail. Generic application component paths are ignored.
+
 Static buttons
 ~~~~~~~~~~~~~~
 

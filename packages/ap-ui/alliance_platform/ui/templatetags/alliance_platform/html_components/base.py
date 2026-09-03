@@ -69,6 +69,17 @@ _BULK_PROP_STATE_ALIASES = {
 }
 
 
+def normalize_html_ui_prop_name(key: str) -> str:
+    """Normalize Django-template spelling to the static renderer prop convention."""
+    if key in {"class", "class_name"}:
+        return "className"
+    if key.startswith("data_"):
+        return f"data-{key[5:].replace('_', '-')}"
+    if key.startswith("aria_"):
+        return f"aria-{key[5:].replace('_', '-')}"
+    return underscore_to_camel(key)
+
+
 @dataclass(frozen=True)
 class PropRule:
     """Declarative validation for a supplied component prop.
@@ -372,6 +383,32 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
             or key in self.forwarded_props
         )
 
+    @classmethod
+    def canonical_prop_name(cls, key: str) -> str:
+        """Return the prop name after template normalization and renderer aliases."""
+        normalized = normalize_html_ui_prop_name(key)
+        return cls.deprecated_prop_aliases.get(
+            normalized,
+            cls.prop_aliases.get(normalized, normalized),
+        )
+
+    @classmethod
+    def supports_prop_name(cls, key: str) -> bool:
+        """Whether a statically known prop is accepted by this renderer's contract."""
+        canonical = cls.canonical_prop_name(key)
+        if canonical in cls.unsupported_prop_reasons or is_event_handler_attr(canonical):
+            return False
+        if canonical.startswith("data-"):
+            return cls.allow_data_props
+        if canonical.startswith("aria-"):
+            return cls.allow_aria_props or canonical in cls.extra_allowed_aria_props
+        return (
+            cls.supported_props is None
+            or canonical in cls.supported_props
+            or canonical in cls.prop_rules
+            or canonical in cls.forwarded_props
+        )
+
     def collect_forwarded_props(self, props: Mapping[str, Any]) -> dict[str, Any]:
         """Collect validated props that a renderer forwards to its root/control element."""
         forwarded: dict[str, Any] = {}
@@ -552,13 +589,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         return " ".join(class_name for class_name in class_names if class_name)
 
     def _normalize_prop_key(self, key: str) -> str:
-        if key in {"class", "class_name"}:
-            return "className"
-        if key.startswith("data_"):
-            return f"data-{key[5:].replace('_', '-')}"
-        if key.startswith("aria_"):
-            return f"aria-{key[5:].replace('_', '-')}"
-        return underscore_to_camel(key)
+        return normalize_html_ui_prop_name(key)
 
     def _merge_slot_props(self, context: Context, child_props: dict[str, Any]) -> dict[str, Any]:
         slot_name = self.get_slot_name()
