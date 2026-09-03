@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from decimal import Decimal
 import json
+import math
 from typing import TYPE_CHECKING
 from typing import Any
 import warnings
@@ -701,6 +703,10 @@ class UINumberInputRenderer(UITextInputBaseRenderer):
         fallback and the hidden native-form value remain an unformatted numeric string.
         """
         if value is None:
+            return ""
+        if isinstance(value, float) and math.isnan(value):
+            return ""
+        if isinstance(value, Decimal) and value.is_nan():
             return ""
         if isinstance(value, float) and value.is_integer():
             return str(int(value))
