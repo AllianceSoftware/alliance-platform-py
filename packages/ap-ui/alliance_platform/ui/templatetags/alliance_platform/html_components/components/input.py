@@ -17,6 +17,7 @@ from alliance_platform.ui.icons import get_static_icon_resource
 from ..base import BaseHtmlUIComponentRenderer
 from ..base import enum_prop_rule
 from ..base import get_document_render_context
+from ..base import is_event_handler_attr
 from ..content import has_renderable_content
 from ..content import is_rich_content_value
 from ..content import render_content
@@ -322,6 +323,22 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
     }
     prop_filter_context = "static input components"
     event_handler_prop_reason = "event handlers are not supported by static input components"
+
+    @classmethod
+    def supports_prop_name(cls, key: str) -> bool:
+        canonical = cls.canonical_prop_name(key)
+        if canonical.startswith(("data-", "aria-")):
+            return super().supports_prop_name(canonical)
+        return (
+            canonical not in cls.unsupported_prop_reasons
+            and not is_event_handler_attr(canonical)
+            and (
+                canonical in cls.handled_props
+                or canonical in cls.control_pass_through_props
+                or canonical in cls.prop_rules
+                or canonical in cls.forwarded_props
+            )
+        )
 
     #: tag rendered for the actual control
     control_tag = "input"
