@@ -73,6 +73,19 @@ class UIButtonGroupParityTestCase(HtmlUIParityTestCase):
         self.assertNotIn("data-align", output)
         self.assertIn('data-variant="plain"', output)
 
+    def test_group_size_propagates_through_button_to_icon(self):
+        output, caught = self.render_with_warnings(
+            '{% ui "button_group" size="sm" %}'
+            '{% ui "button" aria_label="Approve" %}'
+            '{% ui "icon" name="CheckOutlined" %}{% endui %}'
+            "{% endui %}"
+            "{% endui %}"
+        )
+
+        self.assertEqual(caught, [])
+        self.assertIn('data-size="sm"', output)
+        self.assertIn("Icon_sizes_xxs", output)
+
     def test_group_forwards_static_div_props_and_drops_unknown_and_event_props(self):
         output, caught = self.render_with_warnings(
             '{% ui "button_group" title="Actions" data_testid="actions" aria_label="Actions" '

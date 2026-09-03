@@ -60,6 +60,39 @@ class UIButtonParityTestCase(HtmlUIParityTestCase):
 
         self.assertNotIn("data-icon-only", output)
 
+    def test_button_size_supplies_the_react_default_icon_size(self):
+        expected_icon_sizes = {
+            "sm": "xxs",
+            "md": "xxs",
+            "lg": "xs",
+            "xl": "xs",
+            "2xl": "xs",
+        }
+
+        for button_size, icon_size in expected_icon_sizes.items():
+            with self.subTest(button_size=button_size):
+                with self.setup_render_context():
+                    output = self.render_ui_template(
+                        f'{{% ui "button" size="{button_size}" aria_label="Approve" %}}'
+                        '{% ui "icon" name="CheckOutlined" %}{% endui %}'
+                        "{% endui %}"
+                    )
+
+                self.assertIn(f'data-size="{button_size}"', output)
+                self.assertIn(f"Icon_sizes_{icon_size}", output)
+
+    def test_explicit_icon_size_overrides_button_slot_default(self):
+        with self.setup_render_context():
+            output = self.render_ui_template(
+                '{% ui "button" size="sm" aria_label="Approve" %}'
+                '{% ui "icon" name="CheckOutlined" size="sm" %}{% endui %}'
+                "{% endui %}"
+            )
+
+        self.assertIn('data-size="sm"', output)
+        self.assertIn("Icon_sizes_sm", output)
+        self.assertNotIn("Icon_sizes_xxs", output)
+
     def test_invalid_enum_props_are_normalized_by_shared_rules(self):
         output, caught = self.render_with_warnings(
             '{% ui "button" variant="raised" color="green" size="huge" shape="square" %}Save{% endui %}'
