@@ -217,7 +217,12 @@ Other notable behaviour:
 * ``layout`` can be ``"horizontal"`` (default), ``"vertical"`` or ``"inline"``. Horizontal and
   vertical menus open submenus in viewport-aware flyout popovers; inline menus expand submenus in
   place. Application code that changes the layout can use the public, idempotent
-  ``attachMenubar(root)`` controller from ``Menubar.attach.ts`` without duplicating listeners.
+  default ``attach(root)`` controller from ``Menubar.attach.ts`` without duplicating listeners.
+* ``root_item_display`` can be ``"icon-and-label"`` (default) or ``"icon-only"``. Icon-only
+  presentation applies only to icon-bearing root items: their label remains in the DOM for
+  accessibility and typeahead, and the renderer adds an ``aria-hidden`` visual tooltip. Root
+  items without a leading icon keep their visible label. The runtime controller's
+  ``setRootItemDisplay()`` method can switch the same rendered menu between these modes.
 * Set ``is_current=True`` on the item for the current page: it renders ``aria-current="page"``
   (override with ``aria_current``) plus a ``data-current="true"`` attribute that also propagates
   to ancestor submenu triggers and sections for styling active trails.
@@ -248,6 +253,8 @@ Other notable behaviour:
   runtime updates ``data-layout``, ``data-orientation`` and ``aria-orientation`` in place. Submenus
   keep one stable popover/inner/menu subtree in every layout; inline CSS presents that subtree in
   place, while a later vertical or horizontal layout can position the same submenu as a flyout.
+  ``setRootItemDisplay("icon-and-label" | "icon-only")`` independently changes root-item
+  presentation on that same tree.
 
 .. templatetag:: Button
 

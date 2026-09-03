@@ -130,6 +130,9 @@ async function loadParityComponents(component) {
       Item: Menubar.Item,
       SubMenu: Menubar.SubMenu,
       Section: Menubar.Section,
+      Pencil01Outlined: await importDefault(
+        path.join(uiPackageDir, "../icons/outlined/Pencil01Outlined.tsx"),
+      ),
     };
   } else {
     throw new Error(`Unsupported parity component runtime: ${component}`);
