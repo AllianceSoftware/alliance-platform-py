@@ -104,6 +104,15 @@ Nested static icons inherit the same default size as React: ``sm`` and ``md`` bu
 ``size`` overrides the button default. This also applies when a Button inherits its size from a
 ``button_group``.
 
+Static text areas
+~~~~~~~~~~~~~~~~~
+
+Static ``text_area`` components match React's compact initial height and automatically grow with
+their content when the optional ``TextArea.auto.ts`` runtime is available. Django widget ``rows``
+and ``cols`` attributes are accepted but omitted so they cannot create a tall first paint. Pass an
+explicit ``height`` for a fixed-height text area; fixed-height instances do not attach the auto-grow
+runtime.
+
 Static number inputs
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -111,6 +120,12 @@ Static ``number_input`` components treat numeric NaN values as empty. This inclu
 ``float`` and ``Decimal`` NaN values, so the ``none_as_nan`` compatibility value used by legacy
 Django number widgets does not appear as ``nan`` in the visible input, runtime initial value or
 hidden native-form input. Zero and finite numeric values retain their normal string representation.
+The ``none_as_nan`` filter is available directly from ``{% load alliance_platform.ui %}``, so a
+static Django number widget template can use it without loading the React template library:
+
+.. code-block:: html+django
+
+    {% ui "number_input" name=widget.name default_value=widget.value|none_as_nan %}{% endui %}
 
 Static HTML table components
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~

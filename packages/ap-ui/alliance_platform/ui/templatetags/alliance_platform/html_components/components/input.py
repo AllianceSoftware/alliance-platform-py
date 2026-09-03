@@ -43,6 +43,7 @@ _LABELED_INPUT_STYLE_PATH = "@alliancesoftware/ui/components/form/LabeledInput.c
 _LABEL_STYLE_PATH = "@alliancesoftware/ui/components/form/Label.css.ts"
 _FORM_SECTION_STYLE_PATH = "@alliancesoftware/ui/components/form/FormSection.css.ts"
 _FOCUS_RING_STYLE_PATH = "@alliancesoftware/ui/styles/base/focusRing.css.ts"
+_TEXT_AREA_RUNTIME_MODULE_PATH = "@alliancesoftware/ui/components/text-input/TextArea.auto.ts"
 _NUMBER_INPUT_STYLE_PATH = "@alliancesoftware/ui/components/number-input/NumberInput.css.ts"
 _NUMBER_INPUT_RUNTIME_MODULE_PATH = "@alliancesoftware/ui/components/number-input/NumberInput.auto.ts"
 
@@ -582,8 +583,35 @@ class UITextInputRenderer(UITextInputBaseRenderer):
 class UITextAreaRenderer(UITextInputBaseRenderer):
     apui_component_name = "text-area"
     control_tag = "textarea"
-    handled_props = UITextInputBaseRenderer.handled_props | {"height", "type"}
-    control_pass_through_props = _SHARED_CONTROL_PASS_THROUGH_PROPS | {"rows", "cols", "wrap"}
+    handled_props = UITextInputBaseRenderer.handled_props | {"height", "type", "rows", "cols"}
+    control_pass_through_props = _SHARED_CONTROL_PASS_THROUGH_PROPS | {"wrap"}
+
+    def resolve_component_resources(self) -> list[FrontendResource]:
+        resources = super().resolve_component_resources()
+        runtime_resource = self._resolve_runtime_resource()
+        if runtime_resource is not None:
+            resources.append(runtime_resource)
+        return resources
+
+    def _resolve_runtime_resource(self) -> FrontendResource | None:
+        runtime_path = self.resolve_optional_resource_path(
+            _TEXT_AREA_RUNTIME_MODULE_PATH,
+            resolve_extensions=[".ts", ".tsx", ".js", ".mjs"],
+        )
+        if runtime_path is None:
+            return None
+        return FrontendResource.from_path(runtime_path)
+
+    def configure_container_runtime(
+        self,
+        context: Context,
+        props: dict[str, Any],
+        state: LabeledInputState,
+        container_attrs: dict[str, Any],
+    ) -> None:
+        if props.get("height") is not None or self._resolve_runtime_resource() is None:
+            return
+        add_auto_attach_marker(container_attrs, "text-area")
 
     def render_control(
         self,

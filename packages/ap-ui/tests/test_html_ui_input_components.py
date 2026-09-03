@@ -302,15 +302,13 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         self.assertNotIn("<b>Email</b>", output)
         self.assertNotIn("<script>", output)
 
-    def test_text_area_rows_and_cols_pass_through(self):
-        # The React TextArea drops rows/cols (it autosizes at runtime); the static renderer passes
-        # them through as valid textarea attributes
+    def test_text_area_rows_and_cols_are_ignored_for_compact_first_paint(self):
         output, caught = self.render_with_warnings(
             '{% ui "text_area" label="Notes" rows=4 cols=40 %}{% endui %}'
         )
-        self.assertIn('rows="4"', output)
-        self.assertIn('cols="40"', output)
         self.assertEqual(caught, [])
+        self.assertNotIn('rows="4"', output)
+        self.assertNotIn('cols="40"', output)
 
     def test_text_area_content_is_escaped(self):
         output, _ = self.render_with_warnings(
@@ -534,6 +532,17 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         self.assertEqual(caught, [])
         self.assertIn("Merged label", output)
         self.assertIn('id="id_field"', output)
+
+    def test_none_as_nan_filter_is_available_from_ui_library(self):
+        output, caught = self.render_with_warnings(
+            '{% ui "number_input" label="Quantity" name="quantity" '
+            "default_value=value|none_as_nan %}{% endui %}",
+            {"value": None},
+        )
+        self.assertEqual(caught, [])
+        self.assertIn('data-apui-number-input-initial-value=""', output)
+        self.assertRegex(output, r'<input(?=[^>]*type="text")(?=[^>]*value="")[^>]*/>')
+        self.assertRegex(output, r'<input(?=[^>]*type="hidden")(?=[^>]*value="")[^>]*/>')
 
     def test_lazy_translation_values_are_treated_as_strings(self):
         # Django form field labels are commonly lazy translation proxies (e.g.
