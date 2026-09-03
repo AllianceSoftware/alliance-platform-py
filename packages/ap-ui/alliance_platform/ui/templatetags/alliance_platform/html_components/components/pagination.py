@@ -34,6 +34,7 @@ _ARROW_RIGHT_ICON = "ArrowRightOutlined"
 
 VALID_VARIANTS = ("default", "compact")
 VALID_SIZES = ("sm", "md")
+ResponsiveVisibility = Literal["large", "medium", "small"]
 
 _PAGE_SIZE_REASON = (
     "page-size selection requires an interactive form or JavaScript and is not supported by static pagination"
@@ -53,8 +54,8 @@ _UNSUPPORTED_PROPS = {
     "renderItem": _RENDER_REASON,
     "renderItemProps": _RENDER_REASON,
     "breakpoints": (
-        "JavaScript breakpoint configuration is not supported; static pagination uses the "
-        "Pagination.css.ts container-query baseline"
+        "custom breakpoint configuration is not supported; static pagination uses the default "
+        "620px and 450px responsive breakpoints"
     ),
 }
 
@@ -163,17 +164,56 @@ class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
             ),
             "style": props.get("style"),
         }
-        items = self.generate_items(
+        large_items = self.generate_items(
             page=page,
             total_pages=total_pages,
             sibling_count=sibling_count,
             boundary_count=boundary_count,
             is_disabled=is_disabled,
         )
+        responsive_ranges: tuple[tuple[ResponsiveVisibility, list[PaginationItem]], ...] = (
+            ("large", large_items[1:-1]),
+            (
+                "medium",
+                self.generate_items(
+                    page=page,
+                    total_pages=total_pages,
+                    sibling_count=1,
+                    boundary_count=1,
+                    is_disabled=is_disabled,
+                )[1:-1],
+            ),
+            (
+                "small",
+                self.generate_items(
+                    page=page,
+                    total_pages=total_pages,
+                    sibling_count=1,
+                    boundary_count=0,
+                    is_disabled=is_disabled,
+                )[1:-1],
+            ),
+        )
         list_html = self.render_items(
             context,
             props,
-            items,
+            large_items[:1],
+            pagination_styles=pagination_styles,
+            size=size,
+        )
+        for visibility, items in responsive_ranges:
+            list_html += self.render_items(
+                context,
+                props,
+                items,
+                pagination_styles=pagination_styles,
+                size=size,
+                responsive_visibility=visibility,
+            )
+        list_html += self.render_items(
+            context,
+            props,
+            large_items[-1:],
             pagination_styles=pagination_styles,
             size=size,
         )
@@ -275,6 +315,7 @@ class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
         *,
         pagination_styles: Any,
         size: str,
+        responsive_visibility: ResponsiveVisibility | None = None,
     ) -> str:
         rendered: list[str] = []
         for index, item in enumerate(items):
@@ -285,8 +326,18 @@ class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
                 wrapper_classes.append(self.get_style_class(pagination_styles, "prevButtonWrapper"))
             elif item.type == "next":
                 wrapper_classes.append(self.get_style_class(pagination_styles, "nextButtonWrapper"))
-            if item.type == "page" and items[index + 1].type not in {"page", "ellipsis"}:
+            if item.type == "page" and (
+                index + 1 == len(items) or items[index + 1].type not in {"page", "ellipsis"}
+            ):
                 wrapper_classes.append(self.get_style_class(pagination_styles, "lastPageNumberWrapper"))
+            if responsive_visibility is not None:
+                wrapper_classes.append(
+                    self.get_nested_style_class(
+                        pagination_styles,
+                        "responsiveItemVisibility",
+                        responsive_visibility,
+                    )
+                )
 
             content = self.render_item(
                 context,

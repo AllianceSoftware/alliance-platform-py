@@ -28,9 +28,20 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
             self.fail(f"No link found with aria-label={aria_label!r}")
         return unescape(match.group(0))
 
-    def get_page_numbers(self, output: str) -> list[int]:
+    def get_responsive_range_html(self, output: str, visibility: str) -> str:
+        return "".join(
+            re.findall(
+                rf'<li class="[^"]*Pagination_responsiveItemVisibility_{visibility}[^"]*">(.*?)</li>',
+                output,
+                flags=re.DOTALL,
+            )
+        )
+
+    def get_page_numbers(self, output: str, visibility: str) -> list[int]:
+        range_html = self.get_responsive_range_html(output, visibility)
         return [
-            int(page) for page in re.findall(r'aria-label="(?:Go to page|Current Page, Page) (\d+)"', output)
+            int(page)
+            for page in re.findall(r'aria-label="(?:Go to page|Current Page, Page) (\d+)"', range_html)
         ]
 
     def assert_warning_contains(self, caught: list[str], expected: str) -> None:
@@ -40,10 +51,31 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
         )
 
     def test_first_middle_and_last_page_ranges_match_react_algorithm(self):
-        for page, expected_pages, ellipsis_count in (
-            (1, [1, 2, 3, 4, 5, 6, 100], 1),
-            (50, [1, 48, 49, 50, 51, 52, 100], 2),
-            (100, [1, 95, 96, 97, 98, 99, 100], 1),
+        for page, expected_ranges in (
+            (
+                1,
+                {
+                    "large": ([1, 2, 3, 4, 5, 6, 100], 1),
+                    "medium": ([1, 2, 3, 4, 100], 1),
+                    "small": ([1, 2, 3], 0),
+                },
+            ),
+            (
+                50,
+                {
+                    "large": ([1, 48, 49, 50, 51, 52, 100], 2),
+                    "medium": ([1, 49, 50, 51, 100], 2),
+                    "small": ([49, 50, 51], 0),
+                },
+            ),
+            (
+                100,
+                {
+                    "large": ([1, 95, 96, 97, 98, 99, 100], 1),
+                    "medium": ([1, 97, 98, 99, 100], 1),
+                    "small": ([98, 99, 100], 0),
+                },
+            ),
         ):
             with self.subTest(page=page):
                 output, caught = self.render_with_warnings(
@@ -53,8 +85,11 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
                 )
 
                 self.assertEqual(caught, [])
-                self.assertEqual(self.get_page_numbers(output), expected_pages)
-                self.assertEqual(output.count("Pagination_ellipsisButton"), ellipsis_count)
+                for visibility, (expected_pages, ellipsis_count) in expected_ranges.items():
+                    with self.subTest(page=page, visibility=visibility):
+                        range_html = self.get_responsive_range_html(output, visibility)
+                        self.assertEqual(self.get_page_numbers(output, visibility), expected_pages)
+                        self.assertEqual(range_html.count("Pagination_ellipsisButton"), ellipsis_count)
                 self.assertIn(f'aria-label="Current Page, Page {page}"', output)
                 self.assertIn('aria-current="page"', output)
 
@@ -74,8 +109,12 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
         )
 
         self.assertEqual(caught, [])
-        self.assertEqual(self.get_page_numbers(output), [1, 2, 49, 50, 51, 99, 100])
-        self.assertEqual(output.count("Pagination_ellipsisButton"), 2)
+        self.assertEqual(self.get_page_numbers(output, "large"), [1, 2, 49, 50, 51, 99, 100])
+        self.assertEqual(self.get_page_numbers(output, "medium"), [1, 49, 50, 51, 100])
+        self.assertEqual(self.get_page_numbers(output, "small"), [49, 50, 51])
+        self.assertEqual(
+            self.get_responsive_range_html(output, "large").count("Pagination_ellipsisButton"), 2
+        )
 
     def test_total_zero_still_renders_one_current_page(self):
         output, caught = self.render_with_warnings(
@@ -83,7 +122,8 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
         )
 
         self.assertEqual(caught, [])
-        self.assertEqual(self.get_page_numbers(output), [1])
+        for visibility in ("large", "medium", "small"):
+            self.assertEqual(self.get_page_numbers(output, visibility), [1])
         self.assertIn('aria-label="Current Page, Page 1"', output)
         self.assertIn('aria-current="page"', output)
         self.assertIn('aria-disabled="true"', self.get_link(output, "Previous Page"))
@@ -186,7 +226,8 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
         ):
             with self.subTest(prop_name=prop_name):
                 self.assert_warning_contains(caught, f"Invalid '{prop_name}' prop passed")
-        self.assertEqual(self.get_page_numbers(output), [1])
+        for visibility in ("large", "medium", "small"):
+            self.assertEqual(self.get_page_numbers(output, visibility), [1])
         self.assertIn("Pagination_pagination_default", output)
         self.assertIn("Button_sizes_sm", output)
 
@@ -233,7 +274,7 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
         )
         self.assert_warning_contains(
             caught,
-            "Prop 'breakpoints' will be ignored: JavaScript breakpoint configuration is not supported",
+            "Prop 'breakpoints' will be ignored: custom breakpoint configuration is not supported",
         )
 
     def test_resources_and_collected_document_keep_icons_inline(self):
