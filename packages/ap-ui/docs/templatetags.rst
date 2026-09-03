@@ -127,6 +127,44 @@ static Django number widget template can use it without loading the React templa
 
     {% ui "number_input" name=widget.name default_value=widget.value|none_as_nan %}{% endui %}
 
+Static pagination
+~~~~~~~~~~~~~~~~~
+
+``{% ui "pagination" %}`` renders the Alliance UI pagination structure as static HTML links. It
+uses the current request path and preserves unrelated query parameters, so it is suitable for
+Django ``Paginator`` results without a client-side state layer:
+
+.. code-block:: html+django
+
+    {% ui "pagination" page=page_obj.number total=paginator.count page_size=paginator.per_page boundary_count=2 sibling_count=1 aria_label="Pagination" %}{% endui %}
+
+The default page query parameter is ``page``. Page 1 removes that parameter instead of rendering
+``?page=1``. Custom parameter names can be supplied with ``page_query_param`` and
+``page_size_query_param``. Because page-size selection is not available in the static renderer,
+the configured page-size parameter is removed from navigation links, matching
+``renderPaginationItemAsLink`` when ``isPageSizeSelectable`` is false.
+
+Both ``variant="default"`` and ``variant="compact"`` and the ``sm``/``md`` sizes use the React
+component's CSS classes. Its container-query styles provide the no-JavaScript responsive baseline.
+Previous and next controls at the range limits, and every control when ``is_disabled=True``, omit
+``href`` and render ``aria-disabled="true"`` with ``tabindex="-1"`` so they are noninteractive
+without relying on React's event handling.
+
+The result can be captured and passed directly to a static table footer:
+
+.. code-block:: html+django
+
+    {% ui "pagination" page=page_obj.number total=paginator.count page_size=paginator.per_page aria_label="Pagination" as pagination %}{% endui %}
+    {% ui "table" aria_label="Users" footer=pagination %}
+      {# table header and body #}
+    {% endui %}
+
+Page-size selection and React callback/state/custom-render APIs are intentionally unsupported.
+``is_page_size_selectable``, ``page_sizes``, ``on_page_change``, ``on_page_size_change``,
+``default_page``, ``default_page_size``, ``state``, ``render_item``, ``render_item_props`` and
+``breakpoints`` warn and are ignored. Use a normal GET form beside the pagination when users need
+to choose a page size.
+
 Static HTML table components
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -599,6 +637,9 @@ Usage:
 .. code-block:: html+django
 
     {% Pagination page=1 total=100 page_size=10 boundary_count=2 sibling_count=1 aria-label="Pagination" is_page_size_selectable=True %}{% endPagination %}
+
+For request-driven pagination that does not need React callbacks or page-size selection, prefer the
+static ``{% ui "pagination" %}`` renderer documented under the :ttag:`ui` tag.
 
 .. templatetag:: TimeInput
 

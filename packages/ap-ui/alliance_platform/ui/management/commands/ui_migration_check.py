@@ -65,7 +65,7 @@ LEGACY_COMPONENT_MIGRATIONS: dict[str, LegacyComponentMigration] = {
     "Fragment": LegacyComponentMigration(None, named_tag=True),
     "InlineAlert": LegacyComponentMigration(None, named_tag=True),
     "LabeledInput": LegacyComponentMigration(None, named_tag=True),
-    "Pagination": LegacyComponentMigration(None, named_tag=True),
+    "Pagination": LegacyComponentMigration("pagination", named_tag=True),
     "TimeInput": LegacyComponentMigration(None, named_tag=True),
 }
 
@@ -172,6 +172,7 @@ def _static_finding(
 
     notes: list[str] = []
     unsupported_props: set[str] = set()
+    unsupported_prop_reasons: dict[str, str] = {}
     legacy_options: set[str] = set()
     for raw_name in props:
         if raw_name == "props":
@@ -181,10 +182,16 @@ def _static_finding(
             legacy_options.add(raw_name)
             continue
         if not renderer.supports_prop_name(raw_name):
-            unsupported_props.add(renderer.canonical_prop_name(raw_name))
+            canonical_name = renderer.canonical_prop_name(raw_name)
+            unsupported_props.add(canonical_name)
+            reason = renderer.unsupported_prop_reasons.get(canonical_name)
+            if reason:
+                unsupported_prop_reasons[canonical_name] = reason
 
     if unsupported_props:
         notes.append(f"unsupported props: {', '.join(sorted(unsupported_props))}")
+    for prop_name, reason in sorted(unsupported_prop_reasons.items()):
+        notes.append(f"{prop_name}: {reason}")
     if legacy_options:
         notes.append(f"legacy rendering options require review: {', '.join(sorted(legacy_options))}")
 

@@ -157,22 +157,32 @@ class UIMigrationCheckTestCase(SimpleTestCase):
         )
         self.assertIn("Icon: ready=1, review=1", output)
 
-    def test_named_component_without_static_renderer_has_clear_status(self):
+    def test_pagination_has_static_renderer_and_behavioral_props_have_clear_review_reasons(self):
         with TemporaryDirectory() as temp_dir:
             base_dir = Path(temp_dir)
             self.write_template(
                 base_dir,
                 "templates/pagination.html",
-                "{% Pagination page=page %}{% endPagination %}",
+                "{% Pagination page=page total=total page_size=page_size "
+                'aria_label="Pagination" %}{% endPagination %}\n'
+                "{% Pagination total=total is_page_size_selectable=True "
+                "on_page_change=callback %}{% endPagination %}",
             )
 
             output = self.run_check(base_dir)
 
         self.assertIn(
-            "[NO-STATIC-EQUIVALENT] tag Pagination -> no static equivalent yet",
+            'templates/pagination.html:1: [READY] tag Pagination -> {% ui "pagination" %}',
             output,
         )
-        self.assertIn("Pagination: no-static-equivalent=1", output)
+        self.assertIn(
+            'templates/pagination.html:2: [REVIEW] tag Pagination -> {% ui "pagination" %}',
+            output,
+        )
+        self.assertIn("unsupported props: isPageSizeSelectable, onPageChange", output)
+        self.assertIn("isPageSizeSelectable: page-size selection requires", output)
+        self.assertIn("onPageChange: callback pagination is not supported", output)
+        self.assertIn("Pagination: ready=1, review=1", output)
 
     def test_intrinsic_component_wrappers_suggest_native_html_and_note_deferred_urls(self):
         with TemporaryDirectory() as temp_dir:

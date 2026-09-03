@@ -15,6 +15,9 @@ from alliance_platform.ui.templatetags.alliance_platform.html_components.compone
 from alliance_platform.ui.templatetags.alliance_platform.html_components.components.input import (
     UITextInputRenderer,
 )
+from alliance_platform.ui.templatetags.alliance_platform.html_components.components.pagination import (
+    UIPaginationRenderer,
+)
 from alliance_platform.ui.templatetags.alliance_platform.html_components.registry import (
     HtmlUIComponentRegistry,
 )
@@ -54,3 +57,6 @@ class HtmlUIComponentRegistryTestCase(SimpleTestCase):
         ]:
             with self.subTest(component=name):
                 self.assertIs(built_in_registry.get(name), renderer_cls)
+
+    def test_built_in_registry_includes_pagination(self):
+        self.assertIs(built_in_registry.get("pagination"), UIPaginationRenderer)
