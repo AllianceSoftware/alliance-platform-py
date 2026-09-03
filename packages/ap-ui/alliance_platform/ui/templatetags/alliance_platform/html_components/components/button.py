@@ -18,6 +18,14 @@ VALID_COLORS = ("primary", "secondary", "destructive", "gray")
 VALID_SIZES = ("sm", "md", "lg", "xl", "2xl")
 VALID_SHAPES = ("default", "circle")
 
+DEFAULT_ICON_SIZE_MAPPING = {
+    "sm": "xxs",
+    "md": "xxs",
+    "lg": "xs",
+    "xl": "xs",
+    "2xl": "xs",
+}
+
 BUTTON_PROP_RULES = {
     "variant": enum_prop_rule(VALID_VARIANTS, invalid_fallback="solid"),
     "color": enum_prop_rule(VALID_COLORS, invalid_fallback="primary"),
@@ -89,6 +97,13 @@ class UIButtonRenderer(BaseHtmlUIComponentRenderer):
             self.resolve_frontend_resource(_BUTTON_STYLE_PATH),
             self.resolve_frontend_resource(_FOCUS_RING_STYLE_PATH),
         ]
+
+    def render_children_for_component(self, context: Context, props: dict[str, Any]) -> str:
+        size = str(props.get("size", "md"))
+        return self.render_children(
+            context,
+            slot_overrides={"icon": {"size": DEFAULT_ICON_SIZE_MAPPING[size]}},
+        )
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
         variant = str(props.get("variant", "solid"))
