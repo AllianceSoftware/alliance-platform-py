@@ -54,6 +54,46 @@ export const cases = [
         meta: {},
     },
     {
+        name: 'icon_only_root_items',
+        template:
+            '{% ui "menubar" aria_label="Nav" layout="vertical" root_item_display="icon-only" %}' +
+            '{% ui "menubar_item" href="/dashboard/" text_value="Dashboard" %}' +
+            '{% ui "icon" name="Pencil01Outlined" %}{% endui %}Dashboard' +
+            '{% endui %}' +
+            '{% ui "menubar_submenu" key="admin" title="Administration" icon="Pencil01Outlined" %}' +
+            '{% ui "menubar_item" href="/users/" %}Users{% endui %}' +
+            '{% endui %}' +
+            '{% endui %}',
+        buildElement(runtime) {
+            const { React, components } = runtime;
+            const { Item, SubMenu, Pencil01Outlined } = components;
+            return buildMenubar(runtime, { layout: 'vertical', rootItemDisplay: 'icon-only' }, [
+                React.createElement(
+                    Item,
+                    { key: 'dashboard', href: '/dashboard/', textValue: 'Dashboard' },
+                    React.createElement(Pencil01Outlined),
+                    'Dashboard'
+                ),
+                React.createElement(
+                    SubMenu,
+                    {
+                        key: 'admin',
+                        title: React.createElement(
+                            React.Fragment,
+                            null,
+                            React.createElement(Pencil01Outlined),
+                            'Administration'
+                        ),
+                        textValue: 'Administration',
+                        elementType: 'button',
+                    },
+                    React.createElement(Item, { key: 'users', href: '/users/' }, 'Users')
+                ),
+            ]);
+        },
+        meta: {},
+    },
+    {
         name: 'inline_links',
         template:
             '{% ui "menubar" aria_label="Nav" layout="inline" %}' +

@@ -23,7 +23,9 @@ _INNER_POPOVER_OPEN_TAG_RE = re.compile(r"^<div\b[^>]*>")
 
 _STATIC_ATTR_RES = [
     re.compile(r'\sdata-apui-attach="menubar"'),
-    re.compile(r"\sdata-apui-menu-submenu(?=[\s>])"),
+    # React's layout-effect-driven leading-icon markers are removed by the fixture generator;
+    # static output computes the same state synchronously and strips it only for parity.
+    re.compile(r'\sdata-has-leading-icon="true"'),
     re.compile(r'\saria-controls="[^"]*"'),
     re.compile(r'\sid="apui-menu-[^"]*"'),
     re.compile(r'\sdata-open="false"'),
@@ -120,6 +122,7 @@ def strip_static_menubar_extensions(value: str) -> str:
     normalized = _unwrap_visible_popovers(normalized)
     for attr_re in _STATIC_ATTR_RES:
         normalized = attr_re.sub("", normalized)
+    normalized = re.sub(r"\sMenubar_hasLeadingIcon(?=[\s\"])", "", normalized)
     return normalized
 
 

@@ -531,6 +531,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         extra_class_names: list[str] | None = None,
         *,
         slot: str | None | bool = "icon",
+        attrs: dict[str, Any] | None = None,
     ) -> str:
         """Render a named static icon using the shared static icon renderer."""
         from .static_icon import render_static_icon
@@ -541,6 +542,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
             size=size,
             extra_class_names=extra_class_names,
             slot=slot,
+            attrs=attrs,
         )
 
     def build_attrs_string(self, attrs: dict[str, Any]) -> str:

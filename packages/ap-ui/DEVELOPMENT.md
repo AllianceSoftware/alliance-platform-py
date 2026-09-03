@@ -218,7 +218,13 @@ available when deciding what to render:
    React `Text` component, and `hasLeadingIcon` class/data state is propagated to the containing
    root or submenu `<ul>` for consistent indentation. The item wrapper and content span emit the
    shared `data-apui-menu-item-content-wrapper` and `data-apui-menu-item-content` markers used by
-   `Menubar.css.ts` to space leading icons.
+   `Menubar.css.ts` to space leading icons. Each icon-bearing item also emits its own
+   `data-has-leading-icon` marker. With `root_item_display="icon-only"`, icon-bearing level-zero
+   items get an `aria-hidden` tooltip while iconless items retain their visible label.
+6. Structural nodes expose the same stable runtime hooks as React: submenu owner/trigger/chevron,
+   popover/menu container, section owner/heading/items, and separator. Sections and separators use
+   the same zero-based `data-level` convention as menu items; heading icon and label content use
+   `data-apui-slot="icon"` and `data-apui-slot="label"`.
 
 Section separators are decided *after* pruning (`is_first` = parent frame count at render time),
 so a pruned first section never leaves a leading separator behind.
@@ -255,6 +261,9 @@ Reconciled by `normalizeMenubarComponentHtml()` in the fixture generator (React 
   `useHasChild` inspects the DOM. The static renderer computes the actual value from rendered
   leading icon slots, so the React SSR value is stripped for fixture parity and focused unit tests
   cover the shared class/data contract.
+- **Selection indicator**: React-selected items expose `data-apui-menu-item-selected-icon` on the
+  check icon. Static menubar selection is intentionally unsupported, so the renderer never emits a
+  selected icon; consumers can rely on the hook when the React component owns selection.
 - **Overflow measurement placeholders**: React SSRs an offscreen dummy "more items" node for
   measuring; removed from fixtures.
 - **react-aria ids**: unlike the input components, `aria-labelledby` references (section heading
@@ -275,7 +284,9 @@ switch between horizontal, vertical and inline layout without duplicating menu m
 always keep the same popover/inner/menu subtree, including when the initial layout is inline, so a
 later vertical or horizontal layout can position them as flyouts. A responsive mobile drawer still
 requires its own static drawer/disclosure behaviour; layout switching alone does not supply that
-container interaction.
+container interaction. Root-item presentation is independent: render
+`root_item_display="icon-only"` initially or call `controller.setRootItemDisplay(display)` after
+attachment; neither operation creates another menu tree.
 
 ## HTML parity fixture workflow
 

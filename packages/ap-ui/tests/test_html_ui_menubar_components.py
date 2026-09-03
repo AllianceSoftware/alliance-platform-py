@@ -73,11 +73,13 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         # Root element with layout/orientation attributes, role and classes
         self.assertIn('data-apui="menubar"', output)
         self.assertIn('data-layout="horizontal"', output)
+        self.assertIn('data-root-item-display="icon-and-label"', output)
         self.assertIn('data-orientation="horizontal"', output)
         self.assertIn('role="menubar"', output)
         self.assertIn('aria-orientation="horizontal"', output)
         self.assertIn('aria-label="Primary navigation"', output)
         self.assertIn('class="Menubar_menubar Menubar_horizontal"', output)
+        self.assertNotIn("data-apui-menu-item-tooltip", output)
         # State class names exposed for the runtime
         self.assertIn('data-open-class="Menubar_isOpen"', output)
         self.assertIn('data-focused-class="Menubar_isFocused"', output)
@@ -94,7 +96,9 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
             output,
         )
         # Submenu trigger: button with popup wiring and a chevron icon
-        self.assertIn('<li role="none" data-key="users" data-apui-menu-submenu>', output)
+        self.assertIn('<li role="none" data-key="users" data-apui-menu-submenu="">', output)
+        self.assertIn('data-apui-menu-submenu-trigger=""', output)
+        self.assertIn('data-apui-menu-submenu-chevron=""', output)
         self.assertIn('data-has-dropdown="true"', output)
         self.assertIn('aria-haspopup="true"', output)
         self.assertIn('aria-expanded="false"', output)
@@ -105,10 +109,10 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn('d="M6 9L12 15L18 9"', output)  # chevron down
         # Popup: hidden popover wrapper containing the vertical menu
         self.assertIn(
-            '<div class="Popover_popover_bottom" role="presentation" hidden data-apui-menu-popover '
+            '<div class="Popover_popover_bottom" role="presentation" hidden data-apui-menu-popover="" '
             'data-placement="bottom"><div class="Popover_inner">'
             '<ul role="menu" id="apui-menu-users" class="Menubar_menubarMenu Menubar_vertical" '
-            'style="--level: 1">',
+            'data-apui-menu-container="" style="--level: 1">',
             output,
         )
         # Submenu children are one level deeper and unfocusable while hidden
@@ -174,9 +178,9 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         # the shell display: contents while inline; the wrapper still owns closed/open visibility.
         self.assertIn(
             '<div class="Popover_popover_right" role="presentation" hidden '
-            'data-apui-menu-popover data-placement="right"><div class="Popover_inner">'
+            'data-apui-menu-popover="" data-placement="right"><div class="Popover_inner">'
             '<ul role="menu" id="apui-menu-users" class="Menubar_menubarMenu Menubar_vertical" '
-            'style="--level: 1">',
+            'data-apui-menu-container="" style="--level: 1">',
             output,
         )
         self.assertNotIn("data-apui-menu-popup", output)
@@ -199,7 +203,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertNotIn("data-apui-menu-popup", output)
         self.assertIn(
             'class="Popover_popover_right Popover_isOpen" role="presentation" '
-            'data-apui-menu-popover data-placement="right"',
+            'data-apui-menu-popover="" data-placement="right"',
             output,
         )
         self.assertNotIn(" hidden ", output)
@@ -250,21 +254,21 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertRegex(
             output,
             re.compile(
-                r'data-key="users" data-apui-menu-submenu><button[^>]+aria-expanded="true"',
+                r'data-key="users" data-apui-menu-submenu=""><button[^>]+aria-expanded="true"',
                 re.DOTALL,
             ),
         )
         self.assertRegex(
             output,
             re.compile(
-                r'data-key="reports" data-apui-menu-submenu><button[^>]+aria-expanded="true"',
+                r'data-key="reports" data-apui-menu-submenu=""><button[^>]+aria-expanded="true"',
                 re.DOTALL,
             ),
         )
         self.assertRegex(
             output,
             re.compile(
-                r'data-key="manage" data-apui-menu-submenu><button[^>]+aria-expanded="false"',
+                r'data-key="manage" data-apui-menu-submenu=""><button[^>]+aria-expanded="false"',
                 re.DOTALL,
             ),
         )
@@ -481,7 +485,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn('aria-controls="apui-menu-users"', output)
         self.assertIn(
             '<ul role="menu" id="apui-menu-users" class="Menubar_menubarMenu Menubar_vertical" '
-            'style="--level: 1"></ul>',
+            'data-apui-menu-container="" style="--level: 1"></ul>',
             output,
         )
         self.assertIn("Menubar_section", output)
@@ -506,7 +510,11 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn('data-current="true" aria-current="page" href="/admin/"', output)
         # The submenu trigger and the section li expose the current state too
         self.assertIn('aria-controls="apui-menu-users" tabindex="0" data-current="true"', output)
-        self.assertIn('<li role="presentation" class="Menubar_section" data-current="true">', output)
+        self.assertIn(
+            '<li role="presentation" class="Menubar_section" data-apui-menu-section="" '
+            'data-level="0" data-current="true">',
+            output,
+        )
         # Non-current siblings are not marked
         self.assertNotIn('aria-label="Customers" tabindex="-1" data-current', output)
 
@@ -527,7 +535,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn('d="M18 15L12 9L6 15"', output)
         # The popover renders visible (no hidden attribute) with the overlay isOpen class
         self.assertIn(
-            'class="Popover_popover_bottom Popover_isOpen" role="presentation" data-apui-menu-popover',
+            'class="Popover_popover_bottom Popover_isOpen" role="presentation" data-apui-menu-popover=""',
             output,
         )
         self.assertNotIn(" hidden ", output)
@@ -547,7 +555,11 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertEqual(caught, [])
         self.assertEqual(output.count('role="separator"'), 1)
         # Horizontal root separators are vertical dividers
-        self.assertIn('<li role="separator" aria-orientation="vertical" class="Menubar_separator">', output)
+        self.assertIn(
+            '<li role="separator" aria-orientation="vertical" class="Menubar_separator" '
+            'data-apui-menu-separator="" data-level="0">',
+            output,
+        )
         # The separator belongs to the second section (renders before its li)
         first_index = output.index('aria-label="First"')
         separator_index = output.index('role="separator"')
@@ -580,11 +592,17 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         output, caught = self.render_with_warnings(template)
         self.assertEqual(caught, [])
         self.assertIn(
-            '<div class="Menubar_sectionHeading" id="apui-menubar-1" role="presentation">'
-            '<span class="Menubar_sectionHeadingText">Tools</span></div>',
+            '<div class="Menubar_sectionHeading" id="apui-menubar-1" role="presentation" '
+            'data-apui-menu-section-heading="" data-level="0">'
+            '<span class="Menubar_sectionHeadingText" data-apui-slot="label">Tools</span></div>',
             output,
         )
-        self.assertIn('<ul role="group" aria-labelledby="apui-menubar-1">', output)
+        self.assertIn(
+            '<ul role="group" aria-labelledby="apui-menubar-1" '
+            'data-apui-menu-section-items="" data-level="0">',
+            output,
+        )
+        self.assertIn('data-apui-menu-section="" data-level="0"', output)
 
     def test_unknown_props_warn_and_are_dropped(self):
         template = (
@@ -883,6 +901,62 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn("Menubar_hasLeadingIcon", output)
         self.assertIn("Menubar.auto.ts", output)
 
+    def test_icon_only_root_items_keep_accessible_labels_and_render_visual_tooltips(self):
+        template = (
+            '{% ui "menubar" aria_label="Nav" layout="vertical" root_item_display="icon-only" %}'
+            '{% ui "menubar_item" href="/dashboard/" text_value="Dashboard" %}'
+            '{% ui "icon" name="Pencil01Outlined" %}{% endui %}Dashboard'
+            "{% endui %}"
+            '{% ui "menubar_item" href="/help/" %}Help{% endui %}'
+            '{% ui "menubar_submenu" key="admin" title="Administration" icon="Pencil01Outlined" %}'
+            '{% ui "menubar_item" href="/users/" text_value="Users" %}'
+            '{% ui "icon" name="Pencil01Outlined" %}{% endui %}Users'
+            "{% endui %}"
+            "{% endui %}"
+            "{% endui %}"
+        )
+
+        output, caught = self.render_with_warnings(template)
+
+        self.assertEqual(caught, [])
+        self.assertIn('data-root-item-display="icon-only"', output)
+        self.assertIn('aria-label="Dashboard"', output)
+        self.assertIn('aria-label="Help"', output)
+        self.assertIn('aria-label="Administration"', output)
+        self.assertIn('aria-label="Users"', output)
+        help_tag = re.search(r'<a\b[^>]*href="/help/"[^>]*>', output)
+        self.assertIsNotNone(help_tag)
+        assert help_tag is not None
+        self.assertNotIn("data-has-leading-icon", help_tag.group(0))
+        self.assertIn('<span data-apui-slot="label">Help</span>', output)
+        self.assertEqual(output.count('data-apui-menu-item-tooltip=""'), 2)
+        self.assertIn(
+            '<span data-apui-menu-item-tooltip="" aria-hidden="true">Dashboard</span>',
+            output,
+        )
+        self.assertIn(
+            '<span data-apui-menu-item-tooltip="" aria-hidden="true">Administration</span>',
+            output,
+        )
+        self.assertNotIn(
+            '<span data-apui-menu-item-tooltip="" aria-hidden="true">Users</span>',
+            output,
+        )
+        # Root and submenu aggregates plus each of the three icon-bearing item elements.
+        self.assertEqual(output.count('data-has-leading-icon="true"'), 5)
+
+    def test_invalid_root_item_display_warns_and_falls_back(self):
+        template = (
+            '{% ui "menubar" aria_label="Nav" root_item_display="labels-only" %}'
+            '{% ui "menubar_item" href="/help/" %}Help{% endui %}'
+            "{% endui %}"
+        )
+
+        output, caught = self.render_with_warnings(template)
+
+        self.assertIn('data-root-item-display="icon-and-label"', output)
+        self.assertEqual(caught, ["Invalid 'rootItemDisplay' prop passed: labels-only"])
+
     def test_submenu_popup_tracks_leading_icons(self):
         template = (
             '{% ui "menubar" aria_label="Nav" %}'
@@ -922,6 +996,10 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn("Menubar_sectionHeadingIcon", output)
         self.assertIn("Menubar_sectionHeadingText", output)
         self.assertIn('</span><span data-apui-slot="label">Manage</span>', output)
+        self.assertIn(
+            'class="Icon_icon Icon_variants_plain Icon_sizes_xs Menubar_sectionHeadingIcon"', output
+        )
+        self.assertIn('data-apui-slot="icon"', output)
         for icon_name in ("Pencil01Outlined.svg", "AlertCircleOutlined.svg"):
             self.assertTrue(any(path.endswith(icon_name) for path in resource_paths))
 
@@ -1062,7 +1140,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
 
         self.assertEqual(output.count('data-apui="menubar"'), 1)
         self.assertEqual(output.count('id="apui-menu-users"'), 1)
-        self.assertEqual(output.count("data-apui-menu-submenu"), 1)
+        self.assertEqual(output.count('data-apui-menu-submenu=""'), 1)
         self.assertIn('data-layout="horizontal"', output)
         self.assertIn('data-orientation="horizontal"', output)
         self.assertIn('aria-orientation="horizontal"', output)

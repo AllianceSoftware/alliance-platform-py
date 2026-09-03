@@ -78,6 +78,7 @@ _HTML_ID_COUNTER_KEY = "alliance_platform_ui_html_id_counter"
 _HTML_ID_CLAIMS_KEY = "alliance_platform_ui_html_id_claims"
 
 VALID_LAYOUTS = ("horizontal", "vertical", "inline")
+VALID_ROOT_ITEM_DISPLAYS = ("icon-and-label", "icon-only")
 VALID_ITEM_ELEMENT_TYPES = ("a", "button", "div")
 
 _CHEVRON_DOWN_ICON = "ChevronDownOutlined"
@@ -151,6 +152,7 @@ class MenubarRenderFrame:
 @dataclass
 class MenubarRenderState:
     layout: Literal["horizontal", "vertical", "inline"]
+    root_item_display: Literal["icon-and-label", "icon-only"]
     orientation: Literal["horizontal", "vertical"]
     should_focus_wrap: bool
     default_focused_key: str | None
@@ -411,6 +413,7 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
         content_attrs: dict[str, Any],
         content_html: str,
         chevron_html: str = "",
+        tooltip_html: str = "",
     ) -> str:
         """Render the interactive menu item element with the shared content wrapper structure.
 
@@ -422,7 +425,27 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
             '<div data-apui-menu-item-content-wrapper="">'
             f"<span{self.build_attrs_string(content_attrs)}>{content_html}</span></div>"
         )
-        return self._render_tag(element_type, attrs, f"{children}{chevron_html}")
+        return self._render_tag(element_type, attrs, f"{children}{chevron_html}{tooltip_html}")
+
+    def render_item_tooltip(
+        self,
+        state: MenubarRenderState,
+        *,
+        level: int,
+        has_leading_icon: bool,
+        text_value: str | None,
+    ) -> str:
+        """Render the visual label used by compact, icon-bearing root items."""
+        if state.root_item_display != "icon-only" or level != 0 or not has_leading_icon or not text_value:
+            return ""
+        return self._render_tag(
+            "span",
+            {
+                "data-apui-menu-item-tooltip": "",
+                "aria-hidden": "true",
+            },
+            str(conditional_escape(text_value)),
+        )
 
     def build_item_class_name(
         self,
@@ -467,6 +490,7 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
             "className",
             "style",
             "layout",
+            "rootItemDisplay",
             "shouldFocusWrap",
             "defaultFocusedKey",
             "defaultExpandedKeys",
@@ -478,7 +502,13 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
     allow_aria_props = False
     extra_allowed_aria_props = frozenset({"aria-label", "aria-labelledby", "aria-describedby"})
     non_scalar_props = frozenset({"defaultExpandedKeys"})
-    prop_rules = {"layout": enum_prop_rule(VALID_LAYOUTS, invalid_fallback="horizontal")}
+    prop_rules = {
+        "layout": enum_prop_rule(VALID_LAYOUTS, invalid_fallback="horizontal"),
+        "rootItemDisplay": enum_prop_rule(
+            VALID_ROOT_ITEM_DISPLAYS,
+            invalid_fallback="icon-and-label",
+        ),
+    }
 
     def resolve_component_resources(self) -> list[FrontendResource]:
         # Icon.css and Popover.css are included unconditionally: submenu chevrons and flyout
@@ -576,10 +606,12 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
         context: Context,
         props: dict[str, Any],
         layout: str,
+        root_item_display: str,
     ) -> MenubarRenderState:
         default_focused_key = props.get("defaultFocusedKey")
         return MenubarRenderState(
             layout=layout,  # type: ignore[arg-type] # validated by caller
+            root_item_display=root_item_display,  # type: ignore[arg-type] # validated by caller
             orientation="horizontal" if layout == "horizontal" else "vertical",
             should_focus_wrap=props.get("shouldFocusWrap") is not False,
             default_focused_key=str(default_focused_key) if default_focused_key is not None else None,
@@ -589,6 +621,7 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
         layout = str(props.get("layout", "horizontal"))
+        root_item_display = str(props.get("rootItemDisplay", "icon-and-label"))
         if not props.get("aria-label") and not props.get("aria-labelledby"):
             warnings.warn(
                 "The 'menubar' component should have an 'aria_label' or 'aria_labelledby' prop "
@@ -601,7 +634,7 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
         else:
             props["expandedKeysStorageKey"] = expanded_keys_storage_key
 
-        state = self.build_render_state(context, props, layout)
+        state = self.build_render_state(context, props, layout, root_item_display)
         with _push_menubar_state(context, state):
             children_html = self.render_children(context)
 
@@ -625,6 +658,7 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
         attrs: dict[str, Any] = {
             "data-apui": "menubar",
             "data-layout": layout,
+            "data-root-item-display": state.root_item_display,
             "data-orientation": state.orientation,
             "data-has-leading-icon": "true" if root_frame.has_leading_icon else None,
             "role": "menubar",
@@ -726,6 +760,8 @@ class UIMenubarItemRenderer(UIMenubarComponentRendererBase):
         key = self.resolve_key(props)
         text_value = self.resolve_text_value(props, children_html, content_description="content")
         is_current, aria_current = self.resolve_is_current(props)
+        normalized_content = self.normalize_item_content(children_html)
+        has_leading_icon = self.has_leading_icon(normalized_content)
 
         menubar_styles = self.resolve_menubar_styles()
 
@@ -746,6 +782,7 @@ class UIMenubarItemRenderer(UIMenubarComponentRendererBase):
             "id": props.get("id"),
             "style": props.get("style"),
             "data-level": level,
+            "data-has-leading-icon": "true" if has_leading_icon else None,
             "data-disabled": "true" if is_disabled else None,
             "aria-disabled": "true" if is_disabled else None,
             "aria-label": text_value,
@@ -778,11 +815,10 @@ class UIMenubarItemRenderer(UIMenubarComponentRendererBase):
                         "element and will be ignored"
                     )
 
-        normalized_content = self.normalize_item_content(children_html)
         self.track_rendered_child(
             state,
             is_current,
-            has_leading_icon=self.has_leading_icon(normalized_content),
+            has_leading_icon=has_leading_icon,
         )
 
         item_html = self.render_menu_item_element(
@@ -790,6 +826,12 @@ class UIMenubarItemRenderer(UIMenubarComponentRendererBase):
             attrs=attrs,
             content_attrs=self.build_content_attrs(menubar_styles, level),
             content_html=normalized_content,
+            tooltip_html=self.render_item_tooltip(
+                state,
+                level=level,
+                has_leading_icon=has_leading_icon,
+                text_value=text_value,
+            ),
         )
         li_attrs: dict[str, Any] = {"role": "none", "data-key": key}
         return self._render_tag("li", li_attrs, item_html)
@@ -884,6 +926,7 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
             )
             title_html = mark_safe(f"{title_icon_html}{self.normalize_item_content(title_html)}")
         normalized_title = self.normalize_item_content(title_html)
+        has_leading_icon = self.has_leading_icon(normalized_title)
 
         preferred_popup_id = (
             f"apui-menu-{key}" if key is not None else self.generate_html_id(context, "apui-menu")
@@ -897,7 +940,10 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
             "right": _CHEVRON_RIGHT_ICON,
         }[chevron_direction]
         chevron_html = self.render_icon(
-            chevron_icon_name, "xs", [self.get_style_class(menubar_styles, "dropdownIcon")]
+            chevron_icon_name,
+            "xs",
+            [self.get_style_class(menubar_styles, "dropdownIcon")],
+            attrs={"data-apui-menu-submenu-chevron": ""},
         )
 
         if "tabIndex" in props:
@@ -919,6 +965,8 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
             "id": props.get("id"),
             "style": props.get("style"),
             "data-level": level,
+            "data-has-leading-icon": "true" if has_leading_icon else None,
+            "data-apui-menu-submenu-trigger": "",
             "data-open": "true" if is_open else "false",
             "data-has-dropdown": "true",
             "data-disabled": "true" if is_disabled else None,
@@ -944,6 +992,12 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
             content_attrs=self.build_content_attrs(menubar_styles, level),
             content_html=normalized_title,
             chevron_html=chevron_html,
+            tooltip_html=self.render_item_tooltip(
+                state,
+                level=level,
+                has_leading_icon=has_leading_icon,
+                text_value=text_value,
+            ),
         )
 
         popup_html = self.render_popup(
@@ -961,14 +1015,14 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
         self.track_rendered_child(
             state,
             is_current,
-            has_leading_icon=self.has_leading_icon(normalized_title),
+            has_leading_icon=has_leading_icon,
             contains_expanded=is_open,
         )
 
         li_attrs: dict[str, Any] = {
             "role": "none",
             "data-key": key,
-            "data-apui-menu-submenu": True,
+            "data-apui-menu-submenu": "",
         }
         return self._render_tag("li", li_attrs, f"{trigger_html}{popup_html}")
 
@@ -1000,6 +1054,7 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
                 self.get_style_class(menubar_styles, "hasLeadingIcon") if has_leading_icon else None,
             ),
             "data-has-leading-icon": "true" if has_leading_icon else None,
+            "data-apui-menu-container": "",
             "style": menu_style,
         }
 
@@ -1013,7 +1068,7 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
             "className": popover_class,
             "role": "presentation",
             "hidden": not is_open,
-            "data-apui-menu-popover": True,
+            "data-apui-menu-popover": "",
             "data-placement": placement,
         }
         inner_class = conditional_escape(self.get_style_class(popover_styles, "inner"))
@@ -1075,7 +1130,9 @@ class UIMenubarSectionRenderer(UIMenubarComponentRendererBase):
                 heading_text_class = conditional_escape(
                     self.get_style_class(menubar_styles, "sectionHeadingText")
                 )
-                title_html = mark_safe(f'<span class="{heading_text_class}">{title_html.strip()}</span>')
+                title_html = mark_safe(
+                    f'<span class="{heading_text_class}" data-apui-slot="label">{title_html.strip()}</span>'
+                )
             icon_name = props.get("icon")
             if isinstance(icon_name, str):
                 title_icon_html = self.render_icon(
@@ -1088,6 +1145,8 @@ class UIMenubarSectionRenderer(UIMenubarComponentRendererBase):
                 "className": self.get_style_class(menubar_styles, "sectionHeading"),
                 "id": heading_id,
                 "role": "presentation",
+                "data-apui-menu-section-heading": "",
+                "data-level": parent_frame.level,
             }
             heading_html = self._render_tag("div", heading_attrs, title_html)
 
@@ -1102,6 +1161,8 @@ class UIMenubarSectionRenderer(UIMenubarComponentRendererBase):
                     self.get_style_class(menubar_styles, "separator"),
                     props.get("separatorClassName"),
                 ),
+                "data-apui-menu-separator": "",
+                "data-level": parent_frame.level,
             }
             separator_html = self._render_tag("li", separator_attrs, "")
 
@@ -1109,6 +1170,8 @@ class UIMenubarSectionRenderer(UIMenubarComponentRendererBase):
             "role": "group",
             "aria-labelledby": heading_id,
             "aria-label": props.get("aria-label") if heading_id is None else None,
+            "data-apui-menu-section-items": "",
+            "data-level": parent_frame.level,
         }
         group_html = self._render_tag("ul", group_attrs, children_html)
 
@@ -1121,6 +1184,8 @@ class UIMenubarSectionRenderer(UIMenubarComponentRendererBase):
             "id": props.get("id"),
             "style": props.get("style"),
             "data-key": self.resolve_key(props),
+            "data-apui-menu-section": "",
+            "data-level": parent_frame.level,
             "data-current": "true" if child_frame.contains_current else None,
             **self.collect_forwarded_props({k: v for k, v in props.items() if k != "aria-label"}),
         }
