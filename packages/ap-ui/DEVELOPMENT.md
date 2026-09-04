@@ -229,6 +229,18 @@ Button uses the same direct-child reports for automatic icon-only detection. Exp
 otherwise ambiguous arbitrary HTML. Reports are not published by components rendered with
 `as variable`, or by components omitted during permission resolution.
 
+Reports stop at the nearest component frame. They are dropped when that direct parent did not opt
+into collection rather than travelling to a more distant collecting ancestor; an icon nested in
+another component is not a direct child of Button or Menubar.
+
+### Deliberate static Button differences from React
+
+- **Raw slotted elements**: React can inspect the mounted DOM and treats any sole direct element
+  carrying `data-apui-slot="icon"` as icon-only. Static rendering only auto-detects an icon emitted
+  by the static `icon` component's structured child report. Arbitrary raw elements can opt in with
+  `is_icon_only=True`; this avoids parsing consumer HTML and prevents wrapped or composite content
+  from being misclassified.
+
 Static components rendered inside a React component's children continue to participate in the
 surrounding static render frames. This preserves the existing composition behaviour; use a layout
 component that replaces its slot scope when a deliberate inheritance boundary is required.

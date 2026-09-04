@@ -146,9 +146,9 @@ class UIButtonRenderer(BaseHtmlUIComponentRenderer):
         if is_disabled and tag_name == "button":
             attrs["disabled"] = True
 
-        normalized_children = self._normalize_children(children_html)
         frame = get_current_component_frame(context)
         child_reports = frame.child_reports if frame is not None else []
+        normalized_children = self._normalize_children(children_html, child_reports)
         explicit_icon_only = props.get("isIconOnly")
         if explicit_icon_only is True or (
             explicit_icon_only is None and self._is_icon_only(children_html, child_reports)
@@ -157,13 +157,36 @@ class UIButtonRenderer(BaseHtmlUIComponentRenderer):
 
         return self._render_tag(tag_name, attrs, normalized_children)
 
-    def _normalize_children(self, children_html: str) -> str:
+    def _normalize_children(
+        self,
+        children_html: str,
+        child_reports: list[ChildReport],
+    ) -> str:
         stripped = children_html.strip()
         if not stripped:
             return ""
         if "<" not in stripped and ">" not in stripped:
             return str(mark_safe(f"<span>{conditional_escape(stripped)}</span>"))
+        leading_icon = self._find_leading_icon(children_html, child_reports)
+        if leading_icon is not None:
+            icon_html, rest = leading_icon
+            if rest and "<" not in rest and ">" not in rest:
+                return str(mark_safe(f"{icon_html}<span>{rest}</span>"))
         return children_html
+
+    def _find_leading_icon(
+        self,
+        children_html: str,
+        child_reports: list[ChildReport],
+    ) -> tuple[str, str] | None:
+        stripped = children_html.strip()
+        for report in child_reports:
+            if report.component != "icon" or report.slot != "icon":
+                continue
+            icon_html = report.html.strip()
+            if stripped.startswith(icon_html):
+                return icon_html, stripped[len(icon_html) :].strip()
+        return None
 
     def _is_icon_only(self, children_html: str, child_reports: list[ChildReport]) -> bool:
         icon_reports = [

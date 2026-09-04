@@ -81,6 +81,27 @@ class UIButtonParityTestCase(HtmlUIParityTestCase):
 
         self.assertNotIn("data-icon-only", output)
 
+    def test_icon_followed_by_plain_text_wraps_the_label(self):
+        with self.setup_render_context():
+            output = self.render_ui_template(
+                '{% ui "button" %}{% ui "icon" name="CheckOutlined" %}{% endui %}Approve{% endui %}'
+            )
+
+        self.assertIn("</span><span>Approve</span></button>", output)
+        self.assertNotIn("data-icon-only", output)
+
+    def test_icon_inside_raw_wrapper_is_not_detected_as_icon_only(self):
+        with self.setup_render_context():
+            output = self.render_ui_template(
+                '{% ui "button" %}'
+                '<span class="wrapper">'
+                '{% ui "icon" name="CheckOutlined" %}{% endui %}'
+                "</span>"
+                "{% endui %}"
+            )
+
+        self.assertNotIn("data-icon-only", output)
+
     def test_captured_icon_does_not_report_as_a_rendered_child(self):
         with self.setup_render_context():
             output = self.render_ui_template(

@@ -23,9 +23,23 @@
       "meta": {}
     },
     {
-      "name": "icon_only",
+      "name": "explicit_raw_span_icon_only",
       "template": "{% ui \"button\" is_icon_only=True %}<span data-apui-slot=\"icon\"></span>{% endui %}",
       "expected_html": "<button class=\"focusRing_base Button_baseButton Button_sizes_md\" data-apui=\"button\" data-variant=\"solid\" data-color=\"primary\" data-size=\"md\" data-shape=\"default\" data-icon-only=\"true\"><span data-apui-slot=\"icon\"></span></button>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "icon_only",
+      "template": "{% ui \"button\" aria_label=\"Approve\" %}{% ui \"icon\" name=\"CheckOutlined\" %}{% endui %}{% endui %}",
+      "expected_html": "<button aria-label=\"Approve\" class=\"focusRing_base Button_baseButton Button_sizes_md\" data-apui=\"button\" data-variant=\"solid\" data-color=\"primary\" data-size=\"md\" data-shape=\"default\" data-icon-only=\"true\"><span data-apui-slot=\"icon\" role=\"img\" aria-hidden=\"true\" class=\"Icon_icon Icon_variants_plain Icon_sizes_xxs\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" focusable=\"false\"><path d=\"M20 6L9 17L4 12\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path></svg></span></button>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "icon_and_text",
+      "template": "{% ui \"button\" %}{% ui \"icon\" name=\"CheckOutlined\" %}{% endui %}Approve{% endui %}",
+      "expected_html": "<button class=\"focusRing_base Button_baseButton Button_sizes_md\" data-apui=\"button\" data-variant=\"solid\" data-color=\"primary\" data-size=\"md\" data-shape=\"default\"><span data-apui-slot=\"icon\" role=\"img\" aria-hidden=\"true\" class=\"Icon_icon Icon_variants_plain Icon_sizes_xxs\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" focusable=\"false\"><path d=\"M20 6L9 17L4 12\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path></svg></span><span>Approve</span></button>",
       "expected_warnings": [],
       "meta": {}
     }
