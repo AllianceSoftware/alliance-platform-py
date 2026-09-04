@@ -23,8 +23,11 @@ ports, state files, and Portless hostname. Renaming a branch does not change the
 identity.
 
 State needed to operate the current worktree and recent process output live under its
-``.dev-server`` directory. The runner also maintains a machine-wide resource registry under
-``$XDG_STATE_HOME/alliance/dev/registry/v1`` (normally
+``.dev-server`` directory, which should be Git-ignored: ``state.json`` records the allocated
+ports, whether Portless is in use, and whether database setup is still pending;
+``logs/<process>.log`` holds the output snapshot saved when processes stop; and the optional
+``config.toml`` is the worktree configuration layer. The runner also maintains a machine-wide
+resource registry under ``$XDG_STATE_HOME/alliance/dev/registry/v1`` (normally
 ``~/.local/state/alliance/dev/registry/v1``). Each project has a directory keyed by
 ``project_id``, with one JSON record per worktree identity.
 
@@ -39,11 +42,14 @@ Agent launchers can identify themselves with ``ALLIANCE_DEV_OWNER_KIND``,
 interactive use is recorded as human-owned without requiring any configuration.
 
 Machine-wide locks coordinate port allocation and database setup when several projects or agents
-start at the same time. ``bin/dev status --all`` shows the project's currently active tmux
-environments; ``bin/dev env list`` reads the registry and additionally shows stopped environments
-that still own resources. ``bin/dev env remove WORKTREE-ID`` can clean up a registered environment
-after its worktree has disappeared. It refuses mismatched tmux or deterministic resource identity,
-and never drops a database that is not marked as registry-owned.
+start at the same time. They live under ``$XDG_CACHE_HOME/alliance/dev`` (normally
+``~/.cache/alliance/dev``): one lock per worktree serialises its start, stop, and cleanup, and one
+lock shared by every project serialises port allocation. ``bin/dev status --all`` shows the
+project's currently active tmux environments; ``bin/dev env list`` reads the registry and
+additionally shows stopped environments that still own resources. ``bin/dev env remove
+WORKTREE-ID`` can clean up a registered environment after its worktree has disappeared. It
+refuses mismatched tmux or deterministic resource identity, and never drops a database that is
+not marked as registry-owned.
 
 Processes and commands
 ----------------------
@@ -53,9 +59,32 @@ Required processes participate in readiness reporting; optional processes can ru
 without preventing the environment from becoming ready. ``restart``, ``logs``, and ``attach``
 operate on that worktree's session.
 
+All sessions run on a dedicated tmux server (socket name ``alliance-dev-v1``) that is started
+with an empty configuration file, so a developer's own tmux sessions and settings are unaffected;
+``tmux -L alliance-dev-v1 list-sessions`` shows the managed sessions directly. Each session
+carries the project ID, worktree path and ID, allocated ports, and protocol version in its tmux
+environment. That metadata is how ``status --all`` recognises sessions that belong to the runner,
+how the port allocator avoids ports held by other worktrees, and what ``env remove`` verifies
+before stopping a session.
+
+Without Portless, Django is started with the bind address ``127.0.0.1:<port>`` appended to
+``django_command``. With Portless, the same command runs under ``portless --name
+<worktree-id>.<project_id>`` and binds to the port Portless assigns, and the browser URL is the one
+Portless reports for that name. Vite always listens on a localhost port, with ``--port <port>
+--strictPort`` appended to ``vite_command``.
+
+An environment is ready when every required process is still running, Vite answers
+``GET /check`` on its port with ``{"check": "ok", "projectDir": ...}`` naming this worktree
+(the endpoint that ``alliance-platform-frontend`` also uses to detect the dev server, which
+guards against another worktree's Vite occupying the port), and the Django URL responds with a
+status below 500. ``up`` and ``restart`` wait up to ``startup_timeout`` seconds for this state;
+``status`` and ``url`` probe it on demand.
+
 Foreground commands such as ``manage``, ``test``, ``lint``, and ``run`` receive the same generated
-database, port, and hostname environment as the servers. This prevents a command run from one
-worktree from silently falling back to another worktree's database.
+database identity as the servers, and ``run`` additionally receives the live ports and hostname
+while the environment is running (the table in :doc:`commands` lists which command receives which
+variable). This prevents a command run from one worktree from silently falling back to another
+worktree's database.
 
 The isolated ``uvx`` tool environment is removed before any project command runs. Python-backed
 verification delegates (``test``, ``lint``, and ``check``) then preserve an explicitly active

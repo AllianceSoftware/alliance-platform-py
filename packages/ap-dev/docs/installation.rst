@@ -97,7 +97,7 @@ From the root of an existing Django project, run the installer from PyPI:
    uvx --from alliance-platform-dev alliance-dev install
 
 The installer discovers the Django working directory and assumes Vite uses the repository-root
-``package.json``. It retains existing ``bin/run-tests-django.sh``,
+``package.json``. It retains existing executable ``bin/run-tests-django.sh``,
 ``bin/run-tests-frontend.sh``, ``bin/lint.sh``, and ``bin/check.sh`` delegates when present. If
 the Django test wrapper is absent, it generates a direct ``manage.py test`` command. It also
 recognises package scripts that clearly invoke Vitest and ensures they run once rather than in
@@ -108,17 +108,22 @@ commands; ``--yes`` leaves them disabled for later configuration.
 The installer prints, but does not apply, the development-only Django settings needed by
 Portless. Run it from the project root or pass the project path as the final argument. ``--yes``
 enables non-interactive defaults. ``--force`` permits replacement of an existing launcher or
-project configuration.
+project configuration. ``--django-cwd`` names the directory containing ``manage.py`` when
+discovery would choose the wrong one, and ``--tool-source`` writes a different package source
+into the launcher, for example a pre-release. See :ref:`dev-command-install` for every option.
 
 The generated ``bin/dev`` launcher pins the installed package version, so every developer and
 worktree uses the same release without adding it to the application's Python environment. Commit
-both ``bin/dev`` and ``config/dev.toml``.
+both ``bin/dev`` and ``config/dev.toml``. Also make sure ``.dev-server/`` is listed in
+``.gitignore``: the runner keeps worktree state, output snapshots, and the optional worktree
+configuration layer there, and the installer does not edit ``.gitignore``.
 
 If the project has ``.husky/pre-commit`` or ``.husky/pre-push``, the interactive installer offers
-to route their final project command through ``bin/run-with-dev-env-if-managed``. Accept this so
-hooks run against the current worktree's generated database and environment whenever that
-worktree has been started. Message-only hooks such as ``commit-msg`` and
-``prepare-commit-msg`` are left unchanged.
+to route their final project command through ``bin/run-with-dev-env-if-managed``; with ``--yes``
+the hooks are updated without prompting. Accept this so hooks run against the current worktree's
+generated database and environment whenever that worktree has been started. Message-only hooks
+such as ``commit-msg`` and ``prepare-commit-msg`` are left unchanged, and a hook whose final
+command cannot be wrapped safely is reported so it can be updated by hand.
 
 Configure and start the project
 -------------------------------
