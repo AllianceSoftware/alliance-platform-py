@@ -57,7 +57,7 @@ class UIInlineAlertParityTestCase(HtmlUIParityTestCase):
             output = self.render_ui_template(
                 '{% ui "inline_alert" %}'
                 '{% ui "icon" name="AlertCircleOutlined" %}{% endui %}'
-                '{% ui "inline_alert_content" %}News{% endui %}'
+                '{% ui "content" %}News{% endui %}'
                 "{% endui %}"
             )
 
@@ -69,12 +69,36 @@ class UIInlineAlertParityTestCase(HtmlUIParityTestCase):
         with self.setup_render_context():
             output = self.render_ui_template(
                 '{% ui "inline_alert" %}'
-                '{% ui "inline_alert_content" %}Retry the request.{% endui %}'
+                '{% ui "content" %}Retry the request.{% endui %}'
                 '{% ui "button_group" %}{% ui "button" variant="link" %}Retry{% endui %}{% endui %}'
                 "{% endui %}"
             )
 
         self.assertIn("InlineAlert_buttonGroup", output)
+        self.assertNotIn('data-only-content="true"', output)
+
+    def test_content_clears_alert_slots_for_nested_layout_components(self):
+        with self.setup_render_context():
+            output = self.render_ui_template(
+                '{% ui "inline_alert" hide_icon=True %}'
+                '{% ui "content" %}{% ui "heading" %}Nested heading{% endui %}{% endui %}'
+                "{% endui %}"
+            )
+
+        self.assertIn(
+            '<section class="InlineAlert_content"><h3>Nested heading</h3></section>',
+            output,
+        )
+
+    def test_layout_component_can_select_a_non_default_slot(self):
+        with self.setup_render_context():
+            output = self.render_ui_template(
+                '{% ui "inline_alert" hide_icon=True %}'
+                '{% ui "content" slot="header" %}Header-shaped section{% endui %}'
+                "{% endui %}"
+            )
+
+        self.assertIn('<section class="InlineAlert_header">Header-shaped section</section>', output)
         self.assertNotIn('data-only-content="true"', output)
 
     def test_pre_dismissed_alert_renders_nothing(self):

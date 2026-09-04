@@ -38,3 +38,10 @@ def push_slot_scope(context: Context, slots: SlotContext) -> Iterator[None]:
     next_slots = {**existing, **slots}
     with context.push(**{UI_SLOT_CONTEXT_KEY: next_slots}):
         yield
+
+
+@contextmanager
+def replace_slot_scope(context: Context, slots: SlotContext) -> Iterator[None]:
+    """Replace inherited slots for a nested component region, restoring them afterward."""
+    with context.push(**{UI_SLOT_CONTEXT_KEY: slots}):
+        yield

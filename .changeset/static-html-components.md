@@ -11,8 +11,10 @@ Menubars can optionally persist expanded submenu paths in a server-readable cook
 renders without a state flash. Static table sort icons remain inline while their SVG files are tracked
 as build dependencies, avoiding duplicate document images.
 
-Static inline alerts wrap loose content automatically and provide explicit content, heading, header,
-and footer renderers for richer layouts. Dismissal callbacks remain a documented React-only behaviour.
+Static inline alerts wrap loose content automatically and compose with generic content, heading,
+header, and footer renderers for richer layouts. These layout primitives use the same parent-provided
+slot styling contract as their React equivalents. Dismissal callbacks remain a documented React-only
+behaviour.
 
 The dispatcher accepts bulk props through the reserved `props` argument and exports `merge_props` from
 the UI template library. New backend-neutral `RenderableContent` preserves trusted HTML form help text

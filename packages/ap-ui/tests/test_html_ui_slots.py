@@ -4,6 +4,7 @@ from alliance_platform.ui.templatetags.alliance_platform.html_components.constan
 from alliance_platform.ui.templatetags.alliance_platform.html_components.slots import get_slot_context
 from alliance_platform.ui.templatetags.alliance_platform.html_components.slots import merge_slot_props
 from alliance_platform.ui.templatetags.alliance_platform.html_components.slots import push_slot_scope
+from alliance_platform.ui.templatetags.alliance_platform.html_components.slots import replace_slot_scope
 from django.template import Context
 from django.test import SimpleTestCase
 
@@ -30,3 +31,14 @@ class HtmlUISlotsTestCase(SimpleTestCase):
         slot_context = get_slot_context(context)
         self.assertEqual(slot_context["button"], {"variant": "solid"})
         self.assertNotIn("badge", slot_context)
+
+    def test_replace_slot_scope_hides_and_restores_inherited_slots(self):
+        context = Context({UI_SLOT_CONTEXT_KEY: {"heading": {"className": "outer-heading"}}})
+
+        with replace_slot_scope(context, {}):
+            self.assertEqual(get_slot_context(context), {})
+
+        self.assertEqual(
+            get_slot_context(context),
+            {"heading": {"className": "outer-heading"}},
+        )

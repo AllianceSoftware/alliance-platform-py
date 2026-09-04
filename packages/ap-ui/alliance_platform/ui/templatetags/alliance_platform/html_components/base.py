@@ -592,7 +592,10 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         return normalize_html_ui_prop_name(key)
 
     def _merge_slot_props(self, context: Context, child_props: dict[str, Any]) -> dict[str, Any]:
-        slot_name = self.get_slot_name()
+        # Match useSlotProps: an explicit slot selects that parent-provided slot; otherwise the
+        # renderer's default slot is used. The slot selector itself is consumed by renderers and
+        # is not forwarded as an HTML attribute.
+        slot_name = child_props.get("slot") or self.get_slot_name()
         if not slot_name:
             return child_props
         slot_context = get_slot_context(context)
