@@ -54,6 +54,16 @@ DEFAULT_STYLE_MAPPINGS: dict[str, dict[str, Any]] = {
         # mapping value contains both classes.
         "sortIconUnsorted": "Table_sortIconUnsorted Table_sortIcon",
     },
+    "InlineAlert.css.ts": {
+        # Every intent variant is composed from the shared base class.
+        "alert": {
+            "danger": "InlineAlert_alert_danger InlineAlert_base",
+            "warning": "InlineAlert_alert_warning InlineAlert_base",
+            "success": "InlineAlert_alert_success InlineAlert_base",
+            "info": "InlineAlert_alert_info InlineAlert_base",
+            "default": "InlineAlert_alert_default InlineAlert_base",
+        },
+    },
     "Menubar.css.ts": {
         # menubarMenuItem is composed from menubarMenuItemBase (style([font, base])) so the
         # serialized mapping value contains both classes (font classes are outside the Menubar
