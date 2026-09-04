@@ -3,11 +3,9 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import Any
 from typing import Iterator
-from typing import cast
 
 from django.template import Context
 
-from .constants import UI_SLOT_CONTEXT_KEY
 from .render_context import RenderFrame
 from .render_context import get_document_render_state
 from .render_context import push_render_frame
@@ -20,10 +18,7 @@ def get_slot_context(context: Context) -> SlotContext:
     for frame in reversed(get_document_render_state(context).frames):
         if frame.slots is not None:
             return frame.slots
-    value = context.get(UI_SLOT_CONTEXT_KEY, {})
-    if not isinstance(value, dict):
-        return {}
-    return cast(SlotContext, value)
+    return {}
 
 
 def merge_slot_props(slot_props: SlotProps | None, child_props: SlotProps) -> SlotProps:
