@@ -49,3 +49,18 @@ class HtmlUIRenderContextTestCase(SimpleTestCase):
                     report_child(context, report)
 
             self.assertEqual(reports, [report])
+
+    def test_each_collection_receives_a_fresh_report_list(self):
+        context = Context()
+        first_report = ChildReport(component="icon", slot="icon", html="<span>first</span>")
+        second_report = ChildReport(component="icon", slot="icon", html="<span>second</span>")
+
+        with push_render_frame(context, RenderFrame(component="button")) as frame:
+            with collect_child_reports(context) as first:
+                report_child(context, first_report)
+            with collect_child_reports(context) as second:
+                report_child(context, second_report)
+
+            self.assertEqual(first, [first_report])
+            self.assertEqual(second, [second_report])
+            self.assertEqual(frame.child_reports, [first_report, second_report])

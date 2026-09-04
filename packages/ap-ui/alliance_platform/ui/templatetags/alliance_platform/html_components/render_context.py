@@ -90,12 +90,17 @@ def collect_child_reports(context: Context) -> Iterator[list[ChildReport]]:
     frame = get_current_component_frame(context)
     if frame is None:
         raise RuntimeError("Child reports can only be collected while rendering a component")
-    previous = frame.collect_child_reports
+    previous_collect = frame.collect_child_reports
+    previous_reports = frame.child_reports
+    reports: list[ChildReport] = []
     frame.collect_child_reports = True
+    frame.child_reports = reports
     try:
-        yield frame.child_reports
+        yield reports
     finally:
-        frame.collect_child_reports = previous
+        frame.child_reports = previous_reports
+        frame.child_reports.extend(reports)
+        frame.collect_child_reports = previous_collect
 
 
 def report_child(context: Context, report: ChildReport):

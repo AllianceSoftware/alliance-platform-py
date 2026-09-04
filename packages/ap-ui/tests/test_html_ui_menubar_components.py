@@ -804,6 +804,23 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn('data-has-leading-icon="true"', output)
         self.assertIn('<span data-apui-slot="label">Dashboard</span>', output)
 
+    def test_icon_inside_raw_wrapper_is_not_treated_as_a_leading_icon(self):
+        template = (
+            '{% ui "menubar" aria_label="Nav" %}'
+            '{% ui "menubar_item" href="/account/" text_value="Account" %}'
+            '<span class="account-icon">'
+            '{% ui "icon" name="Pencil01Outlined" %}{% endui %}'
+            "</span>Account"
+            "{% endui %}"
+            "{% endui %}"
+        )
+
+        output, caught = self.render_with_warnings(template)
+
+        self.assertEqual(caught, [])
+        self.assertNotIn("data-has-leading-icon", output)
+        self.assertNotIn("Menubar_hasLeadingIcon", output)
+
     def test_captured_item_does_not_keep_an_empty_menubar_visible(self):
         template = (
             '{% ui "menubar" aria_label="Nav" %}'

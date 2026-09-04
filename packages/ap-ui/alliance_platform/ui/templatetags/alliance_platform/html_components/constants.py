@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-UI_SLOT_CONTEXT_KEY = "__alliance_platform_ui_slots"
-
 ALLOWED_COMPONENTS_KWARG = "allowed_components"
 
 #: Kwarg accepting a dict of props to apply in bulk, e.g. ``{% ui "text_input" props=widget.attrs %}``
