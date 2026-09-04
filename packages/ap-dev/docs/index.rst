@@ -185,8 +185,9 @@ A typical interactive loop is:
    bin/dev down
 
 ``up`` is idempotent when the environment is already healthy. ``manage``, ``test``, ``jstest``,
-``lint``, and ``run`` receive the same generated worktree environment, so one-off commands cannot
-accidentally fall back to the original checkout's database.
+``lint``, ``check``, and ``run`` all receive the worktree's generated database identity, so one-off
+commands cannot accidentally fall back to the original checkout's database. See :doc:`commands`
+for every command and option.
 
 Use ``bin/dev attach`` when direct tmux access is useful, and ``bin/dev doctor`` when diagnosing
 local tool, PostgreSQL, tmux, or Portless setup.

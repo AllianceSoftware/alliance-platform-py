@@ -9,7 +9,10 @@ Configuration is merged from lowest to highest precedence:
 
 Scalar and argv settings replace lower layers. ``environment`` tables merge by variable name.
 ``config show`` reports the winning layer for every setting; environment values remain
-redacted unless explicitly requested from an interactive terminal.
+redacted unless explicitly requested from an interactive terminal. Only the committed layer may
+set ``project_id``; the other two layers may override any other setting. Every layer is validated
+when the tool starts, and an unknown key or an invalid value in any layer stops every command with
+an error naming the file and the key.
 
 Shared environment outside worktrees
 ------------------------------------
@@ -46,7 +49,7 @@ shows environment names and provenance while redacting their values. In an inter
 The repository-root ``.env`` remains separate: ap-dev reads it for PostgreSQL control settings,
 and the application may load it through its normal settings machinery. Reserved generated values,
 including ``DB_NAME`` and worktree identity/port variables, cannot be configured in any
-``[environment]`` table.
+``[environment]`` table; see :ref:`dev-config-environment` for the full list.
 
 Settings
 --------
@@ -59,10 +62,12 @@ Settings
      - Description
      - Default
    * - ``project_id``
-     - Committed lowercase slug that identifies the project across all of its worktrees.
+     - Committed lowercase slug (letters, digits, and single hyphens) that identifies the project
+       across all of its worktrees. May only be set in ``config/dev.toml``.
      - Required; no default
    * - ``django_port_base``
-     - First port considered when allocating a port for Django.
+     - First port considered when allocating a localhost port for Django. Not used while Portless
+       assigns the Django port.
      - ``8000``
    * - ``vite_port_base``
      - First port considered when allocating a port for Vite.
@@ -71,55 +76,64 @@ Settings
      - Portless mode: ``auto``, ``off``, or ``required``.
      - ``"auto"``
    * - ``database_template``
-     - PostgreSQL database to clone when creating a worktree database.
+     - Existing PostgreSQL database to clone when creating a worktree database. Must not be the
+       worktree database itself.
      - ``""`` (disabled)
    * - ``database_template_strategy``
      - PostgreSQL clone strategy: ``default``, ``wal_log``, or ``file_copy``.
      - ``"default"``
    * - ``createdevdata_args``
-     - Extra arguments passed to the ``createdevdata`` management command.
+     - Extra arguments passed to the ``createdevdata`` management command, which runs once when a
+       worktree database is created without a template.
      - ``[]``
    * - ``db_prepare_command``
-     - Management-command arguments to run after creating a worktree database.
+     - Management-command arguments to run once after a worktree database has been created.
      - ``[]`` (disabled)
    * - ``django_cwd``
-     - Repository-relative working directory for Django commands.
+     - Repository-relative directory containing ``manage.py``. Working directory for
+       ``django_command``, ``manage_command``, and ``bin/dev manage``.
      - ``"django-root"``
    * - ``vite_cwd``
-     - Repository-relative working directory for Vite commands.
+     - Repository-relative directory containing the frontend ``package.json``. Working directory
+       for ``vite_command`` and for the automatic ``yarn install``.
      - ``"."``
    * - ``verification_virtualenv``
-     - Repository-relative virtualenv used by Python-backed verification commands.
+     - Repository-relative virtualenv activated for ``test``, ``lint``, and ``check``. ``""``
+       disables activation.
      - ``".venv"``
    * - ``manage_command``
-     - Command prefix used to invoke Django management commands.
+     - Argv prefix for Django management commands: ``bin/dev manage``, migrations,
+       ``createdevdata``, and ``db_prepare_command``.
      - ``["uv", "run", "python", "manage.py"]``
    * - ``django_command``
-     - Command used to start the Django development server.
+     - Argv that starts the Django development server. The runner appends the bind address; see
+       :ref:`dev-config-generated-arguments`.
      - ``["uv", "run", "python", "manage.py", "runserver"]``
    * - ``vite_command``
-     - Command used to start the Vite development server.
+     - Argv that starts the Vite development server. The runner appends ``--port <port>
+       --strictPort``.
      - ``["yarn", "dev"]``
    * - ``test_command``
-     - Command delegated to by ``bin/dev test``.
+     - Argv run by ``bin/dev test``. Empty disables the verb.
      - ``[]`` (disabled)
    * - ``jstest_command``
-     - Command delegated to by ``bin/dev jstest``.
+     - Argv run by ``bin/dev jstest``. Empty disables the verb.
      - ``[]`` (disabled)
    * - ``lint_command``
-     - Command delegated to by ``bin/dev lint``.
+     - Argv run by ``bin/dev lint``. Empty disables the verb.
      - ``[]`` (disabled)
    * - ``check_command``
-     - Command delegated to by ``bin/dev check``.
+     - Argv run by ``bin/dev check``. Empty disables the verb.
      - ``[]`` (disabled)
    * - ``startup_timeout``
-     - Seconds to wait for required processes to become ready.
+     - Seconds ``up`` and ``restart`` wait for required processes to become ready.
      - ``60.0``
    * - ``environment``
-     - Environment variables supplied to managed and foreground commands.
+     - Table of environment variables supplied to managed processes and foreground commands.
      - ``{}``
    * - ``extra_processes``
-     - Additional processes to run alongside Django and Vite.
+     - Array of tables describing additional processes to run alongside Django and Vite; see
+       :ref:`dev-config-extra-processes`.
      - ``[]``
 
 When ``database_template`` is set, a missing worktree database is cloned from that PostgreSQL
@@ -156,14 +170,116 @@ Python verification wrappers manage their own environment with commands such as 
 ``jstest`` does not activate or require a Python virtualenv, and neither does arbitrary
 ``bin/dev run`` delegation.
 
-Configured working directories must stay inside the repository and exist when used.
-``startup_timeout`` controls readiness. ``extra_processes`` entries contain ``name``, ``command``,
-optional ``cwd``, and optional ``required``. The ``environment`` table supplies non-secret project
-defaults in committed configuration. Put private machine-local values in the global layer or use
-the application's established secret mechanism.
+Validation rules
+~~~~~~~~~~~~~~~~
 
-Launcher and generated worktree variables, including ``VIRTUAL_ENV``, are reserved and cannot be
-set through the ``environment`` table.
+* Only the settings listed above are accepted; any other key in any layer is an error.
+* ``project_id`` must match ``[a-z0-9]+(-[a-z0-9]+)*`` and may appear only in ``config/dev.toml``.
+  A project created from the Alliance template must replace the placeholder ``template-django``
+  (``bin/dev init-project`` does this); once ``pyproject.toml`` names the real project, a leftover
+  template ``project_id`` is rejected with instructions for fixing it.
+* ``django_port_base`` and ``vite_port_base`` are integers from 1 to 65535.
+* ``portless`` is one of ``"auto"``, ``"off"``, or ``"required"``; ``database_template_strategy``
+  is one of ``"default"``, ``"wal_log"``, or ``"file_copy"``.
+* Every ``*_command`` setting, ``createdevdata_args``, and ``db_prepare_command`` is an array of
+  strings. ``manage_command``, ``django_command``, ``vite_command``, and each extra process
+  ``command`` must contain at least one element, and no element may be empty.
+* ``django_cwd``, ``vite_cwd``, ``verification_virtualenv``, and each extra process ``cwd`` must
+  resolve to a location inside the repository. Working directories must exist when they are used.
+* ``startup_timeout`` is a positive number.
+* ``environment`` keys must be valid variable names (``[A-Za-z_][A-Za-z0-9_]*``), values must be
+  strings, and reserved names are rejected.
+
+.. _dev-config-generated-arguments:
+
+Arguments added by the runner
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The configured server commands are argv prefixes; the runner supplies the port-specific arguments so
+that every worktree binds differently:
+
+* Without Portless, ``django_command`` receives the bind address ``127.0.0.1:<port>`` as its final
+  argument, so it must accept a ``runserver``-style ``address:port`` argument.
+* With Portless, the same ``django_command`` runs under ``portless --name
+  <worktree-id>.<project_id>`` and receives ``127.0.0.1:$PORT``, where ``PORT`` is assigned by
+  Portless. The browser URL is the one Portless reports for that name.
+* ``vite_command`` receives ``--port <port> --strictPort``, so it must accept Vite's standard
+  options (``yarn dev`` forwards them to ``vite``).
+* Extra process commands are started exactly as configured.
+
+.. _dev-config-extra-processes:
+
+Extra processes
+~~~~~~~~~~~~~~~
+
+Each ``[[extra_processes]]`` table describes one additional long-running process started by ``up``
+alongside Django and Vite:
+
+.. code-block:: toml
+
+   [[extra_processes]]
+   name = "worker"
+   command = ["uv", "run", "python", "manage.py", "run_worker"]
+   cwd = "django-root"
+   required = true
+
+.. list-table::
+   :header-rows: 1
+   :widths: 16 64 20
+
+   * - Key
+     - Description
+     - Default
+   * - ``name``
+     - Lowercase slug (``[a-z0-9][a-z0-9-]*``) that names the tmux window and is used as the
+       ``TARGET`` of ``restart``, ``logs``, and ``attach``. Must be unique, and cannot be
+       ``django``, ``vite``, or ``starting``.
+     - Required
+   * - ``command``
+     - Non-empty argv array. It is executed directly, not through a shell.
+     - Required
+   * - ``cwd``
+     - Repository-relative working directory. Must stay inside the repository and exist at
+       startup.
+     - ``"."``
+   * - ``required``
+     - Whether ``up`` waits for this process and fails when it exits. A process with
+       ``required = false`` may exit without blocking readiness; its state remains visible in
+       ``status`` and its output in ``logs``, and it is not restarted automatically.
+     - ``true``
+
+Every extra process receives the same generated environment as Django and Vite, including the
+allocated ports and ``DEV_BASE_HOST``; see :ref:`dev-generated-environment`.
+
+.. _dev-config-environment:
+
+Environment
+~~~~~~~~~~~
+
+The ``environment`` table supplies non-secret project defaults in committed configuration. Put
+private machine-local values in the global layer or use the application's established secret
+mechanism. Values are supplied to Django, Vite, extra processes, and every foreground command,
+below the invoking shell in precedence, and the generated worktree values are added on top; the
+table on the :doc:`commands` page lists exactly which command receives which generated variable.
+
+Launcher and generated worktree variables are reserved and cannot be set through any
+``environment`` table:
+
+* generated by the runner: ``DB_NAME``, ``PGDATABASE``, ``DEV_BASE_HOST``, ``DEV_PROJECT``,
+  ``DEV_WORKTREE``, ``DEV_WORKTREE_ID``, ``DEV_DJANGO_PORT``, ``DEV_VITE_PORT``, and
+  ``VIRTUAL_ENV``;
+* used by the ``bin/dev`` launcher: ``ALLIANCE_DEV_PROJECT_DIR``, ``ALLIANCE_DEV_INVOCATION_NAME``,
+  ``ALLIANCE_DEV_UV_CACHE_DIR``, ``DEV_INVOKE_PATH``, ``DEV_INVOKE_VIRTUAL_ENV``,
+  ``DEV_INVOKE_VIRTUAL_ENV_SET``, ``DEV_INVOKE_UV_RUN_RECURSION_DEPTH``, and
+  ``DEV_INVOKE_UV_RUN_RECURSION_DEPTH_SET``.
+
+PostgreSQL control operations (the ``psql``, ``createdb``, and ``dropdb`` invocations the runner
+makes itself) use a separate connection environment built from the repository-root ``.env``
+(lowest precedence), the ``environment`` tables, and the invoking shell (highest). ``DB_HOST``,
+``DB_PORT``, ``DB_USER``, and ``DB_PASSWORD`` are copied to ``PGHOST``, ``PGPORT``, ``PGUSER``, and
+``PGPASSWORD`` when the ``PG*`` variable is not already set, and ``PGDATABASE`` is removed so the
+operations connect to the server's maintenance database. Application processes do not receive
+``.env`` values from the runner; they load ``.env`` through their own settings machinery as usual.
 
 .. _faster-template-database-clones:
 
