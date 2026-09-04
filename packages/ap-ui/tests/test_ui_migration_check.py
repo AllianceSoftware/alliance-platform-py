@@ -208,6 +208,32 @@ class UIMigrationCheckTestCase(SimpleTestCase):
         self.assertIn("isDismissable: dismissible alerts require client-side state", output)
         self.assertIn("InlineAlert: ready=1, review=1", output)
 
+    def test_generic_layout_components_have_static_renderers(self):
+        with TemporaryDirectory() as temp_dir:
+            base_dir = Path(temp_dir)
+            self.write_template(
+                base_dir,
+                "templates/layout.html",
+                '{% component "@alliancesoftware/ui" "Heading" %}Title{% endcomponent %}\n'
+                '{% component "@alliancesoftware/ui" "Header" %}Header{% endcomponent %}\n'
+                '{% component "@alliancesoftware/ui" "Content" %}Content{% endcomponent %}\n'
+                '{% component "@alliancesoftware/ui" "Footer" %}Footer{% endcomponent %}',
+            )
+
+            output = self.run_check(base_dir)
+
+        for line, component, renderer in [
+            (1, "Heading", "heading"),
+            (2, "Header", "header"),
+            (3, "Content", "content"),
+            (4, "Footer", "footer"),
+        ]:
+            self.assertIn(
+                f'templates/layout.html:{line}: [READY] component "@alliancesoftware/ui" '
+                f'"{component}" -> {{% ui "{renderer}" %}}',
+                output,
+            )
+
     def test_intrinsic_component_wrappers_suggest_native_html_and_note_deferred_urls(self):
         with TemporaryDirectory() as temp_dir:
             base_dir = Path(temp_dir)

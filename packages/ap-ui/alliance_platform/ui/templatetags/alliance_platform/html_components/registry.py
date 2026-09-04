@@ -30,14 +30,14 @@ built_in_registry = HtmlUIComponentRegistry()
 from .components.button import UIButtonRenderer  # noqa: E402
 from .components.button_group import UIButtonGroupRenderer  # noqa: E402
 from .components.icon import UIIconRenderer  # noqa: E402
-from .components.inline_alert import UIInlineAlertContentRenderer  # noqa: E402
-from .components.inline_alert import UIInlineAlertFooterRenderer  # noqa: E402
-from .components.inline_alert import UIInlineAlertHeaderRenderer  # noqa: E402
-from .components.inline_alert import UIInlineAlertHeadingRenderer  # noqa: E402
 from .components.inline_alert import UIInlineAlertRenderer  # noqa: E402
 from .components.input import UINumberInputRenderer  # noqa: E402
 from .components.input import UITextAreaRenderer  # noqa: E402
 from .components.input import UITextInputRenderer  # noqa: E402
+from .components.layout import UIContentRenderer  # noqa: E402
+from .components.layout import UIFooterRenderer  # noqa: E402
+from .components.layout import UIHeaderRenderer  # noqa: E402
+from .components.layout import UIHeadingRenderer  # noqa: E402
 from .components.menubar import UIMenubarItemRenderer  # noqa: E402
 from .components.menubar import UIMenubarRenderer  # noqa: E402
 from .components.menubar import UIMenubarSectionRenderer  # noqa: E402
@@ -57,10 +57,10 @@ built_in_registry.register_renderer("text_input", UITextInputRenderer)
 built_in_registry.register_renderer("number_input", UINumberInputRenderer)
 built_in_registry.register_renderer("text_area", UITextAreaRenderer)
 built_in_registry.register_renderer("inline_alert", UIInlineAlertRenderer)
-built_in_registry.register_renderer("inline_alert_content", UIInlineAlertContentRenderer)
-built_in_registry.register_renderer("inline_alert_heading", UIInlineAlertHeadingRenderer)
-built_in_registry.register_renderer("inline_alert_header", UIInlineAlertHeaderRenderer)
-built_in_registry.register_renderer("inline_alert_footer", UIInlineAlertFooterRenderer)
+built_in_registry.register_renderer("content", UIContentRenderer)
+built_in_registry.register_renderer("heading", UIHeadingRenderer)
+built_in_registry.register_renderer("header", UIHeaderRenderer)
+built_in_registry.register_renderer("footer", UIFooterRenderer)
 built_in_registry.register_renderer("pagination", UIPaginationRenderer)
 built_in_registry.register_renderer("table", UITableRenderer)
 built_in_registry.register_renderer("table_header", UITableHeaderRenderer)

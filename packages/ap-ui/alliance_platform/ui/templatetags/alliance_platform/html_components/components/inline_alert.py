@@ -1,9 +1,9 @@
 """Static HTML renderers for Alliance UI inline alerts.
 
-Loose children are wrapped in the same ``Content`` section used by the legacy Django tag. For
-alerts that need the richer React layout, explicit content, heading, header and footer renderers
-participate in the component's slot styling without requiring a React root. Dismiss buttons are
-deliberately unsupported because their state transition requires client-side behaviour.
+Loose children are wrapped in the same ``Content`` section used by the legacy Django tag. Generic
+layout primitives participate in the component's slot styling without requiring a React root.
+Dismiss buttons are deliberately unsupported because their state transition requires client-side
+behaviour.
 """
 
 from __future__ import annotations
@@ -37,7 +37,6 @@ _INTENT_ICONS = {
 _EVENT_HANDLER_REASON = "event handlers are not supported by static inline-alert components"
 _DISMISS_REASON = "dismissible alerts require client-side state and are not supported statically"
 _ROOT_FORWARDED_PROPS = frozenset({"id", "title", "role", "tabIndex", "dir", "lang", "hidden", "draggable"})
-_PART_FORWARDED_PROPS = frozenset({"id", "title", "role", "tabIndex", "dir", "lang", "hidden", "draggable"})
 
 
 class UIInlineAlertRenderer(BaseHtmlUIComponentRenderer):
@@ -169,56 +168,3 @@ class UIInlineAlertRenderer(BaseHtmlUIComponentRenderer):
             for name, class_name in part_classes.items()
             if name != "content" and class_name
         )
-
-
-class UIInlineAlertPartRenderer(BaseHtmlUIComponentRenderer):
-    slot_name: str
-    tag_name: str
-    supported_props = frozenset({"className", "style", "children", "slot"})
-    forwarded_props = _PART_FORWARDED_PROPS
-    allow_data_props = True
-    allow_aria_props = True
-    prop_filter_context = "static inline-alert part components"
-    event_handler_prop_reason = _EVENT_HANDLER_REASON
-
-    def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
-        attrs = {
-            **self.collect_forwarded_props(props),
-            "className": props.get("className"),
-            "style": props.get("style"),
-        }
-        return self._render_tag(self.tag_name, attrs, children_html)
-
-
-class UIInlineAlertContentRenderer(UIInlineAlertPartRenderer):
-    apui_component_name = "inline-alert-content"
-    slot_name = "content"
-    tag_name = "section"
-
-
-class UIInlineAlertHeadingRenderer(UIInlineAlertPartRenderer):
-    apui_component_name = "inline-alert-heading"
-    slot_name = "heading"
-    tag_name = "h3"
-    supported_props = UIInlineAlertPartRenderer.supported_props | frozenset({"level"})
-    prop_rules = {"level": enum_prop_rule((1, 2, 3, 4, 5, 6), invalid_fallback=3)}
-
-    def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
-        attrs = {
-            **self.collect_forwarded_props(props),
-            "className": props.get("className"),
-            "style": props.get("style"),
-        }
-        return self._render_tag(f"h{props.get('level', 3)}", attrs, children_html)
-
-
-class UIInlineAlertHeaderRenderer(UIInlineAlertPartRenderer):
-    apui_component_name = "inline-alert-header"
-    slot_name = "header"
-    tag_name = "header"
-
-
-class UIInlineAlertFooterRenderer(UIInlineAlertPartRenderer):
-    apui_component_name = "inline-alert-footer"
-    slot_name = "footer"
-    tag_name = "footer"

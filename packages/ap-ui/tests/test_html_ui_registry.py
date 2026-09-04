@@ -15,6 +15,18 @@ from alliance_platform.ui.templatetags.alliance_platform.html_components.compone
 from alliance_platform.ui.templatetags.alliance_platform.html_components.components.input import (
     UITextInputRenderer,
 )
+from alliance_platform.ui.templatetags.alliance_platform.html_components.components.layout import (
+    UIContentRenderer,
+)
+from alliance_platform.ui.templatetags.alliance_platform.html_components.components.layout import (
+    UIFooterRenderer,
+)
+from alliance_platform.ui.templatetags.alliance_platform.html_components.components.layout import (
+    UIHeaderRenderer,
+)
+from alliance_platform.ui.templatetags.alliance_platform.html_components.components.layout import (
+    UIHeadingRenderer,
+)
 from alliance_platform.ui.templatetags.alliance_platform.html_components.components.pagination import (
     UIPaginationRenderer,
 )
@@ -60,3 +72,13 @@ class HtmlUIComponentRegistryTestCase(SimpleTestCase):
 
     def test_built_in_registry_includes_pagination(self):
         self.assertIs(built_in_registry.get("pagination"), UIPaginationRenderer)
+
+    def test_built_in_registry_includes_generic_layout_components(self):
+        for name, renderer_cls in [
+            ("content", UIContentRenderer),
+            ("heading", UIHeadingRenderer),
+            ("header", UIHeaderRenderer),
+            ("footer", UIFooterRenderer),
+        ]:
+            with self.subTest(component=name):
+                self.assertIs(built_in_registry.get(name), renderer_cls)

@@ -48,7 +48,7 @@ export const cases = [
     name: "explicit_content",
     template:
       '{% ui "inline_alert" intent="success" %}' +
-      '{% ui "inline_alert_content" %}<p>Complete.</p>{% endui %}' +
+      '{% ui "content" %}<p>Complete.</p>{% endui %}' +
       "{% endui %}",
     buildElement({ React, components }) {
       const { InlineAlert, Content, CheckCircleOutlined } = components;
@@ -69,10 +69,10 @@ export const cases = [
     name: "structured_content",
     template:
       '{% ui "inline_alert" intent="warning" %}' +
-      '{% ui "inline_alert_heading" %}Check this{% endui %}' +
-      '{% ui "inline_alert_header" %}Before continuing{% endui %}' +
-      '{% ui "inline_alert_content" %}Review the details.{% endui %}' +
-      '{% ui "inline_alert_footer" %}You can return later.{% endui %}' +
+      '{% ui "heading" %}Check this{% endui %}' +
+      '{% ui "header" %}Before continuing{% endui %}' +
+      '{% ui "content" %}Review the details.{% endui %}' +
+      '{% ui "footer" %}You can return later.{% endui %}' +
       "{% endui %}",
     buildElement({ React, components }) {
       const {
