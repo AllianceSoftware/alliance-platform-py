@@ -51,9 +51,15 @@ class ProjectInstallationTests(unittest.TestCase):
 
             launcher = repo / "bin" / "dev"
             config = repo / "config" / "dev.toml"
-            self.assertEqual(set(first.created), {launcher, config})
-            self.assertEqual(set(second.unchanged), {launcher, config})
+            gitignore = repo / ".gitignore"
+            self.assertEqual(set(first.created), {launcher, config, gitignore})
+            self.assertEqual(set(second.unchanged), {launcher, config, gitignore})
             self.assertEqual(settings.read_text(), "DEBUG = True\n")
+            self.assertEqual(
+                gitignore.read_text(),
+                "# Worktree state managed by bin/dev\n.dev-server/\n",
+            )
+            self.assertIn("added .dev-server/ to .gitignore", output.getvalue())
             self.assertIn('project_id = "example-app"', config.read_text())
             self.assertIn('django_cwd = "django-root"', config.read_text())
             self.assertIn('vite_cwd = "."', config.read_text())
@@ -346,6 +352,45 @@ class ProjectInstallationTests(unittest.TestCase):
             self.assertEqual(
                 arguments[arguments.index("--cache-dir") + 1],
                 str(repo / "launcher-uv-cache"),
+            )
+
+    def test_install_ignores_dev_server_state_without_duplicating_existing_entries(self) -> None:
+        with TemporaryDirectory() as directory:
+            repo = self.make_project(directory)
+            gitignore = repo / ".gitignore"
+            gitignore.write_text("node_modules/")
+
+            result = install_project(repo, assume_yes=True, console=self.console())
+
+            self.assertIn(gitignore, result.updated)
+            self.assertEqual(
+                gitignore.read_text(),
+                "node_modules/\n\n# Worktree state managed by bin/dev\n.dev-server/\n",
+            )
+
+        for existing in (".dev-server", ".dev-server/", "/.dev-server", "/.dev-server/", "**/.dev-server/"):
+            with self.subTest(existing=existing), TemporaryDirectory() as directory:
+                repo = self.make_project(directory)
+                gitignore = repo / ".gitignore"
+                contents = f"node_modules/\n  {existing}  \n"
+                gitignore.write_text(contents)
+
+                result = install_project(repo, assume_yes=True, console=self.console())
+
+                self.assertIn(gitignore, result.unchanged)
+                self.assertEqual(gitignore.read_text(), contents)
+
+        with TemporaryDirectory() as directory:
+            repo = self.make_project(directory)
+            gitignore = repo / ".gitignore"
+            gitignore.write_text("# .dev-server/\n!.dev-server/\n")
+
+            result = install_project(repo, assume_yes=True, console=self.console())
+
+            self.assertIn(gitignore, result.updated)
+            self.assertEqual(
+                gitignore.read_text(),
+                "# .dev-server/\n!.dev-server/\n\n# Worktree state managed by bin/dev\n.dev-server/\n",
             )
 
     def test_existing_generated_file_is_not_replaced_without_force(self) -> None:

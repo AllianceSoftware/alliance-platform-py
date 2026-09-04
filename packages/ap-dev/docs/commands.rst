@@ -362,7 +362,7 @@ ready, so scripts can rely on the printed URL being live.
 
 .. option:: --json
 
-   Print ``{"url": "..."}`` instead of the bare URL.
+   Print ``{"schemaVersion": 1, "url": "..."}`` instead of the bare URL.
 
 .. _dev-command-doctor:
 
@@ -377,9 +377,10 @@ ready, so scripts can rely on the printed URL being live.
 
 Prints the tool and protocol versions, the worktree identity (branch, worktree ID, database name,
 and tmux session name), the state of ``.dev-server/state.json`` (``missing``, ``valid``, or
-``invalid``), and a list of checks. Each check is ``ok``, ``warning``, or ``error``. ``doctor``
-changes nothing and exits ``0`` even when checks fail, so read the check statuses rather than the
-exit status.
+``invalid``), and a list of checks. Each check is ``ok``, ``warning``, or ``error``, and the text
+output ends with a summary line such as ``2 errors, 1 warning.`` ``doctor`` changes nothing. It
+exits ``1`` when any check is an ``error`` and ``0`` otherwise; warnings do not affect the exit
+status.
 
 .. list-table::
    :header-rows: 1
@@ -749,7 +750,9 @@ The installer:
    present. Otherwise ``test`` falls back to ``manage.py test`` and ``jstest`` to a ``package.json``
    script that invokes Vitest (with ``--run`` added so that it does not watch). Anything still
    unresolved is prompted for, or left disabled with ``--yes``.
-5. Writes ``bin/dev`` (executable, pinning the running package version) and ``config/dev.toml``.
+5. Writes ``bin/dev`` (executable, pinning the running package version) and ``config/dev.toml``,
+   and adds ``.dev-server/`` to ``.gitignore`` unless an existing entry already ignores that
+   directory.
 6. When ``.husky/pre-commit`` or ``.husky/pre-push`` exist, writes
    ``bin/run-with-dev-env-if-managed`` and rewrites each hook's final command to run through it
    (see :doc:`installation`). Interactive installs ask first; ``--yes`` applies the change. Hooks
@@ -760,7 +763,7 @@ The installer:
 Interactive installation requires a terminal; pass ``--yes`` otherwise. Existing files with
 identical content are left alone. Existing files whose content differs prompt for replacement
 interactively, and are an error non-interactively unless ``--force`` is given. The installer does
-not edit ``.gitignore`` or Django settings.
+not edit Django settings.
 
 .. option:: PATH
 
@@ -819,16 +822,17 @@ Output and exit status
 ----------------------
 
 * Results and progress lines go to stdout. ``Error: ...`` and ``Warning: ...`` lines go to stderr.
-* Every ``--json`` output is a single JSON document. Each one except ``url --json`` carries
-  ``"schemaVersion": 1``; check it before parsing. Environment values and other secrets are never
-  included.
+* Every ``--json`` output is a single JSON document carrying ``"schemaVersion": 1``; check it
+  before parsing. Environment values and other secrets are never included.
 * The exit status is ``0`` on success; ``1`` for an expected error (invalid configuration, a
   missing tool, an environment that is not running, a refused destructive action) after printing
-  ``Error:``; ``2`` for a command-line usage error; and ``130`` when interrupted with ``Ctrl-C``.
+  ``Error:``, or for ``doctor`` when any check is an ``error``; ``2`` for a command-line usage
+  error; and ``130`` when interrupted with ``Ctrl-C``.
   During ``up`` and ``restart``, ``SIGHUP`` and ``SIGTERM`` are handled the same way so that a
   partial start is cleaned up before exiting. ``manage``, ``test``, ``jstest``, ``lint``,
   ``check``, and ``run`` return the exit status of the command they ran.
-* ``doctor`` and ``status`` report problems in their output, not through the exit status.
+* ``status`` reports problems in its output, not through the exit status; it exits ``0`` even when
+  nothing is running.
 
 Environment variables read by the tool
 --------------------------------------
