@@ -27,6 +27,7 @@ _BUTTON_GROUP_FORWARDED_PROPS = frozenset(
 
 class UIButtonGroupRenderer(BaseHtmlUIComponentRenderer):
     apui_component_name = "button-group"
+    slot_name = "buttonGroup"
     supported_props = frozenset(
         {
             "orientation",

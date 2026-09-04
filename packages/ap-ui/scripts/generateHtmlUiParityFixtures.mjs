@@ -15,12 +15,14 @@ const CASE_MODULES = [
   "./parity_cases/text_input.mjs",
   "./parity_cases/number_input.mjs",
   "./parity_cases/text_area.mjs",
+  "./parity_cases/inline_alert.mjs",
   "./parity_cases/table.mjs",
   "./parity_cases/menubar.mjs",
 ];
 
 const BUTTON_COMPONENTS = new Set(["button", "button_group"]);
 const INPUT_COMPONENTS = new Set(["text_input", "number_input", "text_area"]);
+const INLINE_ALERT_COMPONENTS = new Set(["inline_alert"]);
 const TABLE_COMPONENTS = new Set(["table"]);
 const MENUBAR_COMPONENTS = new Set(["menubar"]);
 
@@ -102,6 +104,36 @@ async function loadParityComponents(component) {
     components = {
       NumberInput: await importDefault(
         path.join(uiPackageDir, "components/number-input/NumberInput.tsx"),
+      ),
+    };
+  } else if (component === "inline_alert") {
+    components = {
+      InlineAlert: await importDefault(
+        path.join(uiPackageDir, "components/inline-alert/InlineAlert.tsx"),
+      ),
+      Content: await importDefault(
+        path.join(uiPackageDir, "components/layout/Content.tsx"),
+      ),
+      Heading: await importDefault(
+        path.join(uiPackageDir, "components/layout/Heading.tsx"),
+      ),
+      Header: await importDefault(
+        path.join(uiPackageDir, "components/layout/Header.tsx"),
+      ),
+      Footer: await importDefault(
+        path.join(uiPackageDir, "components/layout/Footer.tsx"),
+      ),
+      AlertCircleOutlined: await importDefault(
+        path.join(uiPackageDir, "../icons/outlined/AlertCircleOutlined.tsx"),
+      ),
+      AlertTriangleOutlined: await importDefault(
+        path.join(uiPackageDir, "../icons/outlined/AlertTriangleOutlined.tsx"),
+      ),
+      CheckCircleOutlined: await importDefault(
+        path.join(uiPackageDir, "../icons/outlined/CheckCircleOutlined.tsx"),
+      ),
+      InfoCircleOutlined: await importDefault(
+        path.join(uiPackageDir, "../icons/outlined/InfoCircleOutlined.tsx"),
       ),
     };
   } else if (component === "table") {
@@ -489,6 +521,28 @@ function normalizeMenubarComponent(root, component) {
   }
 }
 
+function normalizeInlineAlertComponent(root) {
+  const alertRoot = root.querySelector('[data-apui="inline-alert"]');
+  const alertInner = alertRoot?.firstElementChild;
+  if (!alertRoot || !alertInner) {
+    return;
+  }
+  const contentChildren = Array.from(alertInner.children).filter(
+    (child) => !child.hasAttribute("data-alerticon"),
+  );
+  if (
+    contentChildren.length === 1 &&
+    contentChildren[0].tagName === "SECTION" &&
+    tokenizeClasses(contentChildren[0].getAttribute("class")).some((token) =>
+      token.startsWith("InlineAlert_content")
+    )
+  ) {
+    alertRoot.setAttribute("data-only-content", "true");
+    alertInner.classList.add("InlineAlert_onlyContent");
+  }
+  normalizeInlineStyles(root);
+}
+
 function injectButtonGroupRuntime(root) {
   const componentRoot = root.firstElementChild;
   if (!componentRoot || componentRoot.tagName !== "DIV") {
@@ -527,6 +581,9 @@ function normalizeRenderedHtml(
   }
   if (INPUT_COMPONENTS.has(component)) {
     normalizeInputComponent(root, component);
+  }
+  if (INLINE_ALERT_COMPONENTS.has(component)) {
+    normalizeInlineAlertComponent(root);
   }
   if (TABLE_COMPONENTS.has(component)) {
     normalizeTableComponent(root, component);

@@ -184,6 +184,30 @@ class UIMigrationCheckTestCase(SimpleTestCase):
         self.assertIn("onPageChange: callback pagination is not supported", output)
         self.assertIn("Pagination: ready=1, review=1", output)
 
+    def test_inline_alert_has_static_renderer_and_flags_dismissal_behavior(self):
+        with TemporaryDirectory() as temp_dir:
+            base_dir = Path(temp_dir)
+            self.write_template(
+                base_dir,
+                "templates/alerts.html",
+                '{% InlineAlert intent="danger" %}Failed{% endInlineAlert %}\n'
+                '{% component "@alliancesoftware/ui" "InlineAlert" is_dismissable=True %}'
+                "Dismiss me{% endcomponent %}",
+            )
+
+            output = self.run_check(base_dir)
+
+        self.assertIn(
+            'templates/alerts.html:1: [READY] tag InlineAlert -> {% ui "inline_alert" %}',
+            output,
+        )
+        self.assertIn(
+            'templates/alerts.html:2: [REVIEW] component "@alliancesoftware/ui" "InlineAlert"',
+            output,
+        )
+        self.assertIn("isDismissable: dismissible alerts require client-side state", output)
+        self.assertIn("InlineAlert: ready=1, review=1", output)
+
     def test_intrinsic_component_wrappers_suggest_native_html_and_note_deferred_urls(self):
         with TemporaryDirectory() as temp_dir:
             base_dir = Path(temp_dir)
