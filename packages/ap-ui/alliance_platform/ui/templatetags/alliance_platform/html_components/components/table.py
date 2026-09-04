@@ -37,6 +37,7 @@ from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
 
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
+from alliance_platform.frontend.bundler.frontend_resource import ImageResource
 from alliance_platform.frontend.templatetags.react import OmitComponentFromRendering
 from alliance_platform.ui.icons import get_static_icon_resource
 
@@ -250,6 +251,15 @@ class UITableRenderer(UITableComponentRendererBase):
             self.resolve_frontend_resource(ICON_STYLE_PATH),
             get_static_icon_resource(_ARROW_UP_ICON, origin=self.origin),
             get_static_icon_resource(_ARROW_DOWN_ICON, origin=self.origin),
+        ]
+
+    def get_resources_to_embed(self) -> list[FrontendResource]:
+        # Sort icons are read and rendered inline; their ImageResources are build dependencies,
+        # not standalone document images.
+        return [
+            resource
+            for resource in self.get_resources_for_bundling()
+            if not isinstance(resource, ImageResource)
         ]
 
     def render_children_for_component(self, context: Context, props: dict[str, Any]) -> str:
