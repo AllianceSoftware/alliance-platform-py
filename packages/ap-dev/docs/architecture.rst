@@ -23,7 +23,8 @@ ports, state files, and Portless hostname. Renaming a branch does not change the
 identity.
 
 State needed to operate the current worktree and recent process output live under its
-``.dev-server`` directory, which should be Git-ignored: ``state.json`` records the allocated
+``.dev-server`` directory, which the installer adds to ``.gitignore``: ``state.json`` records the
+allocated
 ports, whether Portless is in use, and whether database setup is still pending;
 ``logs/<process>.log`` holds the output snapshot saved when processes stop; and the optional
 ``config.toml`` is the worktree configuration layer. The runner also maintains a machine-wide

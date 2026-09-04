@@ -114,9 +114,9 @@ into the launcher, for example a pre-release. See :ref:`dev-command-install` for
 
 The generated ``bin/dev`` launcher pins the installed package version, so every developer and
 worktree uses the same release without adding it to the application's Python environment. Commit
-both ``bin/dev`` and ``config/dev.toml``. Also make sure ``.dev-server/`` is listed in
-``.gitignore``: the runner keeps worktree state, output snapshots, and the optional worktree
-configuration layer there, and the installer does not edit ``.gitignore``.
+both ``bin/dev`` and ``config/dev.toml``, together with the ``.gitignore`` entry the installer adds
+for ``.dev-server/``, the directory where the runner keeps worktree state, output snapshots, and
+the optional worktree configuration layer.
 
 If the project has ``.husky/pre-commit`` or ``.husky/pre-push``, the interactive installer offers
 to route their final project command through ``bin/run-with-dev-env-if-managed``; with ``--yes``

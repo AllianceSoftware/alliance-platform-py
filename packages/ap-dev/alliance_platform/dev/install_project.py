@@ -33,6 +33,18 @@ USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")"""
 HOOK_WRAPPER_PATH = Path("bin/run-with-dev-env-if-managed")
 MANAGED_HUSKY_HOOKS = ("pre-commit", "pre-push")
+GITIGNORE_PATH = Path(".gitignore")
+DEV_SERVER_IGNORE_ENTRY = ".dev-server/"
+DEV_SERVER_IGNORE_COMMENT = "# Worktree state managed by bin/dev"
+# Existing patterns that already ignore the state directory everywhere the runner creates it.
+DEV_SERVER_IGNORE_PATTERNS = {
+    ".dev-server",
+    ".dev-server/",
+    "/.dev-server",
+    "/.dev-server/",
+    "**/.dev-server",
+    "**/.dev-server/",
+}
 VERIFICATION_SCRIPTS = {
     "test": Path("bin/run-tests-django.sh"),
     "jstest": Path("bin/run-tests-frontend.sh"),
@@ -279,6 +291,33 @@ case "$hook_environment" in
         ;;
 esac
 """
+
+
+def _gitignore_covers_dev_server(contents: str) -> bool:
+    for line in contents.splitlines():
+        entry = line.strip()
+        if not entry or entry.startswith("#"):
+            continue
+        if entry in DEV_SERVER_IGNORE_PATTERNS:
+            return True
+    return False
+
+
+def _ensure_dev_server_ignored(repo: Path) -> str:
+    """Append ``.dev-server/`` to ``.gitignore`` unless an existing entry already ignores it."""
+    path = repo / GITIGNORE_PATH
+    addition = f"{DEV_SERVER_IGNORE_COMMENT}\n{DEV_SERVER_IGNORE_ENTRY}\n"
+    if not path.exists():
+        path.write_text(addition)
+        return "created"
+    contents = path.read_text()
+    if _gitignore_covers_dev_server(contents):
+        return "unchanged"
+    if contents and not contents.endswith("\n"):
+        contents += "\n"
+    separator = "\n" if contents else ""
+    path.write_text(f"{contents}{separator}{addition}")
+    return "updated"
 
 
 def _wrap_husky_hook(contents: str) -> str | None:
@@ -574,6 +613,8 @@ def install_project(
         ),
         records,
     )
+    gitignore_state = _ensure_dev_server_ignored(repo)
+    _record(repo / GITIGNORE_PATH, gitignore_state, records)
 
     husky_hooks = [repo / ".husky" / name for name in MANAGED_HUSKY_HOOKS]
     existing_hooks = [path for path in husky_hooks if path.is_file()]
@@ -634,6 +675,8 @@ def install_project(
     output.print(f"  Django:  {resolved_django_cwd.relative_to(repo)}")
     output.print("  Vite:    .")
     output.print(f"  Source:  {source}")
+    if gitignore_state != "unchanged":
+        output.print(f"  Git ignore: added {DEV_SERVER_IGNORE_ENTRY} to {GITIGNORE_PATH}")
     if hooks_enabled:
         output.print("  Git hooks: managed worktree environment enabled")
     output.print("\n[bold]Add these settings to your development settings module (normally dev.py):[/bold]")

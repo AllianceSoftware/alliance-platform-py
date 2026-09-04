@@ -211,6 +211,117 @@ class CommandLineInteractionTests(unittest.TestCase):
                 },
             )
 
+    def make_dispatch_context(self, root: Path) -> Context:
+        repo = make_repo(root / "repo")
+        config = load_config(repo, {"XDG_CONFIG_HOME": str(root / "xdg")})
+        identity = WorktreeIdentity(
+            repo=repo,
+            branch="feature/test",
+            worktree_id="repo-0123456789",
+            session_name="demo-wt-repo-0123456789",
+            database_name="demo_repo_0123456789",
+            portless_app_name="repo-0123456789.demo",
+        )
+        return Context(repo, config, identity, {}, {})
+
+    def doctor_report(self, root: Path, *checks: DoctorCheck) -> DoctorReport:
+        return DoctorReport(
+            package_version="0.0.1",
+            protocol_version=1,
+            project_id="demo",
+            branch="feature/example",
+            worktree_id="repo-0123456789",
+            worktree_path="/tmp/repo",
+            session_name="demo-wt-repo-0123456789",
+            database_name="demo_repo_0123456789",
+            config_paths=ConfigPaths(root / "project.toml", root / "global.toml", root / "worktree.toml"),
+            state=DoctorStateRecord(root / "state.json", "missing", None),
+            checks=checks,
+        )
+
+    def test_doctor_exit_status_and_summary_reflect_failed_checks(self) -> None:
+        cases = (
+            ((DoctorCheck("tool:uv", "ok", "/usr/bin/uv"),), 0, "All checks passed."),
+            (
+                (
+                    DoctorCheck("tool:uv", "ok", "/usr/bin/uv"),
+                    DoctorCheck("tool:portless", "warning", "optional; not installed"),
+                ),
+                0,
+                "1 warning.",
+            ),
+            (
+                (
+                    DoctorCheck("tool:tmux", "error", "not found on PATH"),
+                    DoctorCheck("dropdb:force", "error", "installed dropdb must support --force"),
+                    DoctorCheck("portless", "warning", "CLI is not installed; localhost will be used"),
+                ),
+                1,
+                "2 errors, 1 warning.",
+            ),
+        )
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            context = self.make_dispatch_context(root)
+            for checks, expected_status, summary in cases:
+                for as_json in (False, True):
+                    output = io.StringIO()
+                    with (
+                        self.subTest(summary=summary, as_json=as_json),
+                        patch("alliance_platform.dev.cli.make_context", return_value=context),
+                        patch("alliance_platform.dev.cli.DevEnvironment") as dev_environment,
+                        patch("alliance_platform.dev.cli.CommandDelegates"),
+                        redirect_stdout(output),
+                    ):
+                        dev_environment.return_value.doctor_report.return_value = self.doctor_report(
+                            root, *checks
+                        )
+                        result = dispatch(["doctor", "--json"] if as_json else ["doctor"])
+
+                        self.assertEqual(result, expected_status)
+                        if as_json:
+                            payload = json.loads(output.getvalue())
+                            self.assertEqual(
+                                [check["status"] for check in payload["checks"]],
+                                [check.status for check in checks],
+                            )
+                        else:
+                            self.assertTrue(output.getvalue().endswith(f"\n{summary}\n"), output.getvalue())
+
+    def test_url_json_carries_the_schema_version(self) -> None:
+        environment = EnvironmentSummary(
+            branch="feature/test",
+            worktree_id="repo-0123456789",
+            session_name="demo-wt-repo-0123456789",
+            database_name="demo_repo_0123456789",
+            django_url="https://repo-0123456789.demo.localhost",
+            vite_url="http://localhost:5173",
+            use_portless=True,
+        )
+        with TemporaryDirectory() as temporary:
+            context = self.make_dispatch_context(Path(temporary))
+            outputs: dict[bool, str] = {}
+            for as_json in (False, True):
+                output = io.StringIO()
+                with (
+                    patch("alliance_platform.dev.cli.make_context", return_value=context),
+                    patch("alliance_platform.dev.cli.DevEnvironment") as dev_environment,
+                    patch("alliance_platform.dev.cli.CommandDelegates"),
+                    redirect_stdout(output),
+                ):
+                    dev_environment.return_value.live_environment.return_value = environment
+                    result = dispatch(["url", "--json"] if as_json else ["url"])
+
+                self.assertEqual(result, 0)
+                dev_environment.return_value.live_environment.assert_called_once_with(require_ready=True)
+                outputs[as_json] = output.getvalue()
+
+        self.assertEqual(outputs[False], "https://repo-0123456789.demo.localhost\n")
+        self.assertEqual(
+            json.loads(outputs[True]),
+            {"schemaVersion": 1, "url": "https://repo-0123456789.demo.localhost"},
+        )
+
     def test_cli_formats_an_immutable_start_result(self) -> None:
         result = StartResult(
             environment=EnvironmentSummary(

@@ -83,7 +83,8 @@ same operating-system user receive the same values.
 Use ``bin/dev config paths`` to print the exact file location and ``bin/dev config show`` to check
 which layer supplied each variable. Values are redacted by default. An invoking shell can still
 override the shared value, and ``.dev-server/config.toml`` can override it for one worktree. Do not
-set generated values such as ``DB_NAME`` here—the runner owns those to preserve worktree isolation.
+set generated values such as ``DB_NAME`` here—the runner owns those to preserve worktree isolation
+(see :ref:`dev-config-reserved-variables`).
 
 What it brings
 --------------
@@ -113,7 +114,8 @@ Run the installer from the root of an existing Django project:
 
 It discovers ``manage.py`` and asks you to confirm ambiguous Django layouts. Vite is assumed to
 use the repository-root ``package.json``, as it does in the standard project layout. The command
-creates a checked-in ``bin/dev`` launcher and ``config/dev.toml``.
+creates a checked-in ``bin/dev`` launcher and ``config/dev.toml``, and adds the runner's
+``.dev-server/`` state directory to ``.gitignore``.
 
 The installer does not edit Django settings. At the end it prints a block to copy into the
 project's development settings module, normally ``dev.py``. The block trusts Portless localhost

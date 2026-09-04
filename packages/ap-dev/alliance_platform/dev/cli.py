@@ -636,6 +636,23 @@ def _config_path_records_from_paths(paths: ConfigPaths) -> list[dict[str, object
     ]
 
 
+def _doctor_failed(report: DoctorReport) -> bool:
+    return any(check.status == "error" for check in report.checks)
+
+
+def _doctor_summary(report: DoctorReport) -> str:
+    errors = sum(1 for check in report.checks if check.status == "error")
+    warnings = sum(1 for check in report.checks if check.status == "warning")
+    if not errors and not warnings:
+        return "All checks passed."
+    parts = []
+    if errors:
+        parts.append(f"{errors} error{'s' if errors != 1 else ''}")
+    if warnings:
+        parts.append(f"{warnings} warning{'s' if warnings != 1 else ''}")
+    return ", ".join(parts) + "."
+
+
 def _print_doctor(report: DoctorReport, *, as_json: bool) -> None:
     if as_json:
         print(json.dumps(_doctor_payload(report), indent=2, sort_keys=True))
@@ -651,6 +668,7 @@ def _print_doctor(report: DoctorReport, *, as_json: bool) -> None:
     print("\nChecks:")
     for check in report.checks:
         print(f"  {check.status:<7} {check.name:<24} {check.detail}")
+    print(f"\n{_doctor_summary(report)}")
 
 
 def dispatch(argv: list[str], parser: argparse.ArgumentParser | None = None) -> int:
@@ -758,7 +776,7 @@ def dispatch(argv: list[str], parser: argparse.ArgumentParser | None = None) -> 
         dev.attach(args.target)
     elif command == "url":
         url = dev.live_environment(require_ready=True).django_url
-        print(json.dumps({"url": url}) if args.as_json else url)
+        print(json.dumps({"schemaVersion": 1, "url": url}) if args.as_json else url)
     elif command == "manage":
         return dev.manage(args.args)
     elif command == "run":
@@ -773,7 +791,9 @@ def dispatch(argv: list[str], parser: argparse.ArgumentParser | None = None) -> 
             environment=dev.command_environment(),
         )
     elif command == "doctor":
-        _print_doctor(dev.doctor_report(), as_json=args.as_json)
+        report = dev.doctor_report()
+        _print_doctor(report, as_json=args.as_json)
+        return 1 if _doctor_failed(report) else 0
     elif command == "test":
         commands.test(args.args)
     elif command == "jstest":
