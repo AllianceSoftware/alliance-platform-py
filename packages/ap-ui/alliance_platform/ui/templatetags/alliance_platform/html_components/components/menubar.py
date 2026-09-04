@@ -61,6 +61,7 @@ from ..render_context import ChildReport
 from ..render_context import RenderFrame
 from ..render_context import claim_html_id
 from ..render_context import collect_child_reports
+from ..render_context import find_leading_child_report
 from ..render_context import find_render_payload
 from ..render_context import generate_html_id
 from ..render_context import get_current_component_frame
@@ -304,7 +305,12 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
         if "<" not in stripped:
             derived = " ".join(html_module.unescape(stripped).split())
             return derived or (str(aria_label) if aria_label is not None else None)
-        leading_icon = self.find_leading_icon(content_html, child_reports or [])
+        leading_icon = find_leading_child_report(
+            content_html,
+            child_reports or [],
+            component="icon",
+            slot="icon",
+        )
         if leading_icon is not None:
             _, rest = leading_icon
             if rest and "<" not in rest:
@@ -333,30 +339,29 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
         if not stripped:
             return ""
         if "<" in stripped:
-            leading_icon = self.find_leading_icon(content_html, child_reports or [])
+            leading_icon = find_leading_child_report(
+                content_html,
+                child_reports or [],
+                component="icon",
+                slot="icon",
+            )
             if leading_icon is not None:
-                icon_html, rest = leading_icon
+                report, rest = leading_icon
                 if rest and "<" not in rest:
-                    return f'{icon_html}<span data-apui-slot="label">{rest}</span>'
+                    return f'{report.html.strip()}<span data-apui-slot="label">{rest}</span>'
             return content_html
         return f'<span data-apui-slot="label">{stripped}</span>'
 
-    def find_leading_icon(
-        self,
-        content_html: str,
-        child_reports: list[ChildReport],
-    ) -> tuple[str, str] | None:
-        stripped = content_html.strip()
-        for report in child_reports:
-            if report.component != "icon" or report.slot != "icon":
-                continue
-            icon_html = report.html.strip()
-            if stripped.startswith(icon_html):
-                return icon_html, stripped[len(icon_html) :].strip()
-        return None
-
     def has_leading_icon(self, content_html: str, child_reports: list[ChildReport]) -> bool:
-        return self.find_leading_icon(content_html, child_reports) is not None
+        return (
+            find_leading_child_report(
+                content_html,
+                child_reports,
+                component="icon",
+                slot="icon",
+            )
+            is not None
+        )
 
     def get_child_reports(self, context: Context) -> list[ChildReport]:
         frame = get_current_component_frame(context)

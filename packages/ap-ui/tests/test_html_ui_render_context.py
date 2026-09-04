@@ -6,6 +6,9 @@ from alliance_platform.ui.templatetags.alliance_platform.html_components.render_
     collect_child_reports,
 )
 from alliance_platform.ui.templatetags.alliance_platform.html_components.render_context import (
+    find_leading_child_report,
+)
+from alliance_platform.ui.templatetags.alliance_platform.html_components.render_context import (
     find_render_payload,
 )
 from alliance_platform.ui.templatetags.alliance_platform.html_components.render_context import (
@@ -17,6 +20,27 @@ from django.test import SimpleTestCase
 
 
 class HtmlUIRenderContextTestCase(SimpleTestCase):
+    def test_leading_child_report_must_anchor_at_the_start(self):
+        report = ChildReport(component="icon", slot="icon", html="<i>icon</i>")
+
+        self.assertEqual(
+            find_leading_child_report(
+                " <i>icon</i> Label ",
+                [report],
+                component="icon",
+                slot="icon",
+            ),
+            (report, "Label"),
+        )
+        self.assertIsNone(
+            find_leading_child_report(
+                "<span><i>icon</i></span> Label",
+                [report],
+                component="icon",
+                slot="icon",
+            )
+        )
+
     def test_nearest_typed_payload_is_restored_after_nested_frame(self):
         context = Context()
 

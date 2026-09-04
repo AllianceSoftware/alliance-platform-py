@@ -115,6 +115,25 @@ def report_child(context: Context, report: ChildReport):
         frame.child_reports.append(report)
 
 
+def find_leading_child_report(
+    rendered_html: str,
+    reports: list[ChildReport],
+    *,
+    component: str,
+    slot: str | None,
+) -> tuple[ChildReport, str] | None:
+    """Find a reported direct child anchored at the start of its parent's rendered HTML."""
+
+    stripped = rendered_html.strip()
+    for report in reports:
+        if report.component != component or report.slot != slot:
+            continue
+        child_html = report.html.strip()
+        if stripped.startswith(child_html):
+            return report, stripped[len(child_html) :].strip()
+    return None
+
+
 def generate_html_id(context: Context, prefix: str) -> str:
     state = get_document_render_state(context)
     state.id_counter += 1
