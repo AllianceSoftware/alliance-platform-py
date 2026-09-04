@@ -29,7 +29,7 @@ const MENUBAR_COMPONENTS = new Set(["menubar"]);
 const uiPackageDirValue = process.env.AP_UI_UI_PACKAGE_DIR;
 if (!uiPackageDirValue) {
   throw new Error(
-    "AP_UI_UI_PACKAGE_DIR must point to the @alliancesoftware/ui package",
+    "AP_UI_UI_PACKAGE_DIR must point to the @alliancesoftware/ui package"
   );
 }
 const uiPackageDir = path.resolve(uiPackageDirValue);
@@ -51,7 +51,7 @@ async function loadRendererRuntime() {
 
   if (!React?.createElement || typeof renderToStaticMarkup !== "function") {
     throw new Error(
-      "Failed to load React rendering runtime. Ensure this script is run under a TS-aware runtime (for example vite-node).",
+      "Failed to load React rendering runtime. Ensure this script is run under a TS-aware runtime (for example vite-node)."
     );
   }
 
@@ -76,64 +76,67 @@ async function loadParityComponents(component) {
   if (component === "button") {
     components = {
       Button: await importDefault(
-        path.join(uiPackageDir, "components/button/Button.tsx"),
+        path.join(uiPackageDir, "components/button/Button.tsx")
+      ),
+      CheckOutlined: await importDefault(
+        path.join(uiPackageDir, "../icons/outlined/CheckOutlined.tsx")
       ),
     };
   } else if (component === "button_group") {
     components = {
       Button: await importDefault(
-        path.join(uiPackageDir, "components/button/Button.tsx"),
+        path.join(uiPackageDir, "components/button/Button.tsx")
       ),
       ButtonGroup: await importDefault(
-        path.join(uiPackageDir, "components/button/ButtonGroup.tsx"),
+        path.join(uiPackageDir, "components/button/ButtonGroup.tsx")
       ),
     };
   } else if (component === "text_input") {
     components = {
       TextInput: await importDefault(
-        path.join(uiPackageDir, "components/text-input/TextInput.tsx"),
+        path.join(uiPackageDir, "components/text-input/TextInput.tsx")
       ),
     };
   } else if (component === "text_area") {
     components = {
       TextArea: await importDefault(
-        path.join(uiPackageDir, "components/text-input/TextArea.tsx"),
+        path.join(uiPackageDir, "components/text-input/TextArea.tsx")
       ),
     };
   } else if (component === "number_input") {
     components = {
       NumberInput: await importDefault(
-        path.join(uiPackageDir, "components/number-input/NumberInput.tsx"),
+        path.join(uiPackageDir, "components/number-input/NumberInput.tsx")
       ),
     };
   } else if (component === "inline_alert") {
     components = {
       InlineAlert: await importDefault(
-        path.join(uiPackageDir, "components/inline-alert/InlineAlert.tsx"),
+        path.join(uiPackageDir, "components/inline-alert/InlineAlert.tsx")
       ),
       Content: await importDefault(
-        path.join(uiPackageDir, "components/layout/Content.tsx"),
+        path.join(uiPackageDir, "components/layout/Content.tsx")
       ),
       Heading: await importDefault(
-        path.join(uiPackageDir, "components/layout/Heading.tsx"),
+        path.join(uiPackageDir, "components/layout/Heading.tsx")
       ),
       Header: await importDefault(
-        path.join(uiPackageDir, "components/layout/Header.tsx"),
+        path.join(uiPackageDir, "components/layout/Header.tsx")
       ),
       Footer: await importDefault(
-        path.join(uiPackageDir, "components/layout/Footer.tsx"),
+        path.join(uiPackageDir, "components/layout/Footer.tsx")
       ),
       AlertCircleOutlined: await importDefault(
-        path.join(uiPackageDir, "../icons/outlined/AlertCircleOutlined.tsx"),
+        path.join(uiPackageDir, "../icons/outlined/AlertCircleOutlined.tsx")
       ),
       AlertTriangleOutlined: await importDefault(
-        path.join(uiPackageDir, "../icons/outlined/AlertTriangleOutlined.tsx"),
+        path.join(uiPackageDir, "../icons/outlined/AlertTriangleOutlined.tsx")
       ),
       CheckCircleOutlined: await importDefault(
-        path.join(uiPackageDir, "../icons/outlined/CheckCircleOutlined.tsx"),
+        path.join(uiPackageDir, "../icons/outlined/CheckCircleOutlined.tsx")
       ),
       InfoCircleOutlined: await importDefault(
-        path.join(uiPackageDir, "../icons/outlined/InfoCircleOutlined.tsx"),
+        path.join(uiPackageDir, "../icons/outlined/InfoCircleOutlined.tsx")
       ),
     };
   } else if (component === "table") {
@@ -142,10 +145,10 @@ async function loadParityComponents(component) {
     const reactStately = await importBareModule("react-stately");
     components = {
       Table: await importDefault(
-        path.join(uiPackageDir, "components/table/Table.tsx"),
+        path.join(uiPackageDir, "components/table/Table.tsx")
       ),
       ColumnHeaderLink: await importDefault(
-        path.join(uiPackageDir, "components/table/ColumnHeaderLink.tsx"),
+        path.join(uiPackageDir, "components/table/ColumnHeaderLink.tsx")
       ),
       TableHeader: reactStately.TableHeader,
       TableBody: reactStately.TableBody,
@@ -155,7 +158,7 @@ async function loadParityComponents(component) {
     };
   } else if (component === "menubar") {
     const Menubar = await importDefault(
-      path.join(uiPackageDir, "components/menu-bar/Menubar.tsx"),
+      path.join(uiPackageDir, "components/menu-bar/Menubar.tsx")
     );
     components = {
       Menubar,
@@ -163,7 +166,7 @@ async function loadParityComponents(component) {
       SubMenu: Menubar.SubMenu,
       Section: Menubar.Section,
       Pencil01Outlined: await importDefault(
-        path.join(uiPackageDir, "../icons/outlined/Pencil01Outlined.tsx"),
+        path.join(uiPackageDir, "../icons/outlined/Pencil01Outlined.tsx")
       ),
     };
   } else {
@@ -252,7 +255,7 @@ function normalizeClassTokens(classValue, allowedPrefixes, keepClassTokens) {
       return true;
     }
     const hasChildToken = deduped.some(
-      (other) => other !== token && other.startsWith(`${token}_`),
+      (other) => other !== token && other.startsWith(`${token}_`)
     );
     if (hasChildToken) {
       return false;
@@ -277,7 +280,7 @@ function parseHtml(html) {
 
 function elements(root) {
   return [root, ...root.querySelectorAll("*")].filter(
-    (node) => node.nodeType === 1,
+    (node) => node.nodeType === 1
   );
 }
 
@@ -298,7 +301,7 @@ function normalizeInlineStyles(root) {
     if (value !== null) {
       element.setAttribute(
         "style",
-        value.replace(/:\s*/g, ": ").replace(/;\s*/g, "; ").trim(),
+        value.replace(/:\s*/g, ": ").replace(/;\s*/g, "; ").trim()
       );
     }
   }
@@ -363,7 +366,7 @@ function normalizeInputComponent(root, component) {
   const presentIds = new Set(
     elements(root)
       .map((element) => element.getAttribute("id"))
-      .filter((id) => id?.startsWith("react-aria-")),
+      .filter((id) => id?.startsWith("react-aria-"))
   );
   for (const element of elements(root)) {
     const describedBy = element.getAttribute("aria-describedby");
@@ -372,8 +375,7 @@ function normalizeInputComponent(root, component) {
         .split(/\s+/)
         .filter(
           (token) =>
-            token &&
-            (!token.startsWith("react-aria-") || presentIds.has(token)),
+            token && (!token.startsWith("react-aria-") || presentIds.has(token))
         );
       if (tokens.length) {
         element.setAttribute("aria-describedby", tokens.join(" "));
@@ -445,7 +447,7 @@ function normalizeTableComponent(root, component) {
     if (style !== null) {
       const normalizedStyle = style.replace(
         /(--[\w-]+)__[a-z0-9]+\s*:/g,
-        "$1: ",
+        "$1: "
       );
       element.setAttribute("style", normalizedStyle);
     }
@@ -456,7 +458,7 @@ function normalizeTableComponent(root, component) {
   for (const row of root.querySelectorAll("tbody > tr")) {
     const classNames = tokenizeClasses(row.getAttribute("class")).filter(
       (className) =>
-        className !== "Table_row" && !className.startsWith("Table_row__"),
+        className !== "Table_row" && !className.startsWith("Table_row__")
     );
     if (classNames.length) {
       row.setAttribute("class", classNames.join(" "));
@@ -501,7 +503,7 @@ function normalizeMenubarComponent(root, component) {
     if (style !== null) {
       const normalizedStyle = style.replace(
         /(--[\w-]+)__[a-z0-9]+\s*:/g,
-        "$1: ",
+        "$1: "
       );
       element.setAttribute("style", normalizedStyle);
     }
@@ -528,7 +530,7 @@ function normalizeInlineAlertComponent(root) {
     return;
   }
   const contentChildren = Array.from(alertInner.children).filter(
-    (child) => !child.hasAttribute("data-alerticon"),
+    (child) => !child.hasAttribute("data-alerticon")
   );
   if (
     contentChildren.length === 1 &&
@@ -554,7 +556,7 @@ function injectButtonGroupRuntime(root) {
 function serializeHtml(root) {
   return root.innerHTML.replace(
     /<(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)([^>]*)>/gi,
-    "<$1$2/>",
+    "<$1$2/>"
   );
 }
 
@@ -563,7 +565,7 @@ function normalizeRenderedHtml(
   testCase,
   html,
   allowedPrefixes,
-  keepClassTokens,
+  keepClassTokens
 ) {
   if (!html.trim()) {
     return "";
@@ -575,7 +577,9 @@ function normalizeRenderedHtml(
 
   if (BUTTON_COMPONENTS.has(component)) {
     removeAttributeMatching(root, "type", "button");
-    if (!testCase.template.includes('data-apui-slot="icon"')) {
+    // React optimistically marks a sole element as icon-only during SSR. Preserve that state only
+    // for cases whose static source can make the same determination without mounting a DOM.
+    if (!testCase.preserve_icon_only) {
       removeAttributeMatching(root, "data-icon-only", "true");
     }
   }
@@ -599,7 +603,7 @@ function normalizeRenderedHtml(
     const classTokens = normalizeClassTokens(
       element.getAttribute("class"),
       allowedPrefixes,
-      keepClassTokens,
+      keepClassTokens
     );
     if (classTokens.length) {
       element.setAttribute("class", classTokens.join(" "));
@@ -644,8 +648,8 @@ async function generateFixtureFromModule(modulePath, runtime) {
         testCase.buildElement({
           React: runtime.React,
           components: parityComponents,
-        }),
-      ),
+        })
+      )
     );
     if (currentUrl) {
       delete globalThis.globalSsrContext;
@@ -655,7 +659,7 @@ async function generateFixtureFromModule(modulePath, runtime) {
       testCase,
       html,
       allowedPrefixes,
-      keepClassTokens,
+      keepClassTokens
     );
     serializedCases.push({
       name: testCase.name,
@@ -674,7 +678,7 @@ async function generateFixtureFromModule(modulePath, runtime) {
   const fixturePath = path.resolve(
     __dirname,
     "../tests/fixtures",
-    `ui_html_${component}_parity.json`,
+    `ui_html_${component}_parity.json`
   );
   const serializedFixture = `${JSON.stringify(fixture, null, 2)}\n`;
   const formattedFixture = await formatFixtureJson(serializedFixture);
