@@ -8,7 +8,8 @@ groups, text and number inputs, text areas, Menubars, and tables. The components
 links and form submission, permission-aware menu pruning, backend-driven table sorting, unique input
 associations, and deduplicated external runtimes for interactive Menubars and NumberInputs. Inline
 Menubars can optionally persist expanded submenu paths in a server-readable cookie so the initial HTML
-renders without a state flash.
+renders without a state flash. Static table sort icons remain inline while their SVG files are tracked
+as build dependencies, avoiding duplicate document images.
 
 The dispatcher accepts bulk props through the reserved `props` argument and exports `merge_props` from
 the UI template library. New backend-neutral `RenderableContent` preserves trusted HTML form help text

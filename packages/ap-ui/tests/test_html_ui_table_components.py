@@ -692,3 +692,24 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
             )
         )
         self.assertTrue(any(path.endswith("@alliancesoftware/icons/Icon.css.ts") for path in resource_paths))
+
+    def test_resources_and_collected_document_keep_sort_icons_inline(self):
+        with self.setup_render_context() as asset_context:
+            output = self.render_ui_document(
+                make_sortable_table_template(),
+                {"request": self.request_factory.get("/users/")},
+            )
+            resource_paths = [str(resource.path) for resource in asset_context.get_resources_for_bundling()]
+
+        for expected in (
+            "@alliancesoftware/ui/components/table/Table.css.ts",
+            "@alliancesoftware/icons/Icon.css.ts",
+            "static-svg/outlined/ArrowUpOutlined.svg",
+            "static-svg/outlined/ArrowDownOutlined.svg",
+        ):
+            with self.subTest(resource=expected):
+                self.assertTrue(any(path.endswith(expected) for path in resource_paths))
+        self.assertEqual(output.count("<svg"), 2)
+        self.assertNotIn("<img", output)
+        self.assertIn("Table.css.ts", output)
+        self.assertIn("Icon.css.ts", output)
