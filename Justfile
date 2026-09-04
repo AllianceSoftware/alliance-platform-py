@@ -235,14 +235,7 @@ check-html-ui-parity-fixtures js_repo="../alliance-platform-js":
     set -euo pipefail
     ./packages/ap-ui/scripts/syncHtmlUiParityFixtures.sh --js-repo "{{js_repo}}"
     git diff --exit-code -- \
-        packages/ap-ui/tests/fixtures/ui_html_button_parity.json \
-        packages/ap-ui/tests/fixtures/ui_html_button_group_parity.json \
-        packages/ap-ui/tests/fixtures/ui_html_text_input_parity.json \
-        packages/ap-ui/tests/fixtures/ui_html_number_input_parity.json \
-        packages/ap-ui/tests/fixtures/ui_html_text_area_parity.json \
-        packages/ap-ui/tests/fixtures/ui_html_inline_alert_parity.json \
-        packages/ap-ui/tests/fixtures/ui_html_table_parity.json \
-        packages/ap-ui/tests/fixtures/ui_html_menubar_parity.json
+        packages/ap-ui/tests/fixtures/ui_html_*_parity.json
 
 # Build docs and watch for changes
 docs-watch:
