@@ -14,6 +14,7 @@ from ..base import enum_prop_rule
 from ..base import typed_prop_rule
 from ..render_context import ChildReport
 from ..render_context import collect_child_reports
+from ..render_context import find_leading_child_report
 from ..render_context import get_current_component_frame
 
 VALID_VARIANTS = ("solid", "outlined", "plain", "light", "link")
@@ -167,26 +168,17 @@ class UIButtonRenderer(BaseHtmlUIComponentRenderer):
             return ""
         if "<" not in stripped and ">" not in stripped:
             return str(mark_safe(f"<span>{conditional_escape(stripped)}</span>"))
-        leading_icon = self._find_leading_icon(children_html, child_reports)
+        leading_icon = find_leading_child_report(
+            children_html,
+            child_reports,
+            component="icon",
+            slot="icon",
+        )
         if leading_icon is not None:
-            icon_html, rest = leading_icon
+            report, rest = leading_icon
             if rest and "<" not in rest and ">" not in rest:
-                return str(mark_safe(f"{icon_html}<span>{rest}</span>"))
+                return str(mark_safe(f"{report.html.strip()}<span>{rest}</span>"))
         return children_html
-
-    def _find_leading_icon(
-        self,
-        children_html: str,
-        child_reports: list[ChildReport],
-    ) -> tuple[str, str] | None:
-        stripped = children_html.strip()
-        for report in child_reports:
-            if report.component != "icon" or report.slot != "icon":
-                continue
-            icon_html = report.html.strip()
-            if stripped.startswith(icon_html):
-                return icon_html, stripped[len(icon_html) :].strip()
-        return None
 
     def _is_icon_only(self, children_html: str, child_reports: list[ChildReport]) -> bool:
         icon_reports = [
