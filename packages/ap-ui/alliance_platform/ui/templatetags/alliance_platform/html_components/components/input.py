@@ -18,11 +18,11 @@ from alliance_platform.ui.icons import get_static_icon_resource
 
 from ..base import BaseHtmlUIComponentRenderer
 from ..base import enum_prop_rule
-from ..base import get_document_render_context
 from ..base import is_event_handler_attr
 from ..content import has_renderable_content
 from ..content import is_rich_content_value
 from ..content import render_content
+from ..render_context import generate_html_id
 from ..runtime import add_auto_attach_marker
 from ..static_icon import ICON_STYLE_PATH
 
@@ -46,9 +46,6 @@ _FOCUS_RING_STYLE_PATH = "@alliancesoftware/ui/styles/base/focusRing.css.ts"
 _TEXT_AREA_RUNTIME_MODULE_PATH = "@alliancesoftware/ui/components/text-input/TextArea.auto.ts"
 _NUMBER_INPUT_STYLE_PATH = "@alliancesoftware/ui/components/number-input/NumberInput.css.ts"
 _NUMBER_INPUT_RUNTIME_MODULE_PATH = "@alliancesoftware/ui/components/number-input/NumberInput.auto.ts"
-
-# Key used in the document render context to keep generated ids unique within a document render.
-_HTML_ID_COUNTER_KEY = "alliance_platform_ui_html_id_counter"
 
 _ALERT_CIRCLE_ICON = "AlertCircleOutlined"
 _CHECK_ICON = "CheckOutlined"
@@ -147,10 +144,7 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
 
     def generate_html_id(self, context: Context) -> str:
         """Generate a deterministic id, unique within the current document render."""
-        render_context = get_document_render_context(context)
-        counter = (render_context.get(_HTML_ID_COUNTER_KEY) or 0) + 1
-        render_context[_HTML_ID_COUNTER_KEY] = counter
-        return f"apui-{self.apui_component_name}-{counter}"
+        return generate_html_id(context, f"apui-{self.apui_component_name}")
 
     def resolve_labeled_input_state(self, context: Context, props: dict[str, Any]) -> LabeledInputState:
         label_position = str(props.get("labelPosition", "top"))

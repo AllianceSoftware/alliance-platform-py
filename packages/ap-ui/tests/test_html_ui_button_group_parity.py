@@ -6,6 +6,7 @@ import warnings
 from alliance_platform.ui.templatetags.alliance_platform.html_components.components.button_group import (
     UIButtonGroupRenderer,
 )
+from django.template import Template
 from django.template import TemplateSyntaxError
 
 from tests.parity.base import HtmlUIParityTestCase
@@ -85,6 +86,19 @@ class UIButtonGroupParityTestCase(HtmlUIParityTestCase):
         self.assertEqual(caught, [])
         self.assertIn('data-size="sm"', output)
         self.assertIn("Icon_sizes_xxs", output)
+
+    def test_group_slot_defaults_survive_include_only(self):
+        with self.setup_render_context():
+            partial = Template('{% load alliance_platform.ui %}{% ui "button" %}Included action{% endui %}')
+            output = self.render_ui_template(
+                '{% ui "button_group" variant="outlined" size="sm" %}'
+                "{% include button_partial only %}"
+                "{% endui %}",
+                {"button_partial": partial},
+            )
+
+        self.assertIn('data-variant="outlined"', output)
+        self.assertIn('data-size="sm"', output)
 
     def test_group_forwards_static_div_props_and_drops_unknown_and_event_props(self):
         output, caught = self.render_with_warnings(

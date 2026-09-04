@@ -129,11 +129,9 @@ as plain `<a href>` links that update a backend query parameter, mirroring `Colu
 
 ### Cross-component render state
 
-The components coordinate through a `TableRenderState` stack stored in `context.render_context`
-(`_TABLE_STATE_KEY`), pushed by `table` around its children via the
-`render_children_for_component()` hook on the base renderer (which, unlike `render_children()`,
-receives the resolved props). `render_context` is shared across `{% include %}` — including
-`only` — within one template render, and a stack supports tables nested inside cells:
+The components coordinate through a typed `TableRenderState` payload on the shared document
+render-frame stack. The frame stack is shared across `{% include %}` — including `only` — within
+one template render, and nearest-payload lookup supports tables nested inside cells:
 
 1. `table` builds the state from its props (sort order/mode/behaviour, query param, empty state)
    and pushes it while children render.
@@ -144,9 +142,8 @@ receives the resolved props). `render_context` is shared across `{% include %}` 
 4. Each `table_cell` consumes the column state at the current index to inherit alignment and
    row-header status, advancing the index by the cell's `colSpan` so later cells stay aligned.
 
-Components rendered outside their expected parent warn and render fallback markup rather than
-failing (CRUD pages should not 500 because of a conditional cell); rows with more cells than
-registered columns warn once per table.
+Components rendered outside their expected parent warn and render nothing; rows with more cells
+than registered columns warn once per table.
 
 ### Intentionally unsupported React Table features
 
@@ -195,14 +192,13 @@ toggle through `data-open-class` / `data-focused-class` / `data-popover-open-cla
 
 ### Cross-component render state
 
-The components coordinate through a `MenubarRenderState` stack in the document-level base layer
-of `context.render_context` (`_MENUBAR_STATE_KEY`), with one `MenubarRenderFrame` per menu grouping
-(root menu, submenu popup, section). Django gives every included template a fresh top render-context
-layer, so component state and generated-ID counters must use `get_document_render_context()` to
-survive `{% include %}` (including `only`). `menubar`, `menubar_submenu` and `menubar_section`
-render their children from inside `render_component()` (returning `""` from
-`render_children_for_component()`) so the frame wraps the children and the child counts are
-available when deciding what to render:
+All static components share one document-level render-frame stack. Frames carry inherited slot
+defaults, typed Table/Menubar payloads, opt-in direct-child reports and the document ID allocator.
+The stack survives `{% include %}` (including `only`), unlike ordinary template variables. A
+`MenubarRenderState` remains the typed menu payload, with a `MenubarRenderFrame` for each grouping
+(root menu, submenu popup, section). `menubar`, `menubar_submenu` and `menubar_section` render their
+children while the appropriate grouping frame is active so child counts are available when
+deciding what to render:
 
 1. Items increment the current frame's `item_count` only when they actually render — a denied
    `url_with_perm` href raises `OmitComponentFromRendering`, which the static renderer base now
@@ -214,8 +210,10 @@ available when deciding what to render:
    ancestor submenu triggers and sections.
 4. The first enabled root-level item claims `tabindex="0"` (or the `default_focused_key` item);
    everything else renders `tabindex="-1"` and the runtime moves the roving tab stop.
-5. Leading static icons receive the `itemIcon` slot class, adjacent plain text is wrapped like the
-   React `Text` component, and `hasLeadingIcon` class/data state is propagated to the containing
+5. Static icons publish a structured report after successful uncaptured rendering. Menubar items
+   use ordered reports anchored against their rendered children to identify a direct leading icon;
+   adjacent plain text is wrapped like the React `Text` component, and `hasLeadingIcon` state is
+   propagated to the containing
    root or submenu `<ul>` for consistent indentation. The item wrapper and content span emit the
    shared `data-apui-menu-item-content-wrapper` and `data-apui-menu-item-content` markers used by
    `Menubar.css.ts` to space leading icons. Each icon-bearing item also emits its own
@@ -225,6 +223,15 @@ available when deciding what to render:
    popover/menu container, section owner/heading/items, and separator. Sections and separators use
    the same zero-based `data-level` convention as menu items; heading icon and label content use
    `data-apui-slot="icon"` and `data-apui-slot="label"`.
+
+Button uses the same direct-child reports for automatic icon-only detection. Explicit
+`is_icon_only` and Menubar `text_value` remain the escape hatches for deliberately composed or
+otherwise ambiguous arbitrary HTML. Reports are not published by components rendered with
+`as variable`, or by components omitted during permission resolution.
+
+Static components rendered inside a React component's children continue to participate in the
+surrounding static render frames. This preserves the existing composition behaviour; use a layout
+component that replaces its slot scope when a deliberate inheritance boundary is required.
 
 Section separators are decided *after* pruning (`is_first` = parent frame count at render time),
 so a pruned first section never leaves a leading separator behind.

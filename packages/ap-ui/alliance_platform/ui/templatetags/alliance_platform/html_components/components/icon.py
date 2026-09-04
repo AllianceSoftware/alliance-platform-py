@@ -14,6 +14,7 @@ from alliance_platform.ui.icons import get_static_icon_resource
 from alliance_platform.ui.icons import validate_icon_name
 
 from ..base import BaseHtmlUIComponentRenderer
+from ..render_context import ChildReport
 from ..static_icon import ICON_STYLE_PATH
 from ..static_icon import render_static_icon
 
@@ -79,6 +80,18 @@ class UIIconRenderer(BaseHtmlUIComponentRenderer):
         except (FileNotFoundError, TemplateSyntaxError, ValueError) as exc:
             warnings.warn(f"Could not render static icon '{name}': {exc}")
             return ""
+
+    def build_child_report(
+        self,
+        context: Context,
+        props: dict[str, Any],
+        rendered: str,
+    ) -> ChildReport | None:
+        return ChildReport(
+            component=self.apui_component_name,
+            slot=str(props.get("slot", "icon")),
+            html=rendered,
+        )
 
     def _resolve_static_icon_name(self) -> str:
         raw_name = self.props.get("name")

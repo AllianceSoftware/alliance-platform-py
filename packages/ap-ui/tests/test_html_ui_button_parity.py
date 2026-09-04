@@ -60,6 +60,38 @@ class UIButtonParityTestCase(HtmlUIParityTestCase):
 
         self.assertNotIn("data-icon-only", output)
 
+    def test_single_rendered_icon_is_detected_as_icon_only(self):
+        with self.setup_render_context():
+            output = self.render_ui_template(
+                '{% ui "button" aria_label="Approve" %}'
+                '{% ui "icon" name="CheckOutlined" %}{% endui %}'
+                "{% endui %}"
+            )
+
+        self.assertIn('data-icon-only="true"', output)
+
+    def test_icon_followed_by_wrapped_text_is_not_detected_as_icon_only(self):
+        with self.setup_render_context():
+            output = self.render_ui_template(
+                '{% ui "button" %}'
+                '{% ui "icon" name="CheckOutlined" %}{% endui %}'
+                "<span>Approve</span>"
+                "{% endui %}"
+            )
+
+        self.assertNotIn("data-icon-only", output)
+
+    def test_captured_icon_does_not_report_as_a_rendered_child(self):
+        with self.setup_render_context():
+            output = self.render_ui_template(
+                '{% ui "button" %}'
+                '{% ui "icon" name="CheckOutlined" as saved_icon %}{% endui %}'
+                "{{ saved_icon }}"
+                "{% endui %}"
+            )
+
+        self.assertNotIn("data-icon-only", output)
+
     def test_button_size_supplies_the_react_default_icon_size(self):
         expected_icon_sizes = {
             "sm": "xxs",

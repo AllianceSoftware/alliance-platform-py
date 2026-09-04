@@ -8,12 +8,18 @@ from typing import cast
 from django.template import Context
 
 from .constants import UI_SLOT_CONTEXT_KEY
+from .render_context import RenderFrame
+from .render_context import get_document_render_state
+from .render_context import push_render_frame
 
 SlotProps = dict[str, Any]
 SlotContext = dict[str, SlotProps]
 
 
 def get_slot_context(context: Context) -> SlotContext:
+    for frame in reversed(get_document_render_state(context).frames):
+        if frame.slots is not None:
+            return frame.slots
     value = context.get(UI_SLOT_CONTEXT_KEY, {})
     if not isinstance(value, dict):
         return {}
@@ -36,12 +42,12 @@ def merge_slot_props(slot_props: SlotProps | None, child_props: SlotProps) -> Sl
 def push_slot_scope(context: Context, slots: SlotContext) -> Iterator[None]:
     existing = get_slot_context(context)
     next_slots = {**existing, **slots}
-    with context.push(**{UI_SLOT_CONTEXT_KEY: next_slots}):
+    with push_render_frame(context, RenderFrame(slots=next_slots)):
         yield
 
 
 @contextmanager
 def replace_slot_scope(context: Context, slots: SlotContext) -> Iterator[None]:
     """Replace inherited slots for a nested component region, restoring them afterward."""
-    with context.push(**{UI_SLOT_CONTEXT_KEY: slots}):
+    with push_render_frame(context, RenderFrame(slots=slots)):
         yield
