@@ -69,10 +69,4 @@ jobs:
       - name: Check fixture drift
         run: |
           git diff --exit-code -- \
-            packages/ap-ui/tests/fixtures/ui_html_button_parity.json \
-            packages/ap-ui/tests/fixtures/ui_html_button_group_parity.json \
-            packages/ap-ui/tests/fixtures/ui_html_text_input_parity.json \
-            packages/ap-ui/tests/fixtures/ui_html_number_input_parity.json \
-            packages/ap-ui/tests/fixtures/ui_html_text_area_parity.json \
-            packages/ap-ui/tests/fixtures/ui_html_table_parity.json \
-            packages/ap-ui/tests/fixtures/ui_html_menubar_parity.json
+            packages/ap-ui/tests/fixtures/ui_html_*_parity.json
