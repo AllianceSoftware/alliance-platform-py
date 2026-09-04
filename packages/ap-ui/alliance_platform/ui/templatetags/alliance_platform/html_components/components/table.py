@@ -14,20 +14,17 @@ semantics are preferred: no grid roles or tab indexes are rendered, ``aria-sort`
 are set on header cells, and row-header cells render as ``<td role="rowheader">`` (rather than
 ``<th scope="row">``) so browser default ``<th>`` styling cannot diverge from the React output.
 
-Cross-component coordination (column metadata inherited by body cells, row/cell counting for the
-empty state) is done through a :class:`TableRenderState` stack stored in
-``context.render_context``, which survives ``{% include %}`` (including ``only``) within a single
-template render.
+Cross-component coordination (column metadata inherited by body cells and row/cell counting for
+the empty state) uses :class:`TableRenderState` as a typed payload on the shared document
+render-frame stack. It survives ``{% include ... only %}`` within a single template render.
 """
 
 from __future__ import annotations
 
-from contextlib import contextmanager
 from dataclasses import dataclass
 from dataclasses import field
 import re
 from typing import Any
-from typing import Iterator
 from typing import Literal
 from typing import Mapping
 import warnings
@@ -45,12 +42,11 @@ from ..base import BaseHtmlUIComponentRenderer
 from ..base import enum_prop_rule
 from ..base import style_dict_to_string
 from ..content import render_content
+from ..render_context import RenderFrame
+from ..render_context import find_render_payload
 from ..static_icon import ICON_STYLE_PATH
 
 _TABLE_STYLE_PATH = "@alliancesoftware/ui/components/table/Table.css.ts"
-
-# Key used in ``context.render_context`` for the stack of in-progress table renders.
-_TABLE_STATE_KEY = "alliance_platform_ui_table_state"
 
 VALID_SORT_MODES = ("single", "multiple")
 VALID_SORT_BEHAVIORS = ("toggle", "replace")
@@ -157,23 +153,7 @@ class TableRenderState:
 
 
 def get_current_table_state(context: Context) -> TableRenderState | None:
-    stack = context.render_context.get(_TABLE_STATE_KEY)
-    if not stack:
-        return None
-    return stack[-1]
-
-
-@contextmanager
-def _push_table_state(context: Context, state: TableRenderState) -> Iterator[None]:
-    stack = context.render_context.get(_TABLE_STATE_KEY)
-    if stack is None:
-        stack = []
-        context.render_context[_TABLE_STATE_KEY] = stack
-    stack.append(state)
-    try:
-        yield
-    finally:
-        stack.pop()
+    return find_render_payload(context, TableRenderState)
 
 
 class UITableComponentRendererBase(BaseHtmlUIComponentRenderer):
@@ -262,9 +242,11 @@ class UITableRenderer(UITableComponentRendererBase):
             if not isinstance(resource, ImageResource)
         ]
 
-    def render_children_for_component(self, context: Context, props: dict[str, Any]) -> str:
-        with _push_table_state(context, self.build_table_state(context, props)):
-            return self.render_children(context)
+    def build_render_frame(self, context: Context, props: dict[str, Any]) -> RenderFrame:
+        return RenderFrame(
+            component=self.get_component_prop_name(),
+            payload=self.build_table_state(context, props),
+        )
 
     def build_table_state(self, context: Context, props: dict[str, Any]) -> TableRenderState:
         sort_mode = str(props.get("sortMode", "single"))
@@ -592,7 +574,7 @@ class UITableBodyRenderer(UITableComponentRendererBase):
     allow_aria_props = True
 
     def render_children_for_component(self, context: Context, props: dict[str, Any]) -> str:
-        # The row-count snapshot lives on the render state (in context.render_context), not on
+        # The row-count snapshot lives on the typed render-frame state, not on
         # self: this renderer is a template node, and per-render state on the instance would leak
         # between concurrent renders of a shared compiled template.
         state = get_current_table_state(context)

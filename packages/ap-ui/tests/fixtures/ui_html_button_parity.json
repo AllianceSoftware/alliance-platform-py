@@ -24,7 +24,7 @@
     },
     {
       "name": "icon_only",
-      "template": "{% ui \"button\" %}<span data-apui-slot=\"icon\"></span>{% endui %}",
+      "template": "{% ui \"button\" is_icon_only=True %}<span data-apui-slot=\"icon\"></span>{% endui %}",
       "expected_html": "<button class=\"focusRing_base Button_baseButton Button_sizes_md\" data-apui=\"button\" data-variant=\"solid\" data-color=\"primary\" data-size=\"md\" data-shape=\"default\" data-icon-only=\"true\"><span data-apui-slot=\"icon\"></span></button>",
       "expected_warnings": [],
       "meta": {}

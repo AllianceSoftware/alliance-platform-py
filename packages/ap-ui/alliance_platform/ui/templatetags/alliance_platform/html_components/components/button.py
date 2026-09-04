@@ -12,6 +12,9 @@ from alliance_platform.frontend.bundler.frontend_resource import FrontendResourc
 from ..base import BaseHtmlUIComponentRenderer
 from ..base import enum_prop_rule
 from ..base import typed_prop_rule
+from ..render_context import ChildReport
+from ..render_context import collect_child_reports
+from ..render_context import get_current_component_frame
 
 VALID_VARIANTS = ("solid", "outlined", "plain", "light", "link")
 VALID_COLORS = ("primary", "secondary", "destructive", "gray")
@@ -36,7 +39,6 @@ BUTTON_PROP_RULES = {
 _BUTTON_STYLE_PATH = "@alliancesoftware/ui/components/button/Button.css.ts"
 _FOCUS_RING_STYLE_PATH = "@alliancesoftware/ui/styles/base/focusRing.css.ts"
 
-_ICON_ONLY_RE = re.compile(r"^\s*<[^>]+data-apui-slot=([\"'])icon\1[^>]*>.*</[^>]+>\s*$", re.DOTALL)
 _HTML_TAG_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9-]*$")
 
 _BUTTON_FORWARDED_PROPS = frozenset(
@@ -100,10 +102,11 @@ class UIButtonRenderer(BaseHtmlUIComponentRenderer):
 
     def render_children_for_component(self, context: Context, props: dict[str, Any]) -> str:
         size = str(props.get("size", "md"))
-        return self.render_children(
-            context,
-            slot_overrides={"icon": {"size": DEFAULT_ICON_SIZE_MAPPING[size]}},
-        )
+        with collect_child_reports(context):
+            return self.render_children(
+                context,
+                slot_overrides={"icon": {"size": DEFAULT_ICON_SIZE_MAPPING[size]}},
+            )
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
         variant = str(props.get("variant", "solid"))
@@ -144,9 +147,11 @@ class UIButtonRenderer(BaseHtmlUIComponentRenderer):
             attrs["disabled"] = True
 
         normalized_children = self._normalize_children(children_html)
+        frame = get_current_component_frame(context)
+        child_reports = frame.child_reports if frame is not None else []
         explicit_icon_only = props.get("isIconOnly")
         if explicit_icon_only is True or (
-            explicit_icon_only is None and self._is_icon_only(normalized_children)
+            explicit_icon_only is None and self._is_icon_only(children_html, child_reports)
         ):
             attrs["data-icon-only"] = "true"
 
@@ -160,5 +165,8 @@ class UIButtonRenderer(BaseHtmlUIComponentRenderer):
             return str(mark_safe(f"<span>{conditional_escape(stripped)}</span>"))
         return children_html
 
-    def _is_icon_only(self, children_html: str) -> bool:
-        return bool(_ICON_ONLY_RE.match(children_html.strip()))
+    def _is_icon_only(self, children_html: str, child_reports: list[ChildReport]) -> bool:
+        icon_reports = [
+            report for report in child_reports if report.component == "icon" and report.slot == "icon"
+        ]
+        return len(icon_reports) == 1 and children_html.strip() == icon_reports[0].html.strip()

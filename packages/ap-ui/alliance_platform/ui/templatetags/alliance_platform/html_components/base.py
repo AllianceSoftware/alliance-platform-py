@@ -7,7 +7,6 @@ import re
 from typing import Any
 from typing import Callable
 from typing import Mapping
-from typing import cast
 import warnings
 
 from allianceutils.util import underscore_to_camel
@@ -31,6 +30,10 @@ from alliance_platform.frontend.templatetags.react import OmitComponentFromRende
 from alliance_platform.frontend.util import transform_attribute_names
 
 from .constants import BULK_PROPS_KWARG
+from .render_context import ChildReport
+from .render_context import RenderFrame
+from .render_context import push_render_frame
+from .render_context import report_child
 from .slots import get_slot_context
 from .slots import merge_slot_props
 from .slots import push_slot_scope
@@ -183,17 +186,6 @@ def build_attrs_string(attrs: dict[str, Any]) -> str:
     return "".join(rendered_attrs)
 
 
-def get_document_render_context(context: Context) -> dict[str, Any]:
-    """Return render state shared by the root template and all included templates.
-
-    Django intentionally isolates the top layer of ``context.render_context`` for every template
-    render, including ``{% include %}``. Its base layer lives for the whole document render and is
-    the same layer Django itself uses for include-template caching, making it the appropriate home
-    for cross-template component composition state and document-unique counters.
-    """
-    return cast(dict[str, Any], context.render_context.dicts[0])
-
-
 class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
     """Base node for HTML-only UI components dispatched by ``{% ui %}``."""
 
@@ -261,12 +253,16 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
                 "This mode is for resource introspection only."
             )
         self._queue_resources()
+        report: ChildReport | None = None
         try:
             props = self.resolve_props(context)
             props = self._merge_slot_props(context, props)
             props = self.filter_component_props(props)
-            children_html = self.render_children_for_component(context, props)
-            rendered = self.render_component(context, props, children_html)
+            frame = self.build_render_frame(context, props)
+            with push_render_frame(context, frame):
+                children_html = self.render_children_for_component(context, props)
+                rendered = self.render_component(context, props, children_html)
+                report = self.build_child_report(context, props, rendered)
         except OmitComponentFromRendering:
             # Matches the React component tags: a prop can raise this to indicate the whole
             # component should not render (e.g. a denied ``url_with_perm`` href). This is expected
@@ -275,7 +271,24 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         if self.target_var:
             context[self.target_var] = rendered
             return ""
+        if rendered and report is not None:
+            report_child(context, report)
         return rendered
+
+    def build_child_report(
+        self,
+        context: Context,
+        props: dict[str, Any],
+        rendered: str,
+    ) -> ChildReport | None:
+        """Return facts this component should publish to a collecting direct parent."""
+
+        return None
+
+    def build_render_frame(self, context: Context, props: dict[str, Any]) -> RenderFrame:
+        """Build this component's frame; composite roots may attach a typed payload."""
+
+        return RenderFrame(component=self.get_component_prop_name())
 
     def resolve_props(self, context: Context) -> dict[str, Any]:
         resolved_props: dict[str, Any] = {}

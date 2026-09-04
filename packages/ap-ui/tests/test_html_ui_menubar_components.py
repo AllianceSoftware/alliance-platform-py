@@ -786,6 +786,54 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn('href="/profile/"', output)
         self.assertIn('aria-label="Dashboard" tabindex="0"', output)
 
+    def test_icon_reports_survive_include_only(self):
+        with self.setup_render_context():
+            partial = Template(
+                "{% load alliance_platform.ui %}"
+                '{% ui "menubar_item" href="/dashboard/" %}'
+                '{% ui "icon" name="Pencil01Outlined" %}{% endui %}'
+                "Dashboard"
+                "{% endui %}"
+            )
+            output = self.render_ui_template(
+                '{% ui "menubar" aria_label="Nav" %}{% include nav_item only %}{% endui %}',
+                {"nav_item": partial},
+            )
+
+        self.assertIn('aria-label="Dashboard"', output)
+        self.assertIn('data-has-leading-icon="true"', output)
+        self.assertIn('<span data-apui-slot="label">Dashboard</span>', output)
+
+    def test_captured_item_does_not_keep_an_empty_menubar_visible(self):
+        template = (
+            '{% ui "menubar" aria_label="Nav" %}'
+            '{% ui "menubar_item" href="/hidden/" as captured_item %}'
+            "Hidden"
+            "{% endui %}"
+            "{% endui %}"
+        )
+
+        output, caught = self.render_with_warnings(template)
+
+        self.assertEqual(caught, [])
+        self.assertEqual(output, "")
+
+    def test_captured_item_does_not_claim_the_root_tab_stop(self):
+        template = (
+            '{% ui "menubar" aria_label="Nav" %}'
+            '{% ui "menubar_item" href="/hidden/" as captured_item %}'
+            "Hidden"
+            "{% endui %}"
+            '{% ui "menubar_item" href="/visible/" %}Visible{% endui %}'
+            "{% endui %}"
+        )
+
+        output, caught = self.render_with_warnings(template)
+
+        self.assertEqual(caught, [])
+        self.assertIn('href="/visible/"', output)
+        self.assertIn('aria-label="Visible" tabindex="0"', output)
+
     def test_repeated_included_menubars_generate_document_unique_heading_ids(self):
         with self.setup_render_context():
             partial = Template(
