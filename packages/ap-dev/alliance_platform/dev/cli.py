@@ -24,6 +24,7 @@ from .identity import resolve_identity
 from .init_project import update_project_identity
 from .install_project import install_project
 from .install_project import resolve_install_root
+from .install_project import update_launcher
 from .lifecycle import DevEnvironment
 from .models import ConfigPaths
 from .models import DevConfig
@@ -185,6 +186,22 @@ def build_parser() -> argparse.ArgumentParser:
     install.add_argument("--force", action="store_true", help="replace existing bin/dev and config/dev.toml")
     install.add_argument("--tool-source", help="uv --from source written into bin/dev")
     install.add_argument("--django-cwd", type=Path, help="directory containing manage.py")
+
+    update_launcher_parser = subparsers.add_parser(
+        "update-launcher",
+        help="update only the generated bin/dev launcher",
+    )
+    update_launcher_parser.add_argument(
+        "path",
+        nargs="?",
+        help="project directory; defaults to discovery from cwd",
+    )
+    update_launcher_parser.add_argument("--tool-source", help="uv --from source written into bin/dev")
+    update_launcher_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="replace bin/dev even when it is not a recognized generated launcher",
+    )
 
     config = subparsers.add_parser("config", help="inspect or edit layered configuration")
     config_subparsers = config.add_subparsers(dest="config_action", required=True)
@@ -710,6 +727,16 @@ def dispatch(argv: list[str], parser: argparse.ArgumentParser | None = None) -> 
             force=args.force,
             tool_source=args.tool_source,
             django_cwd=args.django_cwd,
+        )
+        return 0
+    if args.command == "update-launcher":
+        if args.path is not None and args.project_dir is not None:
+            raise DevError("Use either update-launcher PATH or --project-dir, not both")
+        repo = resolve_install_root(args.path or args.project_dir)
+        update_launcher(
+            repo,
+            force=args.force,
+            tool_source=args.tool_source,
         )
         return 0
     node_commands = {"up", "restart"}
