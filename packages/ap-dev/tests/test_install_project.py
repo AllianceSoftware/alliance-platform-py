@@ -436,6 +436,14 @@ class ProjectInstallationTests(unittest.TestCase):
 
             environment_links = [path for path in (cache / "environments-v2").rglob("*") if path.is_symlink()]
             self.assertTrue(environment_links)
+            # uv uses absolute environment links on macOS and may use relative
+            # links on Linux. Normalize the fixture to the absolute-link cache
+            # shape from the reported failure before removing archive files.
+            for path in environment_links:
+                target = path.resolve(strict=True)
+                self.assertTrue(target.is_relative_to(cache / "archive-v0"))
+                path.unlink()
+                path.symlink_to(target, target_is_directory=True)
             self.assertTrue(all(Path(os.readlink(path)).is_absolute() for path in environment_links))
             archive_files = [
                 path for path in (cache / "archive-v0").rglob("*") if path.is_file() and not path.is_symlink()
