@@ -195,14 +195,17 @@ Launcher implementation notes
 -----------------------------
 
 Most users do not need to configure the launcher. It runs the pinned tool through an isolated
-``uvx`` environment and keeps a user-scoped cache under
-``${TMPDIR:-/tmp}/alliance-dev-$UID/uv-cache``. The operating system may eventually clear that
-cache, in which case the next invocation downloads the tool again. Set
-``ALLIANCE_DEV_UV_CACHE_DIR`` to override this location; the standard ``UV_CACHE_DIR`` is used when
-the launcher-specific variable is unset.
+``uvx`` environment and keeps a user-scoped cache under ``$XDG_CACHE_HOME/alliance-dev/uv-cache``
+when ``XDG_CACHE_HOME`` is set. The defaults are ``~/Library/Caches/alliance-dev/uv-cache`` on
+macOS and ``~/.cache/alliance-dev/uv-cache`` on other systems. If an agent sandbox cannot write to
+the user cache, the launcher falls back to
+``${TMPDIR:-/tmp}/alliance-dev-$UID/uv-cache``. Set ``ALLIANCE_DEV_UV_CACHE_DIR`` to override the
+location with a dedicated cache directory. When only the standard ``UV_CACHE_DIR`` is set, the
+launcher uses its ``alliance-dev-bootstrap`` child so other uv environments and downloads remain
+separate from launcher recovery.
 
 For package development, a local path or ``file://`` source supplied through
 ``ALLIANCE_DEV_TOOL_SOURCE`` is loaded as an isolated editable installation so uncommitted source
 changes are visible. The launcher probes an already provisioned local environment offline and
-only retries online when a required build or runtime artifact is missing. Git and PyPI sources use
-normal ``uvx`` caching; use an immutable Git revision when reproducibility matters.
+refreshes it when a required build or runtime artifact is missing. Git and PyPI sources use the
+same offline probe and repair path; use an immutable Git revision when reproducibility matters.

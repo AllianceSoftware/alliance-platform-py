@@ -1,13 +1,19 @@
 from __future__ import annotations
 
+from functools import partial
+from http.server import SimpleHTTPRequestHandler
+from http.server import ThreadingHTTPServer
 import io
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 from tempfile import TemporaryDirectory
+import threading
 import unittest
 from unittest.mock import patch
+import zipfile
 
 from alliance_platform.dev.cli import dispatch
 from alliance_platform.dev.errors import DevError
@@ -16,7 +22,37 @@ from alliance_platform.dev.install_project import resolve_install_root
 from rich.console import Console
 
 
+class QuietSimpleHTTPRequestHandler(SimpleHTTPRequestHandler):
+    def log_message(self, format: str, *args: object) -> None:
+        pass
+
+
 class ProjectInstallationTests(unittest.TestCase):
+    def make_launcher_test_wheel(self, directory: Path) -> Path:
+        wheel = directory / "alliance_platform_dev-0.0.2-py3-none-any.whl"
+        dist_info = "alliance_platform_dev-0.0.2.dist-info"
+        files = {
+            "launcher_test_fixture.py": (
+                'def main():\n    print("alliance-platform-dev 0.0.2 (launcher test fixture)")\n'
+            ),
+            f"{dist_info}/METADATA": ("Metadata-Version: 2.1\nName: alliance-platform-dev\nVersion: 0.0.2\n"),
+            f"{dist_info}/WHEEL": (
+                "Wheel-Version: 1.0\n"
+                "Generator: alliance-platform-dev tests\n"
+                "Root-Is-Purelib: true\n"
+                "Tag: py3-none-any\n"
+            ),
+            f"{dist_info}/entry_points.txt": (
+                "[console_scripts]\nalliance-dev = launcher_test_fixture:main\n"
+            ),
+        }
+        record = "".join(f"{name},,\n" for name in [*files, f"{dist_info}/RECORD"])
+        with zipfile.ZipFile(wheel, "w") as archive:
+            for name, contents in files.items():
+                archive.writestr(name, contents)
+            archive.writestr(f"{dist_info}/RECORD", record)
+        return wheel
+
     def make_project(self, directory: str, *, settings_name: str = "dev.py") -> Path:
         repo = Path(directory).resolve()
         (repo / "django-root" / "example" / "settings").mkdir(parents=True)
@@ -164,13 +200,14 @@ class ProjectInstallationTests(unittest.TestCase):
                 environment["PATH"] = f"{fake_bin}{os.pathsep}{environment['PATH']}"
                 environment["CAPTURE_FILE"] = str(capture)
                 environment["TMPDIR"] = str(repo / "sandbox-tmp")
+                environment["XDG_CACHE_HOME"] = str(repo / "cache-home")
                 environment.pop("ALLIANCE_DEV_UV_CACHE_DIR", None)
                 environment.pop("UV_CACHE_DIR", None)
 
                 subprocess.run([repo / "bin" / "dev", "doctor"], env=environment, check=True)
 
                 runner, *arguments = capture.read_text().splitlines()
-                expected_cache = repo / "sandbox-tmp" / f"alliance-dev-{os.getuid()}" / "uv-cache"
+                expected_cache = repo / "cache-home" / "alliance-dev" / "uv-cache"
                 cache_option = arguments.index("--cache-dir")
                 self.assertEqual(arguments[cache_option + 1], str(expected_cache))
                 self.assertTrue(expected_cache.is_dir())
@@ -270,7 +307,162 @@ class ProjectInstallationTests(unittest.TestCase):
             self.assertIn("--offline", probe)
             self.assertTrue(probe.endswith("alliance-dev --version"))
             self.assertNotIn("--offline", fallback)
+            self.assertNotIn("--refresh-package", fallback)
             self.assertTrue(fallback.endswith("alliance-dev doctor"))
+
+    @unittest.skipUnless(shutil.which("uvx"), "uvx is required for cache integration coverage")
+    def test_published_launcher_rebuilds_a_real_incomplete_uv_cache(self) -> None:
+        with TemporaryDirectory() as directory:
+            repo = self.make_project(directory)
+            package_index = repo / "simple" / "alliance-platform-dev"
+            package_index.mkdir(parents=True)
+            wheel = self.make_launcher_test_wheel(package_index)
+            (package_index / "index.html").write_text(f'<a href="{wheel.name}">{wheel.name}</a>\n')
+            handler = partial(QuietSimpleHTTPRequestHandler, directory=str(repo))
+            server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+            server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+            server_thread.start()
+            self.addCleanup(server.server_close)
+            self.addCleanup(server.shutdown)
+            install_project(
+                repo,
+                assume_yes=True,
+                tool_source="alliance-platform-dev==0.0.2",
+                console=self.console(),
+            )
+            cache = repo / "launcher-cache"
+            environment = {
+                **os.environ,
+                "ALLIANCE_DEV_UV_CACHE_DIR": str(cache),
+                "UV_DEFAULT_INDEX": f"http://127.0.0.1:{server.server_port}/simple",
+                "UV_PYTHON_DOWNLOADS": "never",
+            }
+            seeded = subprocess.run(
+                [
+                    "uvx",
+                    "--cache-dir",
+                    cache,
+                    "--isolated",
+                    "--no-env-file",
+                    "--from",
+                    "alliance-platform-dev==0.0.2",
+                    "alliance-dev",
+                    "--version",
+                ],
+                env=environment,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(seeded.returncode, 0, seeded.stderr)
+
+            environment_links = [path for path in (cache / "environments-v2").rglob("*") if path.is_symlink()]
+            self.assertTrue(environment_links)
+            self.assertTrue(all(Path(os.readlink(path)).is_absolute() for path in environment_links))
+            archive_files = [
+                path for path in (cache / "archive-v0").rglob("*") if path.is_file() and not path.is_symlink()
+            ]
+            self.assertTrue(archive_files)
+            for path in archive_files:
+                path.unlink()
+            package_links = [
+                path
+                for path in (cache / "wheels-v6").rglob("*")
+                if path.is_symlink() and "alliance-platform-dev" in str(path)
+            ]
+            self.assertTrue(package_links)
+            for path in package_links:
+                path.unlink()
+            # A local test index retains enough HTTP data to reconstruct a wheel
+            # offline. Remove those regular files while retaining the directory
+            # shells and environments-v2 symlink from the damaged cache.
+            for cache_section in ("wheels-v6", "simple-v20"):
+                for path in (cache / cache_section).rglob("*"):
+                    if path.is_file() and not path.is_symlink():
+                        path.unlink()
+
+            broken_probe = subprocess.run(
+                [
+                    "uvx",
+                    "--cache-dir",
+                    cache,
+                    "--isolated",
+                    "--no-env-file",
+                    "--from",
+                    "alliance-platform-dev==0.0.2",
+                    "--offline",
+                    "alliance-dev",
+                    "--version",
+                ],
+                env=environment,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(broken_probe.returncode, 0)
+
+            repaired = subprocess.run(
+                [repo / "bin" / "dev", "--version"],
+                env=environment,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertIn("bootstrap cache is unavailable or incomplete", repaired.stderr)
+            self.assertIn("Moved the incomplete cache", repaired.stderr)
+            self.assertIn("launcher test fixture", repaired.stdout)
+            rotated_caches = list(repo.glob("launcher-cache.broken-*-*"))
+            self.assertEqual(len(rotated_caches), 1)
+            rebuilt_archive_files = [
+                path for path in (cache / "archive-v0").rglob("*") if path.is_file() and not path.is_symlink()
+            ]
+            self.assertTrue(rebuilt_archive_files)
+
+            offline = subprocess.run(
+                [repo / "bin" / "dev", "--version"],
+                env=environment,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            self.assertIn("launcher test fixture", offline.stdout)
+            self.assertNotIn("rebuilding it", offline.stderr)
+
+    def test_launcher_falls_back_when_the_durable_cache_is_not_a_directory(self) -> None:
+        with TemporaryDirectory() as directory:
+            repo = self.make_project(directory)
+            install_project(
+                repo,
+                assume_yes=True,
+                tool_source="alliance-platform-dev==1.2.3",
+                console=self.console(),
+            )
+            fake_bin = repo / "fake-bin"
+            fake_bin.mkdir()
+            uvx = fake_bin / "uvx"
+            uvx.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > "$CAPTURE_FILE"\n')
+            uvx.chmod(0o755)
+            blocked_cache_home = repo / "blocked-cache-home"
+            blocked_cache_home.write_text("not a directory")
+            temporary_root = repo / "sandbox-tmp"
+            capture = repo / "uvx-args"
+            environment = {
+                **os.environ,
+                "PATH": f"{fake_bin}{os.pathsep}{os.environ['PATH']}",
+                "CAPTURE_FILE": str(capture),
+                "XDG_CACHE_HOME": str(blocked_cache_home),
+                "TMPDIR": str(temporary_root),
+            }
+            environment.pop("ALLIANCE_DEV_UV_CACHE_DIR", None)
+            environment.pop("UV_CACHE_DIR", None)
+
+            subprocess.run([repo / "bin" / "dev", "doctor"], env=environment, check=True)
+
+            arguments = capture.read_text().splitlines()
+            expected_cache = temporary_root / f"alliance-dev-{os.getuid()}" / "uv-cache"
+            self.assertEqual(arguments[arguments.index("--cache-dir") + 1], str(expected_cache))
+            self.assertTrue(expected_cache.is_dir())
 
     def test_local_launcher_does_not_retry_a_failed_delegated_command(self) -> None:
         with TemporaryDirectory() as directory:
@@ -343,7 +535,7 @@ class ProjectInstallationTests(unittest.TestCase):
             arguments = capture.read_text().splitlines()
             self.assertEqual(
                 arguments[arguments.index("--cache-dir") + 1],
-                str(repo / "standard-uv-cache"),
+                str(repo / "standard-uv-cache" / "alliance-dev-bootstrap"),
             )
 
             environment["ALLIANCE_DEV_UV_CACHE_DIR"] = str(repo / "launcher-uv-cache")
@@ -353,6 +545,43 @@ class ProjectInstallationTests(unittest.TestCase):
                 arguments[arguments.index("--cache-dir") + 1],
                 str(repo / "launcher-uv-cache"),
             )
+
+    def test_repair_does_not_rotate_the_shared_uv_cache(self) -> None:
+        with TemporaryDirectory() as directory:
+            repo = self.make_project(directory)
+            install_project(
+                repo,
+                assume_yes=True,
+                tool_source="alliance-platform-dev==1.2.3",
+                console=self.console(),
+            )
+            fake_bin = repo / "fake-bin"
+            fake_bin.mkdir()
+            uvx = fake_bin / "uvx"
+            uvx.write_text(
+                '#!/bin/sh\ncase "$*" in\n    *"--offline alliance-dev --version") exit 1 ;;\nesac\n'
+            )
+            uvx.chmod(0o755)
+            shared_cache = repo / "shared-uv-cache"
+            bootstrap_cache = shared_cache / "alliance-dev-bootstrap"
+            bootstrap_cache.mkdir(parents=True)
+            (bootstrap_cache / "damaged-entry").write_text("damaged\n")
+            shared_entry = shared_cache / "another-tool-entry"
+            shared_entry.write_text("keep\n")
+            environment = {
+                **os.environ,
+                "PATH": f"{fake_bin}{os.pathsep}{os.environ['PATH']}",
+                "UV_CACHE_DIR": str(shared_cache),
+            }
+            environment.pop("ALLIANCE_DEV_UV_CACHE_DIR", None)
+
+            subprocess.run([repo / "bin" / "dev", "doctor"], env=environment, check=True)
+
+            self.assertEqual(shared_entry.read_text(), "keep\n")
+            self.assertTrue(bootstrap_cache.is_dir())
+            rotated = list(shared_cache.glob("alliance-dev-bootstrap.broken-*-*"))
+            self.assertEqual(len(rotated), 1)
+            self.assertEqual((rotated[0] / "damaged-entry").read_text(), "damaged\n")
 
     def test_install_ignores_dev_server_state_without_duplicating_existing_entries(self) -> None:
         with TemporaryDirectory() as directory:
