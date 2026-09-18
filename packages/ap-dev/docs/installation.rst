@@ -188,8 +188,22 @@ Upgrading
 ---------
 
 The exact package version in ``bin/dev`` is the project's tool version. Upgrade it deliberately,
-review the package changelog, update that pin, and commit the launcher change so the whole team
-adopts the release together.
+review the package changelog, then regenerate only the launcher from the new release:
+
+.. code-block:: bash
+
+   uvx --upgrade --from alliance-platform-dev alliance-dev update-launcher
+
+This replaces a recognized generated ``bin/dev`` and leaves ``config/dev.toml``, Git hooks, Django
+settings, and ignore files unchanged. Review and commit the launcher change so the whole team
+adopts the release together. The command refuses to replace an unrecognized custom script; use
+``--force`` after reviewing that file when replacement is intentional.
+
+To adopt a specific release, use the same version in ``--from``:
+
+.. code-block:: bash
+
+   uvx --from alliance-platform-dev==0.0.3 alliance-dev update-launcher
 
 Launcher implementation notes
 -----------------------------
@@ -207,5 +221,5 @@ separate from launcher recovery.
 For package development, a local path or ``file://`` source supplied through
 ``ALLIANCE_DEV_TOOL_SOURCE`` is loaded as an isolated editable installation so uncommitted source
 changes are visible. The launcher probes an already provisioned local environment offline and
-refreshes it when a required build or runtime artifact is missing. Git and PyPI sources use the
+rebuilds it when a required build or runtime artifact is missing. Git and PyPI sources use the
 same offline probe and repair path; use an immutable Git revision when reproducibility matters.
