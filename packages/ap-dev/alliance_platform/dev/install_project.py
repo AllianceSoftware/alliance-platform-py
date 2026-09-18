@@ -220,20 +220,62 @@ export ALLIANCE_DEV_INVOCATION_NAME="bin/dev"
 if [[ -n "${{ALLIANCE_DEV_UV_CACHE_DIR:-}}" ]]; then
     uv_cache_dir="$ALLIANCE_DEV_UV_CACHE_DIR"
 elif [[ -n "${{UV_CACHE_DIR:-}}" ]]; then
-    uv_cache_dir="$UV_CACHE_DIR"
+    # UV_CACHE_DIR may be shared with project commands and other uv tools.
+    # Keep the disposable launcher environment in a child that can be rotated
+    # without removing unrelated cache entries.
+    uv_cache_dir="${{UV_CACHE_DIR%/}}/alliance-dev-bootstrap"
 else
-    cache_root="${{TMPDIR:-/tmp}}"
-    default_uv_cache_root="${{cache_root%/}}/alliance-dev-${{UID:-$(id -u)}}"
-    uv_cache_dir="$default_uv_cache_root/uv-cache"
-    if ! (umask 077 && mkdir -p "$uv_cache_dir" && chmod 700 "$default_uv_cache_root" "$uv_cache_dir"); then
-        echo "Cannot create the uv cache at '$uv_cache_dir'. Set ALLIANCE_DEV_UV_CACHE_DIR to a writable directory." >&2
-        exit 1
+    if [[ -n "${{XDG_CACHE_HOME:-}}" ]]; then
+        durable_cache_root="${{XDG_CACHE_HOME%/}}/alliance-dev"
+    elif [[ -n "${{HOME:-}}" && "$(uname -s)" == "Darwin" ]]; then
+        durable_cache_root="${{HOME%/}}/Library/Caches/alliance-dev"
+    elif [[ -n "${{HOME:-}}" ]]; then
+        durable_cache_root="${{HOME%/}}/.cache/alliance-dev"
+    else
+        durable_cache_root=
+    fi
+
+    # A user's cache directory survives operating-system temporary-directory
+    # cleanup. Some agent sandboxes cannot write there, so retain a private,
+    # deterministic temporary fallback.
+    if [[ -n "$durable_cache_root" ]] && \
+        (umask 077 && mkdir -p "$durable_cache_root/uv-cache" && \
+            [[ -w "$durable_cache_root/uv-cache" ]] && \
+            chmod 700 "$durable_cache_root" "$durable_cache_root/uv-cache") 2>/dev/null; then
+        uv_cache_dir="$durable_cache_root/uv-cache"
+    else
+        cache_root="${{TMPDIR:-/tmp}}"
+        fallback_cache_root="${{cache_root%/}}/alliance-dev-${{UID:-$(id -u)}}"
+        uv_cache_dir="$fallback_cache_root/uv-cache"
+        if ! (umask 077 && mkdir -p "$uv_cache_dir" && \
+            [[ -w "$uv_cache_dir" ]] && \
+            chmod 700 "$fallback_cache_root" "$uv_cache_dir"); then
+            echo "Cannot create the uv cache at '$uv_cache_dir'. Set ALLIANCE_DEV_UV_CACHE_DIR to a writable directory." >&2
+            exit 1
+        fi
     fi
 fi
-if ! mkdir -p "$uv_cache_dir"; then
+if ! mkdir -p "$uv_cache_dir" || [[ ! -w "$uv_cache_dir" ]]; then
     echo "Cannot create the uv cache at '$uv_cache_dir'. Set ALLIANCE_DEV_UV_CACHE_DIR to a writable directory." >&2
     exit 1
 fi
+
+repair_bootstrap_cache() {{
+    broken_cache_dir="${{uv_cache_dir}}.broken-$(date +%s)-$$"
+    echo "Alliance dev bootstrap cache is unavailable or incomplete; rebuilding it." >&2
+    if rmdir "$uv_cache_dir" 2>/dev/null; then
+        :
+    elif mv "$uv_cache_dir" "$broken_cache_dir"; then
+        echo "Moved the incomplete cache to '$broken_cache_dir'." >&2
+    else
+        echo "Cannot rotate the incomplete uv cache at '$uv_cache_dir'." >&2
+        exit 1
+    fi
+    if ! (umask 077 && mkdir -p "$uv_cache_dir" && chmod 700 "$uv_cache_dir"); then
+        echo "Cannot rebuild the uv cache at '$uv_cache_dir'." >&2
+        exit 1
+    fi
+}}
 
 case "$tool_source" in
     /*|./*|../*|file://*)
@@ -250,12 +292,22 @@ case "$tool_source" in
             exec uv "${{local_uv_args[@]}}" --offline alliance-dev "$@"
         fi
 
+        repair_bootstrap_cache
         exec uv "${{local_uv_args[@]}}" alliance-dev "$@"
         ;;
 esac
 
-exec uvx --cache-dir "$uv_cache_dir" --isolated --no-env-file \
-    --from "$tool_source" alliance-dev "$@"
+uvx_args=(--cache-dir "$uv_cache_dir" --isolated --no-env-file --from "$tool_source")
+
+# Check the cached entry point before delegation. A successful probe allows a
+# fast offline invocation and detects partially cleaned uv environments before
+# they fail without useful output.
+if uvx "${{uvx_args[@]}}" --offline alliance-dev --version >/dev/null 2>&1; then
+    exec uvx "${{uvx_args[@]}}" --offline alliance-dev "$@"
+fi
+
+repair_bootstrap_cache
+exec uvx "${{uvx_args[@]}}" alliance-dev "$@"
 """
 
 
