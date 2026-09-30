@@ -9,7 +9,9 @@ from alliance_platform.frontend.templatetags.react import ComponentSourceCodeGen
 from alliance_platform.ui.forms.renderers import form_input_context_key
 from allianceutils.auth.permission import AmbiguousGlobalPermissionWarning
 from allianceutils.tests.util import warning_filter
+import django
 from django import forms
+from django.forms.renderers import get_default_renderer
 from django.template import Context
 from django.template import Template
 from django.test import TestCase
@@ -59,6 +61,10 @@ class FormRenderingTestCase(TestCase):
     PERM = "test_utils.link_is_allowed"
 
     def setUp(self) -> None:
+        # get_default_renderer() is lru_cached. Django 4.2 does not clear it when FORM_RENDERER is
+        # overridden (5.0+ does), so a renderer cached by an earlier test would leak into tests
+        # that override FORM_RENDERER. Clear it on both sides of each test.
+        get_default_renderer.cache_clear()
         self.bundler_context = BundlerAssetContext(
             frontend_resource_registry=bypass_frontend_resource_registry, skip_checks=True
         )
@@ -76,6 +82,7 @@ class FormRenderingTestCase(TestCase):
 
     def tearDown(self):
         self.bundler_context.__exit__(None, None, None)
+        get_default_renderer.cache_clear()
 
     def _get_debug_tree(self, template_contents: str, **kwargs: dict):
         def patch_debug_tree(self, props: ComponentProps, include_template_origin=True):
@@ -125,12 +132,6 @@ class FormRenderingTestCase(TestCase):
                 ):
                     self.client.get(reverse("update_user", kwargs={"pk": user.pk}), follow=True)
 
-        # IMPORTANT: Clear the form renderer cache after overriding settings
-        # Django 4.2+ caches the renderer with @lru_cache which persists across tests
-        from django.forms.renderers import get_default_renderer
-
-        get_default_renderer.cache_clear()
-
     def test_renderer_handles_context_key(self):
         user = self.get_user()
         response = self.client.get(reverse("update_user", kwargs={"pk": user.pk}), follow=True)
@@ -144,6 +145,8 @@ class FormRenderingTestCase(TestCase):
 
     def test_form_input_html_help_text_react_widget(self):
         """HTML help_text should reach React widgets as nested elements (via RenderableContent)"""
+        # Django only links help text to the widget through aria-describedby from 5.0
+        help_text_attrs = 'aria-describedby="id_email_helptext"' if django.VERSION >= (5, 0) else ""
         self.assertComponentEqual(
             """
             {% load alliance_platform.form %}
@@ -154,14 +157,15 @@ class FormRenderingTestCase(TestCase):
               defaultValue={null}
               maxLength="320"
               required={true}
-              aria-describedby="id_email_helptext"
+              %(help_text_attrs)s
               id="id_email"
               label="Email"
               errorMessage=""
               validationState={null}
               description={["Use your ", <strong>work</strong>, " email"]}
               isRequired={true}
-            />""",
+            />"""
+            % {"help_text_attrs": help_text_attrs},
             my_form=ReactHelpTextForm(),
         )
 
