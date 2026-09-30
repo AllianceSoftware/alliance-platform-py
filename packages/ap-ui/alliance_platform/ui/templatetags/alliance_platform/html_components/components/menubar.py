@@ -47,6 +47,7 @@ from django.template.base import FilterExpression
 from django.utils.html import conditional_escape
 from django.utils.html import strip_tags
 from django.utils.safestring import mark_safe
+from django.utils.text import slugify
 
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from alliance_platform.frontend.bundler.frontend_resource import ImageResource
@@ -969,8 +970,11 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
         normalized_title = self.normalize_item_content(title_html, title_reports)
         has_leading_icon = self.has_leading_icon(title_html, title_reports)
 
+        # Keys are arbitrary text (e.g. "Waste Streams"), so derive a valid single-token id from
+        # them; data-key keeps the raw key
+        key_slug = slugify(key) if key is not None else ""
         preferred_popup_id = (
-            f"apui-menu-{key}" if key is not None else self.generate_html_id(context, "apui-menu")
+            f"apui-menu-{key_slug}" if key_slug else self.generate_html_id(context, "apui-menu")
         )
         popup_id = self.claim_html_id(context, preferred_popup_id)
 
