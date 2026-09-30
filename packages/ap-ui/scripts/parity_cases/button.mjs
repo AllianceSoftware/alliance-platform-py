@@ -35,6 +35,19 @@ export const cases = [
     meta: {},
   },
   {
+    name: "disabled_anchor",
+    template: '{% ui "button" href="/next" is_disabled=True %}Go{% endui %}',
+    buildElement({ React, components }) {
+      const { Button } = components;
+      return React.createElement(
+        Button,
+        { href: "/next", isDisabled: true },
+        "Go"
+      );
+    },
+    meta: {},
+  },
+  {
     name: "explicit_raw_span_icon_only",
     preserve_icon_only: true,
     template:

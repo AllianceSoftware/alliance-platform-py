@@ -252,6 +252,13 @@ another component is not a direct child of Button or Menubar.
   by the static `icon` component's structured child report. Arbitrary raw elements can opt in with
   `is_icon_only=True`; this avoids parsing consumer HTML and prevents wrapped or composite content
   from being misclassified.
+- **Disabled links**: React's Button passes `href` after useButton's props, so a disabled link
+  keeps its `href` (plus a button-only `disabled` attribute, because the inferred anchor element
+  type is not passed to useButton) and relies on a click handler to cancel navigation. The static
+  renderer omits `href` and renders `aria-disabled="true"`, so the link cannot navigate without
+  JavaScript. Other element types except `button`/`input` get `aria-disabled` too, matching
+  useButton. `normalizeDisabledButtonLinks()` in the fixture generator applies the same change to
+  the React output.
 
 Static components rendered inside a React component's children continue to participate in the
 surrounding static render frames. This preserves the existing composition behaviour; use a layout

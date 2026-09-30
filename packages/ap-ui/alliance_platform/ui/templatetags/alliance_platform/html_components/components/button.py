@@ -42,6 +42,10 @@ _FOCUS_RING_STYLE_PATH = "@alliancesoftware/ui/styles/base/focusRing.css.ts"
 
 _HTML_TAG_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9-]*$")
 
+#: Elements that express the disabled state natively; react-aria's useButton marks every other
+#: element type with aria-disabled instead
+_NATIVE_DISABLED_TAGS = frozenset({"button", "input"})
+
 _BUTTON_FORWARDED_PROPS = frozenset(
     {
         "id",
@@ -142,10 +146,15 @@ class UIButtonRenderer(BaseHtmlUIComponentRenderer):
         href = props.get("href")
         tag_name = str(props.get("elementType") or ("a" if href else "button"))
 
-        if href is not None:
+        if is_disabled:
+            if tag_name in _NATIVE_DISABLED_TAGS:
+                attrs["disabled"] = True
+            else:
+                attrs["aria-disabled"] = "true"
+        # A disabled link must not navigate. React keeps the href and cancels the click with an
+        # event handler, which static HTML does not have, so the href is omitted instead.
+        if href is not None and not is_disabled:
             attrs["href"] = href
-        if is_disabled and tag_name == "button":
-            attrs["disabled"] = True
 
         frame = get_current_component_frame(context)
         child_reports = frame.child_reports if frame is not None else []
