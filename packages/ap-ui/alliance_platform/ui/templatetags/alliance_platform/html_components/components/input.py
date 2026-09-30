@@ -118,8 +118,6 @@ class LabeledInputState:
     error_id: str | None = None
     #: full aria-describedby value for the control (generated ids plus any caller supplied value)
     described_by: str | None = None
-    #: id of NumberInput's hidden native-form value input when its attach runtime is available
-    runtime_value_input_id: str | None = None
 
     @property
     def error_rendered(self) -> bool:
@@ -465,8 +463,7 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
         container_children_html = f"{addon_before_html}{input_wrapper_html}{addon_after_html}"
         container_html = mark_safe(self._render_tag("div", container_attrs, container_children_html))
 
-        labeled_input_html = self.render_labeled_input(context, props, state, container_html)
-        return mark_safe(f"{labeled_input_html}{self.render_after_root(props, state)}")
+        return mark_safe(self.render_labeled_input(context, props, state, container_html))
 
     def allow_non_scalar_prop(self, key: str, value: Any) -> bool:
         return key in self.rich_content_props and is_rich_content_value(value)
@@ -503,9 +500,6 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
             return ""
         addon_class = self.get_style_class(text_input_base_styles, "addonAfter")
         return f'<div class="{conditional_escape(addon_class)}">{conditional_escape(addon)}</div>'
-
-    def render_after_root(self, props: dict[str, Any], state: LabeledInputState) -> str:
-        return ""
 
     def get_base_control_attrs(
         self, props: dict[str, Any], state: LabeledInputState, text_input_base_styles: Any
@@ -714,15 +708,13 @@ class UINumberInputRenderer(UITextInputBaseRenderer):
         if runtime_resource is None:
             return
         add_auto_attach_marker(container_attrs, "number-input")
-        if props.get("name"):
-            state.runtime_value_input_id = f"{self.generate_html_id(context)}-value"
-            container_attrs["data-apui-number-input-value-id"] = state.runtime_value_input_id
 
     def format_number_value(self, value: Any) -> str:
         """Format a numeric value the way the React component displays it.
 
         Locale-specific display formatting is applied by the attach runtime. The server-rendered
-        fallback and the hidden native-form value remain an unformatted numeric string.
+        value, which the visible input submits when the runtime does not run, remains an unformatted
+        numeric string.
         """
         if value is None:
             return ""
@@ -755,9 +747,9 @@ class UINumberInputRenderer(UITextInputBaseRenderer):
             "aria-roledescription": "Number field",
             "value": self.format_number_value(value),
         }
-        # The field name is submitted through the hidden input rendered after the root element,
-        # not the visible input showing the display value (matching the React component)
-        attrs["name"] = None
+        # The visible input keeps the field name so the unformatted server value and any edits
+        # submit natively without JavaScript. When the attach runtime formats the displayed value
+        # it moves the name to a hidden input it creates to carry the numeric value instead.
         return mark_safe(f"<input{self.build_attrs_string(attrs)}/>")
 
     def render_addon_after(
@@ -797,18 +789,3 @@ class UINumberInputRenderer(UITextInputBaseRenderer):
             }
             buttons.append(self._render_tag("button", attrs, self.render_icon(icon_name, "xxs", slot=False)))
         return f'<div class="{conditional_escape(container_class)}">{"".join(buttons)}</div>'
-
-    def render_after_root(self, props: dict[str, Any], state: LabeledInputState) -> str:
-        name = props.get("name")
-        if not name:
-            return ""
-        value = props.get("value")
-        if value is None:
-            value = props.get("defaultValue")
-        attrs: dict[str, Any] = {
-            "type": "hidden",
-            "id": state.runtime_value_input_id,
-            "name": name,
-            "value": self.format_number_value(value),
-        }
-        return f"<input{self.build_attrs_string(attrs)}/>"

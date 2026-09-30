@@ -348,24 +348,28 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         self.assertNotIn("min=", output)
         self.assertNotIn("max=", output)
 
-    def test_number_input_hidden_input_only_when_name_given(self):
+    def test_number_input_name_is_rendered_on_the_visible_input(self):
         output_with_name, _ = self.render_with_warnings(
-            '{% ui "number_input" label="Qty" name="qty" %}{% endui %}'
+            '{% ui "number_input" label="Qty" name="qty" defaultValue=5 %}{% endui %}'
         )
-        self.assertIn('type="hidden"', output_with_name)
-        self.assertIn('name="qty"', output_with_name)
-        self.assertIn("data-apui-number-input-value-id=", output_with_name)
-        # The visible input must not carry the name so only the hidden input value is submitted
+        # The visible input submits the field natively so it works without the attach runtime; the
+        # runtime creates the hidden numeric input itself, so the server renders none.
+        self.assertRegex(
+            output_with_name, r'<input(?=[^>]*type="text")(?=[^>]*name="qty")(?=[^>]*value="5")[^>]*/>'
+        )
         self.assertEqual(output_with_name.count('name="qty"'), 1)
+        self.assertNotIn('type="hidden"', output_with_name)
+        self.assertNotIn("data-apui-number-input-value-id", output_with_name)
 
         output_without_name, _ = self.render_with_warnings('{% ui "number_input" label="Qty" %}{% endui %}')
+        self.assertNotIn("name=", output_without_name)
         self.assertNotIn('type="hidden"', output_without_name)
 
     def test_number_input_zero_value_renders(self):
         output, _ = self.render_with_warnings(
             '{% ui "number_input" label="Qty" name="qty" value=0 %}{% endui %}'
         )
-        self.assertIn('name="qty" value="0"', output)
+        self.assertRegex(output, r'<input(?=[^>]*type="text")(?=[^>]*name="qty")(?=[^>]*value="0")[^>]*/>')
 
     def test_number_input_integer_float_value_renders_without_decimal(self):
         output, _ = self.render_with_warnings(
@@ -441,9 +445,8 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
             '{% ui "number_input" label="Qty" name="qty" defaultValue=5 %}{% endui %}'
         )
         self.assertIn('data-apui-attach="number-input"', output)
+        self.assertIn('data-apui-number-input-initial-value="5"', output)
         self.assertNotIn("<script", output)
-        value_input_id = re.search(r'data-apui-number-input-value-id="([^"]+)"', output).group(1)
-        self.assertIn(f'id="{value_input_id}"', output)
 
     def test_number_input_collected_assets_do_not_emit_detached_icon_images(self):
         with self.setup_render_context():
@@ -541,8 +544,9 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         )
         self.assertEqual(caught, [])
         self.assertIn('data-apui-number-input-initial-value=""', output)
-        self.assertRegex(output, r'<input(?=[^>]*type="text")(?=[^>]*value="")[^>]*/>')
-        self.assertRegex(output, r'<input(?=[^>]*type="hidden")(?=[^>]*value="")[^>]*/>')
+        self.assertRegex(
+            output, r'<input(?=[^>]*type="text")(?=[^>]*name="quantity")(?=[^>]*value="")[^>]*/>'
+        )
 
     def test_lazy_translation_values_are_treated_as_strings(self):
         # Django form field labels are commonly lazy translation proxies (e.g.
@@ -570,8 +574,10 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
             {"value": Decimal("12.50")},
         )
         self.assertEqual(caught, [])
-        self.assertIn('value="12.50"', output)
-        self.assertIn('name="price" value="12.50"', output)
+        self.assertIn('data-apui-number-input-initial-value="12.50"', output)
+        self.assertRegex(
+            output, r'<input(?=[^>]*type="text")(?=[^>]*name="price")(?=[^>]*value="12\.50")[^>]*/>'
+        )
 
     def test_none_valued_props_are_treated_as_unset(self):
         output, caught = self.render_with_warnings(

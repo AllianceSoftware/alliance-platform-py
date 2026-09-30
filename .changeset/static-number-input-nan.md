@@ -3,4 +3,4 @@
 ---
 
 Treat Python float and Decimal NaN values as empty in static NumberInput markup, including its
-visible field, attach-runtime initial value, and hidden native-form field.
+visible field and attach-runtime initial value, so NaN is never submitted with the form.

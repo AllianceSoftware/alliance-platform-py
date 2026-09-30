@@ -90,8 +90,13 @@ intentional extensions, so they will not show up as parity failures:
 - **Number formatting and submission**: the server fallback renders the unformatted numeric value
   with `str()` (integral floats collapse to integers). The attach runtime applies `Intl.NumberFormat`
   display formatting, parses supported locale/currency/unit/percent input, and keeps the hidden
-  named input synchronized for native form submission. It also implements step-button and arrow-key
-  increments with min/max clamping and dynamic boundary state.
+  named input it creates synchronized for native form submission. It also implements step-button and
+  arrow-key increments with min/max clamping and dynamic boundary state.
+- **`number_input` field name**: React renders `name` on a hidden input after the root and leaves
+  the visible input unnamed. The static renderer keeps `name` on the visible input and renders no
+  hidden input, so the field submits what the user typed when the attach runtime never runs; the
+  runtime creates the hidden input on the client. The fixture generator drops React's hidden input
+  and the NumberInput parity test drops `name` from the static visible input before comparison.
 - **Validation icons / step button chevrons**: rendered as static SVG markup copied from
   `@alliancesoftware/icons` (`AlertCircleOutlined`, `CheckOutlined`, `ChevronUpOutlined`,
   `ChevronDownOutlined`). Matching NumberInput's documented React contract, validation state still
@@ -112,12 +117,19 @@ intentional extensions, so they will not show up as parity failures:
 `number_input` attaches
 `@alliancesoftware/ui/components/number-input/NumberInput.attach.ts` to its
 `data-apui="number-input"` container with the same per-root `data-djid` + module-script pattern used
-by Menubar and SmartOrientation. The runtime finds the hidden named input through the explicit
-`data-apui-number-input-value-id` link, so multiple fields and external DOM composition do not rely
-on sibling position. It synchronizes on `input`, `change`, and form `submit` (the last also covers a
-script assigning the visible value without dispatching an input event), formats on attach/blur,
-handles the rendered step buttons and arrow keys, and keeps cleanup state in a `WeakMap` so repeated
-attachment does not duplicate listeners.
+by Menubar and SmartOrientation. The server renders the field `name` on the visible input and no
+hidden input, so without the runtime (JavaScript disabled, the script failed, or an
+`@alliancesoftware/ui` without `NumberInput.auto.ts`) the field submits the unformatted number the
+user typed. On attach, when the visible input has a `name`, the runtime creates a hidden input with
+that name (copying any `form` attribute and mirroring `disabled`), appends it to the container and
+removes `name` from the visible input, so the visible input can show locale formatting while the
+hidden input carries the numeric value. It synchronizes on `input`, `change`, and form `submit` (the
+last also covers a script assigning the visible value without dispatching an input event), formats
+on attach/blur, handles the rendered step buttons and arrow keys, and keeps cleanup state in a
+`WeakMap` so repeated attachment does not duplicate listeners or hidden inputs. `disconnect()`
+writes the numeric value back into the visible input, moves `name` back to it and removes the hidden
+input, so a later native submit sends a plain number. The runtime tests live in the JS repo:
+`packages/ui/components/number-input/tests/NumberInput.attach.test.ts`.
 
 ## Table components (`table`, `table_header`, `table_body`, `table_column`, `table_row`, `table_cell`)
 
