@@ -884,6 +884,34 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
             popup_ids,
         )
 
+    def test_submenu_popup_ids_are_valid_ids_derived_from_keys(self):
+        template = (
+            '{% ui "menubar" aria_label="Nav" %}'
+            '{% ui "menubar_submenu" key="Waste Streams" title="Waste Streams" %}'
+            '{% ui "menubar_item" href="/streams/" %}Streams{% endui %}'
+            "{% endui %}"
+            '{% ui "menubar_submenu" key="waste-streams" title="More streams" %}'
+            '{% ui "menubar_item" href="/more/" %}More{% endui %}'
+            "{% endui %}"
+            '{% ui "menubar_submenu" key="!!!" title="Other" %}'
+            '{% ui "menubar_item" href="/other/" %}Other{% endui %}'
+            "{% endui %}"
+            "{% endui %}"
+        )
+        output, caught = self.render_with_warnings(template)
+
+        self.assertEqual(caught, [])
+        # data-key keeps the raw key while ids are slugified, de-duplicated after slugifying, and
+        # generated when the key has no slug
+        self.assertIn('data-key="Waste Streams"', output)
+        self.assertIn('data-key="waste-streams"', output)
+        self.assertIn('data-key="!!!"', output)
+        popup_ids = re.findall(r'<ul role="menu" id="([^"]+)"', output)
+        self.assertEqual(len(popup_ids), 3)
+        self.assertEqual(popup_ids[:2], ["apui-menu-waste-streams", "apui-menu-waste-streams-2"])
+        self.assertRegex(popup_ids[2], r"^apui-menu-\d+$")
+        self.assertEqual(re.findall(r'aria-controls="([^"]+)"', output), popup_ids)
+
     def test_section_supports_explicit_heading_id(self):
         template = (
             '{% ui "menubar" aria_label="Nav" %}'

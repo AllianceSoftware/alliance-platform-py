@@ -318,7 +318,9 @@ must be static string literals so their SVGs can be discovered for production bu
     {% endui %}
 
 ``heading_id`` is optional; generated heading and submenu popup IDs are document-unique even when
-the same partial is included more than once.
+the same partial is included more than once. Submenu popup IDs are derived from the slugified
+``key`` (``key="Waste Streams"`` gives ``apui-menu-waste-streams``), falling back to a generated
+ID when the key has no slug.
 
 Other notable behaviour:
 
