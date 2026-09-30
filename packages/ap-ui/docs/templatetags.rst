@@ -116,10 +116,14 @@ runtime.
 Static number inputs
 ~~~~~~~~~~~~~~~~~~~~
 
+Without JavaScript, a static ``number_input`` submits the unformatted number the user typed. When
+the optional ``NumberInput.auto.ts`` runtime is available, the visible field shows locale formatting
+while a hidden field created by the runtime carries the numeric value.
+
 Static ``number_input`` components treat numeric NaN values as empty. This includes both Python
 ``float`` and ``Decimal`` NaN values, so the ``none_as_nan`` compatibility value used by legacy
-Django number widgets does not appear as ``nan`` in the visible input, runtime initial value or
-hidden native-form input. Zero and finite numeric values retain their normal string representation.
+Django number widgets does not appear as ``nan`` in the visible input or runtime initial value, and
+is never submitted. Zero and finite numeric values retain their normal string representation.
 The ``none_as_nan`` filter is available directly from ``{% load alliance_platform.ui %}``, so a
 static Django number widget template can use it without loading the React template library:
 

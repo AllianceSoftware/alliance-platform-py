@@ -396,6 +396,15 @@ function normalizeInputComponent(root, component) {
   normalizeInlineStyles(root);
 }
 
+function normalizeNumberInputComponent(root) {
+  // React submits the field through a hidden input rendered after the root. The static renderer
+  // keeps the name on the visible input so the field submits without JavaScript, and the attach
+  // runtime creates its own hidden input on the client, so the SSR hidden input is not compared.
+  for (const input of root.querySelectorAll('input[type="hidden"]')) {
+    input.remove();
+  }
+}
+
 function prependAttribute(element, name, value) {
   const attributes = Array.from(element.attributes).map((attribute) => [
     attribute.name,
@@ -582,6 +591,9 @@ function normalizeRenderedHtml(
     if (!testCase.preserve_icon_only) {
       removeAttributeMatching(root, "data-icon-only", "true");
     }
+  }
+  if (component === "number_input") {
+    normalizeNumberInputComponent(root);
   }
   if (INPUT_COMPONENTS.has(component)) {
     normalizeInputComponent(root, component);

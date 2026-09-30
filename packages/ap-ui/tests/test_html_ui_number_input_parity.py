@@ -11,10 +11,11 @@ from tests.parity.normalizers import normalize_html_fragment
 _STATIC_EXTENSION_ATTR_RES = [
     re.compile(r'\sdata-apui-attach="number-input"'),
     re.compile(
-        r'\sdata-apui-number-input-(?:initial-value|min-value|max-value|step|locale|format-options|value-id)="[^"]*"'
+        r'\sdata-apui-number-input-(?:initial-value|min-value|max-value|step|locale|format-options)="[^"]*"'
     ),
-    re.compile(r'\sid="[^\"]+-value"(?=\sname=)'),
 ]
+_VISIBLE_INPUT_RE = re.compile(r'<input\b(?=[^>]*\stype="text")[^>]*>')
+_NAME_ATTR_RE = re.compile(r'\sname="[^"]*"')
 
 
 def strip_static_number_input_extensions(value: str) -> str:
@@ -22,6 +23,16 @@ def strip_static_number_input_extensions(value: str) -> str:
     for attr_re in _STATIC_EXTENSION_ATTR_RES:
         normalized = attr_re.sub("", normalized)
     return normalized
+
+
+def strip_static_visible_input_name(value: str) -> str:
+    """Drop ``name`` from the static visible input.
+
+    The static visible input keeps the field name so it submits without JavaScript. React (and the
+    attach runtime) submit through a separate hidden input instead, which the fixture generator
+    removes from the React output.
+    """
+    return _VISIBLE_INPUT_RE.sub(lambda match: _NAME_ATTR_RE.sub("", match.group(0)), value)
 
 
 class UINumberInputParityTestCase(HtmlUIParityTestCase):
@@ -33,7 +44,9 @@ class UINumberInputParityTestCase(HtmlUIParityTestCase):
                 warnings.simplefilter("always")
                 output = self.render_ui_template(case["template"], context_kwargs)
 
-        actual_html = normalize_html_fragment(strip_static_number_input_extensions(output))
+        actual_html = normalize_html_fragment(
+            strip_static_visible_input_name(strip_static_number_input_extensions(output))
+        )
         expected_html = normalize_html_fragment(strip_static_number_input_extensions(case["expected_html"]))
         self.assertEqual(actual_html, expected_html)
 
@@ -64,15 +77,13 @@ class UINumberInputParityTestCase(HtmlUIParityTestCase):
 
     def assert_rendered_values(self, output: str, expected: str):
         self.assertIn(f'data-apui-number-input-initial-value="{expected}"', output)
+        # The visible input submits the value natively; the attach runtime creates any hidden input
         self.assertRegex(
             output,
-            rf'<input(?=[^>]*type="text")(?=[^>]*value="{re.escape(expected)}")[^>]*/>',
-        )
-        self.assertRegex(
-            output,
-            rf'<input(?=[^>]*type="hidden")(?=[^>]*name="quantity")'
+            rf'<input(?=[^>]*type="text")(?=[^>]*name="quantity")'
             rf'(?=[^>]*value="{re.escape(expected)}")[^>]*/>',
         )
+        self.assertNotIn('type="hidden"', output)
 
     def render_number_input_value(self, value: Any) -> str:
         with self.setup_render_context():
