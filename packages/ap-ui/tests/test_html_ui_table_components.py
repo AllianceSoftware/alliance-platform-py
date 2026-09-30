@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from unittest import mock
 import warnings
 
 from django.template import Context
@@ -326,6 +327,17 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
             '<tr><td colspan="3"><div class="Table_noResults"><em>No results</em></div></td></tr>',
             output,
         )
+
+    def test_default_empty_state_is_translated_and_escaped(self):
+        template = '{% ui "table" aria_label="Users" %}{% ui "table_body" %}{% endui %}{% endui %}'
+        with mock.patch(
+            "alliance_platform.ui.templatetags.alliance_platform.html_components.components.table.gettext",
+            side_effect=lambda message: f"<{message}>",
+        ):
+            output, caught = self.render_with_warnings(template)
+
+        self.assertEqual(caught, [])
+        self.assertIn("<em>&lt;No results&gt;</em>", output)
 
     def test_empty_state_custom_content(self):
         template = (

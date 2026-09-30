@@ -32,6 +32,7 @@ import warnings
 from django.template import Context
 from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
+from django.utils.translation import gettext
 
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from alliance_platform.frontend.bundler.frontend_resource import ImageResource
@@ -293,7 +294,7 @@ class UITableRenderer(UITableComponentRendererBase):
         if value is None or value is False:
             return None
         if value is True:
-            return "<em>No results</em>"
+            return f"<em>{conditional_escape(gettext('No results'))}</em>"
         return render_content(value, context, prop_name="renderEmptyState", origin=self.origin)
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:

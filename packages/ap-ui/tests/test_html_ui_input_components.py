@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 import re
+from unittest import mock
 import warnings
 
 from django.template import Context
@@ -376,6 +377,21 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
             '{% ui "number_input" label="Qty" defaultValue=5.0 %}{% endui %}'
         )
         self.assertIn('value="5"', output)
+
+    def test_number_input_labels_are_translated_and_escaped(self):
+        with mock.patch(
+            "alliance_platform.ui.templatetags.alliance_platform.html_components.components.input.gettext",
+            side_effect=lambda message: f"<{message}>",
+        ):
+            labelled, caught = self.render_with_warnings('{% ui "number_input" label="Qty" %}{% endui %}')
+            unlabelled, _ = self.render_with_warnings('{% ui "number_input" %}{% endui %}')
+
+        self.assertEqual(caught, [])
+        self.assertIn('aria-roledescription="&lt;Number field&gt;"', labelled)
+        self.assertIn('aria-label="&lt;Increase Qty&gt;"', labelled)
+        self.assertIn('aria-label="&lt;Decrease Qty&gt;"', labelled)
+        self.assertIn('aria-label="&lt;Increase&gt;"', unlabelled)
+        self.assertIn('aria-label="&lt;Decrease&gt;"', unlabelled)
 
     def test_number_input_hide_step_buttons(self):
         output, _ = self.render_with_warnings(

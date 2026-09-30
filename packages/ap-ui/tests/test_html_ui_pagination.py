@@ -3,6 +3,7 @@ from __future__ import annotations
 from html import unescape
 import re
 from typing import Any
+from unittest import mock
 import warnings
 
 from django.test import RequestFactory
@@ -49,6 +50,23 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
             any(expected in message for message in caught),
             f"No warning contained {expected!r}: {caught!r}",
         )
+
+    def test_control_text_is_translated_and_escaped(self):
+        with mock.patch(
+            "alliance_platform.ui.templatetags.alliance_platform.html_components.components.pagination.gettext",
+            side_effect=lambda message: f"<{message}>",
+        ):
+            output, caught = self.render_with_warnings(
+                '{% ui "pagination" page=2 total=30 page_size=10 %}{% endui %}'
+            )
+
+        self.assertEqual(caught, [])
+        self.assertIn('aria-label="&lt;Previous Page&gt;"', output)
+        self.assertIn('aria-label="&lt;Next Page&gt;"', output)
+        self.assertIn('aria-label="&lt;Go to page 1&gt;"', output)
+        self.assertIn('aria-label="&lt;Current Page, Page 2&gt;"', output)
+        self.assertIn(">&lt;Previous&gt;</span>", output)
+        self.assertIn(">&lt;Next&gt;</span>", output)
 
     def test_first_middle_and_last_page_ranges_match_react_algorithm(self):
         for page, expected_ranges in (

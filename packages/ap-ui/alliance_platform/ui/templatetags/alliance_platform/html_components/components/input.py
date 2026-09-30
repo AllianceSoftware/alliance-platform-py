@@ -11,6 +11,7 @@ import warnings
 from django.template import Context
 from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
+from django.utils.translation import gettext
 
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from alliance_platform.frontend.bundler.frontend_resource import ImageResource
@@ -744,7 +745,7 @@ class UINumberInputRenderer(UITextInputBaseRenderer):
             "inputMode": "numeric",
             "autoCorrect": "off",
             "spellCheck": "false",
-            "aria-roledescription": "Number field",
+            "aria-roledescription": gettext("Number field"),
             "value": self.format_number_value(value),
         }
         # The visible input keeps the field name so the unformatted server value and any edits
@@ -770,19 +771,21 @@ class UINumberInputRenderer(UITextInputBaseRenderer):
         container_class = self.get_style_class(number_input_styles, "stepButtonContainer")
         button_class = self.get_nested_style_class(number_input_styles, "stepButton", "default")
 
+        if state.label:
+            aria_labels = {
+                "up": gettext("Increase %(label)s") % {"label": state.label},
+                "down": gettext("Decrease %(label)s") % {"label": state.label},
+            }
+        else:
+            aria_labels = {"up": gettext("Increase"), "down": gettext("Decrease")}
+
         buttons = []
-        for direction, aria_label_prefix, icon_name in (
-            ("up", "Increase", _CHEVRON_UP_ICON),
-            ("down", "Decrease", _CHEVRON_DOWN_ICON),
-        ):
-            aria_label = aria_label_prefix
-            if state.label:
-                aria_label = f"{aria_label_prefix} {state.label}"
+        for direction, icon_name in (("up", _CHEVRON_UP_ICON), ("down", _CHEVRON_DOWN_ICON)):
             attrs: dict[str, Any] = {
                 "type": "button",
                 "disabled": state.is_disabled or state.is_readonly,
                 "tabindex": "-1",
-                "aria-label": aria_label,
+                "aria-label": aria_labels[direction],
                 "aria-controls": state.input_id,
                 "className": button_class,
                 "data-direction": direction,

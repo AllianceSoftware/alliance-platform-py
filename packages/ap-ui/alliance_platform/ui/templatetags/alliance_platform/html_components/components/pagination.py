@@ -14,7 +14,9 @@ import warnings
 
 from django.http import QueryDict
 from django.template import Context
+from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
+from django.utils.translation import gettext
 
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from alliance_platform.frontend.bundler.frontend_resource import ImageResource
@@ -371,26 +373,29 @@ class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
 
         if item.type == "previous":
             item_class = self.get_style_class(pagination_styles, "prevButton")
-            label = "Previous Page"
+            label = gettext("Previous Page")
             children = self.render_icon(_ARROW_LEFT_ICON, "xxs") + self._render_tag(
                 "span",
                 {"className": self.get_style_class(pagination_styles, "buttonText")},
-                "Previous",
+                conditional_escape(gettext("Previous")),
             )
         elif item.type == "next":
             item_class = self.get_style_class(pagination_styles, "nextButton")
-            label = "Next Page"
+            label = gettext("Next Page")
             children = self._render_tag(
                 "span",
                 {"className": self.get_style_class(pagination_styles, "buttonText")},
-                "Next",
+                conditional_escape(gettext("Next")),
             ) + self.render_icon(_ARROW_RIGHT_ICON, "xxs")
         else:
             item_class = self.join_classes(
                 self.get_style_class(pagination_styles, "pageButton"),
                 self.get_style_class(pagination_styles, "currentPage") if item.is_current else None,
             )
-            label = f"Current Page, Page {item.page}" if item.is_current else f"Go to page {item.page}"
+            if item.is_current:
+                label = gettext("Current Page, Page %(page)s") % {"page": item.page}
+            else:
+                label = gettext("Go to page %(page)s") % {"page": item.page}
             children = self._render_tag("span", {}, str(item.page))
 
         button_styles = self.resolve_vanilla_extract_mapping(_BUTTON_STYLE_PATH)
