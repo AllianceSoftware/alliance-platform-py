@@ -50,6 +50,16 @@ test_development_bundler = TestViteBundler(
 )
 
 
+def clear_default_renderer_cache() -> None:
+    """Clear the ``lru_cache`` on ``get_default_renderer()``.
+
+    Django 4.2 does not clear it when ``FORM_RENDERER`` is overridden (5.0+ does), so a renderer
+    cached by an earlier test would leak into tests that override ``FORM_RENDERER``.
+    """
+    # django-stubs types get_default_renderer without its lru_cache wrapper
+    get_default_renderer.cache_clear()  # type: ignore[attr-defined]
+
+
 @override_ap_frontend_settings(
     # We rely on this in _get_debug_tree
     DEBUG_COMPONENT_OUTPUT=True,
@@ -61,10 +71,8 @@ class FormRenderingTestCase(TestCase):
     PERM = "test_utils.link_is_allowed"
 
     def setUp(self) -> None:
-        # get_default_renderer() is lru_cached. Django 4.2 does not clear it when FORM_RENDERER is
-        # overridden (5.0+ does), so a renderer cached by an earlier test would leak into tests
-        # that override FORM_RENDERER. Clear it on both sides of each test.
-        get_default_renderer.cache_clear()
+        # Cleared on both sides of each test so no test sees a renderer cached by another
+        clear_default_renderer_cache()
         self.bundler_context = BundlerAssetContext(
             frontend_resource_registry=bypass_frontend_resource_registry, skip_checks=True
         )
@@ -82,7 +90,7 @@ class FormRenderingTestCase(TestCase):
 
     def tearDown(self):
         self.bundler_context.__exit__(None, None, None)
-        get_default_renderer.cache_clear()
+        clear_default_renderer_cache()
 
     def _get_debug_tree(self, template_contents: str, **kwargs: dict):
         def patch_debug_tree(self, props: ComponentProps, include_template_origin=True):
