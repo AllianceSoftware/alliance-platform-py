@@ -99,6 +99,9 @@ form of the Alliance UI ``isIconOnly`` prop. Icon-only buttons must have an acce
       <span data-state="open">{% ui "icon" name="XCloseOutlined" %}{% endui %}</span>
     {% endui %}
 
+A disabled button with ``href`` (``is_disabled=True``) renders without the ``href`` and with
+``aria-disabled="true"``, so the link cannot navigate even without JavaScript.
+
 Nested static icons inherit the same default size as React: ``sm`` and ``md`` buttons use ``xxs``
 (16px) icons, while ``lg``, ``xl`` and ``2xl`` buttons use ``xs`` (24px) icons. An explicit icon
 ``size`` overrides the button default. This also applies when a Button inherits its size from a

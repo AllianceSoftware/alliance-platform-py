@@ -207,6 +207,39 @@ class UIButtonParityTestCase(HtmlUIParityTestCase):
         self.assertIn('href="/exports/latest/"', output)
         self.assertIn('download="waste-composition.csv"', output)
 
+    def test_disabled_anchor_is_not_navigable(self):
+        for template in (
+            '{% ui "button" href="/next" is_disabled=True %}Go{% endui %}',
+            '{% ui "button" href="/next" element_type="a" is_disabled=True %}Go{% endui %}',
+        ):
+            with self.subTest(template=template):
+                output, caught = self.render_with_warnings(template)
+
+                self.assertEqual(caught, [])
+                self.assertTrue(output.startswith("<a "))
+                self.assertNotIn("href", output)
+                self.assertIn('aria-disabled="true"', output)
+                self.assertIn('data-disabled="true"', output)
+                # disabled is not a valid anchor attribute
+                self.assertNotRegex(output, r"\sdisabled[\s=>]")
+
+    def test_disabled_non_button_element_type_uses_aria_disabled(self):
+        output, caught = self.render_with_warnings(
+            '{% ui "button" element_type="span" is_disabled=True %}Go{% endui %}'
+        )
+
+        self.assertEqual(caught, [])
+        self.assertTrue(output.startswith("<span "))
+        self.assertIn('aria-disabled="true"', output)
+        self.assertNotRegex(output, r"\sdisabled[\s=>]")
+
+    def test_disabled_button_uses_the_native_disabled_attribute(self):
+        output, caught = self.render_with_warnings('{% ui "button" is_disabled=True %}Save{% endui %}')
+
+        self.assertEqual(caught, [])
+        self.assertRegex(output, r"^<button\b[^>]*\sdisabled[\s>]")
+        self.assertNotIn("aria-disabled", output)
+
     def test_invalid_element_type_cannot_change_the_tag_structure(self):
         output, caught = self.render_with_warnings(
             '{% ui "button" element_type=element_type %}Save{% endui %}',
