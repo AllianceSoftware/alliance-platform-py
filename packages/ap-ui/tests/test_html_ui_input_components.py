@@ -115,7 +115,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
             '{% ui "text_input" label="Email" unknownAttr="nope" %}{% endui %}'
         )
         self.assertIn(
-            "Prop 'unknownAttr' is not a supported 'text-input' attribute and will be ignored",
+            "Prop 'unknownAttr' is not a supported 'text_input' attribute and will be ignored",
             caught,
         )
         self.assertNotIn("unknownattr", output.lower())
@@ -125,7 +125,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
             '{% ui "text_area" label="Notes" pattern="[a-z]+" %}{% endui %}'
         )
         self.assertIn(
-            "Prop 'pattern' is not a supported 'text-area' attribute and will be ignored",
+            "Prop 'pattern' is not a supported 'text_area' attribute and will be ignored",
             caught,
         )
         self.assertNotIn("pattern", output)
@@ -290,7 +290,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         output, caught = self.render_with_warnings(
             '{% ui "text_input" label="Email" %}unexpected content{% endui %}'
         )
-        self.assertIn("'text-input' does not support children; the content will be ignored", caught)
+        self.assertIn("'text_input' does not support children; the content will be ignored", caught)
         self.assertNotIn("unexpected content", output)
 
     def test_label_and_value_are_escaped(self):

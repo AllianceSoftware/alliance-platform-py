@@ -25,7 +25,7 @@ _BUTTON_GROUP_FORWARDED_PROPS = frozenset(
 
 
 class UIButtonGroupRenderer(BaseHtmlUIComponentRenderer):
-    apui_component_name = "button-group"
+    name = "button_group"
     slot_name = "buttonGroup"
     supported_props = frozenset(
         {
@@ -101,7 +101,7 @@ class UIButtonGroupRenderer(BaseHtmlUIComponentRenderer):
         attrs: dict[str, Any] = {
             **self.collect_forwarded_props(props),
             "className": class_name,
-            "data-apui": "button-group",
+            "data-apui": self.apui_name,
             "data-orientation": orientation,
             "data-density": density if density_prop_present else None,
             "data-align": align if align_prop_present else None,

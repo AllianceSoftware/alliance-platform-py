@@ -74,7 +74,7 @@ class PaginationItem:
 
 
 class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
-    apui_component_name = "pagination"
+    name = "pagination"
     slot_name = "pagination"
     supported_props = frozenset(
         {

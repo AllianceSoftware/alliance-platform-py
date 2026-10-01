@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 from typing import Any
 from typing import Callable
+from typing import ClassVar
 from typing import Mapping
 import warnings
 
@@ -188,6 +189,14 @@ def build_attrs_string(attrs: dict[str, Any]) -> str:
 class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
     """Base node for HTML-only UI components dispatched by ``{% ui %}``."""
 
+    #: The snake_case name the component is registered under (``{% ui "<name>" %}``). Warnings
+    #: and render frames use it, and :func:`~alliance_platform.ui.html_components.register_component`
+    #: requires it to match the registered name.
+    name: ClassVar[str]
+    #: Value for the root ``data-apui`` marker and generated id prefixes (``apui-<apui_name>-1``).
+    #: Defaults to ``name`` with underscores replaced by hyphens whenever a class sets ``name``
+    #: without also setting ``apui_name``.
+    apui_name: ClassVar[str]
     slot_name: str | None = None
     #: Props accepted by :meth:`filter_component_props`. ``None`` defers the final prop-name
     #: allowlist to the component (useful for inputs, which split props across several elements).
@@ -206,6 +215,11 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
     none_meaningful_props: frozenset[str] = frozenset()
     prop_filter_context = "static HTML ui components"
     event_handler_prop_reason = "event handlers are not supported by static HTML ui components"
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        if "name" in cls.__dict__ and "apui_name" not in cls.__dict__:
+            cls.apui_name = cls.name.replace("_", "-")
 
     def __init__(
         self,
@@ -287,7 +301,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
     def build_render_frame(self, context: Context, props: dict[str, Any]) -> RenderFrame:
         """Build this component's frame; composite roots may attach a typed payload."""
 
-        return RenderFrame(component=self.get_component_prop_name())
+        return RenderFrame(component=self.name)
 
     def resolve_props(self, context: Context) -> dict[str, Any]:
         resolved_props: dict[str, Any] = {}
@@ -316,7 +330,6 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         scalar-value checks consistent while leaving component-specific allowlists declarative.
         """
         filtered: dict[str, Any] = {}
-        component_name = self.get_component_prop_name()
         aliased_props: dict[str, Any] = {}
         for original_key, value in props.items():
             key = self.deprecated_prop_aliases.get(
@@ -352,7 +365,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
                     else (self.allow_aria_props or attr_name in self.extra_allowed_aria_props)
                 )
                 if not allowed:
-                    warnings.warn(f"Prop '{key}' is not supported on '{component_name}' and will be ignored")
+                    warnings.warn(f"Prop '{key}' is not supported on '{self.name}' and will be ignored")
                     continue
                 if not is_scalar_prop_value(value):
                     warnings.warn(
@@ -363,7 +376,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
                 filtered[attr_name] = value
                 continue
             if not self.is_supported_prop(key):
-                warnings.warn(f"Prop '{key}' is not a supported '{component_name}' prop and will be ignored")
+                warnings.warn(f"Prop '{key}' is not a supported '{self.name}' prop and will be ignored")
                 continue
             if rule is not None and not rule.accepts(value):
                 warnings.warn(f"Invalid '{key}' prop passed: {value}")
@@ -434,10 +447,6 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
             if key.startswith("aria-") and (self.allow_aria_props or key in self.extra_allowed_aria_props):
                 forwarded[key] = value
         return forwarded
-
-    def get_component_prop_name(self) -> str:
-        name = getattr(self, "component_name", None) or getattr(self, "apui_component_name", None)
-        return str(name or self.__class__.__name__)
 
     def allow_non_scalar_prop(self, key: str, value: Any) -> bool:
         return key in self.non_scalar_props

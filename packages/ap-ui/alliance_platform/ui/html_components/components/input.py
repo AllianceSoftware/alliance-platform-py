@@ -137,12 +137,9 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
     text/error message, with state expressed through data attributes.
     """
 
-    #: value used for ``data-apui`` on the control container and generated element id prefixes
-    apui_component_name: str
-
     def generate_html_id(self, context: Context) -> str:
         """Generate a deterministic id, unique within the current document render."""
-        return generate_html_id(context, f"apui-{self.apui_component_name}")
+        return generate_html_id(context, f"apui-{self.apui_name}")
 
     def resolve_labeled_input_state(self, context: Context, props: dict[str, Any]) -> LabeledInputState:
         label_position = str(props.get("labelPosition", "top"))
@@ -401,9 +398,7 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
         if children_html.strip():
-            warnings.warn(
-                f"'{self.apui_component_name}' does not support children; the content will be ignored"
-            )
+            warnings.warn(f"'{self.name}' does not support children; the content will be ignored")
         state = self.resolve_labeled_input_state(context, props)
 
         text_input_base_styles = self.resolve_vanilla_extract_mapping(_TEXT_INPUT_BASE_STYLE_PATH)
@@ -443,7 +438,7 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
         addon_after_html = self.render_addon_after(props, state, text_input_base_styles)
 
         container_attrs: dict[str, Any] = {
-            "data-apui": self.apui_component_name,
+            "data-apui": self.apui_name,
             **self.get_container_extra_attrs(props, state),
             "className": self.join_classes(
                 self.get_style_class(text_input_base_styles, "inputContainer"),
@@ -529,9 +524,7 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
             if key in self.control_pass_through_props:
                 attrs[key] = value
                 continue
-            warnings.warn(
-                f"Prop '{key}' is not a supported '{self.apui_component_name}' attribute and will be ignored"
-            )
+            warnings.warn(f"Prop '{key}' is not a supported '{self.name}' attribute and will be ignored")
         return attrs
 
     def render_control(
@@ -545,7 +538,7 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
 
 
 class UITextInputRenderer(UITextInputBaseRenderer):
-    apui_component_name = "text-input"
+    name = "text_input"
     handled_props = UITextInputBaseRenderer.handled_props | {"type"}
     control_pass_through_props = _SHARED_CONTROL_PASS_THROUGH_PROPS | {"pattern", "size", "list"}
 
@@ -569,7 +562,7 @@ class UITextInputRenderer(UITextInputBaseRenderer):
 
 
 class UITextAreaRenderer(UITextInputBaseRenderer):
-    apui_component_name = "text-area"
+    name = "text_area"
     control_tag = "textarea"
     handled_props = UITextInputBaseRenderer.handled_props | {"height", "type", "rows", "cols"}
     control_pass_through_props = _SHARED_CONTROL_PASS_THROUGH_PROPS | {"wrap"}
@@ -622,7 +615,7 @@ class UITextAreaRenderer(UITextInputBaseRenderer):
 
 
 class UINumberInputRenderer(UITextInputBaseRenderer):
-    apui_component_name = "number-input"
+    name = "number_input"
     handled_props = UITextInputBaseRenderer.handled_props | {
         "type",
         "minValue",
