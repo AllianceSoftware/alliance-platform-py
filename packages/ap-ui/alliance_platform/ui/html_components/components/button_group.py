@@ -110,7 +110,7 @@ class UIButtonGroupRenderer(BaseHtmlUIComponentRenderer):
 
         add_auto_attach_marker(attrs, "smart-orientation")
 
-        return self._render_tag("div", attrs, children_html)
+        return self.render_tag("div", attrs, children_html)
 
     def _resolve_runtime_resource(self) -> FrontendResource:
         try:

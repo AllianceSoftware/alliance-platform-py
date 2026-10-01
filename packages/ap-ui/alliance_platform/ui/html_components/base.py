@@ -1,3 +1,33 @@
+"""Base class for static ``{% ui %}`` component renderers.
+
+A renderer is a template node. :meth:`BaseHtmlUIComponentRenderer.render` resolves the tag's props,
+merges inherited slot defaults, applies the prop contract, pushes the frame from
+``build_render_frame``, renders children, renders the component and publishes its child report.
+Renderer instances are shared by every render of a compiled template, so per-render state belongs
+in frame payloads, never on ``self``.
+
+Contract attributes (class level): ``name``, ``apui_name``, ``slot_name``, ``supported_props``,
+``prop_rules``, ``prop_aliases``, ``deprecated_prop_aliases``, ``unsupported_prop_reasons``,
+``forwarded_props``, ``allow_data_props``, ``allow_aria_props``, ``extra_allowed_aria_props``,
+``non_scalar_props``, ``none_meaningful_props``, and the warning wording in
+``prop_filter_context`` and ``event_handler_prop_reason``.
+
+Hooks to override: ``render_component`` (required), ``render_children_for_component``,
+``build_render_frame``, ``build_child_report``, ``resolve_component_resources`` and
+``get_resources_to_embed``. Renderers may also override ``resolve_props`` (for example to require a
+parent component), ``allow_non_scalar_prop`` and the ``supports_prop_name`` classmethod.
+
+Helpers to call: ``render_children``, ``render_tag``, ``render_icon``, ``resolve_frontend_resource``,
+``resolve_optional_resource_path``, ``resolve_vanilla_extract_mapping``, the style getters
+(``get_style_class``, ``get_nested_style_class``, ``get_recipe_classes``),
+``collect_forwarded_props``, ``join_classes``, ``build_attrs_string`` and the
+``canonical_prop_name`` classmethod. Module level: :class:`PropRule`, :func:`enum_prop_rule`,
+:func:`typed_prop_rule`, :func:`build_attrs_string`, :func:`is_event_handler_attr` and
+:func:`style_dict_to_string`.
+
+Names starting with an underscore are internal.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -72,7 +102,7 @@ _BULK_PROP_STATE_ALIASES = {
 }
 
 
-def normalize_html_ui_prop_name(key: str) -> str:
+def _normalize_html_ui_prop_name(key: str) -> str:
     """Normalize Django-template spelling to the static renderer prop convention."""
     if key in {"class", "class_name"}:
         return "className"
@@ -130,29 +160,29 @@ def typed_prop_rule(
     )
 
 
-def camel_to_kebab(value: str) -> str:
+def _camel_to_kebab(value: str) -> str:
     return _CAMEL_CASE_SPLIT_RE.sub(r"\1-\2", value).replace("_", "-").lower()
 
 
-def to_html_attr_name(key: str) -> str:
+def _to_html_attr_name(key: str) -> str:
     """Convert a React style prop name to the HTML attribute name (``className`` -> ``class``)."""
     if key in _REACT_ATTR_TO_HTML_ATTR:
         return _REACT_ATTR_TO_HTML_ATTR[key]
     if "-" in key:
         return key
     if key.startswith("aria") and len(key) > 4 and key[4].isupper():
-        return "aria-" + camel_to_kebab(key[4:])
+        return "aria-" + _camel_to_kebab(key[4:])
     if key.startswith("data") and len(key) > 4 and key[4].isupper():
-        return "data-" + camel_to_kebab(key[4:])
+        return "data-" + _camel_to_kebab(key[4:])
     return key.lower()
 
 
 def is_event_handler_attr(name: str) -> bool:
     """Return whether an attribute/prop name could create an inline event handler."""
-    return to_html_attr_name(str(name)).lower().startswith("on")
+    return _to_html_attr_name(str(name)).lower().startswith("on")
 
 
-def is_scalar_prop_value(value: Any) -> bool:
+def _is_scalar_prop_value(value: Any) -> bool:
     """Return whether a prop can be safely serialized as an HTML attribute value."""
     # Promise covers lazy translation proxies; Decimal covers Django DecimalField values.
     return isinstance(value, (str, int, float, bool, Decimal, Promise)) or value is None
@@ -161,7 +191,7 @@ def is_scalar_prop_value(value: Any) -> bool:
 def style_dict_to_string(style: dict[str, Any]) -> str:
     declarations = []
     for key, value in style.items():
-        css_key = key if key.startswith("--") else camel_to_kebab(str(key))
+        css_key = key if key.startswith("--") else _camel_to_kebab(str(key))
         declarations.append(f"{css_key}: {value}")
     return "; ".join(declarations)
 
@@ -176,7 +206,7 @@ def build_attrs_string(attrs: dict[str, Any]) -> str:
     for name, value in attrs.items():
         if value is None or value is False:
             continue
-        attr_name = to_html_attr_name(name)
+        attr_name = _to_html_attr_name(name)
         if name == "style" and isinstance(value, dict):
             value = style_dict_to_string(value)
         if value is True:
@@ -198,8 +228,8 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
     #: without also setting ``apui_name``.
     apui_name: ClassVar[str]
     slot_name: str | None = None
-    #: Props accepted by :meth:`filter_component_props`. ``None`` defers the final prop-name
-    #: allowlist to the component (useful for inputs, which split props across several elements).
+    #: Props the component accepts. ``None`` defers the final prop-name allowlist to the
+    #: component (useful for inputs, which split props across several elements).
     supported_props: frozenset[str] | None = None
     unsupported_prop_reasons: Mapping[str, str] = {}
     prop_aliases: Mapping[str, str] = {}
@@ -256,9 +286,6 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         """
         return self.get_resources_for_bundling()
 
-    def get_slot_name(self) -> str | None:
-        return self.slot_name
-
     def render(self, context: Context) -> str:
         if not self._register_asset:
             raise RuntimeError(
@@ -270,7 +297,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         try:
             props = self.resolve_props(context)
             props = self._merge_slot_props(context, props)
-            props = self.filter_component_props(props)
+            props = self._filter_component_props(props)
             frame = self.build_render_frame(context, props)
             with push_render_frame(context, frame):
                 children_html = self.render_children_for_component(context, props)
@@ -308,10 +335,10 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         bulk_props: Any = None
         for key, value in self.props.items():
             if key == BULK_PROPS_KWARG:
-                bulk_props = self.resolve_prop_value(context, value)
+                bulk_props = self._resolve_prop_value(context, value)
                 continue
             normalized_key = self._normalize_prop_key(key)
-            resolved_value = self.resolve_prop_value(context, value)
+            resolved_value = self._resolve_prop_value(context, value)
             if normalized_key == "className" and normalized_key in resolved_props:
                 existing = resolved_props.get(normalized_key)
                 resolved_props[normalized_key] = self.join_classes(
@@ -322,7 +349,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
             resolved_props[normalized_key] = resolved_value
         return self._merge_bulk_props(resolved_props, bulk_props)
 
-    def filter_component_props(self, props: dict[str, Any]) -> dict[str, Any]:
+    def _filter_component_props(self, props: dict[str, Any]) -> dict[str, Any]:
         """Apply the shared static-component prop policy.
 
         Component families configure the policy through the class attributes above. The common
@@ -347,7 +374,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
             rule = self.prop_rules.get(key)
             if value is None:
                 if (rule is not None and rule.allow_none) or key in self.none_meaningful_props:
-                    if self.is_supported_prop(key):
+                    if self._is_supported_prop(key):
                         filtered[key] = value
                 continue
             reason = self.unsupported_prop_reasons.get(key)
@@ -357,7 +384,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
             if is_event_handler_attr(key):
                 warnings.warn(f"Prop '{key}' will be ignored: {self.event_handler_prop_reason}")
                 continue
-            attr_name = to_html_attr_name(key)
+            attr_name = _to_html_attr_name(key)
             if attr_name.startswith("data-") or attr_name.startswith("aria-"):
                 allowed = (
                     self.allow_data_props
@@ -367,7 +394,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
                 if not allowed:
                     warnings.warn(f"Prop '{key}' is not supported on '{self.name}' and will be ignored")
                     continue
-                if not is_scalar_prop_value(value):
+                if not _is_scalar_prop_value(value):
                     warnings.warn(
                         f"Prop '{key}' with non-scalar value is not supported by "
                         f"{self.prop_filter_context} and will be ignored"
@@ -375,7 +402,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
                     continue
                 filtered[attr_name] = value
                 continue
-            if not self.is_supported_prop(key):
+            if not self._is_supported_prop(key):
                 warnings.warn(f"Prop '{key}' is not a supported '{self.name}' prop and will be ignored")
                 continue
             if rule is not None and not rule.accepts(value):
@@ -388,7 +415,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
                     warnings.warn("Prop 'style' must be a string or dict; it will be ignored")
                     continue
             elif (
-                not is_scalar_prop_value(value)
+                not _is_scalar_prop_value(value)
                 and rule is None
                 and not self.allow_non_scalar_prop(key, value)
             ):
@@ -400,7 +427,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
             filtered[key] = value
         return filtered
 
-    def is_supported_prop(self, key: str) -> bool:
+    def _is_supported_prop(self, key: str) -> bool:
         return (
             self.supported_props is None
             or key in self.supported_props
@@ -411,7 +438,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
     @classmethod
     def canonical_prop_name(cls, key: str) -> str:
         """Return the prop name after template normalization and renderer aliases."""
-        normalized = normalize_html_ui_prop_name(key)
+        normalized = _normalize_html_ui_prop_name(key)
         return cls.deprecated_prop_aliases.get(
             normalized,
             cls.prop_aliases.get(normalized, normalized),
@@ -487,9 +514,9 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
             merged[normalized_key] = value
         return merged
 
-    def resolve_prop_value(self, context: Context, value: Any) -> Any:
+    def _resolve_prop_value(self, context: Context, value: Any) -> Any:
         if isinstance(value, FilterExpression):
-            return self.resolve_prop_value(context, value.resolve(context))
+            return self._resolve_prop_value(context, value.resolve(context))
         if isinstance(value, DeferredProp):
             return value.resolve(context)
         if isinstance(value, NodeList):
@@ -518,7 +545,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
         raise NotImplementedError
 
-    def resolve_resource_path(self, path: str, resolve_extensions: list[str] | None = None) -> Path:
+    def _resolve_resource_path(self, path: str, resolve_extensions: list[str] | None = None) -> Path:
         resolver_context = ResolveContext(self.bundler.root_dir, self.origin.name if self.origin else None)
         return self.bundler.resolve_path(path, resolver_context, resolve_extensions=resolve_extensions)
 
@@ -528,7 +555,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         resolve_extensions: list[str] | None = None,
     ) -> Path | None:
         try:
-            return self.resolve_resource_path(path, resolve_extensions=resolve_extensions)
+            return self._resolve_resource_path(path, resolve_extensions=resolve_extensions)
         except template.TemplateSyntaxError:
             return None
 
@@ -538,7 +565,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         resolve_extensions: list[str] | None = None,
     ) -> FrontendResource:
         return FrontendResource.from_path(
-            self.resolve_resource_path(path, resolve_extensions=resolve_extensions)
+            self._resolve_resource_path(path, resolve_extensions=resolve_extensions)
         )
 
     def resolve_vanilla_extract_mapping(
@@ -546,7 +573,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         path: str,
         resolve_extensions: list[str] | None = None,
     ):
-        style_path = self.resolve_resource_path(path, resolve_extensions=resolve_extensions)
+        style_path = self._resolve_resource_path(path, resolve_extensions=resolve_extensions)
         return resolve_vanilla_extract_class_mapping(self.bundler, style_path)
 
     def get_style_class(self, mapping: Any, key: str) -> str:
@@ -610,13 +637,13 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         return " ".join(class_name for class_name in class_names if class_name)
 
     def _normalize_prop_key(self, key: str) -> str:
-        return normalize_html_ui_prop_name(key)
+        return _normalize_html_ui_prop_name(key)
 
     def _merge_slot_props(self, context: Context, child_props: dict[str, Any]) -> dict[str, Any]:
         # Match useSlotProps: an explicit slot selects that parent-provided slot; otherwise the
         # renderer's default slot is used. The slot selector itself is consumed by renderers and
         # is not forwarded as an HTML attribute.
-        slot_name = child_props.get("slot") or self.get_slot_name()
+        slot_name = child_props.get("slot") or self.slot_name
         if not slot_name:
             return child_props
         slot_context = get_slot_context(context)
@@ -626,6 +653,11 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         for item in self.bundler.get_embed_items(self.get_resources_to_embed()):
             self.bundler_asset_context.queue_embed_file(item)
 
-    def _render_tag(self, tag_name: str, attrs: dict[str, Any], children_html: str = "") -> str:
+    def render_tag(self, tag_name: str, attrs: dict[str, Any], children_html: str = "") -> str:
+        """Render ``<tag_name ...>children_html</tag_name>`` as safe HTML.
+
+        ``attrs`` are rendered by :func:`build_attrs_string`; ``children_html`` is inserted as is,
+        so it must already be escaped.
+        """
         attrs_html = self.build_attrs_string(attrs)
         return mark_safe(f"<{tag_name}{attrs_html}>{children_html}</{tag_name}>")

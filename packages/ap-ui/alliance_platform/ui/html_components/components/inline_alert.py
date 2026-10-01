@@ -114,7 +114,7 @@ class UIInlineAlertRenderer(BaseHtmlUIComponentRenderer):
             content_html = children_html
             only_content = self._contains_only_content(children_html, part_classes)
         else:
-            content_html = self._render_tag(
+            content_html = self.render_tag(
                 "section",
                 {"className": part_classes["content"]},
                 children_html,
@@ -138,7 +138,7 @@ class UIInlineAlertRenderer(BaseHtmlUIComponentRenderer):
             or self.get_nested_style_class(styles, "alert", "default"),
             self.get_style_class(styles, "onlyContent") if only_content else None,
         )
-        inner_html = self._render_tag("div", {"className": inner_class_name}, content_html)
+        inner_html = self.render_tag("div", {"className": inner_class_name}, content_html)
 
         attrs: dict[str, Any] = {
             **self.collect_forwarded_props(props),
@@ -153,7 +153,7 @@ class UIInlineAlertRenderer(BaseHtmlUIComponentRenderer):
             # InlineAlert always exposes alert semantics, even if a different role is supplied.
             "role": "alert",
         }
-        return self._render_tag("div", attrs, inner_html)
+        return self.render_tag("div", attrs, inner_html)
 
     @staticmethod
     def _has_class(html: str, class_name: str) -> bool:
