@@ -34,7 +34,7 @@ class UILayoutPartRenderer(BaseHtmlUIComponentRenderer):
 
 
 class UIContentRenderer(UILayoutPartRenderer):
-    apui_component_name = "content"
+    name = "content"
     slot_name = "content"
     tag_name = "section"
 
@@ -46,7 +46,7 @@ class UIContentRenderer(UILayoutPartRenderer):
 
 
 class UIHeadingRenderer(UILayoutPartRenderer):
-    apui_component_name = "heading"
+    name = "heading"
     slot_name = "heading"
     tag_name = "h3"
     supported_props = UILayoutPartRenderer.supported_props | frozenset({"level"})
@@ -62,12 +62,12 @@ class UIHeadingRenderer(UILayoutPartRenderer):
 
 
 class UIHeaderRenderer(UILayoutPartRenderer):
-    apui_component_name = "header"
+    name = "header"
     slot_name = "header"
     tag_name = "header"
 
 
 class UIFooterRenderer(UILayoutPartRenderer):
-    apui_component_name = "footer"
+    name = "footer"
     slot_name = "footer"
     tag_name = "footer"

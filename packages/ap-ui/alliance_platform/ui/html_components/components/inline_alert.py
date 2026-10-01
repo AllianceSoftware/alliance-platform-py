@@ -39,7 +39,7 @@ _ROOT_FORWARDED_PROPS = frozenset({"id", "title", "role", "tabIndex", "dir", "la
 
 
 class UIInlineAlertRenderer(BaseHtmlUIComponentRenderer):
-    apui_component_name = "inline-alert"
+    name = "inline_alert"
     supported_props = frozenset(
         {
             "intent",
@@ -142,7 +142,7 @@ class UIInlineAlertRenderer(BaseHtmlUIComponentRenderer):
 
         attrs: dict[str, Any] = {
             **self.collect_forwarded_props(props),
-            "data-apui": "inline-alert",
+            "data-apui": self.apui_name,
             "data-intent": intent,
             "data-only-content": "true" if only_content else None,
             "className": self.join_classes(

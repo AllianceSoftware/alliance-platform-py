@@ -164,8 +164,6 @@ class UITableComponentRendererBase(BaseHtmlUIComponentRenderer):
     ``aria-*`` attributes pass through only where the spec allows it.
     """
 
-    #: registered dispatcher name, used in warning messages
-    component_name: str
     #: props (after normalization) the component understands
     supported_props: frozenset[str] = frozenset()
     #: props rejected with a specific reason instead of the generic unknown-prop warning
@@ -191,13 +189,12 @@ class UITableComponentRendererBase(BaseHtmlUIComponentRenderer):
 
     def warn_outside_table(self):
         warnings.warn(
-            f"'{self.component_name}' was rendered outside of a '{{% ui \"table\" %}}' component; "
-            "rendering nothing"
+            f"'{self.name}' was rendered outside of a '{{% ui \"table\" %}}' component; rendering nothing"
         )
 
 
 class UITableRenderer(UITableComponentRendererBase):
-    component_name = "table"
+    name = "table"
     requires_table = False
     supported_props = frozenset(
         {
@@ -244,7 +241,7 @@ class UITableRenderer(UITableComponentRendererBase):
 
     def build_render_frame(self, context: Context, props: dict[str, Any]) -> RenderFrame:
         return RenderFrame(
-            component=self.get_component_prop_name(),
+            component=self.name,
             payload=self.build_table_state(context, props),
         )
 
@@ -305,7 +302,7 @@ class UITableRenderer(UITableComponentRendererBase):
         has_footer = bool(footer_html)
 
         wrapper_attrs: dict[str, Any] = {
-            "data-apui": "table",
+            "data-apui": self.apui_name,
             # These are load-bearing for styling: the stylesheet keys header/footer chrome off
             # [data-has-header]/[data-has-footer] on the tableWrapper class.
             "data-has-header": "true" if has_header else None,
@@ -332,7 +329,7 @@ class UITableRenderer(UITableComponentRendererBase):
 
 
 class UITableHeaderRenderer(UITableComponentRendererBase):
-    component_name = "table_header"
+    name = "table_header"
     # The React TableHeader accepts no styling props; nested/grouped columns are a non-goal.
     supported_props = frozenset()
     unsupported_prop_reasons = {"columns": _COLLECTION_REASON}
@@ -343,7 +340,7 @@ class UITableHeaderRenderer(UITableComponentRendererBase):
 
 
 class UITableColumnRenderer(UITableComponentRendererBase):
-    component_name = "table_column"
+    name = "table_column"
     supported_props = frozenset(
         {
             "id",
@@ -567,7 +564,7 @@ class UITableColumnRenderer(UITableComponentRendererBase):
 
 
 class UITableBodyRenderer(UITableComponentRendererBase):
-    component_name = "table_body"
+    name = "table_body"
     supported_props = frozenset({"id", "className", "style"})
     unsupported_prop_reasons = {"items": _COLLECTION_REASON}
     allow_data_props = True
@@ -609,7 +606,7 @@ class UITableBodyRenderer(UITableComponentRendererBase):
 
 
 class UITableRowRenderer(UITableComponentRendererBase):
-    component_name = "table_row"
+    name = "table_row"
     supported_props = frozenset({"id", "key", "className", "style"})
     unsupported_prop_reasons = {"isSelected": _SELECTION_REASON, "isDisabled": _SELECTION_REASON}
     allow_data_props = True
@@ -641,7 +638,7 @@ class UITableRowRenderer(UITableComponentRendererBase):
 
 
 class UITableCellRenderer(UITableComponentRendererBase):
-    component_name = "table_cell"
+    name = "table_cell"
     supported_props = frozenset({"id", "className", "style", "colSpan", "rowSpan"})
     allow_data_props = True
     allow_aria_props = True

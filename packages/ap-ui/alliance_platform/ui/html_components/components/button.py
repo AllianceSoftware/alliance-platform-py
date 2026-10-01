@@ -69,7 +69,7 @@ _BUTTON_FORWARDED_PROPS = frozenset(
 
 
 class UIButtonRenderer(BaseHtmlUIComponentRenderer):
-    apui_component_name = "button"
+    name = "button"
     slot_name = "button"
     supported_props = frozenset(
         {
@@ -133,7 +133,7 @@ class UIButtonRenderer(BaseHtmlUIComponentRenderer):
         attrs: dict[str, Any] = {
             **self.collect_forwarded_props(props),
             "className": class_name,
-            "data-apui": "button",
+            "data-apui": self.apui_name,
             "data-variant": variant,
             "data-color": color,
             "data-size": size,

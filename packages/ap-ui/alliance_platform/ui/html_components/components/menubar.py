@@ -181,8 +181,6 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
     ``aria-*`` attributes pass through only where the component contract allows them.
     """
 
-    #: registered dispatcher name, used in warning messages
-    component_name: str
     #: props (after normalization) the component understands
     supported_props: frozenset[str] = frozenset()
     #: props rejected with a specific reason instead of the generic unknown-prop warning
@@ -226,7 +224,7 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
     def resolve_props(self, context: Context) -> dict[str, Any]:
         if self.requires_menubar and get_current_menubar_state(context) is None:
             warnings.warn(
-                f"'{self.component_name}' was rendered outside of a '{{% ui \"menubar\" %}}' "
+                f"'{self.name}' was rendered outside of a '{{% ui \"menubar\" %}}' "
                 "component; rendering nothing"
             )
             raise OmitComponentFromRendering()
@@ -250,17 +248,17 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
         if isinstance(raw_name, FilterExpression):
             if not is_static_expression(raw_name):
                 raise TemplateSyntaxError(
-                    f"'{self.component_name}' requires '{prop_name}' to be a static string literal"
+                    f"'{self.name}' requires '{prop_name}' to be a static string literal"
                 )
             raw_name = raw_name.resolve(Context())
         if not isinstance(raw_name, str):
             raise TemplateSyntaxError(
-                f"'{self.component_name}' static '{prop_name}' prop must resolve to a string, "
+                f"'{self.name}' static '{prop_name}' prop must resolve to a string, "
                 f"received {type(raw_name).__name__}"
             )
         if raw_name != raw_name.strip():
             raise TemplateSyntaxError(
-                f"'{self.component_name}' {prop_name} cannot contain leading or trailing whitespace"
+                f"'{self.name}' {prop_name} cannot contain leading or trailing whitespace"
             )
         try:
             validate_icon_name(raw_name)
@@ -318,7 +316,7 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
         if aria_label is not None:
             return str(aria_label)
         warnings.warn(
-            f"'{self.component_name}' has non-plain-text {content_description}; pass 'text_value' "
+            f"'{self.name}' has non-plain-text {content_description}; pass 'text_value' "
             "so it has an accessible label"
         )
         derived = " ".join(html_module.unescape(strip_tags(content_html)).split())
@@ -493,7 +491,7 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
 
 
 class UIMenubarRenderer(UIMenubarComponentRendererBase):
-    component_name = "menubar"
+    name = "menubar"
     requires_menubar = False
     supported_props = frozenset(
         {
@@ -639,7 +637,7 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
             props["expandedKeysStorageKey"] = expanded_keys_storage_key
         state = self.build_render_state(context, props, layout, root_item_display)
         return RenderFrame(
-            component=self.get_component_prop_name(),
+            component=self.name,
             payload=MenubarFramePayload(state, MenubarRenderFrame(level=0)),
         )
 
@@ -671,7 +669,7 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
         )
 
         attrs: dict[str, Any] = {
-            "data-apui": "menubar",
+            "data-apui": self.apui_name,
             "data-layout": layout,
             "data-root-item-display": state.root_item_display,
             "data-orientation": state.orientation,
@@ -697,7 +695,7 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
 
 
 class UIMenubarItemRenderer(UIMenubarComponentRendererBase):
-    component_name = "menubar_item"
+    name = "menubar_item"
     supported_props = frozenset(
         {
             "id",
@@ -864,7 +862,7 @@ class UIMenubarItemRenderer(UIMenubarComponentRendererBase):
 
 
 class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
-    component_name = "menubar_submenu"
+    name = "menubar_submenu"
     supported_props = frozenset(
         {
             "id",
@@ -1123,7 +1121,7 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
 
 
 class UIMenubarSectionRenderer(UIMenubarComponentRendererBase):
-    component_name = "menubar_section"
+    name = "menubar_section"
     supported_props = frozenset(
         {
             "id",

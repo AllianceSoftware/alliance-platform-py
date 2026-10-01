@@ -19,7 +19,7 @@ from ..static_icon import render_static_icon
 
 
 class UIIconRenderer(BaseHtmlUIComponentRenderer):
-    apui_component_name = "icon"
+    name = "icon"
     slot_name = "icon"
     supported_props = frozenset({"name", "size", "variant", "color", "slot", "className"})
     forwarded_props = frozenset({"id", "title", "style"})
@@ -87,7 +87,7 @@ class UIIconRenderer(BaseHtmlUIComponentRenderer):
         rendered: str,
     ) -> ChildReport | None:
         return ChildReport(
-            component=self.apui_component_name,
+            component=self.name,
             slot=str(props.get("slot", "icon")),
             html=rendered,
         )
