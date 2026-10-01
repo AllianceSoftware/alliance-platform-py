@@ -13,6 +13,11 @@ import re
 from typing import Any
 import warnings
 
+from alliance_platform.frontend.html_parser import void_elements
+from alliance_platform.frontend.renderable_content import RenderableContent
+from alliance_platform.frontend.renderable_content import RenderableElement
+from alliance_platform.frontend.renderable_content import RenderableTemplateNode
+from alliance_platform.frontend.renderable_content import RenderableText
 from django.template import Context
 from django.template import Node
 from django.template import NodeList
@@ -21,12 +26,6 @@ from django.utils.functional import Promise
 from django.utils.html import conditional_escape
 from django.utils.safestring import SafeString
 from django.utils.safestring import mark_safe
-
-from alliance_platform.frontend.html_parser import void_elements
-from alliance_platform.frontend.renderable_content import RenderableContent
-from alliance_platform.frontend.renderable_content import RenderableElement
-from alliance_platform.frontend.renderable_content import RenderableTemplateNode
-from alliance_platform.frontend.renderable_content import RenderableText
 
 from .base import build_attrs_string
 from .base import is_event_handler_attr

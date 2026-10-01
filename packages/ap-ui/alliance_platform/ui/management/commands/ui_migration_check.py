@@ -7,10 +7,8 @@ from pathlib import Path
 import re
 from typing import Literal
 
-from alliance_platform.ui.templatetags.alliance_platform.html_components.base import (
-    BaseHtmlUIComponentRenderer,
-)
-from alliance_platform.ui.templatetags.alliance_platform.html_components.registry import built_in_registry
+from alliance_platform.ui.html_components.base import BaseHtmlUIComponentRenderer
+from alliance_platform.ui.html_components.registry import built_in_registry
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.core.management.base import CommandError

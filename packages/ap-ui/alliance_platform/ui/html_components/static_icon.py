@@ -4,9 +4,8 @@ from typing import TYPE_CHECKING
 from typing import Any
 import warnings
 
-from django.utils.safestring import mark_safe
-
 from alliance_platform.ui.icons import get_static_icon_definition
+from django.utils.safestring import mark_safe
 
 from .base import is_event_handler_attr
 

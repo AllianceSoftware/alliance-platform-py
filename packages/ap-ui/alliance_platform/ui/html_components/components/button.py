@@ -3,11 +3,10 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from django.template import Context
 from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
-
-from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 
 from ..base import BaseHtmlUIComponentRenderer
 from ..base import enum_prop_rule

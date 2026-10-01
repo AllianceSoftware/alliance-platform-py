@@ -3,15 +3,14 @@ from __future__ import annotations
 from typing import Any
 import warnings
 
-from allianceutils.template import is_static_expression
-from django.template import Context
-from django.template import TemplateSyntaxError
-from django.template.base import FilterExpression
-
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from alliance_platform.frontend.bundler.frontend_resource import ImageResource
 from alliance_platform.ui.icons import get_static_icon_resource
 from alliance_platform.ui.icons import validate_icon_name
+from allianceutils.template import is_static_expression
+from django.template import Context
+from django.template import TemplateSyntaxError
+from django.template.base import FilterExpression
 
 from ..base import BaseHtmlUIComponentRenderer
 from ..render_context import ChildReport

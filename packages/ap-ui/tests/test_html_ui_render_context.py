@@ -1,20 +1,12 @@
 from __future__ import annotations
 
-from alliance_platform.ui.templatetags.alliance_platform.html_components.render_context import ChildReport
-from alliance_platform.ui.templatetags.alliance_platform.html_components.render_context import RenderFrame
-from alliance_platform.ui.templatetags.alliance_platform.html_components.render_context import (
-    collect_child_reports,
-)
-from alliance_platform.ui.templatetags.alliance_platform.html_components.render_context import (
-    find_leading_child_report,
-)
-from alliance_platform.ui.templatetags.alliance_platform.html_components.render_context import (
-    find_render_payload,
-)
-from alliance_platform.ui.templatetags.alliance_platform.html_components.render_context import (
-    push_render_frame,
-)
-from alliance_platform.ui.templatetags.alliance_platform.html_components.render_context import report_child
+from alliance_platform.ui.html_components.render_context import ChildReport
+from alliance_platform.ui.html_components.render_context import RenderFrame
+from alliance_platform.ui.html_components.render_context import collect_child_reports
+from alliance_platform.ui.html_components.render_context import find_leading_child_report
+from alliance_platform.ui.html_components.render_context import find_render_payload
+from alliance_platform.ui.html_components.render_context import push_render_frame
+from alliance_platform.ui.html_components.render_context import report_child
 from django.template import Context
 from django.test import SimpleTestCase
 

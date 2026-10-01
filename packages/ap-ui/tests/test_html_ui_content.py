@@ -3,7 +3,7 @@ from __future__ import annotations
 import warnings
 
 from alliance_platform.frontend.renderable_content import RenderableContent
-from alliance_platform.ui.templatetags.alliance_platform.html_components.content import render_content
+from alliance_platform.ui.html_components.content import render_content
 from django import forms
 from django.template import Context
 from django.template import Origin

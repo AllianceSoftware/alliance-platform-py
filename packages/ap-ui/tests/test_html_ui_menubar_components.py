@@ -13,9 +13,7 @@ import warnings
 from alliance_platform.frontend.bundler.context import BundlerAssetContext
 from alliance_platform.frontend.templatetags.react import DeferredProp
 from alliance_platform.frontend.templatetags.react import OmitComponentFromRendering
-from alliance_platform.ui.templatetags.alliance_platform.html_components.components.menubar import (
-    UIMenubarRenderer,
-)
+from alliance_platform.ui.html_components.components.menubar import UIMenubarRenderer
 from allianceutils.auth.permission import AmbiguousGlobalPermissionWarning
 from allianceutils.tests.util import warning_filter
 from django.conf import settings
@@ -1158,7 +1156,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
                     frontend_resource_registry=bypass_frontend_resource_registry,
                 ) as asset_context:
                     with mock.patch(
-                        "alliance_platform.ui.templatetags.alliance_platform.html_components.base.resolve_vanilla_extract_class_mapping",
+                        "alliance_platform.ui.html_components.base.resolve_vanilla_extract_class_mapping",
                         side_effect=make_style_mapping_resolver(),
                     ):
                         output = self.render_ui_document(BASIC_MENUBAR_TEMPLATE)
@@ -1312,7 +1310,7 @@ class UIMenubarUrlWithPermTestCase(TestCase):
                 frontend_resource_registry=bypass_frontend_resource_registry,
             ):
                 with mock.patch(
-                    "alliance_platform.ui.templatetags.alliance_platform.html_components.base.resolve_vanilla_extract_class_mapping",
+                    "alliance_platform.ui.html_components.base.resolve_vanilla_extract_class_mapping",
                     side_effect=make_style_mapping_resolver(),
                 ):
                     yield

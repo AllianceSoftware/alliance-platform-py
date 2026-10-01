@@ -29,15 +29,14 @@ from typing import Literal
 from typing import Mapping
 import warnings
 
-from django.template import Context
-from django.utils.html import conditional_escape
-from django.utils.safestring import mark_safe
-from django.utils.translation import gettext
-
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from alliance_platform.frontend.bundler.frontend_resource import ImageResource
 from alliance_platform.frontend.templatetags.react import OmitComponentFromRendering
 from alliance_platform.ui.icons import get_static_icon_resource
+from django.template import Context
+from django.utils.html import conditional_escape
+from django.utils.safestring import mark_safe
+from django.utils.translation import gettext
 
 from ..base import BaseHtmlUIComponentRenderer
 from ..base import enum_prop_rule

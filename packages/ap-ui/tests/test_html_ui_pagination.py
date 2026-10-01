@@ -53,7 +53,7 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
 
     def test_control_text_is_translated_and_escaped(self):
         with mock.patch(
-            "alliance_platform.ui.templatetags.alliance_platform.html_components.components.pagination.gettext",
+            "alliance_platform.ui.html_components.components.pagination.gettext",
             side_effect=lambda message: f"<{message}>",
         ):
             output, caught = self.render_with_warnings(

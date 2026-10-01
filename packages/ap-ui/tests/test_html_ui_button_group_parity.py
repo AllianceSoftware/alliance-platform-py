@@ -3,9 +3,7 @@ from __future__ import annotations
 from unittest.mock import patch
 import warnings
 
-from alliance_platform.ui.templatetags.alliance_platform.html_components.components.button_group import (
-    UIButtonGroupRenderer,
-)
+from alliance_platform.ui.html_components.components.button_group import UIButtonGroupRenderer
 from django.template import Template
 from django.template import TemplateSyntaxError
 

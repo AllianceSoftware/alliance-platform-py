@@ -12,11 +12,10 @@ import re
 from typing import Any
 from typing import Mapping
 
-from django.template import Context
-
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from alliance_platform.frontend.bundler.frontend_resource import ImageResource
 from alliance_platform.ui.icons import get_static_icon_resource
+from django.template import Context
 
 from ..base import BaseHtmlUIComponentRenderer
 from ..base import enum_prop_rule
