@@ -38,7 +38,7 @@ class HtmlUIParityTestCase(SimpleTestCase):
                 frontend_resource_registry=bypass_frontend_resource_registry,
             ) as asset_context:
                 with mock.patch(
-                    "alliance_platform.ui.templatetags.alliance_platform.html_components.base.resolve_vanilla_extract_class_mapping",
+                    "alliance_platform.ui.html_components.base.resolve_vanilla_extract_class_mapping",
                     side_effect=make_style_mapping_resolver(),
                 ):
                     yield asset_context

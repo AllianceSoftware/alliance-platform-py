@@ -40,6 +40,11 @@ from typing import Mapping
 from urllib.parse import unquote
 import warnings
 
+from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
+from alliance_platform.frontend.bundler.frontend_resource import ImageResource
+from alliance_platform.frontend.templatetags.react import OmitComponentFromRendering
+from alliance_platform.ui.icons import get_static_icon_resource
+from alliance_platform.ui.icons import validate_icon_name
 from allianceutils.template import is_static_expression
 from django.template import Context
 from django.template import TemplateSyntaxError
@@ -48,12 +53,6 @@ from django.utils.html import conditional_escape
 from django.utils.html import strip_tags
 from django.utils.safestring import mark_safe
 from django.utils.text import slugify
-
-from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
-from alliance_platform.frontend.bundler.frontend_resource import ImageResource
-from alliance_platform.frontend.templatetags.react import OmitComponentFromRendering
-from alliance_platform.ui.icons import get_static_icon_resource
-from alliance_platform.ui.icons import validate_icon_name
 
 from ..base import BaseHtmlUIComponentRenderer
 from ..base import enum_prop_rule

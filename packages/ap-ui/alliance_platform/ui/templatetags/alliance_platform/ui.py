@@ -16,10 +16,10 @@ from alliance_platform.frontend.templatetags.react import DeferredProp
 from alliance_platform.frontend.templatetags.react import OmitComponentFromRendering
 from alliance_platform.frontend.templatetags.react import merge_props
 from alliance_platform.frontend.templatetags.react import none_as_nan
+from alliance_platform.ui.html_components import parse_ui_tag
 
 from .button import register_button
 from .date_picker import register_date_picker
-from .html_components import parse_ui_tag
 from .icon import register_icon
 from .inline_alert import register_inline_alert
 from .labeled_input import register_labeled_input

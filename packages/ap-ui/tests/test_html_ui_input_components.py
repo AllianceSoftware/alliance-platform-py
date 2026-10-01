@@ -380,7 +380,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
 
     def test_number_input_labels_are_translated_and_escaped(self):
         with mock.patch(
-            "alliance_platform.ui.templatetags.alliance_platform.html_components.components.input.gettext",
+            "alliance_platform.ui.html_components.components.input.gettext",
             side_effect=lambda message: f"<{message}>",
         ):
             labelled, caught = self.render_with_warnings('{% ui "number_input" label="Qty" %}{% endui %}')

@@ -1,39 +1,17 @@
 from __future__ import annotations
 
-from alliance_platform.ui.templatetags.alliance_platform.html_components.components.button import (
-    UIButtonRenderer,
-)
-from alliance_platform.ui.templatetags.alliance_platform.html_components.components.button_group import (
-    UIButtonGroupRenderer,
-)
-from alliance_platform.ui.templatetags.alliance_platform.html_components.components.input import (
-    UINumberInputRenderer,
-)
-from alliance_platform.ui.templatetags.alliance_platform.html_components.components.input import (
-    UITextAreaRenderer,
-)
-from alliance_platform.ui.templatetags.alliance_platform.html_components.components.input import (
-    UITextInputRenderer,
-)
-from alliance_platform.ui.templatetags.alliance_platform.html_components.components.layout import (
-    UIContentRenderer,
-)
-from alliance_platform.ui.templatetags.alliance_platform.html_components.components.layout import (
-    UIFooterRenderer,
-)
-from alliance_platform.ui.templatetags.alliance_platform.html_components.components.layout import (
-    UIHeaderRenderer,
-)
-from alliance_platform.ui.templatetags.alliance_platform.html_components.components.layout import (
-    UIHeadingRenderer,
-)
-from alliance_platform.ui.templatetags.alliance_platform.html_components.components.pagination import (
-    UIPaginationRenderer,
-)
-from alliance_platform.ui.templatetags.alliance_platform.html_components.registry import (
-    HtmlUIComponentRegistry,
-)
-from alliance_platform.ui.templatetags.alliance_platform.html_components.registry import built_in_registry
+from alliance_platform.ui.html_components.components.button import UIButtonRenderer
+from alliance_platform.ui.html_components.components.button_group import UIButtonGroupRenderer
+from alliance_platform.ui.html_components.components.input import UINumberInputRenderer
+from alliance_platform.ui.html_components.components.input import UITextAreaRenderer
+from alliance_platform.ui.html_components.components.input import UITextInputRenderer
+from alliance_platform.ui.html_components.components.layout import UIContentRenderer
+from alliance_platform.ui.html_components.components.layout import UIFooterRenderer
+from alliance_platform.ui.html_components.components.layout import UIHeaderRenderer
+from alliance_platform.ui.html_components.components.layout import UIHeadingRenderer
+from alliance_platform.ui.html_components.components.pagination import UIPaginationRenderer
+from alliance_platform.ui.html_components.registry import HtmlUIComponentRegistry
+from alliance_platform.ui.html_components.registry import built_in_registry
 from django.test import SimpleTestCase
 
 

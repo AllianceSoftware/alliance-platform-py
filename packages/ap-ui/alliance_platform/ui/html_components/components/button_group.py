@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from django.template import Context
 from django.template import TemplateSyntaxError
-
-from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 
 from ..base import BaseHtmlUIComponentRenderer
 from ..base import enum_prop_rule

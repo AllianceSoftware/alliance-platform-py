@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import Any
 import warnings
 
+from alliance_platform.frontend.bundler.context import BundlerAsset
+from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from allianceutils.template import is_static_expression
 from allianceutils.template import parse_tag_arguments
 from django import template
@@ -13,9 +15,6 @@ from django.template import TemplateSyntaxError
 from django.template.base import UNKNOWN_SOURCE
 from django.template.base import FilterExpression
 from django.template.base import NodeList
-
-from alliance_platform.frontend.bundler.context import BundlerAsset
-from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 
 from .constants import ALLOWED_COMPONENTS_KWARG
 from .registry import HtmlUIComponentRegistry

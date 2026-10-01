@@ -5,9 +5,9 @@ This file contains maintainer-focused workflow notes for developing `alliance-pl
 ## Adding a new HTML dispatcher component
 
 1. Add a renderer class under:
-   - `alliance_platform/ui/templatetags/alliance_platform/html_components/components/`
+   - `alliance_platform/ui/html_components/components/`
 2. Register it in:
-   - `alliance_platform/ui/templatetags/alliance_platform/html_components/registry.py`
+   - `alliance_platform/ui/html_components/registry.py`
 3. Add parity cases in:
    - `scripts/parity_cases/`
    - include `class_prefixes` in each parity case module so fixture generation can keep relevant VE class tokens without hardcoding full class maps.
@@ -19,7 +19,7 @@ This file contains maintainer-focused workflow notes for developing `alliance-pl
 ## Input components (`text_input`, `number_input`, `text_area`)
 
 The input renderers live in
-`alliance_platform/ui/templatetags/alliance_platform/html_components/components/input.py` and share the
+`alliance_platform/ui/html_components/components/input.py` and share the
 `UILabeledInputRendererMixin` / `UITextInputBaseRenderer` rendering path, mirroring how the React
 components all render through `LabeledInput` + `TextInputBase`. Future input-like components (search
 input, select, date picker) should reuse the same base classes.
@@ -134,7 +134,7 @@ input, so a later native submit sends a plain number. The runtime tests live in 
 ## Table components (`table`, `table_header`, `table_body`, `table_column`, `table_row`, `table_cell`)
 
 The static table renderers live in
-`alliance_platform/ui/templatetags/alliance_platform/html_components/components/table.py` and
+`alliance_platform/ui/html_components/components/table.py` and
 mirror `@alliancesoftware/ui`'s `Table.tsx` for the read-only CRUD list case. Sorting is rendered
 as plain `<a href>` links that update a backend query parameter, mirroring `ColumnHeaderLink.tsx` /
 `useTableSorter.ts` (direction cycle: unsorted → ascending → descending → off).
@@ -193,7 +193,7 @@ table fixtures with `just sync-html-ui-parity-fixtures ../alliance-platform-js t
 ## Menubar components (`menubar`, `menubar_item`, `menubar_submenu`, `menubar_section`)
 
 The static menubar renderers live in
-`alliance_platform/ui/templatetags/alliance_platform/html_components/components/menubar.py` and
+`alliance_platform/ui/html_components/components/menubar.py` and
 mirror `@alliancesoftware/ui`'s `Menubar.tsx` for server-rendered navigation menus. Interactivity
 comes from a standalone runtime module in the JS repo —
 `@alliancesoftware/ui/components/menu-bar/Menubar.attach.ts` — attached through

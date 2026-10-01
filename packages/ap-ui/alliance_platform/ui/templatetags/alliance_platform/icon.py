@@ -11,8 +11,8 @@ from alliance_platform.frontend.bundler import get_bundler
 from alliance_platform.frontend.bundler.base import ResolveContext
 from alliance_platform.frontend.templatetags.react import ImportComponentSource
 from alliance_platform.frontend.templatetags.react import parse_component_tag
+from alliance_platform.ui.html_components.components.icon import UIIconRenderer
 from alliance_platform.ui.icons import resolve_icon_style_dir
-from alliance_platform.ui.templatetags.alliance_platform.html_components.components.icon import UIIconRenderer
 
 
 def icon(parser: template.base.Parser, token: template.base.Token):

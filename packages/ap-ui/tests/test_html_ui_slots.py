@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from alliance_platform.ui.templatetags.alliance_platform.html_components.slots import get_slot_context
-from alliance_platform.ui.templatetags.alliance_platform.html_components.slots import merge_slot_props
-from alliance_platform.ui.templatetags.alliance_platform.html_components.slots import push_slot_scope
-from alliance_platform.ui.templatetags.alliance_platform.html_components.slots import replace_slot_scope
+from alliance_platform.ui.html_components.slots import get_slot_context
+from alliance_platform.ui.html_components.slots import merge_slot_props
+from alliance_platform.ui.html_components.slots import push_slot_scope
+from alliance_platform.ui.html_components.slots import replace_slot_scope
 from django.template import Context
 from django.test import SimpleTestCase
 
