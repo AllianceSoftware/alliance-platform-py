@@ -825,11 +825,14 @@ class UIMenubarItemRenderer(UIMenubarComponentRendererBase):
 
         if element_type == "a":
             attrs["href"] = props.get("href")
+        # A link that is only a div because it is disabled drops its link props without a report:
+        # is_disabled often varies per request, so the template is not wrong
+        is_disabled_link = is_disabled and self.resolve_element_type(props, is_disabled=False) == "a"
         for prop_name in self.anchor_only_props:
             if prop_name in props:
                 if element_type == "a":
                     attrs[prop_name] = props[prop_name]
-                else:
+                elif not is_disabled_link:
                     self.report(
                         f"Prop '{prop_name}' is only supported when 'menubar_item' renders an anchor "
                         "and will be ignored",

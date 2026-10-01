@@ -28,6 +28,7 @@ from test_alliance_platform_ui.models import User
 from tests.parity.base import HtmlUIParityTestCase
 from tests.parity.base import test_development_bundler
 from tests.test_utils import override_ap_frontend_settings
+from tests.test_utils import override_ap_ui_settings
 from tests.test_utils.bundler import TestViteBundler
 from tests.test_utils.bundler import bundler_kwargs
 
@@ -348,6 +349,43 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
                 "and will be ignored"
             ],
         )
+
+    def test_anchor_only_props_warn_on_items_the_template_made_non_anchors(self):
+        items = [
+            '{% ui "menubar_item" element_type="button" target="_blank" %}Home{% endui %}',
+            '{% ui "menubar_item" element_type="div" href="/x/" target="_blank" %}Home{% endui %}',
+            '{% ui "menubar_item" target="_blank" %}Home{% endui %}',
+            '{% ui "menubar_item" element_type="button" target="_blank" is_disabled=True %}Home{% endui %}',
+        ]
+        for item in items:
+            with self.subTest(item=item):
+                output, caught = self.render_with_warnings(
+                    '{% ui "menubar" aria_label="Nav" %}' + item + "{% endui %}"
+                )
+                self.assertNotIn("_blank", output)
+                self.assertEqual(
+                    caught,
+                    [
+                        "Prop 'target' is only supported when 'menubar_item' renders an anchor and will be ignored"
+                    ],
+                )
+
+    @override_ap_ui_settings(STATIC_COMPONENT_STRICT=True)
+    def test_anchor_only_props_are_dropped_silently_on_disabled_links(self):
+        link_props = 'href="/x/" target="_blank" rel="noopener" download="report.csv" is_disabled=True'
+        items = [
+            '{% ui "menubar_item" ' + link_props + " %}Home{% endui %}",
+            '{% ui "menubar_item" element_type="a" ' + link_props + " %}Home{% endui %}",
+        ]
+        for item in items:
+            with self.subTest(item=item):
+                output, caught = self.render_with_warnings(
+                    '{% ui "menubar" aria_label="Nav" %}' + item + "{% endui %}"
+                )
+                self.assertEqual(caught, [])
+                self.assertIn('<div role="menuitem"', output)
+                for dropped in ("href=", "_blank", "noopener", "report.csv"):
+                    self.assertNotIn(dropped, output)
 
     def test_class_kwargs_merge_with_default_classes(self):
         template = (
