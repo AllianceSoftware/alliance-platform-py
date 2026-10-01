@@ -173,8 +173,8 @@ The result can be captured and passed directly to a static table footer:
 Page-size selection and React callback/state/custom-render APIs are intentionally unsupported.
 ``is_page_size_selectable``, ``page_sizes``, ``on_page_change``, ``on_page_size_change``,
 ``default_page``, ``default_page_size``, ``state``, ``render_item``, ``render_item_props`` and
-``breakpoints`` warn and are ignored. Use a normal GET form beside the pagination when users need
-to choose a page size.
+``breakpoints`` are reported as :ref:`contract diagnostics <static-component-diagnostics>` and
+ignored. Use a normal GET form beside the pagination when users need to choose a page size.
 
 Static HTML table components
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -239,7 +239,8 @@ Other notable behaviour:
 * ``header``/``footer`` content (e.g. a heading or pagination) can be passed to ``table`` and is
   rendered above/below the scrollable table area.
 * Unsupported interactive props (selection, ``on*`` callbacks, ``items``/``columns`` collections)
-  warn and are ignored rather than rendering broken interactivity.
+  are reported as :ref:`contract diagnostics <static-component-diagnostics>` and ignored rather
+  than rendering broken interactivity.
 
 Static menubar components
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -356,7 +357,8 @@ Other notable behaviour:
 * Disabled items (``is_disabled=True``) render with ``aria-disabled="true"`` (anchors become
   non-navigable ``<div>`` elements, matching React) and are skipped by keyboard navigation.
 * Unsupported interactive props (``on_action`` and other callbacks, selection props, ``items``
-  collections, overflow props) warn and are ignored rather than rendering broken interactivity.
+  collections, overflow props) are reported as :ref:`contract diagnostics
+  <static-component-diagnostics>` and ignored rather than rendering broken interactivity.
 * JavaScript is required for the dropdown interactivity only; closed submenu contents are
   rendered hidden in the page and links inside them still work once opened.
 * The renderer emits one menu tree whose root can be passed directly to the standalone runtime's
