@@ -17,9 +17,9 @@ Hooks to override: ``render_component`` (required), ``render_children_for_compon
 ``get_resources_to_embed``. Renderers may also override ``resolve_props`` (for example to require a
 parent component), ``allow_non_scalar_prop`` and the ``supports_prop_name`` classmethod.
 
-Helpers to call: ``render_children``, ``render_tag``, ``render_icon``, ``resolve_frontend_resource``,
-``resolve_optional_resource_path``, ``resolve_vanilla_extract_mapping``, the style getters
-(``get_style_class``, ``get_nested_style_class``, ``get_recipe_classes``),
+Helpers to call: ``report``, ``render_children``, ``render_tag``, ``render_icon``,
+``resolve_frontend_resource``, ``resolve_optional_resource_path``, ``resolve_vanilla_extract_mapping``,
+the style getters (``get_style_class``, ``get_nested_style_class``, ``get_recipe_classes``),
 ``collect_forwarded_props``, ``join_classes``, ``build_attrs_string`` and the
 ``canonical_prop_name`` classmethod. Module level: :class:`PropRule`, :func:`enum_prop_rule`,
 :func:`typed_prop_rule`, :func:`build_attrs_string`, :func:`is_event_handler_attr` and
@@ -59,7 +59,9 @@ from django.utils.functional import Promise
 from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
 
+from . import diagnostics
 from .constants import BULK_PROPS_KWARG
+from .diagnostics import DiagnosticKind
 from .render_context import ChildReport
 from .render_context import RenderFrame
 from .render_context import push_render_frame
@@ -522,6 +524,15 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         if isinstance(value, NodeList):
             return value.render(context)
         return value
+
+    def report(self, message: str, *, kind: DiagnosticKind) -> None:
+        """Report a problem with this component, filling in its name and template origin.
+
+        See :func:`~alliance_platform.ui.html_components.diagnostics.report`. A ``contract`` report
+        raises :class:`~alliance_platform.ui.html_components.diagnostics.StaticComponentContractError`
+        while the ``STATIC_COMPONENT_STRICT`` setting is on.
+        """
+        diagnostics.report(message, kind=kind, component=self.name, origin=self.origin)
 
     def render_children_for_component(self, context: Context, props: dict[str, Any]) -> str:
         """Render children during the main :meth:`render` flow.

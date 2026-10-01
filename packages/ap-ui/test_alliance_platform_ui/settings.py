@@ -9,6 +9,7 @@ from alliance_platform.codegen.settings import AlliancePlatformCodegenSettingsTy
 from alliance_platform.core.settings import AlliancePlatformCoreSettingsType
 from alliance_platform.frontend.bundler.resource_registry import FrontendResourceRegistry
 from alliance_platform.frontend.settings import AlliancePlatformFrontendSettingsType
+from alliance_platform.ui.settings import AlliancePlatformUISettingsType
 
 is_ci = os.environ.get("CI_SERVER", "no") == "yes"
 
@@ -23,6 +24,7 @@ class AlliancePlatformSettings(TypedDict):
     CORE: AlliancePlatformCoreSettingsType
     FRONTEND: AlliancePlatformFrontendSettingsType
     CODEGEN: AlliancePlatformCodegenSettingsType
+    UI: AlliancePlatformUISettingsType
 
 
 frontend_registry = FrontendResourceRegistry()
@@ -46,6 +48,7 @@ ALLIANCE_PLATFORM: AlliancePlatformSettings = {
         "SSR_GLOBAL_CONTEXT_RESOLVER": None,
         "NODE_MODULES_DIR": os.environ.get("NODE_MODULES_DIR", BASE_DIR.parent.parent / "node_modules"),
     },
+    "UI": {},
 }
 
 VITE_BUNDLER_MODE = "development"
