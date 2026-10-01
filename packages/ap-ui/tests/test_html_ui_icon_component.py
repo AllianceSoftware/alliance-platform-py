@@ -6,17 +6,13 @@ from tempfile import TemporaryDirectory
 from unittest import mock
 import warnings
 
-from alliance_platform.frontend.bundler.context import BundlerAssetContext
 from alliance_platform.ui.icons import reset_static_icon_cache
 from django.conf import settings
 from django.template import TemplateSyntaxError
 
 from tests.parity.base import HtmlUIParityTestCase
-from tests.parity.style_mocks import make_style_mapping_resolver
-from tests.test_utils import override_ap_frontend_settings
 from tests.test_utils.bundler import TestViteBundler
 from tests.test_utils.bundler import bundler_kwargs
-from tests.test_utils.bundler import bypass_frontend_resource_registry
 
 
 class UIIconComponentTestCase(HtmlUIParityTestCase):
@@ -187,19 +183,11 @@ class UIIconComponentTestCase(HtmlUIParityTestCase):
                 **{**bundler_kwargs, "build_dir": build_dir, "mode": "production"}
             )
 
-            with override_ap_frontend_settings(BUNDLER=production_bundler):
-                with BundlerAssetContext(
-                    skip_checks=True,
-                    frontend_resource_registry=bypass_frontend_resource_registry,
-                ) as asset_context:
-                    with mock.patch(
-                        "alliance_platform.ui.html_components.base.resolve_vanilla_extract_class_mapping",
-                        side_effect=make_style_mapping_resolver(),
-                    ):
-                        output = self.render_ui_document('{% ui "icon" name="Pencil01Outlined" %}{% endui %}')
-                    resource_paths = [
-                        str(resource.path) for resource in asset_context.get_resources_for_bundling()
-                    ]
+            with self.setup_render_context(bundler=production_bundler) as asset_context:
+                output = self.render_ui_document('{% ui "icon" name="Pencil01Outlined" %}{% endui %}')
+                resource_paths = [
+                    str(resource.path) for resource in asset_context.get_resources_for_bundling()
+                ]
 
         self.assertEqual(output.count("<svg"), 1)
         self.assertNotIn("<img", output)

@@ -1,51 +1,22 @@
 from __future__ import annotations
 
-from contextlib import contextmanager
-from unittest import mock
 import warnings
 
 from alliance_platform.frontend.bundler.context import BundlerAssetContext
 from alliance_platform.ui.html_components import dispatcher
-from django.template import Context
 from django.template import Template
 from django.template import TemplateSyntaxError
-from django.test import SimpleTestCase
 from django.test import override_settings
 
-from tests.parity.style_mocks import make_style_mapping_resolver
+from tests.parity.base import HtmlUIParityTestCase
+from tests.parity.base import test_development_bundler
 from tests.test_utils import override_ap_frontend_settings
-from tests.test_utils.bundler import TestViteBundler
-from tests.test_utils.bundler import bundler_kwargs
 from tests.test_utils.bundler import bypass_frontend_resource_registry
 
-test_development_bundler = TestViteBundler(
-    **bundler_kwargs,  # type: ignore[arg-type]
-    mode="development",
-)
 
-
-class UIDispatcherTemplateTagTestCase(SimpleTestCase):
+class UIDispatcherTemplateTagTestCase(HtmlUIParityTestCase):
     def setUp(self):
         dispatcher._DISPATCHER_WARNING_KEYS.clear()
-
-    @contextmanager
-    def setup_render_context(self):
-        with override_ap_frontend_settings(BUNDLER=test_development_bundler):
-            with BundlerAssetContext(
-                skip_checks=True,
-                frontend_resource_registry=bypass_frontend_resource_registry,
-            ) as asset_context:
-                with mock.patch(
-                    "alliance_platform.ui.html_components.base.resolve_vanilla_extract_class_mapping",
-                    side_effect=make_style_mapping_resolver(),
-                ):
-                    yield asset_context
-
-    def render_ui_template(self, template_body: str, context_kwargs=None):
-        template_obj = Template("{% load alliance_platform.ui %}" + template_body)
-        context_obj = Context(context_kwargs or {})
-        context_obj.template = template_obj
-        return template_obj.render(context_obj)
 
     def test_requires_first_positional_component_selector(self):
         with self.assertRaisesMessage(TemplateSyntaxError, "requires a component selector"):

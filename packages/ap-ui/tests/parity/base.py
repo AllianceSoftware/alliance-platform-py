@@ -4,21 +4,24 @@ from contextlib import contextmanager
 import json
 from pathlib import Path
 from typing import Any
-from unittest import mock
+from typing import Iterator
+from typing import Mapping
 import warnings
 
+from alliance_platform.frontend.bundler.base import BaseBundler
 from alliance_platform.frontend.bundler.context import BundlerAssetContext
+from alliance_platform.ui.test_utils import StaticComponentTestCase
 from django.template import Context
 from django.template import Template
-from django.test import SimpleTestCase
 
-from tests.test_utils import override_ap_frontend_settings
 from tests.test_utils.bundler import TestViteBundler
 from tests.test_utils.bundler import bundler_kwargs
 from tests.test_utils.bundler import bypass_frontend_resource_registry
 
 from .normalizers import normalize_html_fragment
-from .style_mocks import make_style_mapping_resolver
+from .style_mocks import DEFAULT_STYLE_MAPPINGS
+from .style_mocks import MockVanillaExtractMapping
+from .style_mocks import mapping_scope_from_filename
 
 test_development_bundler = TestViteBundler(
     **bundler_kwargs,  # type: ignore[arg-type]
@@ -26,22 +29,26 @@ test_development_bundler = TestViteBundler(
 )
 
 
-class HtmlUIParityTestCase(SimpleTestCase):
+class HtmlUIParityTestCase(StaticComponentTestCase):
     fixture_component: str
     parity_ignored_attributes: frozenset[str] = frozenset()
 
     @contextmanager
-    def setup_render_context(self):
-        with override_ap_frontend_settings(BUNDLER=test_development_bundler):
-            with BundlerAssetContext(
-                skip_checks=True,
-                frontend_resource_registry=bypass_frontend_resource_registry,
-            ) as asset_context:
-                with mock.patch(
-                    "alliance_platform.ui.html_components.base.resolve_vanilla_extract_class_mapping",
-                    side_effect=make_style_mapping_resolver(),
-                ):
-                    yield asset_context
+    def setup_render_context(
+        self,
+        bundler: BaseBundler = test_development_bundler,
+    ) -> Iterator[BundlerAssetContext]:
+        with self.static_render_context(
+            DEFAULT_STYLE_MAPPINGS,
+            bundler=bundler,
+            frontend_resource_registry=bypass_frontend_resource_registry,
+        ) as asset_context:
+            yield asset_context
+
+    def _make_style_mapping(self, stylesheet: Path, classes: Mapping[str, Any] | None) -> Any:
+        # The fixtures were generated against class names synthesised from the stylesheet and style
+        # names, so styles missing from DEFAULT_STYLE_MAPPINGS resolve to a scoped placeholder token.
+        return MockVanillaExtractMapping(mapping_scope_from_filename(stylesheet.name), dict(classes or {}))
 
     def load_fixture(self):
         fixture_path = (
@@ -50,12 +57,6 @@ class HtmlUIParityTestCase(SimpleTestCase):
             / f"ui_html_{self.fixture_component}_parity.json"
         )
         return json.loads(fixture_path.read_text())
-
-    def render_ui_template(self, template_body: str, context_kwargs: dict[str, Any] | None = None) -> str:
-        template_obj = Template("{% load alliance_platform.ui %}" + template_body)
-        context_obj = Context(context_kwargs or {})
-        context_obj.template = template_obj
-        return template_obj.render(context_obj)
 
     def render_ui_document(self, template_body: str, context_kwargs: dict[str, Any] | None = None) -> str:
         """Render and post-process a complete document with collected assets embedded."""
