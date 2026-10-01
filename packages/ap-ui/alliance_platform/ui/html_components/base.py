@@ -9,7 +9,7 @@ in frame payloads, never on ``self``.
 Contract attributes (class level): ``name``, ``apui_name``, ``slot_name``, ``supported_props``,
 ``prop_rules``, ``prop_aliases``, ``deprecated_prop_aliases``, ``unsupported_prop_reasons``,
 ``forwarded_props``, ``allow_data_props``, ``allow_aria_props``, ``extra_allowed_aria_props``,
-``non_scalar_props``, ``none_meaningful_props``, and the warning wording in
+``non_scalar_props``, ``none_meaningful_props``, and the diagnostic wording in
 ``prop_filter_context`` and ``event_handler_prop_reason``.
 
 Hooks to override: ``render_component`` (required), ``render_children_for_component``,
@@ -38,7 +38,6 @@ from typing import Any
 from typing import Callable
 from typing import ClassVar
 from typing import Mapping
-import warnings
 
 from alliance_platform.frontend.bundler import get_bundler
 from alliance_platform.frontend.bundler.base import ResolveContext
@@ -221,7 +220,7 @@ def build_attrs_string(attrs: dict[str, Any]) -> str:
 class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
     """Base node for HTML-only UI components dispatched by ``{% ui %}``."""
 
-    #: The snake_case name the component is registered under (``{% ui "<name>" %}``). Warnings
+    #: The snake_case name the component is registered under (``{% ui "<name>" %}``). Diagnostics
     #: and render frames use it, and :func:`~alliance_platform.ui.html_components.register_component`
     #: requires it to match the registered name.
     name: ClassVar[str]
@@ -308,7 +307,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         except OmitComponentFromRendering:
             # Matches the React component tags: a prop can raise this to indicate the whole
             # component should not render (e.g. a denied ``url_with_perm`` href). This is expected
-            # behaviour so no warning is emitted.
+            # behaviour so nothing is reported.
             rendered = ""
         if self.target_var:
             context[self.target_var] = rendered
@@ -366,7 +365,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
                 self.prop_aliases.get(original_key, original_key),
             )
             if original_key in self.deprecated_prop_aliases:
-                warnings.warn(f"You passed '{original_key}' - use '{key}' instead")
+                self.report(f"You passed '{original_key}' - use '{key}' instead", kind="contract")
             if key != original_key and key in props:
                 # The canonical spelling always wins when both forms are supplied.
                 continue
@@ -381,10 +380,12 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
                 continue
             reason = self.unsupported_prop_reasons.get(key)
             if reason:
-                warnings.warn(f"Prop '{key}' will be ignored: {reason}")
+                self.report(f"Prop '{key}' will be ignored: {reason}", kind="contract")
                 continue
             if is_event_handler_attr(key):
-                warnings.warn(f"Prop '{key}' will be ignored: {self.event_handler_prop_reason}")
+                self.report(
+                    f"Prop '{key}' will be ignored: {self.event_handler_prop_reason}", kind="contract"
+                )
                 continue
             attr_name = _to_html_attr_name(key)
             if attr_name.startswith("data-") or attr_name.startswith("aria-"):
@@ -394,36 +395,42 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
                     else (self.allow_aria_props or attr_name in self.extra_allowed_aria_props)
                 )
                 if not allowed:
-                    warnings.warn(f"Prop '{key}' is not supported on '{self.name}' and will be ignored")
+                    self.report(
+                        f"Prop '{key}' is not supported on '{self.name}' and will be ignored", kind="contract"
+                    )
                     continue
                 if not _is_scalar_prop_value(value):
-                    warnings.warn(
+                    self.report(
                         f"Prop '{key}' with non-scalar value is not supported by "
-                        f"{self.prop_filter_context} and will be ignored"
+                        f"{self.prop_filter_context} and will be ignored",
+                        kind="contract",
                     )
                     continue
                 filtered[attr_name] = value
                 continue
             if not self._is_supported_prop(key):
-                warnings.warn(f"Prop '{key}' is not a supported '{self.name}' prop and will be ignored")
+                self.report(
+                    f"Prop '{key}' is not a supported '{self.name}' prop and will be ignored", kind="contract"
+                )
                 continue
             if rule is not None and not rule.accepts(value):
-                warnings.warn(f"Invalid '{key}' prop passed: {value}")
+                self.report(f"Invalid '{key}' prop passed: {value}", kind="contract")
                 if rule.invalid_fallback is _OMIT_INVALID_PROP:
                     continue
                 value = rule.invalid_fallback
             if key == "style":
                 if not isinstance(value, (str, dict)):
-                    warnings.warn("Prop 'style' must be a string or dict; it will be ignored")
+                    self.report("Prop 'style' must be a string or dict; it will be ignored", kind="contract")
                     continue
             elif (
                 not _is_scalar_prop_value(value)
                 and rule is None
                 and not self.allow_non_scalar_prop(key, value)
             ):
-                warnings.warn(
+                self.report(
                     f"Prop '{key}' with non-scalar value is not supported by "
-                    f"{self.prop_filter_context} and will be ignored"
+                    f"{self.prop_filter_context} and will be ignored",
+                    kind="contract",
                 )
                 continue
             filtered[key] = value
@@ -495,15 +502,16 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         if bulk_props is None:
             return resolved_props
         if not isinstance(bulk_props, dict):
-            warnings.warn(
+            self.report(
                 f"'{BULK_PROPS_KWARG}' must be a dict of props; "
-                f"received {type(bulk_props).__name__} which will be ignored"
+                f"received {type(bulk_props).__name__} which will be ignored",
+                kind="contract",
             )
             return resolved_props
         merged = dict(resolved_props)
         for key, value in transform_attribute_names(bulk_props).items():
             if not isinstance(key, str):
-                warnings.warn(f"Ignoring non-string key in '{BULK_PROPS_KWARG}': {key!r}")
+                self.report(f"Ignoring non-string key in '{BULK_PROPS_KWARG}': {key!r}", kind="contract")
                 continue
             normalized_key = self._normalize_prop_key(key)
             normalized_key = _BULK_PROP_STATE_ALIASES.get(normalized_key, normalized_key)

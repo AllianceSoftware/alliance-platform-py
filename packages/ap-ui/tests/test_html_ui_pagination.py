@@ -4,7 +4,6 @@ from html import unescape
 import re
 from typing import Any
 from unittest import mock
-import warnings
 
 from django.test import RequestFactory
 
@@ -18,10 +17,9 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
         context_kwargs: dict[str, Any] | None = None,
     ) -> tuple[str, list[str]]:
         with self.setup_render_context():
-            with warnings.catch_warnings(record=True) as caught_warnings:
-                warnings.simplefilter("always")
+            with self.capture_diagnostics() as diagnostics:
                 output = self.render_ui_template(template_body, context_kwargs)
-        return output, [str(item.message) for item in caught_warnings]
+        return output, diagnostics
 
     def get_link(self, output: str, aria_label: str) -> str:
         match = re.search(rf'<a[^>]*aria-label="{re.escape(aria_label)}"[^>]*>', output)

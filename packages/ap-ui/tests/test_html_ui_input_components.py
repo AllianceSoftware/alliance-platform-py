@@ -3,7 +3,6 @@ from __future__ import annotations
 from decimal import Decimal
 import re
 from unittest import mock
-import warnings
 
 from django.template import Context
 from django.template import Template
@@ -17,10 +16,9 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
 
     def render_with_warnings(self, template_body: str, context_kwargs=None):
         with self.setup_render_context():
-            with warnings.catch_warnings(record=True) as caught_warnings:
-                warnings.simplefilter("always")
+            with self.capture_diagnostics() as diagnostics:
                 output = self.render_ui_template(template_body, context_kwargs)
-        return output, [str(item.message) for item in caught_warnings]
+        return output, diagnostics
 
     def test_class_kwarg_merges_with_default_classes(self):
         output, caught = self.render_with_warnings(

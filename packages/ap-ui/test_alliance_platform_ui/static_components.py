@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
-import warnings
 
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from alliance_platform.ui.html_components.base import BaseHtmlUIComponentRenderer
@@ -94,7 +93,9 @@ class StatValueRenderer(BaseHtmlUIComponentRenderer):
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
         payload = find_render_payload(context, StatPayload)
         if payload is None:
-            warnings.warn("'stat_value' was rendered outside of a 'stat' component; rendering nothing")
+            self.report(
+                "'stat_value' was rendered outside of a 'stat' component; rendering nothing", kind="contract"
+            )
             return ""
         styles = self.resolve_vanilla_extract_mapping(STAT_STYLES)
         attrs = {

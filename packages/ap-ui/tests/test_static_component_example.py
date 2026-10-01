@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import warnings
-
 from alliance_platform.ui.html_components import built_in_registry
 from alliance_platform.ui.test_utils import StaticComponentTestCase
 from test_alliance_platform_ui.static_components import StatRenderer
@@ -84,13 +82,12 @@ class StatComponentTestCase(StaticComponentTestCase):
         self.assertIn('data-empty="true"', output)
 
     def test_value_outside_a_stat_warns_and_renders_nothing(self):
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
+        with self.assertLogs("alliance_platform.ui", level="WARNING") as logs:
             output = self.render('{% ui "stat_value" %}42{% endui %}')
 
         self.assertEqual(output, "")
         self.assertEqual(
-            [str(warning.message) for warning in caught],
+            [record.getMessage() for record in logs.records],
             ["'stat_value' was rendered outside of a 'stat' component; rendering nothing"],
         )
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 import logging
 
 from alliance_platform.ui.html_components import diagnostics
@@ -8,17 +9,21 @@ from alliance_platform.ui.html_components.diagnostics import StaticComponentCont
 from alliance_platform.ui.html_components.diagnostics import report
 from alliance_platform.ui.settings import ap_ui_settings
 from django.conf import settings
+from django.template import Context
+from django.template import Engine
 from django.template import NodeList
 from django.template import Origin
+from django.template import Template
 from django.template.base import UNKNOWN_SOURCE
 from django.test import SimpleTestCase
 from django.test import override_settings
 
+from tests.parity.base import HtmlUIParityTestCase
 from tests.test_utils import override_ap_ui_settings
 
 LOGGER = "alliance_platform.ui"
 
-# Contains '%' so a message passed as a logging format string with arguments would not survive
+# Contains '%' to check the message is logged as is rather than used as a format string
 MESSAGE = "Invalid 'width' prop passed: 100%"
 
 
@@ -191,3 +196,81 @@ class RendererReportTestCase(SimpleTestCase):
 
         self.assertEqual(raised.exception.component, "button")
         self.assertIs(raised.exception.origin, self.origin)
+
+
+ON_PRESS_MESSAGE = (
+    "Prop 'onPress' will be ignored: event handlers are not supported by static button components"
+)
+
+
+class TemplateDiagnosticsTestCase(HtmlUIParityTestCase):
+    def setUp(self):
+        super().setUp()
+        diagnostics._reset_reported()
+        self.addCleanup(diagnostics._reset_reported)
+
+    @override_ap_ui_settings(STATIC_COMPONENT_STRICT=False)
+    def test_unsupported_prop_logs_and_is_dropped(self):
+        with self.setup_render_context():
+            with self.assertLogs(LOGGER, level="WARNING") as logs:
+                output = self.render_ui_template('{% ui "button" on_press="go()" %}Save{% endui %}')
+
+        self.assertNotIn("go()", output)
+        self.assertIn("<span>Save</span>", output)
+        self.assertEqual(
+            [record_details(record) for record in logs.records],
+            [(ON_PRESS_MESSAGE, "button", None, "contract")],
+        )
+
+    @override_ap_ui_settings(STATIC_COMPONENT_STRICT=True)
+    def test_unsupported_prop_raises_when_strict(self):
+        with self.setup_render_context():
+            template = Template(
+                '{% load alliance_platform.ui %}{% ui "button" on_press="go()" %}Save{% endui %}',
+                origin=Origin("templates/save.html"),
+            )
+            with self.assertRaises(StaticComponentContractError) as raised:
+                template.render(Context())
+
+        self.assertEqual(
+            str(raised.exception), f"{ON_PRESS_MESSAGE} (component 'button' in templates/save.html)"
+        )
+        self.assertEqual(raised.exception.component, "button")
+        self.assertEqual(raised.exception.origin, Origin("templates/save.html"))
+
+    @override_ap_ui_settings(STATIC_COMPONENT_STRICT=True)
+    def test_strict_error_carries_template_debug_information(self):
+        engine = Engine(
+            debug=True,
+            libraries={"alliance_platform.ui": "alliance_platform.ui.templatetags.alliance_platform.ui"},
+        )
+        with self.setup_render_context():
+            template = engine.from_string(
+                '{% load alliance_platform.ui %}\n<p>{% ui "button" on_press="go()" %}Save{% endui %}</p>'
+            )
+            with self.assertRaises(StaticComponentContractError) as raised:
+                template.render(Context())
+
+        template_debug = getattr(raised.exception, "template_debug")
+        self.assertEqual(template_debug["line"], 2)
+        # Django 4.2 escapes the source of the failing tag; later versions leave escaping to the debug page
+        self.assertEqual(html.unescape(template_debug["during"]), '{% ui "button" on_press="go()" %}')
+
+    @override_ap_ui_settings(STATIC_COMPONENT_STRICT=True)
+    def test_data_report_logs_when_strict(self):
+        with self.setup_render_context():
+            with self.assertLogs(LOGGER, level="WARNING") as logs:
+                output = self.render_ui_template('{% ui "pagination" total=20 page=5 %}{% endui %}')
+
+        self.assertIn('aria-current="page"', output)
+        self.assertEqual(
+            [record_details(record) for record in logs.records],
+            [
+                (
+                    "Prop 'page' (5) exceeds the total page count (2); page 2 will be rendered",
+                    "pagination",
+                    None,
+                    "data",
+                )
+            ],
+        )

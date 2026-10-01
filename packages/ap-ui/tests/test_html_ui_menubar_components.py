@@ -7,7 +7,6 @@ from tempfile import TemporaryDirectory
 from typing import cast
 from unittest import mock
 from urllib.parse import quote
-import warnings
 
 from alliance_platform.frontend.templatetags.react import DeferredProp
 from alliance_platform.frontend.templatetags.react import OmitComponentFromRendering
@@ -56,10 +55,9 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
 
     def render_with_warnings(self, template_body: str, context_kwargs=None):
         with self.setup_render_context():
-            with warnings.catch_warnings(record=True) as caught_warnings:
-                warnings.simplefilter("always")
+            with self.capture_diagnostics() as diagnostics:
                 output = self.render_ui_template(template_body, context_kwargs)
-        return output, [str(item.message) for item in caught_warnings]
+        return output, diagnostics
 
     def test_menubar_renders_full_structure(self):
         output, caught = self.render_with_warnings(BASIC_MENUBAR_TEMPLATE)
@@ -767,14 +765,13 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
                 '{% ui "menubar_item" href="/profile/" %}Profile{% endui %}'
                 "{% endui %}"
             )
-            with warnings.catch_warnings(record=True) as caught_warnings:
-                warnings.simplefilter("always")
+            with self.capture_diagnostics() as diagnostics:
                 output = self.render_ui_template(
                     '{% ui "menubar" aria_label="Nav" %}{% include nav_items only %}{% endui %}',
                     {"nav_items": partial},
                 )
 
-        self.assertEqual([str(item.message) for item in caught_warnings], [])
+        self.assertEqual(diagnostics, [])
         self.assertIn("Menubar_section", output)
         self.assertIn('href="/dashboard/"', output)
         self.assertIn('href="/profile/"', output)
@@ -857,14 +854,13 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
                 "{% endui %}"
                 "{% endui %}"
             )
-            with warnings.catch_warnings(record=True) as caught_warnings:
-                warnings.simplefilter("always")
+            with self.capture_diagnostics() as diagnostics:
                 output = self.render_ui_template(
                     "{% include navbar %}{% include navbar %}",
                     {"navbar": partial},
                 )
 
-        self.assertEqual([str(item.message) for item in caught_warnings], [])
+        self.assertEqual(diagnostics, [])
         heading_ids = re.findall(r'id="(apui-menubar-\d+)"', output)
         self.assertEqual(heading_ids, ["apui-menubar-1", "apui-menubar-2"])
         self.assertEqual(
@@ -1252,12 +1248,11 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
                 context.template = template_obj
                 return template_obj.render(context)
 
-            with warnings.catch_warnings(record=True) as caught_warnings:
-                warnings.simplefilter("always")
+            with self.capture_diagnostics() as diagnostics:
                 denied_output = render(maybe_denied=DeniedUrl())
                 allowed_output = render(maybe_denied="/admin/")
                 denied_again = render(maybe_denied=DeniedUrl())
-        self.assertEqual([str(item.message) for item in caught_warnings], [])
+        self.assertEqual(diagnostics, [])
 
         self.assertNotIn("Users", denied_output)
         self.assertIn("Users", allowed_output)

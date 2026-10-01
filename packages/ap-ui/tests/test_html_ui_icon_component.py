@@ -4,7 +4,6 @@ import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
-import warnings
 
 from alliance_platform.ui.icons import reset_static_icon_cache
 from django.conf import settings
@@ -21,10 +20,9 @@ class UIIconComponentTestCase(HtmlUIParityTestCase):
 
     def render_with_warnings(self, template_body: str, context_kwargs=None):
         with self.setup_render_context() as asset_context:
-            with warnings.catch_warnings(record=True) as caught_warnings:
-                warnings.simplefilter("always")
+            with self.capture_diagnostics() as diagnostics:
                 output = self.render_ui_template(template_body, context_kwargs)
-        return output, [str(item.message) for item in caught_warnings], asset_context
+        return output, diagnostics, asset_context
 
     def test_renders_default_outlined_icon(self):
         output, caught, _ = self.render_with_warnings('{% ui "icon" name="Pencil01Outlined" %}{% endui %}')
@@ -119,12 +117,11 @@ class UIIconComponentTestCase(HtmlUIParityTestCase):
 
     def test_resource_discovery_includes_css_and_specific_icon(self):
         with self.setup_render_context() as asset_context:
-            with warnings.catch_warnings(record=True) as caught_warnings:
-                warnings.simplefilter("always")
+            with self.capture_diagnostics() as diagnostics:
                 self.render_ui_template('{% ui "icon" name="Pencil01Outlined" %}{% endui %}')
             resource_paths = [str(resource.path) for resource in asset_context.get_resources_for_bundling()]
 
-        self.assertEqual([str(item.message) for item in caught_warnings], [])
+        self.assertEqual(diagnostics, [])
         self.assertTrue(any(path.endswith("@alliancesoftware/icons/Icon.css.ts") for path in resource_paths))
         self.assertTrue(
             any(path.endswith("static-svg/outlined/Pencil01Outlined.svg") for path in resource_paths)

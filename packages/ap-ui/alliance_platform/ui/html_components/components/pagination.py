@@ -10,7 +10,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 from typing import Literal
-import warnings
 
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from alliance_platform.frontend.bundler.frontend_resource import ImageResource
@@ -134,9 +133,11 @@ class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
         if children_html.strip():
-            warnings.warn("'pagination' does not support children; the content will be ignored")
+            self.report(
+                "'pagination' does not support children; the content will be ignored", kind="contract"
+            )
         if "total" not in props:
-            warnings.warn("'pagination' requires a 'total' prop and will not render")
+            self.report("'pagination' requires a 'total' prop and will not render", kind="contract")
             return ""
 
         total = int(props["total"])
@@ -144,9 +145,10 @@ class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
         total_pages = (max(1, total) + page_size - 1) // page_size
         page = int(props.get("page", 1))
         if page > total_pages:
-            warnings.warn(
+            self.report(
                 f"Prop 'page' ({page}) exceeds the total page count ({total_pages}); "
-                f"page {total_pages} will be rendered"
+                f"page {total_pages} will be rendered",
+                kind="data",
             )
             page = total_pages
 
