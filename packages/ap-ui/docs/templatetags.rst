@@ -51,6 +51,8 @@ The dispatcher also supports ``as <var>``:
     {% ui "button" as save_button_html %}Save{% endui %}
     {{ save_button_html }}
 
+Projects can register their own components with the dispatcher; see :doc:`static_components`.
+
 Finding legacy component usages
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
