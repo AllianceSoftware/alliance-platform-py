@@ -31,7 +31,7 @@ class MockVanillaExtractMapping:
         return MockStyleToken(f"{self.scope}_{name}")
 
 
-def _mapping_scope_from_filename(filename: str) -> str:
+def mapping_scope_from_filename(filename: str) -> str:
     if filename.endswith(".css.ts"):
         return filename[: -len(".css.ts")]
     return Path(filename).stem
@@ -92,14 +92,3 @@ DEFAULT_STYLE_MAPPINGS: dict[str, dict[str, Any]] = {
         },
     },
 }
-
-
-def make_style_mapping_resolver(overrides: dict[str, dict[str, Any]] | None = None):
-    mappings = {**DEFAULT_STYLE_MAPPINGS, **(overrides or {})}
-
-    def _resolve_mapping(_bundler, filename):
-        key = Path(filename).name
-        scope = _mapping_scope_from_filename(key)
-        return MockVanillaExtractMapping(scope, mappings.get(key, {}))
-
-    return _resolve_mapping

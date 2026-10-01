@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from contextlib import contextmanager
 import json
 from pathlib import Path
 import re
@@ -10,7 +9,6 @@ from unittest import mock
 from urllib.parse import quote
 import warnings
 
-from alliance_platform.frontend.bundler.context import BundlerAssetContext
 from alliance_platform.frontend.templatetags.react import DeferredProp
 from alliance_platform.frontend.templatetags.react import OmitComponentFromRendering
 from alliance_platform.ui.html_components.components.menubar import UIMenubarRenderer
@@ -30,11 +28,9 @@ from test_alliance_platform_ui.models import User
 
 from tests.parity.base import HtmlUIParityTestCase
 from tests.parity.base import test_development_bundler
-from tests.parity.style_mocks import make_style_mapping_resolver
 from tests.test_utils import override_ap_frontend_settings
 from tests.test_utils.bundler import TestViteBundler
 from tests.test_utils.bundler import bundler_kwargs
-from tests.test_utils.bundler import bypass_frontend_resource_registry
 
 BASIC_MENUBAR_TEMPLATE = (
     '{% ui "menubar" aria_label="Primary navigation" %}'
@@ -1150,19 +1146,11 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
                 **{**bundler_kwargs, "build_dir": build_dir, "mode": "production"}
             )
 
-            with override_ap_frontend_settings(BUNDLER=production_bundler):
-                with BundlerAssetContext(
-                    skip_checks=True,
-                    frontend_resource_registry=bypass_frontend_resource_registry,
-                ) as asset_context:
-                    with mock.patch(
-                        "alliance_platform.ui.html_components.base.resolve_vanilla_extract_class_mapping",
-                        side_effect=make_style_mapping_resolver(),
-                    ):
-                        output = self.render_ui_document(BASIC_MENUBAR_TEMPLATE)
-                    resource_paths = [
-                        str(resource.path) for resource in asset_context.get_resources_for_bundling()
-                    ]
+            with self.setup_render_context(bundler=production_bundler) as asset_context:
+                output = self.render_ui_document(BASIC_MENUBAR_TEMPLATE)
+                resource_paths = [
+                    str(resource.path) for resource in asset_context.get_resources_for_bundling()
+                ]
 
         self.assertEqual(output.count("<svg"), 1)
         self.assertNotIn("<img", output)
@@ -1286,7 +1274,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
     ROOT_URLCONF="test_alliance_platform_ui.urls",
 )
 @warning_filter("ignore", category=AmbiguousGlobalPermissionWarning)
-class UIMenubarUrlWithPermTestCase(TestCase):
+class UIMenubarUrlWithPermTestCase(HtmlUIParityTestCase, TestCase):
     """End-to-end permission pruning through the real ``url_with_perm`` filter."""
 
     PERM = "test_utils.link_is_allowed"
@@ -1301,19 +1289,6 @@ class UIMenubarUrlWithPermTestCase(TestCase):
         "{% endui %}"
         "{% endui %}"
     )
-
-    @contextmanager
-    def setup_render_context(self):
-        with override_ap_frontend_settings(BUNDLER=test_development_bundler):
-            with BundlerAssetContext(
-                skip_checks=True,
-                frontend_resource_registry=bypass_frontend_resource_registry,
-            ):
-                with mock.patch(
-                    "alliance_platform.ui.html_components.base.resolve_vanilla_extract_class_mapping",
-                    side_effect=make_style_mapping_resolver(),
-                ):
-                    yield
 
     def render_nav(self, template_obj: Template, user: User) -> str:
         request = HttpRequest()
