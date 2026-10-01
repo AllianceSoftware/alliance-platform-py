@@ -22,7 +22,7 @@ Add ``alliance_platform_ui``, ``alliance_platform.frontend`` and ``alliance_plat
 Configuration
 -------------
 
-Currently there are no settings specific to ``alliance_platform_ui``. See :doc:`alliance_platform.frontend <alliance-platform-frontend:installation>`
+See :doc:`alliance_platform.frontend <alliance-platform-frontend:installation>`
 and :doc:`alliance_platform.codegen <alliance-platform-codegen:installation>` for details on installing and configuring the packages
 that the UI package depends on.
 
@@ -33,6 +33,32 @@ Ensure that ``FORM_RENDERER`` is be set as follows:
     FORM_RENDERER = "alliance_platform.ui.forms.renderers.FormInputContextRenderer"
 
 This is used by the :ttag:`form` and :ttag:`form_input` tags.
+
+Settings
+~~~~~~~~
+
+The UI package's own settings are all optional. Set them under ``ALLIANCE_PLATFORM["UI"]``:
+
+.. code-block:: python
+
+    from alliance_platform.core.settings import AlliancePlatformCoreSettingsType
+    from alliance_platform.ui.settings import AlliancePlatformUISettingsType
+
+    class AlliancePlatformSettings(TypedDict):
+        CORE: AlliancePlatformCoreSettingsType
+        UI: AlliancePlatformUISettingsType
+        # Any other settings for alliance_platform packages, e.g. FRONTEND
+
+    ALLIANCE_PLATFORM: AlliancePlatformSettings = {
+        "CORE": {"PROJECT_DIR": PROJECT_DIR},
+        "UI": {"STATIC_COMPONENT_STRICT": False},
+    }
+
+.. autoclass:: alliance_platform.ui.settings.AlliancePlatformUISettingsType
+    :members:
+    :member-order: bysource
+
+``STATIC_COMPONENT_STRICT`` is described under :ref:`static component diagnostics <static-component-diagnostics>`.
 
 Migration from Alliance Platform Frontend
 -----------------------------------------

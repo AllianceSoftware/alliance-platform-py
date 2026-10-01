@@ -20,3 +20,7 @@ The dispatcher accepts bulk props through the reserved `props` argument and expo
 the UI template library. New backend-neutral `RenderableContent` preserves trusted HTML form help text
 for both React and static renderers, while frontend resource resolution now supports reading source and
 production assets required by static icons and component runtimes.
+
+Static components log template mistakes through the `alliance_platform.ui` logger, and the
+`STATIC_COMPONENT_STRICT` UI setting, which defaults to `DEBUG`, makes them raise
+`StaticComponentContractError` instead.

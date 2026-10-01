@@ -22,6 +22,8 @@ from that app's ``AppConfig``. Helper modules sit next to the base class:
 * ``alliance_platform.ui.html_components.content``: rendering rich content props
   (``RenderableContent``) safely.
 * ``alliance_platform.ui.html_components.runtime``: marking a root for a JavaScript runtime.
+* ``alliance_platform.ui.html_components.diagnostics``: reporting template mistakes (see
+  `Diagnostics`_).
 
 The built-in renderers in ``alliance_platform.ui.html_components.components`` are complete
 examples of every feature described here.
@@ -77,7 +79,7 @@ app's ``AppConfig.ready()``:
     :language: python
 
 * ``name`` is the snake_case name templates use (``^[a-z][a-z0-9_]*$``) and must equal the
-  renderer's ``name`` attribute, so warnings, generated ids and the registry agree.
+  renderer's ``name`` attribute, so diagnostics, generated ids and the registry agree.
 * Registering a different renderer under a taken name, including a built-in name, raises
   ``ValueError``. Pass ``replace=True`` to replace it deliberately. Registering the same renderer
   again does nothing, so a ``ready()`` that runs twice is harmless.
@@ -97,8 +99,8 @@ Contract attributes
 Class attributes declare what a component accepts. Before a renderer sees its props, the base
 class normalizes template spellings (``label_position`` becomes ``labelPosition``, ``class``
 becomes ``className``, ``data_x`` becomes ``data-x``), so contract attributes use the React prop
-names. Props the contract does not accept warn and are dropped. Event handler props (``on*``) are
-always dropped.
+names. Props the contract does not accept are reported (see `Diagnostics`_) and dropped. Event
+handler props (``on*``) are always dropped.
 
 ``name``
     The registered snake_case name.
@@ -114,11 +116,11 @@ always dropped.
 ``prop_rules``
     Validation for supplied values, built with ``enum_prop_rule(values, invalid_fallback=...)`` or
     ``typed_prop_rule(*types, validator=..., invalid_fallback=..., allow_none=...)``. An invalid
-    value warns and is replaced by the fallback, or dropped when there is none. A prop with a
+    value is reported and replaced by the fallback, or dropped when there is none. A prop with a
     rule is accepted even if it is not in ``supported_props``.
 ``prop_aliases`` and ``deprecated_prop_aliases``
-    Alternative names mapped to the canonical prop name. Deprecated aliases also warn. When both
-    spellings are passed, the canonical one wins.
+    Alternative names mapped to the canonical prop name. Deprecated aliases are also reported. When
+    both spellings are passed, the canonical one wins.
 ``unsupported_prop_reasons``
     Props that are refused with a specific explanation, typically React-only behaviour.
 ``forwarded_props``
@@ -133,7 +135,7 @@ always dropped.
 ``none_meaningful_props``
     Props where an explicit ``None`` is kept. Elsewhere ``None`` means the prop was not passed.
 ``prop_filter_context`` and ``event_handler_prop_reason``
-    Wording used in the warnings above.
+    Wording used in the reports above.
 
 Hooks
 -----
@@ -164,7 +166,7 @@ nothing. Override these hooks:
     Returns the subset of those resources to add to the page. Defaults to all of them.
 
 ``resolve_props(context)`` can also be overridden, for example to refuse to render outside a
-required parent. Helpers to call from hooks include ``render_children``, ``render_tag``,
+required parent. Helpers to call from hooks include ``report``, ``render_children``, ``render_tag``,
 ``render_icon``, ``collect_forwarded_props``, ``join_classes``, ``resolve_frontend_resource``,
 ``resolve_vanilla_extract_mapping`` and the style getters ``get_style_class``,
 ``get_nested_style_class`` and ``get_recipe_classes``. Names starting with an underscore are
@@ -181,7 +183,7 @@ payload of that type wins, so the same component can nest inside itself.
 
 The stat attaches ``StatPayload`` in ``build_render_frame`` and ``stat_value`` reads it to pick
 its size class. When no stat encloses the value, ``find_render_payload`` returns ``None`` and the
-value warns and renders nothing.
+value reports a contract diagnostic and renders nothing.
 
 Renderer instances are template nodes shared by every render of a compiled template, possibly on
 several threads at once. Keep per-render state in payloads, never on ``self``. Payloads may be
@@ -243,6 +245,68 @@ built, and leave the image out of ``get_resources_to_embed()`` because its marku
 the page. A component with a JavaScript runtime lists the module and marks its root with
 ``add_auto_attach_marker(attrs, token)`` from the ``runtime`` module.
 
+.. _static-component-diagnostics:
+
+Diagnostics
+-----------
+
+A component that is used wrongly reports the problem and renders what it can: an unsupported prop
+is dropped, a part outside its parent renders nothing. Each report has a kind:
+
+``contract``
+    A mistake fixed in template source or the environment: an unsupported, unknown, aliased,
+    event-handler or non-scalar prop, an invalid prop value, a missing required prop, unsupported
+    children, a component outside its required parent, a dynamic component name not in
+    ``allowed_components``, rich content that cannot be rendered, a missing icon file or style
+    variable, or a sortable column with no ``request`` to build its link from.
+``data``
+    A value that can legitimately vary per request: a page number past the last page, a row with
+    more cells than the table has columns, or a sort descriptor that names no valid direction.
+
+Reports are logged at ``WARNING`` through the ``alliance_platform.ui`` logger. The log message is
+the report text and nothing else. The record also carries ``component`` (the component name),
+``origin`` (the template name) and ``kind`` attributes; ``component`` and ``origin`` are ``None``
+when unknown. A formatter on a handler for this logger can show them, for example
+``"%(levelname)s %(component)s %(origin)s: %(message)s"``.
+
+Outside ``DEBUG``, a contract report is logged once per process for each component and message, so
+a mistake inside a loop over 50 rows logs once. Data reports are logged every time. With ``DEBUG``
+on, nothing is deduplicated.
+
+Strict mode
+~~~~~~~~~~~
+
+When the :attr:`~alliance_platform.ui.settings.AlliancePlatformUISettingsType.STATIC_COMPONENT_STRICT`
+setting is on, a contract report raises
+:class:`~alliance_platform.ui.html_components.diagnostics.StaticComponentContractError` instead of
+logging. Data reports never raise. The setting defaults to the value of ``DEBUG``, so in
+development a template mistake fails the render and Django's debug page points at the tag. Turn it
+off to log contract reports in development too:
+
+.. code-block:: python
+
+    ALLIANCE_PLATFORM = {
+        # ...
+        "UI": {"STATIC_COMPONENT_STRICT": False},
+    }
+
+The exception's message is the report text followed by the component and template when they are
+known, for example ``Prop 'onPress' will be ignored: event handlers are not supported by static
+button components (component 'button' in /app/templates/nav.html)``. Its ``component`` and
+``origin`` attributes hold the component name and the template ``Origin``.
+
+Reporting from a renderer
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Call ``self.report(message, kind="contract")`` or ``kind="data"``, which fills in the component
+name and template origin, then carry on rendering what you can. In strict mode a contract report
+raises, so code after it runs only when the report was logged. Code without a renderer to hand
+calls the module function directly:
+
+.. autofunction:: alliance_platform.ui.html_components.diagnostics.report
+
+.. autoclass:: alliance_platform.ui.html_components.diagnostics.StaticComponentContractError
+
 Testing
 -------
 
@@ -266,6 +330,21 @@ The stat's tests:
     :language: python
     :start-at: from alliance_platform.ui.html_components import built_in_registry
     :end-before: def test_payload_reaches_values_nested_in_markup
+
+Assert diagnostics with ``assertLogs("alliance_platform.ui", level="WARNING")``, or
+``assertNoLogs`` when there should be none:
+
+.. literalinclude:: ../tests/test_static_component_example.py
+    :language: python
+    :pyobject: StatComponentTestCase.test_value_outside_a_stat_warns_and_renders_nothing
+    :dedent: 4
+
+Entering ``static_render_context`` forgets which contract reports were already logged, so a report
+that an earlier test triggered is logged again instead of being deduplicated.
+``STATIC_COMPONENT_STRICT`` defaults to ``DEBUG``, which Django's test runner turns off unless you
+pass ``--debug-mode``. Set it to ``False`` in your test settings to keep contract reports logged
+either way, and override ``ALLIANCE_PLATFORM`` with ``override_settings`` in tests that check a
+mistake raises.
 
 For tests that need the database, combine the base with Django's ``TestCase``:
 ``class StatTestCase(StaticComponentTestCase, TestCase)``.

@@ -29,6 +29,20 @@ and tested in `tests/test_static_component_example.py`.
    - `tests/parity/base.py`'s `HtmlUIParityTestCase` builds on the shipped
      `alliance_platform.ui.test_utils.StaticComponentTestCase`.
 
+## Diagnostics
+
+Renderers report template mistakes with `self.report(message, kind=...)`, or with `report()` from
+`html_components/diagnostics.py` where there is no renderer, never with Python's `warnings`
+module. Use `kind="contract"` when the fix is in template source or the environment and
+`kind="data"` when the value can legitimately vary per request; when in doubt, use `contract`.
+Reports log through the `alliance_platform.ui` logger with the message text unchanged: the parity
+fixtures' `expected_warnings` hold React's `console.warn` strings and the parity tests compare them
+with the logged messages. Contract reports raise `StaticComponentContractError` when the
+`STATIC_COMPONENT_STRICT` setting is on (default `DEBUG`); ap-ui's test settings turn it off. Tests
+capture diagnostics with `HtmlUIParityTestCase.capture_diagnostics()`, which yields the logged
+messages and allows an empty list, or with `assertLogs`. `docs/static_components.rst` documents the
+behaviour for projects.
+
 ## Input components (`text_input`, `number_input`, `text_area`)
 
 The input renderers live in
@@ -43,9 +57,9 @@ Generated element ids use a deterministic `apui-<apui_name>-<n>` scheme (for exa
 react-aria generated ids to the same scheme so fixtures stay deterministic.
 
 Props that are not consumed by the renderer only reach the control element through an explicit
-allowlist (`control_pass_through_props`, plus `data-*`/`aria-*` attributes); anything else warns
-and is dropped. Event handler props (`on*`) are always rejected — a string value would otherwise
-render as a live inline event handler, which React never does.
+allowlist (`control_pass_through_props`, plus `data-*`/`aria-*` attributes); anything else is
+reported as a contract diagnostic and dropped. Event handler props (`on*`) are always rejected — a
+string value would otherwise render as a live inline event handler, which React never does.
 
 ### Rich content props (`RenderableContent`)
 
@@ -55,10 +69,9 @@ pass rich (HTML) content into static HTML renderers — `{% form_input %}` produ
 `{% ui %}` widgets. Renderers declare which props accept it via `rich_content_props` (currently
 only `description` on inputs; `errorMessage` and labels are deliberately plain escaped text) and
 must render it through `html_components/content.py`'s `render_content()` helper — never `str()`
-or `mark_safe()` on the raw value. `render_content()` escapes text and attribute values, refuses
-event handler attributes (`on*`) with a warning, and statically renders legacy plain-HTML
-`ComponentNode` values during migration (imported React components warn and render nothing — it
-never calls `ComponentNode.render()`, which would enter the React/bundler path).
+or `mark_safe()` on the raw value. `render_content()` escapes text and attribute values; event
+handler attributes (`on*`) and values it cannot render (anything other than strings,
+`RenderableContent` and lists of them) are reported as contract diagnostics and dropped.
 
 ### Bulk props (`props=` kwarg)
 
@@ -76,10 +89,10 @@ Bulk prop keys are adapted to the component prop contract automatically: HTML at
 converted to their React equivalents (`maxlength` → `maxLength`, `class` → `className` — no
 `|html_attr_to_jsx` filter needed), and boolean state attributes to their react-aria props
 (`disabled` → `isDisabled`, `required` → `isRequired`, `readonly` → `isReadOnly`) so widget attrs
-do not trigger the inline-kwarg alias warnings. Matching `{% component %}`, bulk props take
+do not trigger the deprecated-alias diagnostics. Matching `{% component %}`, bulk props take
 precedence over individually passed props, except `className` values which are merged. The merged
 props still pass through the same unsupported-prop filtering as inline kwargs, so non-scalar
-values warn and are dropped unless the prop accepts rich content (see above).
+values are reported and dropped unless the prop accepts rich content (see above).
 `merge_props` is registered in both the `react` and `alliance_platform.ui` template tag libraries.
 
 ### Deliberate static-render differences from React
@@ -168,8 +181,8 @@ one template render, and nearest-payload lookup supports tables nested inside ce
 4. Each `table_cell` consumes the column state at the current index to inherit alignment and
    row-header status, advancing the index by the cell's `colSpan` so later cells stay aligned.
 
-Components rendered outside their expected parent warn and render nothing; rows with more cells
-than registered columns warn once per table.
+Components rendered outside their expected parent report a contract diagnostic and render
+nothing; rows with more cells than registered columns report a data diagnostic once per table.
 
 ### Intentionally unsupported React Table features
 
@@ -177,8 +190,8 @@ Row selection (`selectionMode`, `selectedKeys`, checkboxes, `isSelected`), clien
 (`onSortChange`, `sortFunction`, `defaultSortOrder`), collection render props (`items`,
 `columns`), `columnHeaderElementType`, nested/grouped columns, and all keyboard grid/focus
 behaviour (including `mode="edit"` semantics — only the `data-mode` attribute is rendered). These
-warn and are dropped so templates never render interactive-looking state with no behaviour behind
-it.
+are reported and dropped so templates never render interactive-looking state with no behaviour
+behind it.
 
 ### Native semantics vs the React ARIA grid
 
@@ -285,8 +298,8 @@ so a pruned first section never leaves a leading separator behind.
 
 `onAction`/`onSelectionChange`/`onExpandedChange` callbacks, selection (`selectionMode` etc.),
 dynamic collections (`items`/`childItems`), `itemElementType`, controlled `expandedKeys`, and
-width overflow into a "More" submenu (`overflowLabel`/`overflowTextLabel`). These warn and are
-dropped. `default_expanded_keys` *is* supported statically (submenus render open; the runtime
+width overflow into a "More" submenu (`overflowLabel`/`overflowTextLabel`). These are reported
+and dropped. `default_expanded_keys` *is* supported statically (submenus render open; the runtime
 initialises from `data-open="true"`). Known first-pass runtime gaps: flyout positioning is simple
 DOM-relative placement without viewport-aware flipping, and typeahead searches within the current
 menu only.
