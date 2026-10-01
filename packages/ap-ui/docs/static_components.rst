@@ -264,7 +264,7 @@ The stat's tests:
 
 .. literalinclude:: ../tests/test_static_component_example.py
     :language: python
-    :start-at: import warnings
+    :start-at: from alliance_platform.ui.html_components import built_in_registry
     :end-before: def test_payload_reaches_values_nested_in_markup
 
 For tests that need the database, combine the base with Django's ``TestCase``:

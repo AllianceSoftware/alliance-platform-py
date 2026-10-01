@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 from typing import Any
-import warnings
 
 from alliance_platform.frontend.bundler.context import BundlerAsset
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from allianceutils.template import is_static_expression
 from allianceutils.template import parse_tag_arguments
 from django import template
-from django.conf import settings
 from django.template import Context
 from django.template import Origin
 from django.template import TemplateSyntaxError
@@ -17,10 +15,9 @@ from django.template.base import FilterExpression
 from django.template.base import NodeList
 
 from .constants import ALLOWED_COMPONENTS_KWARG
+from .diagnostics import report
 from .registry import HtmlUIComponentRegistry
 from .registry import built_in_registry
-
-_DISPATCHER_WARNING_KEYS: set[tuple[str, str]] = set()
 
 
 class UIComponentDispatcherNode(template.Node, BundlerAsset):
@@ -69,31 +66,29 @@ class UIComponentDispatcherNode(template.Node, BundlerAsset):
         component_name = self._resolve_component_name(context)
 
         if not component_name:
-            self._warn_dispatcher(
-                warning_type="ui_dispatcher_empty_component",
-                component_identifier="<empty>",
-                message="Resolved ui component name was empty; rendering nothing.",
+            report(
+                "Resolved ui component name was empty; rendering nothing.",
+                kind="contract",
+                origin=self.origin,
             )
             return ""
 
         if self.allowed_components is not None and component_name not in self.allowed_components:
-            self._warn_dispatcher(
-                warning_type="ui_dispatcher_disallowed_dynamic_component",
-                component_identifier=component_name,
-                message=(
-                    f"Resolved ui component '{component_name}' is not allowed by {ALLOWED_COMPONENTS_KWARG}."
-                ),
+            report(
+                f"Resolved ui component '{component_name}' is not allowed by {ALLOWED_COMPONENTS_KWARG}.",
+                kind="contract",
+                component=component_name,
+                origin=self.origin,
             )
             return ""
 
         renderer_cls = self.registry.get(component_name)
         if renderer_cls is None:
-            if settings.DEBUG:
-                raise TemplateSyntaxError(f"Unknown ui component '{component_name}'")
-            self._warn_dispatcher(
-                warning_type="ui_dispatcher_unknown_component",
-                component_identifier=component_name,
-                message=f"Unknown ui component '{component_name}'",
+            report(
+                f"Unknown ui component '{component_name}'",
+                kind="contract",
+                component=component_name,
+                origin=self.origin,
             )
             return ""
 
@@ -108,14 +103,6 @@ class UIComponentDispatcherNode(template.Node, BundlerAsset):
     def _resolve_component_name(self, context: Context) -> str:
         value = self.selector.resolve(context)
         return "" if value is None else str(value).strip()
-
-    def _warn_dispatcher(self, warning_type: str, component_identifier: str, message: str):
-        key = (warning_type, component_identifier)
-        if not settings.DEBUG and key in _DISPATCHER_WARNING_KEYS:
-            return
-        if not settings.DEBUG:
-            _DISPATCHER_WARNING_KEYS.add(key)
-        warnings.warn(message)
 
 
 def parse_ui_tag(

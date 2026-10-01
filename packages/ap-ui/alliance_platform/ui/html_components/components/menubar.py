@@ -38,7 +38,6 @@ from typing import Any
 from typing import Literal
 from typing import Mapping
 from urllib.parse import unquote
-import warnings
 
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from alliance_platform.frontend.bundler.frontend_resource import ImageResource
@@ -176,14 +175,14 @@ def get_current_menubar_frame(context: Context) -> MenubarRenderFrame | None:
 class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
     """Shared prop validation for the static menubar component renderers.
 
-    Mirrors the input/table renderer policy: event handler props and React-only props warn and are
-    dropped, unknown props warn rather than rendering arbitrary attributes, and ``data-*``/
-    ``aria-*`` attributes pass through only where the component contract allows them.
+    Mirrors the input/table renderer policy: event handler props and React-only props are reported
+    and dropped, unknown props are reported rather than rendering arbitrary attributes, and
+    ``data-*``/``aria-*`` attributes pass through only where the component contract allows them.
     """
 
     #: props (after normalization) the component understands
     supported_props: frozenset[str] = frozenset()
-    #: props rejected with a specific reason instead of the generic unknown-prop warning
+    #: props rejected with a specific reason instead of the generic unknown-prop report
     unsupported_prop_reasons: Mapping[str, str] = {}
     #: prop name aliases applied after normalization (e.g. ``disabled`` -> ``isDisabled``)
     prop_aliases: Mapping[str, str] = {}
@@ -223,9 +222,10 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
 
     def resolve_props(self, context: Context) -> dict[str, Any]:
         if self.requires_menubar and get_current_menubar_state(context) is None:
-            warnings.warn(
+            self.report(
                 f"'{self.name}' was rendered outside of a '{{% ui \"menubar\" %}}' "
-                "component; rendering nothing"
+                "component; rendering nothing",
+                kind="contract",
             )
             raise OmitComponentFromRendering()
         return super().resolve_props(context)
@@ -291,9 +291,9 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
         """Resolve the accessible text label, deriving it from plain text content when possible.
 
         Mirrors react-stately collection behaviour: an explicit ``textValue`` wins, plain text
-        content is used directly, and rich content without a ``textValue`` warns because typeahead
-        and ``aria-label`` need a text label. For rich content the tag-stripped text is still used
-        as a best-effort fallback.
+        content is used directly, and rich content without a ``textValue`` is reported because
+        typeahead and ``aria-label`` need a text label. For rich content the tag-stripped text is
+        still used as a best-effort fallback.
         """
         text_value = props.get("textValue")
         if text_value is not None:
@@ -315,9 +315,10 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
                 return " ".join(html_module.unescape(rest).split()) or None
         if aria_label is not None:
             return str(aria_label)
-        warnings.warn(
+        self.report(
             f"'{self.name}' has non-plain-text {content_description}; pass 'text_value' "
-            "so it has an accessible label"
+            "so it has an accessible label",
+            kind="contract",
         )
         derived = " ".join(html_module.unescape(strip_tags(content_html)).split())
         return derived or None
@@ -559,9 +560,10 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
             return frozenset(key.strip() for key in raw.split(",") if key.strip())
         if isinstance(raw, (list, tuple, set, frozenset)):
             return frozenset(str(key) for key in raw)
-        warnings.warn(
+        self.report(
             "Prop 'defaultExpandedKeys' must be a list of keys or a comma-separated string; "
-            "it will be ignored"
+            "it will be ignored",
+            kind="contract",
         )
         return frozenset()
 
@@ -606,7 +608,10 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
         if raw_storage_key is None:
             return None
         if not isinstance(raw_storage_key, str) or not _COOKIE_NAME_RE.fullmatch(raw_storage_key):
-            warnings.warn("Prop 'expandedKeysStorageKey' must be a valid cookie name; it will be ignored")
+            self.report(
+                "Prop 'expandedKeysStorageKey' must be a valid cookie name; it will be ignored",
+                kind="contract",
+            )
             return None
         return raw_storage_key
 
@@ -644,9 +649,10 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
         layout = str(props.get("layout", "horizontal"))
         if not props.get("aria-label") and not props.get("aria-labelledby"):
-            warnings.warn(
+            self.report(
                 "The 'menubar' component should have an 'aria_label' or 'aria_labelledby' prop "
-                "for accessibility"
+                "for accessibility",
+                kind="contract",
             )
 
         state = self.get_state(context)
@@ -824,18 +830,20 @@ class UIMenubarItemRenderer(UIMenubarComponentRendererBase):
                 if element_type == "a":
                     attrs[prop_name] = props[prop_name]
                 else:
-                    warnings.warn(
+                    self.report(
                         f"Prop '{prop_name}' is only supported when 'menubar_item' renders an anchor "
-                        "and will be ignored"
+                        "and will be ignored",
+                        kind="contract",
                     )
         for prop_name in self.button_only_props:
             if prop_name in props:
                 if element_type == "button":
                     attrs[prop_name] = props[prop_name]
                 else:
-                    warnings.warn(
+                    self.report(
                         f"Prop '{prop_name}' is only supported when 'menubar_item' renders a button "
-                        "element and will be ignored"
+                        "element and will be ignored",
+                        kind="contract",
                     )
 
         if self.target_var is None:
@@ -930,9 +938,13 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
 
         title = props.get("title")
         with collect_child_reports(context) as title_reports:
-            title_html = render_content(title, context, prop_name="title", origin=self.origin)
+            title_html = render_content(
+                title, context, prop_name="title", origin=self.origin, component=self.name
+            )
         if not title_html.strip():
-            warnings.warn("'menubar_submenu' requires a 'title' prop; the submenu will not be rendered")
+            self.report(
+                "'menubar_submenu' requires a 'title' prop; the submenu will not be rendered", kind="contract"
+            )
             return ""
 
         is_disabled = bool(props.get("isDisabled"))
@@ -1164,7 +1176,9 @@ class UIMenubarSectionRenderer(UIMenubarComponentRendererBase):
             return ""
 
         title = props.get("title")
-        title_html = render_content(title, context, prop_name="title", origin=self.origin)
+        title_html = render_content(
+            title, context, prop_name="title", origin=self.origin, component=self.name
+        )
 
         menubar_styles = self.resolve_menubar_styles()
 

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import warnings
-
 from tests.parity.base import HtmlUIParityTestCase
 
 
@@ -10,10 +8,9 @@ class UIInlineAlertParityTestCase(HtmlUIParityTestCase):
 
     def render_with_warnings(self, template_body: str, context_kwargs=None):
         with self.setup_render_context():
-            with warnings.catch_warnings(record=True) as caught_warnings:
-                warnings.simplefilter("always")
+            with self.capture_diagnostics() as diagnostics:
                 output = self.render_ui_template(template_body, context_kwargs)
-        return output, [str(item.message) for item in caught_warnings]
+        return output, diagnostics
 
     def test_fixture_cases(self):
         fixture = self.load_fixture()

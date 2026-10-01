@@ -3,7 +3,6 @@ from __future__ import annotations
 from decimal import Decimal
 import re
 from typing import Any
-import warnings
 
 from tests.parity.base import HtmlUIParityTestCase
 from tests.parity.normalizers import normalize_html_fragment
@@ -40,8 +39,7 @@ class UINumberInputParityTestCase(HtmlUIParityTestCase):
 
     def assert_parity_case(self, case: dict[str, Any], context_kwargs: dict[str, Any] | None = None):
         with self.setup_render_context():
-            with warnings.catch_warnings(record=True) as caught_warnings:
-                warnings.simplefilter("always")
+            with self.capture_diagnostics() as diagnostics:
                 output = self.render_ui_template(case["template"], context_kwargs)
 
         actual_html = normalize_html_fragment(
@@ -50,9 +48,7 @@ class UINumberInputParityTestCase(HtmlUIParityTestCase):
         expected_html = normalize_html_fragment(strip_static_number_input_extensions(case["expected_html"]))
         self.assertEqual(actual_html, expected_html)
 
-        expected_warnings = case.get("expected_warnings", [])
-        actual_warnings = [str(item.message) for item in caught_warnings]
-        self.assertEqual(actual_warnings, expected_warnings)
+        self.assertEqual(diagnostics, case.get("expected_warnings", []))
 
     def test_fixture_cases(self):
         fixture = self.load_fixture()

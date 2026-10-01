@@ -2,14 +2,15 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 import json
+import logging
 from pathlib import Path
 from typing import Any
 from typing import Iterator
 from typing import Mapping
-import warnings
 
 from alliance_platform.frontend.bundler.base import BaseBundler
 from alliance_platform.frontend.bundler.context import BundlerAssetContext
+from alliance_platform.ui.html_components.diagnostics import LOGGER_NAME
 from alliance_platform.ui.test_utils import StaticComponentTestCase
 from django.template import Context
 from django.template import Template
@@ -29,9 +30,38 @@ test_development_bundler = TestViteBundler(
 )
 
 
+class _DiagnosticMessages(logging.Handler):
+    def __init__(self):
+        super().__init__(level=logging.WARNING)
+        self.messages: list[str] = []
+
+    def emit(self, record: logging.LogRecord):
+        self.messages.append(record.getMessage())
+
+
 class HtmlUIParityTestCase(StaticComponentTestCase):
     fixture_component: str
     parity_ignored_attributes: frozenset[str] = frozenset()
+
+    @contextmanager
+    def capture_diagnostics(self) -> Iterator[list[str]]:
+        """Collect the messages static components log while the block runs.
+
+        Captures what ``assertLogs("alliance_platform.ui", level="WARNING")`` would, but logging
+        nothing is not a failure, so tests can compare against an exact list, including an empty one.
+        """
+        logger = logging.getLogger(LOGGER_NAME)
+        handler = _DiagnosticMessages()
+        old_handlers, old_level, old_propagate = logger.handlers[:], logger.level, logger.propagate
+        logger.handlers = [handler]
+        logger.setLevel(logging.WARNING)
+        logger.propagate = False
+        try:
+            yield handler.messages
+        finally:
+            logger.handlers = old_handlers
+            logger.setLevel(old_level)
+            logger.propagate = old_propagate
 
     @contextmanager
     def setup_render_context(
@@ -72,8 +102,7 @@ class HtmlUIParityTestCase(StaticComponentTestCase):
 
     def assert_parity_case(self, case: dict[str, Any], context_kwargs: dict[str, Any] | None = None):
         with self.setup_render_context() as _asset_context:
-            with warnings.catch_warnings(record=True) as caught_warnings:
-                warnings.simplefilter("always")
+            with self.capture_diagnostics() as diagnostics:
                 output = self.render_ui_template(case["template"], context_kwargs)
 
         actual_html = normalize_html_fragment(
@@ -86,6 +115,4 @@ class HtmlUIParityTestCase(StaticComponentTestCase):
         )
         self.assertEqual(actual_html, expected_html)
 
-        expected_warnings = case.get("expected_warnings", [])
-        actual_warnings = [str(item.message) for item in caught_warnings]
-        self.assertEqual(actual_warnings, expected_warnings)
+        self.assertEqual(diagnostics, case.get("expected_warnings", []))

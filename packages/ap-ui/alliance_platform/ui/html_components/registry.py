@@ -22,8 +22,8 @@ class HtmlUIComponentRegistry:
     ):
         """Register ``renderer_cls`` as the renderer for ``{% ui "<name>" %}``.
 
-        ``name`` must be snake_case and equal to ``renderer_cls.name``, so warnings, generated ids
-        and the registry all use one name. Registering a different renderer under a name that is
+        ``name`` must be snake_case and equal to ``renderer_cls.name``, so diagnostics, generated
+        ids and the registry all use one name. Registering a different renderer under a name that is
         already taken raises ``ValueError`` unless ``replace=True``; registering the same renderer
         again is a no-op.
         """

@@ -27,7 +27,6 @@ import re
 from typing import Any
 from typing import Literal
 from typing import Mapping
-import warnings
 
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from alliance_platform.frontend.bundler.frontend_resource import ImageResource
@@ -144,7 +143,7 @@ class TableRenderState:
     #: True once any column explicitly passed isRowHeader=True; when False the first column is
     #: the row header by default (matching the React Table)
     has_explicit_row_header: bool = False
-    #: used to warn once per table when rows contain more cells than registered columns
+    #: used to report once per table when rows contain more cells than registered columns
     warned_extra_cells: bool = False
     #: row_count snapshots pushed when a table_body starts rendering and popped when it finishes,
     #: so it can tell whether any of its own rows rendered. Kept here (rather than on the renderer)
@@ -159,14 +158,14 @@ def get_current_table_state(context: Context) -> TableRenderState | None:
 class UITableComponentRendererBase(BaseHtmlUIComponentRenderer):
     """Shared prop validation for the static table component renderers.
 
-    Mirrors the input renderer policy: event handler props and React-only props warn and are
-    dropped, unknown props warn rather than rendering arbitrary attributes, and ``data-*``/
+    Mirrors the input renderer policy: event handler props and React-only props are reported and
+    dropped, unknown props are reported rather than rendering arbitrary attributes, and ``data-*``/
     ``aria-*`` attributes pass through only where the spec allows it.
     """
 
     #: props (after normalization) the component understands
     supported_props: frozenset[str] = frozenset()
-    #: props rejected with a specific reason instead of the generic unknown-prop warning
+    #: props rejected with a specific reason instead of the generic unknown-prop report
     unsupported_prop_reasons: Mapping[str, str] = {}
     #: aria-* attribute names allowed even when arbitrary aria-* attributes are refused
     extra_allowed_aria_props: frozenset[str] = frozenset()
@@ -180,16 +179,17 @@ class UITableComponentRendererBase(BaseHtmlUIComponentRenderer):
 
     def resolve_props(self, context: Context) -> dict[str, Any]:
         if self.requires_table and get_current_table_state(context) is None:
-            self.warn_outside_table()
+            self.report_outside_table()
             raise OmitComponentFromRendering()
         return super().resolve_props(context)
 
     def resolve_table_styles(self) -> Any:
         return self.resolve_vanilla_extract_mapping(_TABLE_STYLE_PATH)
 
-    def warn_outside_table(self):
-        warnings.warn(
-            f"'{self.name}' was rendered outside of a '{{% ui \"table\" %}}' component; rendering nothing"
+    def report_outside_table(self):
+        self.report(
+            f"'{self.name}' was rendered outside of a '{{% ui \"table\" %}}' component; rendering nothing",
+            kind="contract",
         )
 
 
@@ -262,9 +262,10 @@ class UITableRenderer(UITableComponentRendererBase):
         if raw_sort_order is None:
             return []
         if not isinstance(raw_sort_order, (list, tuple)):
-            warnings.warn(
+            self.report(
                 "Prop 'sortOrder' must be a list of sort descriptors "
-                '({"column": ..., "direction": ...}); it will be ignored'
+                '({"column": ..., "direction": ...}); it will be ignored',
+                kind="contract",
             )
             return []
         descriptors: list[TableSortDescriptor] = []
@@ -272,7 +273,8 @@ class UITableRenderer(UITableComponentRendererBase):
             column = entry.get("column") if isinstance(entry, dict) else None
             direction = entry.get("direction") if isinstance(entry, dict) else None
             if not column or direction not in VALID_SORT_DIRECTIONS:
-                warnings.warn(f"Ignoring invalid 'sortOrder' descriptor: {entry!r}")
+                # Descriptors are usually built from the request's sort parameter
+                self.report(f"Ignoring invalid 'sortOrder' descriptor: {entry!r}", kind="data")
                 continue
             descriptors.append(TableSortDescriptor(column=str(column), direction=direction))
         return descriptors
@@ -291,13 +293,19 @@ class UITableRenderer(UITableComponentRendererBase):
             return None
         if value is True:
             return f"<em>{conditional_escape(gettext('No results'))}</em>"
-        return render_content(value, context, prop_name="renderEmptyState", origin=self.origin)
+        return render_content(
+            value, context, prop_name="renderEmptyState", origin=self.origin, component=self.name
+        )
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
         table_styles = self.resolve_table_styles()
 
-        header_html = render_content(props.get("header"), context, prop_name="header", origin=self.origin)
-        footer_html = render_content(props.get("footer"), context, prop_name="footer", origin=self.origin)
+        header_html = render_content(
+            props.get("header"), context, prop_name="header", origin=self.origin, component=self.name
+        )
+        footer_html = render_content(
+            props.get("footer"), context, prop_name="footer", origin=self.origin, component=self.name
+        )
         has_header = bool(header_html)
         has_footer = bool(footer_html)
 
@@ -414,10 +422,11 @@ class UITableColumnRenderer(UITableComponentRendererBase):
             elif key is not None:
                 href = self.build_sort_url(context, state, key)
             if href is None:
-                warnings.warn(
+                self.report(
                     f"Could not build a sort URL for column '{key or '<no key>'}': pass 'sortHref', or "
                     "pass 'key' and ensure 'request' is available in the template context. The header "
-                    "will render without a link."
+                    "will render without a link.",
+                    kind="contract",
                 )
 
         content_html = self.render_header_content(props, children_html, table_styles, href)
@@ -496,8 +505,9 @@ class UITableColumnRenderer(UITableComponentRendererBase):
             return style
         width_var = self.resolve_column_width_var(table_styles)
         if width_var is None:
-            warnings.warn(
-                "Could not resolve the table columnWidth CSS variable; the 'width' prop will be ignored"
+            self.report(
+                "Could not resolve the table columnWidth CSS variable; the 'width' prop will be ignored",
+                kind="contract",
             )
             return style
         width_style = {width_var: _pixelify(width)}
@@ -652,9 +662,10 @@ class UITableCellRenderer(UITableComponentRendererBase):
         column: TableColumnState | None = None
         cell_index: int | None = None
         if state.current_row_cell_index is None:
-            warnings.warn(
+            self.report(
                 "'table_cell' was rendered outside of a '{% ui \"table_row\" %}' component; "
-                "column metadata (alignment, row header) will not be applied"
+                "column metadata (alignment, row header) will not be applied",
+                kind="contract",
             )
         else:
             cell_index = state.current_row_cell_index
@@ -663,10 +674,11 @@ class UITableCellRenderer(UITableComponentRendererBase):
                 column = state.columns[cell_index]
             elif not state.warned_extra_cells:
                 state.warned_extra_cells = True
-                warnings.warn(
+                self.report(
                     "A 'table_row' rendered more 'table_cell' components than there are registered "
                     "'table_column' components; extra cells render without column metadata. "
-                    "(warning shown once per table)"
+                    "(warning shown once per table)",
+                    kind="data",
                 )
 
         align = column.align if column else None

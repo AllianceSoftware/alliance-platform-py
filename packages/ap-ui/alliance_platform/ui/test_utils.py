@@ -15,6 +15,7 @@ from alliance_platform.frontend.bundler.base import BaseBundler
 from alliance_platform.frontend.bundler.context import BundlerAssetContext
 from alliance_platform.frontend.bundler.resource_registry import FrontendResourceRegistry
 from alliance_platform.ui.html_components import base as _renderer_base
+from alliance_platform.ui.html_components import diagnostics as _diagnostics
 from django.conf import settings
 from django.template import Context
 from django.template import Template
@@ -102,6 +103,9 @@ class StaticComponentTestCase(SimpleTestCase):
         from the supplied data resolves to an empty class name, as a missing class does at runtime.
         Yields the ``BundlerAssetContext`` so tests can inspect the resources components used.
 
+        Entering the context also forgets which contract diagnostics were already logged, so one
+        that an earlier test triggered logs again instead of being deduplicated.
+
         Args:
             style_mappings: Class names per stylesheet (see :data:`StyleMappings`).
             bundler: Bundler to use instead of the ``BUNDLER`` setting.
@@ -109,6 +113,7 @@ class StaticComponentTestCase(SimpleTestCase):
                 ``FRONTEND_RESOURCE_REGISTRY`` setting.
         """
         mappings = style_mappings or {}
+        _diagnostics._reset_reported()
 
         def resolve_mapping(_bundler: BaseBundler, stylesheet: Path) -> Any:
             stylesheet = Path(stylesheet)

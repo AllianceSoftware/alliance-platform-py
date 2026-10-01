@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import warnings
-
 from alliance_platform.frontend.renderable_content import RenderableContent
 from alliance_platform.ui.html_components.content import render_content
 from django import forms
@@ -19,10 +17,9 @@ class RenderContentTestCase(HtmlUIParityTestCase):
 
     def render_value(self, value):
         with self.setup_render_context():
-            with warnings.catch_warnings(record=True) as caught_warnings:
-                warnings.simplefilter("always")
+            with self.capture_diagnostics() as diagnostics:
                 output = render_content(value, Context(), prop_name="description")
-        return output, [str(item.message) for item in caught_warnings]
+        return output, diagnostics
 
     def test_none_renders_empty(self):
         output, caught = self.render_value(None)
@@ -121,13 +118,12 @@ class StaticInputRichContentTestCase(HtmlUIParityTestCase):
 
     def test_description_accepts_renderable_content(self):
         with self.setup_render_context():
-            with warnings.catch_warnings(record=True) as caught_warnings:
-                warnings.simplefilter("always")
+            with self.capture_diagnostics() as diagnostics:
                 output = self.render_ui_template(
                     '{% ui "text_input" label="Email" description=description %}{% endui %}',
                     {"description": RenderableContent.from_html("Use <strong>bold</strong> text", origin)},
                 )
-        self.assertEqual([str(item.message) for item in caught_warnings], [])
+        self.assertEqual(diagnostics, [])
         self.assertIn(
             '<div class="LabeledInput_helpText" id="apui-text-input-2">Use <strong>bold</strong> text</div>',
             output,
@@ -137,8 +133,7 @@ class StaticInputRichContentTestCase(HtmlUIParityTestCase):
 
     def test_description_renderable_content_event_attributes_dropped(self):
         with self.setup_render_context():
-            with warnings.catch_warnings(record=True) as caught_warnings:
-                warnings.simplefilter("always")
+            with self.capture_diagnostics() as diagnostics:
                 output = self.render_ui_template(
                     '{% ui "text_input" label="Email" description=description %}{% endui %}',
                     {
@@ -149,18 +144,17 @@ class StaticInputRichContentTestCase(HtmlUIParityTestCase):
                 )
         self.assertNotIn("onclick", output)
         self.assertIn("<span>Help</span>", output)
-        self.assertTrue(any("event handler attribute" in str(item.message) for item in caught_warnings))
+        self.assertTrue(any("event handler attribute" in message for message in diagnostics))
 
     def test_form_input_help_text_renders_through_static_widget(self):
         with self.setup_render_context():
-            with warnings.catch_warnings(record=True) as caught_warnings:
-                warnings.simplefilter("always")
+            with self.capture_diagnostics() as diagnostics:
                 output = self.render_ui_template(
                     "{% load alliance_platform.form %}"
                     "{% form my_form %}{% form_input my_form.email %}{% endform %}",
                     {"my_form": HelpTextForm()},
                 )
-        self.assertEqual([str(item.message) for item in caught_warnings], [])
+        self.assertEqual(diagnostics, [])
         self.assertIn("Use your <strong>work</strong> email</div>", output)
         self.assertIn('class="LabeledInput_helpText"', output)
         self.assertIn(">Email", output)

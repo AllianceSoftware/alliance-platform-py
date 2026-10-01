@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import warnings
-
 from alliance_platform.frontend.bundler.context import BundlerAssetContext
-from alliance_platform.ui.html_components import dispatcher
+from alliance_platform.ui.html_components.diagnostics import StaticComponentContractError
 from django.template import Template
 from django.template import TemplateSyntaxError
 from django.test import override_settings
@@ -11,13 +9,11 @@ from django.test import override_settings
 from tests.parity.base import HtmlUIParityTestCase
 from tests.parity.base import test_development_bundler
 from tests.test_utils import override_ap_frontend_settings
+from tests.test_utils import override_ap_ui_settings
 from tests.test_utils.bundler import bypass_frontend_resource_registry
 
 
 class UIDispatcherTemplateTagTestCase(HtmlUIParityTestCase):
-    def setUp(self):
-        dispatcher._DISPATCHER_WARNING_KEYS.clear()
-
     def test_requires_first_positional_component_selector(self):
         with self.assertRaisesMessage(TemplateSyntaxError, "requires a component selector"):
             Template("{% load alliance_platform.ui %}{% ui %}{% endui %}")
@@ -54,16 +50,30 @@ class UIDispatcherTemplateTagTestCase(HtmlUIParityTestCase):
 
     def test_dynamic_component_value_not_in_allowed_components_warns_and_renders_empty(self):
         with self.setup_render_context():
-            with warnings.catch_warnings(record=True) as caught:
-                warnings.simplefilter("always")
+            with self.assertLogs("alliance_platform.ui", level="WARNING") as logs:
                 output = self.render_ui_template(
                     '{% ui component_name allowed_components="button" %}X{% endui %}',
                     {"component_name": "button_group"},
                 )
 
         self.assertEqual(output, "")
-        self.assertEqual(len(caught), 1)
-        self.assertIn("is not allowed by allowed_components", str(caught[0].message))
+        self.assertEqual(
+            [record.getMessage() for record in logs.records],
+            ["Resolved ui component 'button_group' is not allowed by allowed_components."],
+        )
+
+    @override_ap_ui_settings(STATIC_COMPONENT_STRICT=True)
+    def test_dynamic_component_value_not_in_allowed_components_raises_when_strict(self):
+        with self.setup_render_context():
+            with self.assertRaisesMessage(
+                StaticComponentContractError,
+                "Resolved ui component 'button_group' is not allowed by allowed_components. "
+                "(component 'button_group')",
+            ):
+                self.render_ui_template(
+                    '{% ui component_name allowed_components="button" %}X{% endui %}',
+                    {"component_name": "button_group"},
+                )
 
     def test_as_var_sets_context_and_returns_empty_inline_output(self):
         with self.setup_render_context():

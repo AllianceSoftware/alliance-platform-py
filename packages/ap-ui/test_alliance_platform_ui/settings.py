@@ -48,7 +48,11 @@ ALLIANCE_PLATFORM: AlliancePlatformSettings = {
         "SSR_GLOBAL_CONTEXT_RESOLVER": None,
         "NODE_MODULES_DIR": os.environ.get("NODE_MODULES_DIR", BASE_DIR.parent.parent / "node_modules"),
     },
-    "UI": {},
+    "UI": {
+        # Log contract diagnostics instead of raising, so tests and fixture expected_warnings can
+        # assert them. The default follows DEBUG, which the test runner turns off; this makes it explicit.
+        "STATIC_COMPONENT_STRICT": False,
+    },
 }
 
 VITE_BUNDLER_MODE = "development"

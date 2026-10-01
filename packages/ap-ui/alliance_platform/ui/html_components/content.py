@@ -9,9 +9,9 @@ rendering: text and attribute values are escaped and event handler attributes ar
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import re
 from typing import Any
-import warnings
 
 from alliance_platform.frontend.html_parser import void_elements
 from alliance_platform.frontend.renderable_content import RenderableContent
@@ -27,6 +27,7 @@ from django.utils.html import conditional_escape
 from django.utils.safestring import SafeString
 from django.utils.safestring import mark_safe
 
+from . import diagnostics
 from .base import build_attrs_string
 from .base import is_event_handler_attr
 
@@ -60,47 +61,65 @@ def render_content(
     *,
     prop_name: str,
     origin: Origin | None = None,
+    component: str | None = None,
 ) -> SafeString:
     """Render a renderable-content prop value to static HTML.
 
     Accepts ``None``, plain/lazy strings (escaped; ``SafeString`` preserved),
-    :class:`RenderableContent`, and lists/tuples of any of these. Anything unsupported warns and
-    renders nothing.
+    :class:`RenderableContent`, and lists/tuples of any of these. Anything unsupported is reported as
+    a ``contract`` diagnostic (see :mod:`~alliance_platform.ui.html_components.diagnostics`) for
+    ``component`` in ``origin`` and renders nothing.
     """
     if value is None:
         return mark_safe("")
     if isinstance(value, (str, Promise)):
         # str() evaluates lazy strings; SafeString.__str__ returns itself so safeness is preserved
         return conditional_escape(str(value))
+    prop = _ContentProp(prop_name, component, origin)
     if isinstance(value, RenderableContent):
-        return mark_safe("".join(_render_part(part, context, prop_name=prop_name) for part in value.parts))
+        return mark_safe("".join(_render_part(part, context, prop) for part in value.parts))
     if isinstance(value, (list, tuple)):
         return mark_safe(
-            "".join(render_content(item, context, prop_name=prop_name, origin=origin) for item in value)
+            "".join(
+                render_content(item, context, prop_name=prop_name, origin=origin, component=component)
+                for item in value
+            )
         )
-    warnings.warn(
+    prop.report(
         f"Renderable content prop '{prop_name}' contains a {type(value).__name__} value which "
         "cannot be rendered by static HTML ui components and will be ignored"
     )
     return mark_safe("")
 
 
-def _render_part(part: Any, context: Context, *, prop_name: str) -> str:
+@dataclass(frozen=True)
+class _ContentProp:
+    """The rich content prop being rendered, and the component and template it belongs to."""
+
+    name: str
+    component: str | None
+    origin: Origin | None
+
+    def report(self, message: str):
+        diagnostics.report(message, kind="contract", component=self.component, origin=self.origin)
+
+
+def _render_part(part: Any, context: Context, prop: _ContentProp) -> str:
     if isinstance(part, RenderableText):
         return conditional_escape(part.value)
     if isinstance(part, RenderableTemplateNode):
         # Template node output is composed like any other template content
         return part.node.render(context)
     if isinstance(part, RenderableElement):
-        return _render_element(part, context, prop_name=prop_name)
-    warnings.warn(
-        f"Renderable content prop '{prop_name}' contains an unsupported part "
+        return _render_element(part, context, prop)
+    prop.report(
+        f"Renderable content prop '{prop.name}' contains an unsupported part "
         f"({type(part).__name__}) which will be ignored"
     )
     return ""
 
 
-def _clean_content_attrs(attrs: dict[str, Any], context: Context, *, prop_name: str) -> dict[str, Any]:
+def _clean_content_attrs(attrs: dict[str, Any], context: Context, prop: _ContentProp) -> dict[str, Any]:
     """Resolve and filter attributes for static rendering.
 
     Event handler attributes are refused: a string value would become a live inline event handler,
@@ -109,8 +128,8 @@ def _clean_content_attrs(attrs: dict[str, Any], context: Context, *, prop_name: 
     cleaned: dict[str, Any] = {}
     for key, value in attrs.items():
         if is_event_handler_attr(str(key)):
-            warnings.warn(
-                f"Renderable content prop '{prop_name}' contains event handler attribute "
+            prop.report(
+                f"Renderable content prop '{prop.name}' contains event handler attribute "
                 f"'{key}' which will not be rendered by static HTML ui components"
             )
             continue
@@ -120,10 +139,10 @@ def _clean_content_attrs(attrs: dict[str, Any], context: Context, *, prop_name: 
     return cleaned
 
 
-def _render_element(element: RenderableElement, context: Context, *, prop_name: str) -> str:
+def _render_element(element: RenderableElement, context: Context, prop: _ContentProp) -> str:
     if not _VALID_TAG_RE.match(element.tag):
-        warnings.warn(
-            f"Renderable content prop '{prop_name}' contains invalid tag '{element.tag}' "
+        prop.report(
+            f"Renderable content prop '{prop.name}' contains invalid tag '{element.tag}' "
             "which will be ignored"
         )
         return ""
@@ -144,10 +163,8 @@ def _render_element(element: RenderableElement, context: Context, *, prop_name: 
         if parser.root.children:
             parsed = parser.root.children[0]
             attrs.update(clean_html_attributes(parsed.attributes, attr_str, Origin("renderable content")))
-    attrs_html = build_attrs_string(_clean_content_attrs(attrs, context, prop_name=prop_name))
+    attrs_html = build_attrs_string(_clean_content_attrs(attrs, context, prop))
     if element.tag in void_elements:
         return f"<{element.tag}{attrs_html}/>"
-    children_html = "".join(
-        _render_part(part, context, prop_name=prop_name) for part in element.children.parts
-    )
+    children_html = "".join(_render_part(part, context, prop) for part in element.children.parts)
     return f"<{element.tag}{attrs_html}>{children_html}</{element.tag}>"

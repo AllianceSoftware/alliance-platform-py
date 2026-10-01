@@ -6,7 +6,6 @@ import json
 import math
 from typing import TYPE_CHECKING
 from typing import Any
-import warnings
 
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from alliance_platform.frontend.bundler.frontend_resource import ImageResource
@@ -53,7 +52,7 @@ _CHEVRON_UP_ICON = "ChevronUpOutlined"
 _CHEVRON_DOWN_ICON = "ChevronDownOutlined"
 
 # Props that only make sense with the React runtime (render props, react-aria plumbing). These are
-# warned about and ignored rather than rendered as attributes.
+# reported and ignored rather than rendered as attributes.
 _REACT_ONLY_PROPS = frozenset(
     {
         "renderInput",
@@ -72,8 +71,8 @@ _REACT_ONLY_PROPS = frozenset(
 )
 
 # Attributes that may be passed through to the control element for all input components, in
-# addition to data-*/aria-* attributes. Anything else that is not explicitly handled is rejected
-# with a warning rather than rendered (mirroring how react-aria's filterDOMProps drops unknown
+# addition to data-*/aria-* attributes. Anything else that is not explicitly handled is reported
+# and dropped rather than rendered (mirroring how react-aria's filterDOMProps drops unknown
 # props, and matching the button renderer's allowlist approach).
 _SHARED_CONTROL_PASS_THROUGH_PROPS = frozenset(
     {
@@ -293,7 +292,9 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
                 "className": self.join_classes(help_text_class, invalid_class if state.is_invalid else None),
                 "id": state.description_id,
             }
-            content = render_content(state.description, context, prop_name="description", origin=self.origin)
+            content = render_content(
+                state.description, context, prop_name="description", origin=self.origin, component=self.name
+            )
             return self.render_tag("div", attrs, content)
         return ""
 
@@ -335,12 +336,12 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
     #: tag rendered for the actual control
     control_tag = "input"
     #: attrs that may pass through to the control element (plus data-*/aria-*); anything else
-    #: not in ``handled_props`` is rejected with a warning
+    #: not in ``handled_props`` is reported and dropped
     control_pass_through_props = _SHARED_CONTROL_PASS_THROUGH_PROPS
     #: props that accept renderable rich content (e.g. RenderableContent from form_input help
     #: text) in addition to plain strings. errorMessage is deliberately plain text for now.
     rich_content_props = frozenset({"description"})
-    #: props consumed by the renderer itself; everything else is passed through or warned about
+    #: props consumed by the renderer itself; everything else is passed through or reported
     handled_props = frozenset(
         {
             "label",
@@ -398,7 +399,9 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
         if children_html.strip():
-            warnings.warn(f"'{self.name}' does not support children; the content will be ignored")
+            self.report(
+                f"'{self.name}' does not support children; the content will be ignored", kind="contract"
+            )
         state = self.resolve_labeled_input_state(context, props)
 
         text_input_base_styles = self.resolve_vanilla_extract_mapping(_TEXT_INPUT_BASE_STYLE_PATH)
@@ -524,7 +527,10 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
             if key in self.control_pass_through_props:
                 attrs[key] = value
                 continue
-            warnings.warn(f"Prop '{key}' is not a supported '{self.name}' attribute and will be ignored")
+            self.report(
+                f"Prop '{key}' is not a supported '{self.name}' attribute and will be ignored",
+                kind="contract",
+            )
         return attrs
 
     def render_control(
@@ -676,12 +682,15 @@ class UINumberInputRenderer(UITextInputBaseRenderer):
         if value is None:
             return None
         if not isinstance(value, dict):
-            warnings.warn("Prop 'formatOptions' must be a dict; it will be ignored")
+            self.report("Prop 'formatOptions' must be a dict; it will be ignored", kind="contract")
             return None
         try:
             return json.dumps(value, separators=(",", ":"), sort_keys=True)
         except (TypeError, ValueError):
-            warnings.warn("Prop 'formatOptions' must contain JSON-serializable values; it will be ignored")
+            self.report(
+                "Prop 'formatOptions' must contain JSON-serializable values; it will be ignored",
+                kind="contract",
+            )
             return None
 
     def should_render_validation_icon(self, props: dict[str, Any], state: LabeledInputState) -> bool:

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import Any
-import warnings
 
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from alliance_platform.frontend.bundler.frontend_resource import ImageResource
@@ -46,12 +45,12 @@ class UIIconRenderer(BaseHtmlUIComponentRenderer):
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
         if children_html.strip():
-            warnings.warn("'icon' does not support children; the content will be ignored")
+            self.report("'icon' does not support children; the content will be ignored", kind="contract")
 
         props = dict(props)
         name = props.pop("name", None)
         if not isinstance(name, str):
-            warnings.warn("'icon' requires a string 'name' prop and will not render")
+            self.report("'icon' requires a string 'name' prop and will not render", kind="contract")
             return ""
 
         size = props.pop("size", "xs")
@@ -77,7 +76,7 @@ class UIIconRenderer(BaseHtmlUIComponentRenderer):
                 attrs=attrs,
             )
         except (FileNotFoundError, TemplateSyntaxError, ValueError) as exc:
-            warnings.warn(f"Could not render static icon '{name}': {exc}")
+            self.report(f"Could not render static icon '{name}': {exc}", kind="contract")
             return ""
 
     def build_child_report(

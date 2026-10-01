@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 from typing import Any
-import warnings
 
 from alliance_platform.ui.icons import get_static_icon_definition
 from django.utils.safestring import mark_safe
@@ -34,13 +33,13 @@ def render_static_icon(
     attrs: dict[str, Any] | None = None,
 ) -> str:
     if size not in ICON_SIZES:
-        warnings.warn(f"Invalid 'size' prop passed: {size}")
+        renderer.report(f"Invalid 'size' prop passed: {size}", kind="contract")
         size = "xs"
     if variant not in ICON_VARIANTS:
-        warnings.warn(f"Invalid 'variant' prop passed: {variant}")
+        renderer.report(f"Invalid 'variant' prop passed: {variant}", kind="contract")
         variant = "plain"
     if color is not None and color not in ICON_COLORS:
-        warnings.warn(f"Invalid 'color' prop passed: {color}")
+        renderer.report(f"Invalid 'color' prop passed: {color}", kind="contract")
         color = None
     if color is None and variant != "plain":
         color = "secondary"
@@ -70,8 +69,9 @@ def render_static_icon(
 
     for attr_name in list(wrapper_attrs.keys()):
         if is_event_handler_attr(attr_name):
-            warnings.warn(
-                f"Event handler prop '{attr_name}' is not supported by static icon components and will be ignored"
+            renderer.report(
+                f"Event handler prop '{attr_name}' is not supported by static icon components and will be ignored",
+                kind="contract",
             )
             del wrapper_attrs[attr_name]
 
