@@ -4,10 +4,21 @@ This file contains maintainer-focused workflow notes for developing `alliance-pl
 
 ## Adding a new HTML dispatcher component
 
+Built-in components use the same renderer contract as project components. `docs/static_components.rst`
+("Writing a static component") documents it. Its worked example is a real project component:
+`test_alliance_platform_ui/static_components.py`, registered by `test_alliance_platform_ui/apps.py`
+and tested in `tests/test_static_component_example.py`.
+
 1. Add a renderer class under:
    - `alliance_platform/ui/html_components/components/`
-2. Register it in:
+   - set `name` to the snake_case component name and export the class from
+     `components/__init__.py`. The root `data-apui` marker and generated id prefixes come from
+     `apui_name`, which defaults to the hyphenated `name`.
+2. Register it with `register_component("<name>", Renderer)` at the end of:
    - `alliance_platform/ui/html_components/registry.py`
+   - `register_component` rejects names that are not snake_case, names that differ from the
+     renderer's `name`, and a second renderer for a taken name unless `replace=True`. Projects
+     call it from `AppConfig.ready()` instead.
 3. Add parity cases in:
    - `scripts/parity_cases/`
    - include `class_prefixes` in each parity case module so fixture generation can keep relevant VE class tokens without hardcoding full class maps.
@@ -15,6 +26,8 @@ This file contains maintainer-focused workflow notes for developing `alliance-pl
    - `just sync-html-ui-parity-fixtures`
 5. Add or extend parity tests in:
    - `tests/`
+   - `tests/parity/base.py`'s `HtmlUIParityTestCase` builds on the shipped
+     `alliance_platform.ui.test_utils.StaticComponentTestCase`.
 
 ## Input components (`text_input`, `number_input`, `text_area`)
 
@@ -24,8 +37,9 @@ The input renderers live in
 components all render through `LabeledInput` + `TextInputBase`. Future input-like components (search
 input, select, date picker) should reuse the same base classes.
 
-Generated element ids use a deterministic `apui-<component>-<n>` scheme where the counter is unique
-within a template render (stored in `context.render_context`). The fixture generator remaps the
+Generated element ids use a deterministic `apui-<apui_name>-<n>` scheme (for example
+`apui-text-input-1`) where the counter is unique within a template render (stored in
+`context.render_context`). The fixture generator remaps the
 react-aria generated ids to the same scheme so fixtures stay deterministic.
 
 Props that are not consumed by the renderer only reach the control element through an explicit
