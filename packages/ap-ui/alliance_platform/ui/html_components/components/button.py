@@ -164,7 +164,7 @@ class UIButtonRenderer(BaseHtmlUIComponentRenderer):
         ):
             attrs["data-icon-only"] = "true"
 
-        return self._render_tag(tag_name, attrs, normalized_children)
+        return self.render_tag(tag_name, attrs, normalized_children)
 
     def _normalize_children(
         self,

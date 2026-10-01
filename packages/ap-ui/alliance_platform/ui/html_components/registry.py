@@ -85,28 +85,28 @@ def register_component(
 
 
 # Keep the default built-ins close to registry construction so parsing validation can rely on them.
-from .components.button import UIButtonRenderer  # noqa: E402
-from .components.button_group import UIButtonGroupRenderer  # noqa: E402
-from .components.icon import UIIconRenderer  # noqa: E402
-from .components.inline_alert import UIInlineAlertRenderer  # noqa: E402
-from .components.input import UINumberInputRenderer  # noqa: E402
-from .components.input import UITextAreaRenderer  # noqa: E402
-from .components.input import UITextInputRenderer  # noqa: E402
-from .components.layout import UIContentRenderer  # noqa: E402
-from .components.layout import UIFooterRenderer  # noqa: E402
-from .components.layout import UIHeaderRenderer  # noqa: E402
-from .components.layout import UIHeadingRenderer  # noqa: E402
-from .components.menubar import UIMenubarItemRenderer  # noqa: E402
-from .components.menubar import UIMenubarRenderer  # noqa: E402
-from .components.menubar import UIMenubarSectionRenderer  # noqa: E402
-from .components.menubar import UIMenubarSubMenuRenderer  # noqa: E402
-from .components.pagination import UIPaginationRenderer  # noqa: E402
-from .components.table import UITableBodyRenderer  # noqa: E402
-from .components.table import UITableCellRenderer  # noqa: E402
-from .components.table import UITableColumnRenderer  # noqa: E402
-from .components.table import UITableHeaderRenderer  # noqa: E402
-from .components.table import UITableRenderer  # noqa: E402
-from .components.table import UITableRowRenderer  # noqa: E402
+from .components import UIButtonGroupRenderer  # noqa: E402
+from .components import UIButtonRenderer  # noqa: E402
+from .components import UIContentRenderer  # noqa: E402
+from .components import UIFooterRenderer  # noqa: E402
+from .components import UIHeaderRenderer  # noqa: E402
+from .components import UIHeadingRenderer  # noqa: E402
+from .components import UIIconRenderer  # noqa: E402
+from .components import UIInlineAlertRenderer  # noqa: E402
+from .components import UIMenubarItemRenderer  # noqa: E402
+from .components import UIMenubarRenderer  # noqa: E402
+from .components import UIMenubarSectionRenderer  # noqa: E402
+from .components import UIMenubarSubMenuRenderer  # noqa: E402
+from .components import UINumberInputRenderer  # noqa: E402
+from .components import UIPaginationRenderer  # noqa: E402
+from .components import UITableBodyRenderer  # noqa: E402
+from .components import UITableCellRenderer  # noqa: E402
+from .components import UITableColumnRenderer  # noqa: E402
+from .components import UITableHeaderRenderer  # noqa: E402
+from .components import UITableRenderer  # noqa: E402
+from .components import UITableRowRenderer  # noqa: E402
+from .components import UITextAreaRenderer  # noqa: E402
+from .components import UITextInputRenderer  # noqa: E402
 
 register_component("button", UIButtonRenderer)
 register_component("button_group", UIButtonGroupRenderer)

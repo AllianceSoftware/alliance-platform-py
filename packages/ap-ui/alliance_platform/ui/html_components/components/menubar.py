@@ -434,7 +434,7 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
             '<div data-apui-menu-item-content-wrapper="">'
             f"<span{self.build_attrs_string(content_attrs)}>{content_html}</span></div>"
         )
-        return self._render_tag(element_type, attrs, f"{children}{chevron_html}{tooltip_html}")
+        return self.render_tag(element_type, attrs, f"{children}{chevron_html}{tooltip_html}")
 
     def render_item_tooltip(
         self,
@@ -447,7 +447,7 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
         """Render the visual label used by compact, icon-bearing root items."""
         if state.root_item_display != "icon-only" or level != 0 or not has_leading_icon or not text_value:
             return ""
-        return self._render_tag(
+        return self.render_tag(
             "span",
             {
                 "data-apui-menu-item-tooltip": "",
@@ -691,7 +691,7 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
 
         add_auto_attach_marker(attrs, "menubar")
 
-        return self._render_tag("ul", attrs, children_html)
+        return self.render_tag("ul", attrs, children_html)
 
 
 class UIMenubarItemRenderer(UIMenubarComponentRendererBase):
@@ -858,7 +858,7 @@ class UIMenubarItemRenderer(UIMenubarComponentRendererBase):
             ),
         )
         li_attrs: dict[str, Any] = {"role": "none", "data-key": key}
-        return self._render_tag("li", li_attrs, item_html)
+        return self.render_tag("li", li_attrs, item_html)
 
 
 class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
@@ -1069,7 +1069,7 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
             "data-key": key,
             "data-apui-menu-submenu": "",
         }
-        return self._render_tag("li", li_attrs, f"{trigger_html}{popup_html}")
+        return self.render_tag("li", li_attrs, f"{trigger_html}{popup_html}")
 
     def render_popup(
         self,
@@ -1103,7 +1103,7 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
             "style": menu_style,
         }
 
-        menu_html = self._render_tag("ul", menu_attrs, children_html)
+        menu_html = self.render_tag("ul", menu_attrs, children_html)
         placement = "bottom" if level == 0 and state.orientation == "horizontal" else "right"
         popover_class = self.join_classes(
             self.get_nested_style_class(popover_styles, "popover", placement),
@@ -1117,7 +1117,7 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
             "data-placement": placement,
         }
         inner_class = conditional_escape(self.get_style_class(popover_styles, "inner"))
-        return self._render_tag("div", popover_attrs, f'<div class="{inner_class}">{menu_html}</div>')
+        return self.render_tag("div", popover_attrs, f'<div class="{inner_class}">{menu_html}</div>')
 
 
 class UIMenubarSectionRenderer(UIMenubarComponentRendererBase):
@@ -1199,7 +1199,7 @@ class UIMenubarSectionRenderer(UIMenubarComponentRendererBase):
                 "data-apui-menu-section-heading": "",
                 "data-level": parent_frame.level,
             }
-            heading_html = self._render_tag("div", heading_attrs, title_html)
+            heading_html = self.render_tag("div", heading_attrs, title_html)
 
         separator_html = ""
         if not is_first:
@@ -1215,7 +1215,7 @@ class UIMenubarSectionRenderer(UIMenubarComponentRendererBase):
                 "data-apui-menu-separator": "",
                 "data-level": parent_frame.level,
             }
-            separator_html = self._render_tag("li", separator_attrs, "")
+            separator_html = self.render_tag("li", separator_attrs, "")
 
         group_attrs: dict[str, Any] = {
             "role": "group",
@@ -1224,7 +1224,7 @@ class UIMenubarSectionRenderer(UIMenubarComponentRendererBase):
             "data-apui-menu-section-items": "",
             "data-level": parent_frame.level,
         }
-        group_html = self._render_tag("ul", group_attrs, children_html)
+        group_html = self.render_tag("ul", group_attrs, children_html)
 
         section_attrs: dict[str, Any] = {
             "role": "presentation",
@@ -1240,7 +1240,7 @@ class UIMenubarSectionRenderer(UIMenubarComponentRendererBase):
             "data-current": "true" if child_frame.contains_current else None,
             **self.collect_forwarded_props({k: v for k, v in props.items() if k != "aria-label"}),
         }
-        section_html = self._render_tag("li", section_attrs, f"{heading_html}{group_html}")
+        section_html = self.render_tag("li", section_attrs, f"{heading_html}{group_html}")
 
         if self.target_var is None:
             self.track_rendered_child(

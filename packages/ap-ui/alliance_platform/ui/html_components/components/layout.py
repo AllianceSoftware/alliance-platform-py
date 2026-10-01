@@ -30,7 +30,7 @@ class UILayoutPartRenderer(BaseHtmlUIComponentRenderer):
             "className": props.get("className"),
             "style": props.get("style"),
         }
-        return self._render_tag(self.tag_name, attrs, children_html)
+        return self.render_tag(self.tag_name, attrs, children_html)
 
 
 class UIContentRenderer(UILayoutPartRenderer):
@@ -58,7 +58,7 @@ class UIHeadingRenderer(UILayoutPartRenderer):
             "className": props.get("className"),
             "style": props.get("style"),
         }
-        return self._render_tag(f"h{props.get('level', 3)}", attrs, children_html)
+        return self.render_tag(f"h{props.get('level', 3)}", attrs, children_html)
 
 
 class UIHeaderRenderer(UILayoutPartRenderer):

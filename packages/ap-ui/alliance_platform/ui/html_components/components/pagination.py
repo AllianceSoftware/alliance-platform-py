@@ -219,7 +219,7 @@ class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
             size=size,
         )
         wrapper_attrs = {"className": self.get_style_class(pagination_styles, "wrapper")}
-        return self._render_tag("nav", root_attrs, self._render_tag("ul", wrapper_attrs, list_html))
+        return self.render_tag("nav", root_attrs, self.render_tag("ul", wrapper_attrs, list_html))
 
     def generate_items(
         self,
@@ -348,7 +348,7 @@ class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
                 size=size,
             )
             rendered.append(
-                self._render_tag("li", {"className": self.join_classes(*wrapper_classes)}, content)
+                self.render_tag("li", {"className": self.join_classes(*wrapper_classes)}, content)
             )
         return mark_safe("".join(rendered))
 
@@ -362,7 +362,7 @@ class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
         size: str,
     ) -> str:
         if item.type == "ellipsis":
-            return self._render_tag(
+            return self.render_tag(
                 "div",
                 {"className": self.get_style_class(pagination_styles, "ellipsisButton")},
                 "&#8230;",
@@ -373,7 +373,7 @@ class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
         if item.type == "previous":
             item_class = self.get_style_class(pagination_styles, "prevButton")
             label = gettext("Previous Page")
-            children = self.render_icon(_ARROW_LEFT_ICON, "xxs") + self._render_tag(
+            children = self.render_icon(_ARROW_LEFT_ICON, "xxs") + self.render_tag(
                 "span",
                 {"className": self.get_style_class(pagination_styles, "buttonText")},
                 conditional_escape(gettext("Previous")),
@@ -381,7 +381,7 @@ class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
         elif item.type == "next":
             item_class = self.get_style_class(pagination_styles, "nextButton")
             label = gettext("Next Page")
-            children = self._render_tag(
+            children = self.render_tag(
                 "span",
                 {"className": self.get_style_class(pagination_styles, "buttonText")},
                 conditional_escape(gettext("Next")),
@@ -395,7 +395,7 @@ class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
                 label = gettext("Current Page, Page %(page)s") % {"page": item.page}
             else:
                 label = gettext("Go to page %(page)s") % {"page": item.page}
-            children = self._render_tag("span", {}, str(item.page))
+            children = self.render_tag("span", {}, str(item.page))
 
         button_styles = self.resolve_vanilla_extract_mapping(_BUTTON_STYLE_PATH)
         focus_ring_styles = self.resolve_vanilla_extract_mapping(_FOCUS_RING_STYLE_PATH)
@@ -419,7 +419,7 @@ class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
             "data-shape": "default",
             "data-disabled": "true" if item.is_disabled else None,
         }
-        return self._render_tag("a", attrs, children)
+        return self.render_tag("a", attrs, children)
 
     def build_page_url(self, context: Context, props: dict[str, Any], page: int) -> str:
         request = context.get("request")

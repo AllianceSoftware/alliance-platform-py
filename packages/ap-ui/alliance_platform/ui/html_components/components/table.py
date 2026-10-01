@@ -320,12 +320,12 @@ class UITableRenderer(UITableComponentRendererBase):
             "aria-labelledby": props.get("aria-labelledby"),
             "aria-describedby": props.get("aria-describedby"),
         }
-        table_html = self._render_tag("table", table_attrs, children_html)
+        table_html = self.render_tag("table", table_attrs, children_html)
         # The horizontal scroll container is a plain div; the stylesheet targets it with
         # `${tableWrapper} > div:has(> table)`.
         scroll_html = f"<div>{table_html}</div>"
 
-        return self._render_tag("div", wrapper_attrs, f"{header_html}{scroll_html}{footer_html}")
+        return self.render_tag("div", wrapper_attrs, f"{header_html}{scroll_html}{footer_html}")
 
 
 class UITableHeaderRenderer(UITableComponentRendererBase):
@@ -449,7 +449,7 @@ class UITableColumnRenderer(UITableComponentRendererBase):
             "scope": "col",
             "aria-sort": aria_sort,
         }
-        return self._render_tag("th", attrs, cell_children)
+        return self.render_tag("th", attrs, cell_children)
 
     def render_header_content(
         self,
@@ -592,7 +592,7 @@ class UITableBodyRenderer(UITableComponentRendererBase):
             "style": props.get("style"),
             **self.collect_forwarded_props(props),
         }
-        return self._render_tag("tbody", attrs, children_html)
+        return self.render_tag("tbody", attrs, children_html)
 
     def render_empty_state(self, state: TableRenderState) -> str:
         table_styles = self.resolve_table_styles()
@@ -634,7 +634,7 @@ class UITableRowRenderer(UITableComponentRendererBase):
             "data-key": str(key) if key is not None else None,
             **self.collect_forwarded_props(props),
         }
-        return self._render_tag("tr", attrs, children_html)
+        return self.render_tag("tr", attrs, children_html)
 
 
 class UITableCellRenderer(UITableComponentRendererBase):
@@ -688,4 +688,4 @@ class UITableCellRenderer(UITableComponentRendererBase):
             "role": "rowheader" if is_row_header else None,
             **self.collect_forwarded_props(props),
         }
-        return self._render_tag("td", attrs, children_html)
+        return self.render_tag("td", attrs, children_html)

@@ -244,7 +244,7 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
         else:
             children_html = f"{label_html}{input_slot}{help_text_html}"
 
-        return self._render_tag("div", root_attrs, children_html)
+        return self.render_tag("div", root_attrs, children_html)
 
     def render_label(
         self,
@@ -276,7 +276,7 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
             children += mark_safe(
                 f'<span aria-hidden="true" class="{conditional_escape(indicator_class)}">*</span>'
             )
-        return self._render_tag("label", attrs, children)
+        return self.render_tag("label", attrs, children)
 
     def render_help_text(self, context: Context, state: LabeledInputState, labeled_input_styles: Any) -> str:
         help_text_class = self.get_style_class(labeled_input_styles, "helpText")
@@ -287,14 +287,14 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
                 "id": state.error_id,
             }
             # errorMessage is deliberately plain text (see rich_content_props)
-            return self._render_tag("div", attrs, conditional_escape(state.error_message))
+            return self.render_tag("div", attrs, conditional_escape(state.error_message))
         if state.description_rendered:
             attrs = {
                 "className": self.join_classes(help_text_class, invalid_class if state.is_invalid else None),
                 "id": state.description_id,
             }
             content = render_content(state.description, context, prop_name="description", origin=self.origin)
-            return self._render_tag("div", attrs, content)
+            return self.render_tag("div", attrs, content)
         return ""
 
 
@@ -430,7 +430,7 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
             "data-disabled": "true" if state.is_disabled else None,
             "data-loading": "true" if state.is_loading and not state.is_disabled else None,
         }
-        input_wrapper_html = self._render_tag(
+        input_wrapper_html = self.render_tag(
             "div", input_wrapper_attrs, f"{control_html}{validation_icon_html}"
         )
 
@@ -456,7 +456,7 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
             container_attrs,
         )
         container_children_html = f"{addon_before_html}{input_wrapper_html}{addon_after_html}"
-        container_html = mark_safe(self._render_tag("div", container_attrs, container_children_html))
+        container_html = mark_safe(self.render_tag("div", container_attrs, container_children_html))
 
         return mark_safe(self.render_labeled_input(context, props, state, container_html))
 
@@ -782,5 +782,5 @@ class UINumberInputRenderer(UITextInputBaseRenderer):
                 "className": button_class,
                 "data-direction": direction,
             }
-            buttons.append(self._render_tag("button", attrs, self.render_icon(icon_name, "xxs", slot=False)))
+            buttons.append(self.render_tag("button", attrs, self.render_icon(icon_name, "xxs", slot=False)))
         return f'<div class="{conditional_escape(container_class)}">{"".join(buttons)}</div>'
