@@ -183,6 +183,7 @@ class HtmlUIParityTestCase(StaticComponentTestCase):
         fixture = self.load_fixture()
         with self.setup_render_context() as _asset_context:
             with self.capture_diagnostics() as diagnostics:
+                # The raw output: the fixture's class rules apply in normalize_static_html()
                 output = StaticComponentTestCase.render_ui_template(self, case["template"], context_kwargs)
 
         actual_html = normalize_html_fragment(

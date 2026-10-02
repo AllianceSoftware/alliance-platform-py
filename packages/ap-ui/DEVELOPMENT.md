@@ -9,25 +9,27 @@ Built-in components use the same renderer contract as project components. `docs/
 `test_alliance_platform_ui/static_components.py`, registered by `test_alliance_platform_ui/apps.py`
 and tested in `tests/test_static_component_example.py`.
 
-1. Add a renderer class under:
-   - `alliance_platform/ui/html_components/components/`
-   - set `name` to the snake_case component name and export the class from
-     `components/__init__.py`. The root `data-apui` marker and generated id prefixes come from
-     `apui_name`, which defaults to the hyphenated `name`.
-2. Register it with `register_component("<name>", Renderer)` at the end of:
-   - `alliance_platform/ui/html_components/registry.py`
-   - `register_component` rejects names that are not snake_case, names that differ from the
-     renderer's `name`, and a second renderer for a taken name unless `replace=True`. Projects
-     call it from `AppConfig.ready()` instead.
-3. Add parity cases in:
-   - `scripts/parity_cases/`
-   - include `class_prefixes` in each parity case module so fixture generation can keep relevant VE class tokens without hardcoding full class maps.
-4. Regenerate fixtures:
-   - `just sync-html-ui-parity-fixtures`
-5. Add or extend parity tests in:
-   - `tests/`
-   - `tests/parity/base.py`'s `HtmlUIParityTestCase` builds on the shipped
-     `alliance_platform.ui.test_utils.StaticComponentTestCase`.
+1. Add a renderer class under `alliance_platform/ui/html_components/components/`. Set `name` to the
+   snake_case component name and export the class from `components/__init__.py`. The root
+   `data-apui` marker and generated id prefixes come from `apui_name`, which defaults to the
+   hyphenated `name`.
+2. Register it with `register_component("<name>", Renderer)` at the end of
+   `alliance_platform/ui/html_components/registry.py`. `register_component` rejects names that are
+   not snake_case, names that differ from the renderer's `name`, and a second renderer for a taken
+   name unless `replace=True`. Projects call it from `AppConfig.ready()` instead.
+3. Add one parity case module, `scripts/parity_cases/<name>.mjs`, exporting the cases, the React
+   components they build with (`loadComponents`), the React-side normalisation (`normalize`) and
+   the stylesheets the renderer resolves (`stylesheets`). "HTML parity fixture workflow" below
+   describes each export. A renderer that resolves a stylesheet no module lists fails its tests.
+4. Regenerate with `just sync-html-ui-parity-fixtures ../alliance-platform-js <name>`, which writes
+   `tests/fixtures/ui_html_<name>_parity.json` and refreshes `tests/fixtures/css-mappings.json`.
+5. Add `tests/test_html_ui_<name>_parity.py`: an `HtmlUIParityTestCase` (`tests/parity/base.py`,
+   built on the shipped `alliance_platform.ui.test_utils.StaticComponentTestCase`) that sets
+   `fixture_component` and calls `assert_parity_case()` for each fixture case. Strip static-only
+   extensions by extending `normalize_static_html()`, and `normalize_expected_html()` when the
+   fixture markup needs the same treatment, then list each difference under the component's
+   "Deliberate static-render differences from React" in this file. Unit tests for behaviour the
+   fixtures cannot show use the same base, which renders with the real class mappings.
 
 ## Diagnostics
 
@@ -53,8 +55,9 @@ input, select, date picker) should reuse the same base classes.
 
 Generated element ids use a deterministic `apui-<apui_name>-<n>` scheme (for example
 `apui-text-input-1`) where the counter is unique within a template render (stored in
-`context.render_context`). The fixture generator remaps the
-react-aria generated ids to the same scheme so fixtures stay deterministic.
+`context.render_context`). The fixture normalisation (`remapReactAriaIds()` in
+`scripts/parity_cases/_helpers.mjs`) remaps the react-aria generated ids to the same scheme so
+fixtures stay deterministic.
 
 Props that are not consumed by the renderer only reach the control element through an explicit
 allowlist (`control_pass_through_props`, plus `data-*`/`aria-*` attributes); anything else is
@@ -97,8 +100,9 @@ values are reported and dropped unless the prop accepts rich content (see above)
 
 ### Deliberate static-render differences from React
 
-These are normalized away by the fixture generator (`generateHtmlUiParityFixtures.mjs`) and/or are
-intentional extensions, so they will not show up as parity failures:
+These are normalized away by the input case modules' `normalize()` (which share
+`normalizeInputComponent()` in `scripts/parity_cases/_helpers.mjs`) or by the parity tests, and/or
+are intentional extensions, so they will not show up as parity failures:
 
 - **Label association**: react-aria wires labels with both `<label for>` and an
   `aria-labelledby`/label `id` pair. The static renderer relies on the native `<label for>`
@@ -122,8 +126,9 @@ intentional extensions, so they will not show up as parity failures:
 - **`number_input` field name**: React renders `name` on a hidden input after the root and leaves
   the visible input unnamed. The static renderer keeps `name` on the visible input and renders no
   hidden input, so the field submits what the user typed when the attach runtime never runs; the
-  runtime creates the hidden input on the client. The fixture generator drops React's hidden input
-  and the NumberInput parity test drops `name` from the static visible input before comparison.
+  runtime creates the hidden input on the client. `normalize()` in
+  `scripts/parity_cases/number_input.mjs` drops React's hidden input and the NumberInput parity
+  test drops `name` from the static visible input before comparison.
 - **Validation icons / step button chevrons**: rendered as static SVG markup copied from
   `@alliancesoftware/icons` (`AlertCircleOutlined`, `CheckOutlined`, `ChevronUpOutlined`,
   `ChevronDownOutlined`). Matching NumberInput's documented React contract, validation state still
@@ -133,9 +138,9 @@ intentional extensions, so they will not show up as parity failures:
   builds, but are excluded from collected-asset embedding because the renderer already emits their
   markup inline. This prevents detached icon images from appearing at the document asset insertion
   point.
-- **`font_*` classes**: excluded from fixture `class_prefixes`. In production the composed font
-  classes come through automatically because the real vanilla-extract mappings store the full
-  composite class strings; the test style mocks return single tokens.
+- **`font_*` classes**: excluded from fixture `class_prefixes`. Many styles compose the shared
+  typography classes; React and the static renderers get the same composite strings from the
+  class mappings, so the fixtures leave them out to stay readable.
 - **Boolean attributes**: React SSR renders `disabled=""`/`readonly=""`; the Python renderer emits
   bare `disabled`/`readonly`. The parity normalizer treats these as equivalent (they are in HTML).
 
@@ -199,10 +204,11 @@ The React table is an interactive ARIA grid (grid roles, tab indexes, focus mana
 static renderer intentionally keeps native table semantics instead: no grid roles or tab indexes,
 `scope="col"` and `aria-sort` on `<th>` header cells (direction when sorted, `"none"` when
 sortable-but-unsorted), and row-header cells as `<td role="rowheader">` rather than
-`<th scope="row">` so browser default `<th>` styling cannot diverge visually from React. The
-fixture generator's `normalizeTableComponentHtml()` reconciles these documented differences; see
-the comments there for the full list (grid roles, `data-collection`/`data-key` bookkeeping,
-absolute vs relative sort hrefs, CSS var hashes in `style`).
+`<th scope="row">` so browser default `<th>` styling cannot diverge visually from React.
+`normalize()` in `scripts/parity_cases/table.mjs` reconciles these documented differences; see the
+comments there for the full list (grid roles, `data-collection`/`data-key` bookkeeping, absolute vs
+relative sort hrefs, CSS var hashes in `style`). The table parity test strips the same CSS var
+hashes from the static output.
 
 The Table stylesheet is deliberately "class-free" for consumers: all structural styling hangs off
 the `tableWrapper` class on the root element, with rows/cells targeted through element and
@@ -345,7 +351,7 @@ another component is not a direct child of Button or Menubar.
   type is not passed to useButton) and relies on a click handler to cancel navigation. The static
   renderer omits `href` and renders `aria-disabled="true"`, so the link cannot navigate without
   JavaScript. Other element types except `button`/`input` get `aria-disabled` too, matching
-  useButton. `normalizeDisabledButtonLinks()` in the fixture generator applies the same change to
+  useButton. `normalizeButtons()` in `scripts/parity_cases/_helpers.mjs` applies the same change to
   the React output.
 
 Static components rendered inside a React component's children continue to participate in the
@@ -367,7 +373,7 @@ menu only.
 
 ### Deliberate static-render differences from React
 
-Reconciled by `normalizeMenubarComponentHtml()` in the fixture generator (React side) and
+Reconciled by `normalize()` in `scripts/parity_cases/menubar.mjs` (React side) and
 `strip_static_menubar_extensions()` in `tests/test_html_ui_menubar_parity.py` (static side):
 
 - **Stable submenu popups**: React renders open flyouts in a portal and closed menus not at all;
@@ -416,31 +422,74 @@ attachment; neither operation creates another menu tree.
 
 ## HTML parity fixture workflow
 
-The fixture generator depends on `@alliancesoftware/ui` TypeScript sources, so it must run through the `alliance-platform-js` runtime context.
+Parity fixtures record what the React components render for a set of cases, so the Python tests
+can check that the static renderers produce the same markup, class names and diagnostics. The
+generator imports `@alliancesoftware/ui` TypeScript sources, so it runs inside an
+`alliance-platform-js` checkout: `scripts/syncHtmlUiParityFixtures.sh` runs
+`scripts/generateHtmlUiParityFixtures.mjs` under that checkout's vite-node from `packages/ui`.
+
+### Case modules
+
+The generator loads every module in `scripts/parity_cases/` (names starting with `_` are skipped)
+and writes `tests/fixtures/ui_html_<component>_parity.json` for each. A module exports:
+
+- `component`: the static component name, which names the fixture.
+- `cases`: objects with a `name`, the Django `template`, `buildElement({ React, components })`
+  returning the equivalent React element, and `meta`. `meta.current_url` is the URL React's link
+  components see during SSR; the Python test builds a request for it. Other keys are flags the
+  module's `normalize` reads, such as `preserve_icon_only`.
+- `loadComponents({ uiPackageDir, importDefault, importBareModule })`: the components the cases
+  build with, passed to `buildElement` as `components`.
+- `normalize(root, testCase, helpers)`: React-side normalisation for the component family, applied
+  to the parsed SSR markup. `helpers` is `scripts/parity_cases/_helpers.mjs`: id remapping, inline
+  style and CSS var normalisation, the shared Button normalisation and the class-token normaliser.
+- `stylesheets`: every `.css.ts` path the component's renderers resolve, written as the renderers
+  request it (`@alliancesoftware/ui/components/button/Button.css.ts`).
+- `class_prefixes` and `keep_class_tokens` (both default to empty): the vanilla-extract scopes the
+  fixture compares and tokens exempt from the parent-collapse rules (see `normalizeClassTokens()`
+  in `_helpers.mjs`). Both are written into the fixture.
+
+For each case the generator renders the element with `renderToStaticMarkup`, records anything
+logged with `console.warn` as `expected_warnings`, parses the markup, removes the React Aria
+attributes every component carries (`data-react-aria-pressable`, `tabindex="0"`), applies the
+module's `normalize`, reduces every class attribute with `normalizeClassTokens` and serialises it.
+
+### Class mappings
+
+The generator also writes `tests/fixtures/css-mappings.json`, keyed by the request paths in the
+modules' `stylesheets`: each value is the mapping the Vite plugin's `extractMappingFromModule()`
+produces, the JSON Django reads at runtime. The sync script points vite-node at
+`scripts/vite.parity.config.mjs`, which loads the ui package's Vite config with vanilla-extract's
+identifiers pinned to `debug`, so classes read `Button_baseButton__1xyn7kcv` whatever the mode.
+
+`HtmlUIParityTestCase` renders with these mappings; there are no mocks. A stylesheet a renderer
+resolves that the file lacks fails the test with the command to run, and a style missing from a
+listed stylesheet is a contract diagnostic, which fails the comparison with `expected_warnings`.
+`assert_parity_case()` reduces the raw static output with `normalize_class_tokens()`, the port in
+`tests/parity/normalizers.py`, using the fixture's `class_prefixes` and `keep_class_tokens`, then
+compares it with the fixture's markup with attributes sorted and whitespace between tags dropped.
+`render_ui_template()` and `render_ui_document()` give unit tests readable names instead: class
+attributes go through the same token rules with every scope allowed except the `font` typography
+classes, and custom properties in `style` attributes lose their hashes.
+
+### Commands
 
 From `alliance-platform-py`:
 
 ```bash
+# Regenerate every fixture against ../alliance-platform-js, or another checkout
 just sync-html-ui-parity-fixtures
-```
-
-Use a non-default JS checkout path:
-
-```bash
 just sync-html-ui-parity-fixtures /path/to/alliance-platform-js
-```
 
-Generate a single component fixture:
-
-```bash
+# Regenerate one fixture; css-mappings.json is still rewritten for every module
 just sync-html-ui-parity-fixtures ../alliance-platform-js button_group
-```
 
-Check fixture drift (for CI or pre-commit checks):
-
-```bash
+# Regenerate everything and fail if a fixture or css-mappings.json changed
 just check-html-ui-parity-fixtures /path/to/alliance-platform-js
 ```
+
+Fixtures and `css-mappings.json` are generated: never edit them by hand. When a comparison fails,
+fix the renderer or the normalisation and regenerate.
 
 ## CI fixture drift check
 
@@ -448,7 +497,10 @@ The cross-repo fixture drift workflow is defined in:
 
 - `.github/workflows/ap-ui-fixture-drift.yml`
 
-It checks out both `alliance-platform-py` and `alliance-platform-js`, regenerates the fixtures, and fails if fixture files changed.
+It runs on pull requests that touch the fixtures, `css-mappings.json`, `scripts/`, the JS ref pin
+or the workflow, and on manual dispatch. It checks out both `alliance-platform-py` and
+`alliance-platform-js`, installs the JS dependencies, runs the sync script, and fails if any
+`ui_html_*_parity.json` fixture or `css-mappings.json` changed.
 
 ### Testing against an unmerged alliance-platform-js branch
 
