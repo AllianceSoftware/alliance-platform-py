@@ -1,3 +1,5 @@
+import path from "node:path";
+
 export const component = "text_input";
 export const class_prefixes = [
   "LabeledInput",
@@ -10,6 +12,18 @@ export const class_prefixes = [
 // The LabeledInput recipe base class is emitted alongside its variant classes by both the JS
 // and Python renderers, so exempt it from the "drop parent when child token exists" rule.
 export const keep_class_tokens = ["LabeledInput_labeledInput"];
+
+export async function loadComponents({ uiPackageDir, importDefault }) {
+  return {
+    TextInput: await importDefault(
+      path.join(uiPackageDir, "components/text-input/TextInput.tsx")
+    ),
+  };
+}
+
+export function normalize(root, testCase, helpers) {
+  helpers.normalizeInputComponent(root, component);
+}
 
 export const cases = [
   {

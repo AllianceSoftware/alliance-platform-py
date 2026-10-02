@@ -1,3 +1,5 @@
+import path from "node:path";
+
 export const component = "text_area";
 export const class_prefixes = [
   "LabeledInput",
@@ -8,6 +10,18 @@ export const class_prefixes = [
   "Icon",
 ];
 export const keep_class_tokens = ["LabeledInput_labeledInput"];
+
+export async function loadComponents({ uiPackageDir, importDefault }) {
+  return {
+    TextArea: await importDefault(
+      path.join(uiPackageDir, "components/text-input/TextArea.tsx")
+    ),
+  };
+}
+
+export function normalize(root, testCase, helpers) {
+  helpers.normalizeInputComponent(root, component);
+}
 
 export const cases = [
   {

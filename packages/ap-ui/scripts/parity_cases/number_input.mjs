@@ -1,3 +1,5 @@
+import path from "node:path";
+
 export const component = "number_input";
 export const class_prefixes = [
   "LabeledInput",
@@ -9,6 +11,24 @@ export const class_prefixes = [
   "NumberInput",
 ];
 export const keep_class_tokens = ["LabeledInput_labeledInput"];
+
+export async function loadComponents({ uiPackageDir, importDefault }) {
+  return {
+    NumberInput: await importDefault(
+      path.join(uiPackageDir, "components/number-input/NumberInput.tsx")
+    ),
+  };
+}
+
+export function normalize(root, testCase, helpers) {
+  // React submits the field through a hidden input rendered after the root. The static renderer
+  // keeps the name on the visible input so the field submits without JavaScript, and the attach
+  // runtime creates its own hidden input on the client, so the SSR hidden input is not compared.
+  for (const input of root.querySelectorAll('input[type="hidden"]')) {
+    input.remove();
+  }
+  helpers.normalizeInputComponent(root, component);
+}
 
 export const cases = [
   {

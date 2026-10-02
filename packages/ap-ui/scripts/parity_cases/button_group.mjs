@@ -1,3 +1,5 @@
+import path from "node:path";
+
 export const component = "button_group";
 export const class_prefixes = [
   "SmartOrientation",
@@ -5,6 +7,27 @@ export const class_prefixes = [
   "focusRing",
   "Button",
 ];
+
+export async function loadComponents({ uiPackageDir, importDefault }) {
+  return {
+    Button: await importDefault(
+      path.join(uiPackageDir, "components/button/Button.tsx")
+    ),
+    ButtonGroup: await importDefault(
+      path.join(uiPackageDir, "components/button/ButtonGroup.tsx")
+    ),
+  };
+}
+
+export function normalize(root, testCase, helpers) {
+  helpers.normalizeButtons(root, testCase);
+  // React attaches SmartOrientation from an effect; the static renderer marks the root for the
+  // collected auto-attach runtime instead.
+  const componentRoot = root.firstElementChild;
+  if (componentRoot?.tagName === "DIV") {
+    componentRoot.setAttribute("data-apui-attach", "smart-orientation");
+  }
+}
 
 export const cases = [
   {

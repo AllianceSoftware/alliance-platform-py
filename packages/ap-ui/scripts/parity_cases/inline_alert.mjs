@@ -1,5 +1,53 @@
+import path from "node:path";
+
 export const component = "inline_alert";
 export const class_prefixes = ["InlineAlert", "Icon"];
+
+export async function loadComponents({ uiPackageDir, importDefault }) {
+  const load = (relativePath) =>
+    importDefault(path.join(uiPackageDir, relativePath));
+  return {
+    InlineAlert: await load("components/inline-alert/InlineAlert.tsx"),
+    Content: await load("components/layout/Content.tsx"),
+    Heading: await load("components/layout/Heading.tsx"),
+    Header: await load("components/layout/Header.tsx"),
+    Footer: await load("components/layout/Footer.tsx"),
+    AlertCircleOutlined: await load(
+      "../icons/outlined/AlertCircleOutlined.tsx"
+    ),
+    AlertTriangleOutlined: await load(
+      "../icons/outlined/AlertTriangleOutlined.tsx"
+    ),
+    CheckCircleOutlined: await load(
+      "../icons/outlined/CheckCircleOutlined.tsx"
+    ),
+    InfoCircleOutlined: await load("../icons/outlined/InfoCircleOutlined.tsx"),
+  };
+}
+
+// React's useHasChild only detects an alert holding nothing but content after mount, so SSR never
+// marks it; the static renderer knows at render time. Mark the SSR output the same way.
+export function normalize(root, testCase, helpers) {
+  const alertRoot = root.querySelector('[data-apui="inline-alert"]');
+  const alertInner = alertRoot?.firstElementChild;
+  if (!alertRoot || !alertInner) {
+    return;
+  }
+  const contentChildren = Array.from(alertInner.children).filter(
+    (child) => !child.hasAttribute("data-alerticon")
+  );
+  if (
+    contentChildren.length === 1 &&
+    contentChildren[0].tagName === "SECTION" &&
+    helpers
+      .tokenizeClasses(contentChildren[0].getAttribute("class"))
+      .some((token) => token.startsWith("InlineAlert_content"))
+  ) {
+    alertRoot.setAttribute("data-only-content", "true");
+    alertInner.classList.add("InlineAlert_onlyContent");
+  }
+  helpers.normalizeInlineStyles(root);
+}
 
 export const cases = [
   {
