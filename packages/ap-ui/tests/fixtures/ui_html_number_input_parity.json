@@ -1,5 +1,15 @@
 {
   "component": "number_input",
+  "class_prefixes": [
+    "LabeledInput",
+    "TextInputBase",
+    "focusRing",
+    "Label",
+    "FormSection",
+    "Icon",
+    "NumberInput"
+  ],
+  "keep_class_tokens": ["LabeledInput_labeledInput"],
   "cases": [
     {
       "name": "default",

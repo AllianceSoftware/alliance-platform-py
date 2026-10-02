@@ -192,7 +192,8 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
         self.assertEqual(caught, [])
         self.assertIn(
             '<nav aria-label="Result pages" aria-describedby="page-help" data-testid="pager" '
-            'class="Pagination_pagination_compact custom-pagination" style="max-width: 40rem">',
+            'class="Pagination_pagination_compact Pagination_basePagination custom-pagination" '
+            'style="max-width: 40rem">',
             output,
         )
         self.assertIn("focusRing_base Button_baseButton Button_sizes_md Pagination_prevButton", output)

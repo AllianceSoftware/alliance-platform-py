@@ -1,0 +1,6 @@
+{
+  "component": "pagination",
+  "class_prefixes": ["Pagination", "Button", "focusRing", "Icon"],
+  "keep_class_tokens": [],
+  "cases": []
+}

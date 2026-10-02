@@ -3,6 +3,11 @@ import path from "node:path";
 export const component = "inline_alert";
 export const class_prefixes = ["InlineAlert", "Icon"];
 
+export const stylesheets = [
+  "@alliancesoftware/ui/components/inline-alert/InlineAlert.css.ts",
+  "@alliancesoftware/icons/Icon.css.ts",
+];
+
 export async function loadComponents({ uiPackageDir, importDefault }) {
   const load = (relativePath) =>
     importDefault(path.join(uiPackageDir, relativePath));

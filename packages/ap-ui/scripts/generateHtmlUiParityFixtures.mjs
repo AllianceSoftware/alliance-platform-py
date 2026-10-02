@@ -1,15 +1,21 @@
 #!/usr/bin/env node
 
 // Renders every parity case with the React components from @alliancesoftware/ui and writes
-// `tests/fixtures/ui_html_<component>_parity.json` per case module. Run it through
-// `syncHtmlUiParityFixtures.sh`, which runs this file under vite-node inside the ui package.
+// `tests/fixtures/ui_html_<component>_parity.json` per case module, plus
+// `tests/fixtures/css-mappings.json` with the class mappings of every stylesheet the modules list.
+// Run it through `syncHtmlUiParityFixtures.sh`, which runs this file under vite-node inside the ui
+// package with vanilla-extract's debug identifiers (`Button_baseButton__1a2b3c`).
 //
 // Each module in `parity_cases/` (names starting with `_` are skipped) describes one component:
 //
 // - `component`: the static component name, also used in the fixture file name.
 // - `cases`: `{ name, template, buildElement({ React, components }), meta, ...flags }` objects.
 // - `class_prefixes` / `keep_class_tokens`: the vanilla-extract scopes a fixture compares, see
-//   `normalizeClassTokens` in `parity_cases/_helpers.mjs`.
+//   `normalizeClassTokens` in `parity_cases/_helpers.mjs`. Both are written into the fixture so the
+//   Python side reduces the static output the same way.
+// - `stylesheets`: the `.css.ts` paths the component's static renderers resolve, written as they
+//   request them (`@alliancesoftware/ui/components/button/Button.css.ts`). The Python parity tests
+//   read class names from `css-mappings.json`, which is keyed by these paths.
 // - `loadComponents({ uiPackageDir, importDefault, importBareModule })`: the components the cases
 //   build with, passed to `buildElement` as `components`.
 // - `normalize(root, testCase, helpers)`: React-side normalisation for the component family,
@@ -19,6 +25,8 @@
 // passed to the module's `normalize`, reduced to the compared class tokens and serialised.
 //
 // Usage: generateHtmlUiParityFixtures.mjs [component]
+//
+// With a component only that fixture is written; `css-mappings.json` always covers every module.
 
 import fs from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -33,6 +41,7 @@ const __dirname = path.dirname(__filename);
 
 const CASE_MODULE_DIR = path.join(__dirname, "parity_cases");
 const FIXTURE_DIR = path.resolve(__dirname, "../tests/fixtures");
+const CSS_MAPPINGS_PATH = path.join(FIXTURE_DIR, "css-mappings.json");
 
 const uiPackageDirValue = process.env.AP_UI_UI_PACKAGE_DIR;
 if (!uiPackageDirValue) {
@@ -41,6 +50,11 @@ if (!uiPackageDirValue) {
   );
 }
 const uiPackageDir = path.resolve(uiPackageDirValue);
+// The Vite plugin's own extractor, so the mappings have exactly the shape Django reads at runtime.
+const VANILLA_EXTRACT_PLUGIN_SOURCE = path.join(
+  uiPackageDir,
+  "../vite-plugin-django-vanilla-extract/src/djangoVanillaExtractPlugin.ts"
+);
 const uiRequire = createRequire(path.join(uiPackageDir, "package.json"));
 const { JSDOM } = await import(pathToFileURL(uiRequire.resolve("jsdom")).href);
 let prettierFormatPromise;
@@ -84,16 +98,19 @@ async function loadCaseModules() {
   for (const fileName of fileNames) {
     const modulePath = path.join(CASE_MODULE_DIR, fileName);
     const caseModule = await import(pathToFileURL(modulePath).href);
-    const { component, cases, loadComponents, normalize } = caseModule;
+    const { component, cases, loadComponents, normalize, stylesheets } =
+      caseModule;
     if (
       !component ||
       !Array.isArray(cases) ||
       typeof loadComponents !== "function" ||
-      typeof normalize !== "function"
+      typeof normalize !== "function" ||
+      !Array.isArray(stylesheets) ||
+      !stylesheets.every((stylesheet) => stylesheet.endsWith(".css.ts"))
     ) {
       throw new Error(
         `Invalid parity case module ${modulePath}: it must export component, cases, ` +
-          "loadComponents and normalize"
+          "loadComponents, normalize and stylesheets (a list of .css.ts paths)"
       );
     }
     caseModules.push(caseModule);
@@ -216,6 +233,8 @@ async function generateFixture(caseModule, runtime) {
 
   const fixture = {
     component,
+    class_prefixes: classPrefixes,
+    keep_class_tokens: keepClassTokensList,
     cases: serializedCases,
   };
 
@@ -223,10 +242,33 @@ async function generateFixture(caseModule, runtime) {
     FIXTURE_DIR,
     `ui_html_${component}_parity.json`
   );
-  const serializedFixture = `${JSON.stringify(fixture, null, 2)}\n`;
-  const formattedFixture = await formatFixtureJson(serializedFixture);
-  await fs.writeFile(fixturePath, formattedFixture, "utf8");
+  await writeJson(fixturePath, fixture);
   return fixturePath;
+}
+
+async function writeCssMappings(caseModules) {
+  const { extractMappingFromModule } = await import(
+    pathToFileURL(VANILLA_EXTRACT_PLUGIN_SOURCE).href
+  );
+  const stylesheets = [
+    ...new Set(caseModules.flatMap(({ stylesheets }) => stylesheets)),
+  ].sort();
+  const mappings = {};
+  for (const stylesheet of stylesheets) {
+    // Bare specifiers resolve through the JS workspace's node_modules, as in a project.
+    mappings[stylesheet] = extractMappingFromModule(
+      await importBareModule(stylesheet)
+    );
+  }
+  await writeJson(CSS_MAPPINGS_PATH, mappings);
+  return CSS_MAPPINGS_PATH;
+}
+
+async function writeJson(filePath, value) {
+  const formatted = await formatFixtureJson(
+    `${JSON.stringify(value, null, 2)}\n`
+  );
+  await fs.writeFile(filePath, formatted, "utf8");
 }
 
 async function main() {
@@ -246,6 +288,8 @@ async function main() {
     const fixturePath = await generateFixture(caseModule, runtime);
     process.stdout.write(`Wrote ${fixturePath}\n`);
   }
+  const mappingsPath = await writeCssMappings(caseModules);
+  process.stdout.write(`Wrote ${mappingsPath}\n`);
 }
 
 await main();

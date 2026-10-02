@@ -4,7 +4,7 @@ import re
 from typing import Any
 
 from tests.parity.base import HtmlUIParityTestCase
-from tests.parity.normalizers import normalize_html_fragment
+from tests.parity.normalizers import normalize_css_var_hashes
 
 # The static renderer produces extensions the React SSR output cannot contain: hidden popup
 # wrappers for closed submenus (React portals/omits them), aria-controls/popup id wiring, the
@@ -128,16 +128,13 @@ def strip_static_menubar_extensions(value: str) -> str:
 class UIMenubarParityTestCase(HtmlUIParityTestCase):
     fixture_component = "menubar"
 
-    def assert_parity_case(self, case: dict[str, Any], context_kwargs: dict[str, Any] | None = None):
-        with self.setup_render_context():
-            with self.capture_diagnostics() as diagnostics:
-                output = self.render_ui_template(case["template"], context_kwargs)
+    def normalize_static_html(self, html: str, fixture: dict[str, Any]) -> str:
+        # The generator strips the hash from the submenu level var React sets inline.
+        normalized = normalize_css_var_hashes(super().normalize_static_html(html, fixture))
+        return strip_static_menubar_extensions(normalized)
 
-        actual_html = normalize_html_fragment(strip_static_menubar_extensions(output))
-        expected_html = normalize_html_fragment(strip_static_menubar_extensions(case["expected_html"]))
-        self.assertEqual(actual_html, expected_html)
-
-        self.assertEqual(diagnostics, case.get("expected_warnings", []))
+    def normalize_expected_html(self, html: str) -> str:
+        return strip_static_menubar_extensions(html)
 
     def test_fixture_cases(self):
         fixture = self.load_fixture()

@@ -1,5 +1,7 @@
 {
   "component": "menubar",
+  "class_prefixes": ["Menubar", "Icon"],
+  "keep_class_tokens": [],
   "cases": [
     {
       "name": "basic_horizontal_links",

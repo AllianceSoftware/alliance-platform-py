@@ -595,15 +595,32 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         style_path = self._resolve_resource_path(path, resolve_extensions=resolve_extensions)
         return resolve_vanilla_extract_class_mapping(self.bundler, style_path)
 
+    # Style getters. ``mapping`` is what resolve_vanilla_extract_mapping() returns: a
+    # ``VanillaExtractClassMapping`` at runtime, or the dict-backed stand-in from
+    # ``alliance_platform.ui.test_utils`` in tests. Both expose the loaded data as ``mapping.mapping``
+    # (``None`` while the mapping file is unavailable) and the stylesheet path as ``mapping.filename``.
+
     def get_style_class(self, mapping: Any, key: str) -> str:
-        value = getattr(mapping, key, "")
+        """Return the class string of the style ``key``.
+
+        A style missing from a loaded mapping is reported as a contract problem and resolves to
+        ``""``. While the mapping file is unavailable (``mapping.mapping`` is ``None``, as before the
+        dev server has written it) nothing can be checked, so the style resolves through the
+        mapping object as it would at runtime.
+        """
+        value = self._get_style(mapping, key, "")
         return value if isinstance(value, str) else ""
 
     def get_nested_style_class(self, mapping: Any, key: str, nested_key: str) -> str:
-        mapping_value = getattr(mapping, key, {})
-        if isinstance(mapping_value, dict) or hasattr(mapping_value, "get"):
-            nested_value = mapping_value.get(nested_key, "")
-            return nested_value if isinstance(nested_value, str) else ""
+        """Return the class string at ``key`` -> ``nested_key``, such as a ``styleVariants`` entry.
+
+        Missing entries are reported and resolve to ``""``, as for :meth:`get_style_class`.
+        """
+        group = self._get_style(mapping, key, None)
+        if isinstance(group, Mapping) and isinstance(group.get(nested_key), str):
+            return group[nested_key]
+        if group is not None and self._mapping_loaded(mapping):
+            self._report_missing_style(mapping, f"'{key}.{nested_key}'")
         return ""
 
     def get_recipe_classes(self, mapping: Any, key: str, selections: dict[str, str]) -> list[str]:
@@ -611,10 +628,13 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
 
         Recipes are serialized by ``@alliancesoftware/vite-plugin-django-vanilla-extract`` as
         ``{"base": <class>, "variants": {<group>: {<value>: <class>}}}``. Returns the base class
-        followed by the class for each selected variant, skipping anything unresolved.
+        followed by the class for each selected variant. A missing recipe or variant is reported,
+        as for :meth:`get_style_class`, and skipped.
         """
-        recipe = getattr(mapping, key, None)
-        if recipe is None or not (isinstance(recipe, dict) or hasattr(recipe, "get")):
+        recipe = self._get_style(mapping, key, None)
+        if not isinstance(recipe, Mapping):
+            if recipe is not None and self._mapping_loaded(mapping):
+                self._report_missing_style(mapping, f"'{key}'", problem="is not a recipe")
             return []
         classes: list[str] = []
         base_class = recipe.get("base", "")
@@ -622,11 +642,29 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
             classes.append(base_class)
         variants = recipe.get("variants", {})
         for group, value in selections.items():
-            group_mapping = variants.get(group, {}) if isinstance(variants, dict) else {}
-            variant_class = group_mapping.get(value, "") if isinstance(group_mapping, dict) else ""
+            group_mapping = variants.get(group, {}) if isinstance(variants, Mapping) else {}
+            variant_class = group_mapping.get(value, "") if isinstance(group_mapping, Mapping) else ""
             if isinstance(variant_class, str) and variant_class:
                 classes.append(variant_class)
+            elif self._mapping_loaded(mapping):
+                self._report_missing_style(mapping, f"'{key}' variant {group}={value!r}")
         return classes
+
+    @staticmethod
+    def _mapping_loaded(mapping: Any) -> bool:
+        return isinstance(getattr(mapping, "mapping", None), Mapping)
+
+    def _get_style(self, mapping: Any, key: str, default: Any) -> Any:
+        # Check membership before reading the attribute so that VanillaExtractClassMapping does not
+        # warn about the missing attribute as well as the report.
+        if self._mapping_loaded(mapping) and key not in mapping.mapping:
+            self._report_missing_style(mapping, f"'{key}'")
+            return default
+        return getattr(mapping, key, default)
+
+    def _report_missing_style(self, mapping: Any, description: str, problem: str = "does not exist") -> None:
+        stylesheet = getattr(mapping, "filename", None) or "its stylesheet"
+        self.report(f"Style {description} {problem} in '{stylesheet}'", kind="contract")
 
     def render_icon(
         self,

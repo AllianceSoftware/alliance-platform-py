@@ -1,5 +1,7 @@
 {
   "component": "button_group",
+  "class_prefixes": ["SmartOrientation", "ButtonGroup", "focusRing", "Button"],
+  "keep_class_tokens": [],
   "cases": [
     {
       "name": "default",

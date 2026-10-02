@@ -1,5 +1,14 @@
 {
   "component": "text_area",
+  "class_prefixes": [
+    "LabeledInput",
+    "TextInputBase",
+    "focusRing",
+    "Label",
+    "FormSection",
+    "Icon"
+  ],
+  "keep_class_tokens": ["LabeledInput_labeledInput"],
   "cases": [
     {
       "name": "default",

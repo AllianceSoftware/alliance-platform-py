@@ -1,5 +1,7 @@
 {
   "component": "inline_alert",
+  "class_prefixes": ["InlineAlert", "Icon"],
+  "keep_class_tokens": [],
   "cases": [
     {
       "name": "default_loose_content",

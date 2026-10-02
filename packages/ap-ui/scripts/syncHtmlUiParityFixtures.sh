@@ -13,7 +13,8 @@ usage() {
     cat <<'EOF'
 Usage: syncHtmlUiParityFixtures.sh [--js-repo <path>] [--component <name>]
 
-Regenerates ap-ui HTML parity fixtures using the JS workspace runtime.
+Regenerates ap-ui HTML parity fixtures and tests/fixtures/css-mappings.json using the JS
+workspace runtime.
 
 Options:
   --js-repo <path>   Path to alliance-platform-js (default: ../alliance-platform-js)
@@ -77,8 +78,14 @@ EOF
     exit 1
 fi
 
+if [[ ! -f "${UI_PACKAGE_DIR}/vite.config.mjs" ]]; then
+    echo "Expected UI package Vite config not found: ${UI_PACKAGE_DIR}/vite.config.mjs" >&2
+    exit 1
+fi
+
 GENERATOR_SCRIPT="${SCRIPT_DIR}/generateHtmlUiParityFixtures.mjs"
-VITE_CONFIG="${UI_PACKAGE_DIR}/vite.config.mjs"
+# Loads the ui package's vite.config.mjs with vanilla-extract's identifiers pinned to "debug".
+VITE_CONFIG="${SCRIPT_DIR}/vite.parity.config.mjs"
 
 COMMAND=("${VITE_NODE_BIN}" --config "${VITE_CONFIG}" "${GENERATOR_SCRIPT}")
 if [[ -n "${COMPONENT}" ]]; then

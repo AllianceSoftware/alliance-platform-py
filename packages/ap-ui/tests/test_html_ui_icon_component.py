@@ -81,7 +81,8 @@ class UIIconComponentTestCase(HtmlUIParityTestCase):
 
         self.assertEqual(caught, [])
         self.assertIn(
-            'class="Icon_icon Icon_variants_circle Icon_colors_destructive Icon_sizes_sm extra"', output
+            'class="Icon_icon Icon_variants_circle Icon_circleBase Icon_colors_destructive Icon_sizes_sm extra"',
+            output,
         )
         self.assertIn('id="edit-icon"', output)
         self.assertIn('title="Edit"', output)

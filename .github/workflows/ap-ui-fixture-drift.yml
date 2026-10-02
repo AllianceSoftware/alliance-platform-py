@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "packages/ap-ui/tests/fixtures/ui_html_*_parity.json"
+      - "packages/ap-ui/tests/fixtures/css-mappings.json"
       - "packages/ap-ui/scripts/**"
       - ".github/alliance-platform-js-ref"
       - ".github/workflows/ap-ui-fixture-drift.yml"
@@ -61,7 +62,7 @@ jobs:
         working-directory: alliance-platform-js
         run: yarn install --frozen-lockfile
 
-      - name: Regenerate ap-ui parity fixtures
+      - name: Regenerate ap-ui parity fixtures and class mappings
         run: |
           ./packages/ap-ui/scripts/syncHtmlUiParityFixtures.sh \
             --js-repo "$GITHUB_WORKSPACE/alliance-platform-js"
@@ -69,4 +70,5 @@ jobs:
       - name: Check fixture drift
         run: |
           git diff --exit-code -- \
-            packages/ap-ui/tests/fixtures/ui_html_*_parity.json
+            packages/ap-ui/tests/fixtures/ui_html_*_parity.json \
+            packages/ap-ui/tests/fixtures/css-mappings.json

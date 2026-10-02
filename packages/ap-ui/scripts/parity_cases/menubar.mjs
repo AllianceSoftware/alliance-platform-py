@@ -3,6 +3,12 @@ import path from "node:path";
 export const component = "menubar";
 export const class_prefixes = ["Menubar", "Icon"];
 
+export const stylesheets = [
+  "@alliancesoftware/ui/components/menu-bar/Menubar.css.ts",
+  "@alliancesoftware/ui/components/overlay/Popover.css.ts",
+  "@alliancesoftware/icons/Icon.css.ts",
+];
+
 export async function loadComponents({ uiPackageDir, importDefault }) {
   const Menubar = await importDefault(
     path.join(uiPackageDir, "components/menu-bar/Menubar.tsx")

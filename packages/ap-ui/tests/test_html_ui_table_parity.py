@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from typing import Any
+
 from django.test import RequestFactory
 
 from tests.parity.base import HtmlUIParityTestCase
+from tests.parity.normalizers import normalize_css_var_hashes
 
 
 class UITableParityTestCase(HtmlUIParityTestCase):
@@ -12,6 +15,10 @@ class UITableParityTestCase(HtmlUIParityTestCase):
     parity_ignored_attributes = frozenset({"data-mode"})
 
     request_factory = RequestFactory()
+
+    def normalize_static_html(self, html: str, fixture: dict[str, Any]) -> str:
+        # The generator strips the hash from the column width var React sets inline.
+        return normalize_css_var_hashes(super().normalize_static_html(html, fixture))
 
     def test_fixture_cases(self):
         fixture = self.load_fixture()

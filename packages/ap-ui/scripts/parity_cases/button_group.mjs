@@ -8,6 +8,13 @@ export const class_prefixes = [
   "Button",
 ];
 
+export const stylesheets = [
+  "@alliancesoftware/ui/components/button/ButtonGroup.css.ts",
+  "@alliancesoftware/ui/components/layout/SmartOrientation.css.ts",
+  "@alliancesoftware/ui/components/button/Button.css.ts",
+  "@alliancesoftware/ui/styles/base/focusRing.css.ts",
+];
+
 export async function loadComponents({ uiPackageDir, importDefault }) {
   return {
     Button: await importDefault(

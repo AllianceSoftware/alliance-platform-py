@@ -30,15 +30,21 @@ StyleMappings = Mapping[str, Mapping[str, Any]]
 
 
 class _StyleMapping:
-    """Dict-backed stand-in for ``VanillaExtractClassMapping``: a missing style resolves to ``""``."""
+    """Dict-backed stand-in for ``VanillaExtractClassMapping``.
 
-    def __init__(self, classes: Mapping[str, Any]):
-        self._classes = classes
+    It has the real class's public shape: ``filename`` is the stylesheet path, ``mapping`` the
+    class data (``None`` when the mapping is unavailable), and a style read as an attribute
+    returns its class string or nested dict, or ``""`` when there is none.
+    """
+
+    def __init__(self, filename: Path, mapping: Mapping[str, Any] | None):
+        self.filename = filename
+        self.mapping: dict[str, Any] | None = dict(mapping) if mapping is not None else None
 
     def __getattr__(self, name: str) -> Any:
-        if name.startswith("_"):
+        if name.startswith("_") or name in ("filename", "mapping"):
             raise AttributeError(name)
-        return self._classes.get(name, "")
+        return (self.mapping or {}).get(name, "")
 
 
 def _find_style_mapping(style_mappings: StyleMappings, stylesheet: Path) -> Mapping[str, Any] | None:
@@ -99,8 +105,11 @@ class StaticComponentTestCase(SimpleTestCase):
         """Set up what compiling and rendering static components needs.
 
         Enters a ``BundlerAssetContext`` with its checks skipped and resolves vanilla-extract class
-        mappings from ``style_mappings`` instead of the bundler's mapping files. A style missing
-        from the supplied data resolves to an empty class name, as a missing class does at runtime.
+        mappings from ``style_mappings`` instead of the bundler's mapping files. As at runtime, a
+        style missing from a stylesheet's data is reported as a contract problem and resolves to an
+        empty class name. A stylesheet with no entry gets its data from
+        :meth:`missing_style_mapping`, by default none: it behaves like a mapping file that is not
+        available yet, so its classes resolve to empty class names without reports.
         Yields the ``BundlerAssetContext`` so tests can inspect the resources components used.
 
         Entering the context also forgets which contract diagnostics were already logged, so one
@@ -117,7 +126,10 @@ class StaticComponentTestCase(SimpleTestCase):
 
         def resolve_mapping(_bundler: BaseBundler, stylesheet: Path) -> Any:
             stylesheet = Path(stylesheet)
-            return self._make_style_mapping(stylesheet, _find_style_mapping(mappings, stylesheet))
+            classes = _find_style_mapping(mappings, stylesheet)
+            if classes is None:
+                classes = self.missing_style_mapping(stylesheet)
+            return _StyleMapping(stylesheet, classes)
 
         with ExitStack() as stack:
             if bundler is not None:
@@ -132,7 +144,10 @@ class StaticComponentTestCase(SimpleTestCase):
             )
             yield asset_context
 
-    def _make_style_mapping(self, stylesheet: Path, classes: Mapping[str, Any] | None) -> Any:
-        # Builds the object renderers read class names from. ap-ui's own parity tests override it
-        # to synthesise class names for styles their fixture data does not list.
-        return _StyleMapping(classes or {})
+    def missing_style_mapping(self, stylesheet: Path) -> Mapping[str, Any] | None:
+        """Return class data for a stylesheet that ``style_mappings`` has no entry for.
+
+        Called with the resolved stylesheet path. The default returns ``None``: the stylesheet is
+        treated as having no mapping file yet. Override it to supply data or to fail the test.
+        """
+        return None
