@@ -217,6 +217,42 @@ Sortable-column fixtures record the URL the React SSR render happened at in `met
 SSR); the Python parity test builds a `RequestFactory` request for the same URL. Regenerate the
 table fixtures with `just sync-html-ui-parity-fixtures ../alliance-platform-js table`.
 
+## Pagination component (`pagination`)
+
+The static pagination renderer lives in
+`alliance_platform/ui/html_components/components/pagination.py` and mirrors `@alliancesoftware/ui`'s
+`Pagination.tsx` rendered with `renderPaginationItemAsLink`: every control is a link to the current
+request's path and query string with the page parameter changed (removed for page 1) and any
+page-size parameter removed. Page-size selection, callbacks, client-managed state, custom item
+renderers and custom `breakpoints` are reported and dropped. "Static pagination" in
+`docs/templatetags.rst` documents the behaviour for projects.
+
+The parity cases render React with `renderPaginationItemAsLink` and record the URL its links are
+built from in `meta.current_url`; the Python parity test builds a `RequestFactory` request for the
+same URL. Regenerate with `just sync-html-ui-parity-fixtures ../alliance-platform-js pagination`.
+
+### Deliberate static-render differences from React
+
+Reconciled by `normalize()` in `scripts/parity_cases/pagination.mjs` (React side) and
+`strip_static_pagination_extensions()` in `tests/test_html_ui_pagination_parity.py` (static side):
+
+- **Responsive ranges**: React measures the nav with a resize observer and re-renders with fewer
+  pages below its 620px and 450px breakpoints, so its SSR output holds only the configured
+  `siblingCount`/`boundaryCount` range. The static renderer renders all three ranges up front, the
+  configured one plus the two breakpoint ranges, each `<li>` marked with a
+  `responsiveItemVisibility` class (`large`, `medium`, `small`) that the stylesheet shows through
+  container queries at the matching width. The parity test drops the medium and small items and the large class.
+- **Absolute link URLs**: `renderPaginationItemAsLink` builds absolute URLs from `currentUrl`; the
+  static renderer writes the path and query only. The generator strips the origin.
+- **`aria-current`**: React's `PaginationItem` passes a boolean, so every page link gets
+  `aria-current="true"` or `"false"`. The static renderer marks only the current page, with the
+  `page` token. The generator maps `"true"` to `"page"` and drops `"false"`.
+- **Disabled controls**: React's Button keeps `href` on a disabled link and cancels navigation
+  with a click handler; the generator applies the shared Button normalisation described under
+  "Deliberate static Button differences from React". Beyond omitting `href` and rendering
+  `aria-disabled="true"`, the static renderer renders `tabindex="-1"`, which the parity test
+  strips.
+
 ## Menubar components (`menubar`, `menubar_item`, `menubar_submenu`, `menubar_section`)
 
 The static menubar renderers live in
