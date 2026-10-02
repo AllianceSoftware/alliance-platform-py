@@ -367,7 +367,7 @@ class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
             return self.render_tag(
                 "div",
                 {"className": self.get_style_class(pagination_styles, "ellipsisButton")},
-                "&#8230;",
+                "\u2026",
             )
         if item.page is None:
             raise ValueError(f"Pagination item '{item.type}' requires a page")
@@ -397,7 +397,9 @@ class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
                 label = gettext("Current Page, Page %(page)s") % {"page": item.page}
             else:
                 label = gettext("Go to page %(page)s") % {"page": item.page}
-            children = self.render_tag("span", {}, str(item.page))
+            # React's Button wraps string children in Text; the page number is a number, so it
+            # renders bare.
+            children = str(item.page)
 
         button_styles = self.resolve_vanilla_extract_mapping(_BUTTON_STYLE_PATH)
         focus_ring_styles = self.resolve_vanilla_extract_mapping(_FOCUS_RING_STYLE_PATH)
