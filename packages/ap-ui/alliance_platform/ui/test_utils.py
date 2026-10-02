@@ -32,14 +32,18 @@ StyleMappings = Mapping[str, Mapping[str, Any]]
 class _StyleMapping:
     """Dict-backed stand-in for ``VanillaExtractClassMapping``.
 
-    It has the real class's public shape: ``filename`` is the stylesheet path, ``mapping`` the
-    class data (``None`` when the mapping is unavailable), and a style read as an attribute
-    returns its class string or nested dict, or ``""`` when there is none.
+    It has the real class's public shape: ``filename`` is the stylesheet path, ``mapping`` and
+    ``get_mapping()`` the class data (``None`` when the mapping is unavailable), and a style read
+    as an attribute returns its class string or nested dict, or ``""`` when there is none.
     """
 
     def __init__(self, filename: Path, mapping: Mapping[str, Any] | None):
         self.filename = filename
         self.mapping: dict[str, Any] | None = dict(mapping) if mapping is not None else None
+
+    def get_mapping(self) -> dict[str, Any] | None:
+        """Return the class data, or ``None`` when the mapping is unavailable."""
+        return self.mapping
 
     def __getattr__(self, name: str) -> Any:
         if name.startswith("_") or name in ("filename", "mapping"):

@@ -597,15 +597,16 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
 
     # Style getters. ``mapping`` is what resolve_vanilla_extract_mapping() returns: a
     # ``VanillaExtractClassMapping`` at runtime, or the dict-backed stand-in from
-    # ``alliance_platform.ui.test_utils`` in tests. Both expose the loaded data as ``mapping.mapping``
-    # (``None`` while the mapping file is unavailable) and the stylesheet path as ``mapping.filename``.
+    # ``alliance_platform.ui.test_utils`` in tests. Both return the class data from
+    # ``mapping.get_mapping()`` (``None`` while the mapping file is unavailable) and name the
+    # stylesheet in ``mapping.filename``.
 
     def get_style_class(self, mapping: Any, key: str) -> str:
         """Return the class string of the style ``key``.
 
         A style missing from a loaded mapping is reported as a contract problem and resolves to
-        ``""``. While the mapping file is unavailable (``mapping.mapping`` is ``None``, as before the
-        dev server has written it) nothing can be checked, so the style resolves through the
+        ``""``. While the mapping file is unavailable (``get_mapping()`` returns ``None``, as before
+        the dev server has written it) nothing can be checked, so the style resolves through the
         mapping object as it would at runtime.
         """
         value = self._get_style(mapping, key, "")
@@ -651,13 +652,23 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         return classes
 
     @staticmethod
-    def _mapping_loaded(mapping: Any) -> bool:
-        return isinstance(getattr(mapping, "mapping", None), Mapping)
+    def _loaded_styles(mapping: Any) -> Mapping[str, Any] | None:
+        # get_mapping() reloads data the dev server rewrote since an earlier request, as reading a
+        # class does, so a style added since is not reported missing. Mapping objects without it
+        # expose the data as ``mapping``.
+        get_mapping = getattr(mapping, "get_mapping", None)
+        styles = get_mapping() if callable(get_mapping) else getattr(mapping, "mapping", None)
+        return styles if isinstance(styles, Mapping) else None
+
+    @classmethod
+    def _mapping_loaded(cls, mapping: Any) -> bool:
+        return cls._loaded_styles(mapping) is not None
 
     def _get_style(self, mapping: Any, key: str, default: Any) -> Any:
         # Check membership before reading the attribute so that VanillaExtractClassMapping does not
         # warn about the missing attribute as well as the report.
-        if self._mapping_loaded(mapping) and key not in mapping.mapping:
+        styles = self._loaded_styles(mapping)
+        if styles is not None and key not in styles:
             self._report_missing_style(mapping, f"'{key}'")
             return default
         return getattr(mapping, key, default)

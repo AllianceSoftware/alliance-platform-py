@@ -27,6 +27,38 @@ CLASSES = {
 }
 
 
+class ReloadingMapping:
+    """A mapping whose data gains a style when it is reloaded, as a dev mapping file can."""
+
+    filename = STYLESHEET
+
+    def __init__(self) -> None:
+        self.mapping: dict[str, Any] = {"baseButton": "Button_baseButton__1"}
+
+    def get_mapping(self) -> dict[str, Any]:
+        self.mapping = {**self.mapping, "iconOnly": "Button_iconOnly__5"}
+        return self.mapping
+
+    def __getattr__(self, name: str) -> Any:
+        if name.startswith("_") or name in ("filename", "mapping"):
+            raise AttributeError(name)
+        return self.mapping.get(name, "")
+
+
+class LegacyMapping:
+    """A mapping object that exposes its data only as the ``mapping`` attribute."""
+
+    filename = STYLESHEET
+
+    def __init__(self, classes: dict[str, Any]) -> None:
+        self.mapping = classes
+
+    def __getattr__(self, name: str) -> Any:
+        if name.startswith("_") or name in ("filename", "mapping"):
+            raise AttributeError(name)
+        return self.mapping.get(name, "")
+
+
 @override_ap_ui_settings(STATIC_COMPONENT_STRICT=False)
 class StyleGetterTestCase(SimpleTestCase):
     """The getters against the mapping class used at runtime."""
@@ -128,6 +160,24 @@ class StyleGetterTestCase(SimpleTestCase):
                 f"Style 'label' does not exist in '{STYLESHEET}'",
                 f"Style 'baseButton' is not a recipe in '{STYLESHEET}'",
             ],
+        )
+
+    def test_styles_are_checked_against_reloaded_data(self):
+        mapping = ReloadingMapping()
+
+        with self.assertNoLogs(LOGGER, level="WARNING"):
+            self.assertEqual(self.renderer.get_style_class(mapping, "iconOnly"), "Button_iconOnly__5")
+
+    def test_mapping_attribute_is_checked_without_get_mapping(self):
+        mapping = LegacyMapping({"baseButton": "Button_baseButton__1"})
+
+        with self.assertLogs(LOGGER, level="WARNING") as logs:
+            self.assertEqual(self.renderer.get_style_class(mapping, "baseButton"), "Button_baseButton__1")
+            self.assertEqual(self.renderer.get_style_class(mapping, "iconOnly"), "")
+
+        self.assertEqual(
+            [record.getMessage() for record in logs.records],
+            [f"Style 'iconOnly' does not exist in '{STYLESHEET}'"],
         )
 
     def test_unavailable_mapping_is_read_as_before_without_reports(self):
