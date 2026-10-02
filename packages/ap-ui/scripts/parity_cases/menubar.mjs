@@ -1,5 +1,71 @@
+import path from "node:path";
+
 export const component = "menubar";
 export const class_prefixes = ["Menubar", "Icon"];
+
+export async function loadComponents({ uiPackageDir, importDefault }) {
+  const Menubar = await importDefault(
+    path.join(uiPackageDir, "components/menu-bar/Menubar.tsx")
+  );
+  return {
+    Menubar,
+    Item: Menubar.Item,
+    SubMenu: Menubar.SubMenu,
+    Section: Menubar.Section,
+    Pencil01Outlined: await importDefault(
+      path.join(uiPackageDir, "../icons/outlined/Pencil01Outlined.tsx")
+    ),
+  };
+}
+
+// The static side's own extensions are stripped by strip_static_menubar_extensions() in
+// tests/test_html_ui_menubar_parity.py; see DEVELOPMENT.md for the full list.
+export function normalize(root, testCase, helpers) {
+  // React SSRs an offscreen "more items" node to measure overflow.
+  root.querySelector('li[data-key="____more_items_from_overflow"]')?.remove();
+  for (const element of helpers.elements(root)) {
+    for (const attribute of [
+      "tabindex",
+      "data-key",
+      "data-collection",
+      "data-has-leading-icon",
+    ]) {
+      element.removeAttribute(attribute);
+    }
+    if (element.getAttribute("aria-disabled") === "false") {
+      element.removeAttribute("aria-disabled");
+    }
+    if (element.getAttribute("aria-hidden") === "false") {
+      element.removeAttribute("aria-hidden");
+    }
+    // React emits hasLeadingIcon optimistically during SSR, before useHasChild inspects the DOM.
+    if (element.hasAttribute("class")) {
+      element.classList.forEach((token) => {
+        if (/^Menubar_hasLeadingIcon__/.test(token)) {
+          element.classList.remove(token);
+        }
+      });
+      if (!element.className) {
+        element.removeAttribute("class");
+      }
+    }
+  }
+  helpers.normalizeCssVarHashes(root);
+
+  // Section headings label their groups, so referenced ids survive and are remapped.
+  const referenced = helpers.collectReferencedReactAriaIds(root, [
+    "for",
+    "aria-controls",
+    "aria-labelledby",
+    "aria-describedby",
+    "aria-errormessage",
+  ]);
+  helpers.removeUnreferencedReactAriaIds(root, referenced);
+  helpers.remapReactAriaIds(root, component);
+  for (const icon of root.querySelectorAll('[role="img"]')) {
+    icon.setAttribute("data-apui-slot", "icon");
+  }
+}
 
 // The static renderer's popup wrappers (hidden popovers / inline menus) and runtime wiring are
 // static extensions the React SSR output cannot contain (React renders open menus in a portal,

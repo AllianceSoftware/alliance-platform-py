@@ -1,5 +1,90 @@
+import path from "node:path";
+
 export const component = "table";
 export const class_prefixes = ["Table", "Icon"];
+
+export async function loadComponents({
+  uiPackageDir,
+  importDefault,
+  importBareModule,
+}) {
+  // Table itself comes from the ui package; the collection components (TableHeader etc.) are the
+  // react-stately ones the ui package re-exports.
+  const reactStately = await importBareModule("react-stately");
+  return {
+    Table: await importDefault(
+      path.join(uiPackageDir, "components/table/Table.tsx")
+    ),
+    ColumnHeaderLink: await importDefault(
+      path.join(uiPackageDir, "components/table/ColumnHeaderLink.tsx")
+    ),
+    TableHeader: reactStately.TableHeader,
+    TableBody: reactStately.TableBody,
+    Column: reactStately.Column,
+    Row: reactStately.Row,
+    Cell: reactStately.Cell,
+  };
+}
+
+// The React table is an interactive ARIA grid; the static table keeps native table semantics
+// (see "Native semantics vs the React ARIA grid" in DEVELOPMENT.md).
+export function normalize(root, testCase, helpers) {
+  const interactiveRoles = new Set([
+    "grid",
+    "rowgroup",
+    "row",
+    "columnheader",
+    "gridcell",
+  ]);
+  for (const element of helpers.elements(root)) {
+    if (interactiveRoles.has(element.getAttribute("role"))) {
+      element.removeAttribute("role");
+    }
+    for (const attribute of [
+      "tabindex",
+      "aria-colindex",
+      "aria-rowindex",
+      "aria-colcount",
+      "aria-rowcount",
+      "aria-colspan",
+      "aria-rowspan",
+      "aria-multiselectable",
+      "aria-selected",
+      "data-collection",
+      "data-key",
+    ]) {
+      element.removeAttribute(attribute);
+    }
+    // ColumnHeaderLink builds absolute URLs from the SSR context; the static renderer writes
+    // relative hrefs.
+    const href = element.getAttribute("href");
+    if (href?.startsWith("http://testserver")) {
+      element.setAttribute("href", href.slice("http://testserver".length));
+    }
+  }
+  helpers.normalizeCssVarHashes(root);
+  for (const heading of root.querySelectorAll("th")) {
+    helpers.prependAttribute(heading, "scope", "col");
+  }
+  // Body rows carry no class in the static table (it styles rows from the wrapper).
+  for (const row of root.querySelectorAll("tbody > tr")) {
+    const classNames = helpers
+      .tokenizeClasses(row.getAttribute("class"))
+      .filter(
+        (className) =>
+          className !== "Table_row" && !className.startsWith("Table_row__")
+      );
+    if (classNames.length) {
+      row.setAttribute("class", classNames.join(" "));
+    } else {
+      row.removeAttribute("class");
+    }
+  }
+  for (const icon of root.querySelectorAll('[role="img"]')) {
+    icon.setAttribute("data-apui-slot", "icon");
+  }
+  helpers.normalizeInputComponent(root, component);
+}
 
 // Shared helpers to keep the case definitions readable. The React Table renders sortable header
 // links through ColumnHeaderLink (the same component the React-backed Django tags use); the
