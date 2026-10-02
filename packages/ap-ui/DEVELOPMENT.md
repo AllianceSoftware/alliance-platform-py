@@ -253,6 +253,31 @@ Reconciled by `normalize()` in `scripts/parity_cases/pagination.mjs` (React side
   `aria-disabled="true"`, the static renderer renders `tabindex="-1"`, which the parity test
   strips.
 
+## Icon component (`icon`)
+
+The static icon renderer lives in `alliance_platform/ui/html_components/components/icon.py` and
+renders through `render_static_icon()` in `html_components/static_icon.py`, which the other
+renderers use for their built-in icons too. It mirrors `@alliancesoftware/icons`' `Icon.tsx`: the
+same classes and defaults (`xs` size, `plain` variant, `secondary` colour for the circle variants),
+`role="img"`, and `aria-hidden="true"` unless an `aria-label` or `aria-hidden` is given. The SVG is
+inlined from the package's `static-svg` files.
+
+The parity cases render the generated components in `packages/icons/outlined/`. In the Python tests
+the test bundler serves the copies in `tests/fixtures/icons/static-svg/`, so when an icon changes
+upstream the regenerated fixture shows the new SVG and the copy needs updating to match.
+Regenerate with `just sync-html-ui-parity-fixtures ../alliance-platform-js icon`.
+
+### Deliberate static icon differences from React
+
+- **`data-apui-slot="icon"`**: the static icon always marks its root (the default `slot`), which
+  static parents and the stylesheets rely on. React's Icon only gets the attribute from a
+  parent's slot context, such as Button's. `normalize()` in `scripts/parity_cases/icon.mjs` adds
+  it to React's icon root.
+- **SVG serialisation**: React clones the SVG with `width`, `height` and `focusable="false"`, which
+  the `static-svg` files carry as well, but the files keep their own whitespace and attribute
+  order. The Python comparison sorts attributes and drops whitespace between tags
+  (`normalize_html_fragment()`), so nothing is stripped.
+
 ## Menubar components (`menubar`, `menubar_item`, `menubar_submenu`, `menubar_section`)
 
 The static menubar renderers live in
