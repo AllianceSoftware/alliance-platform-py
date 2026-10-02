@@ -1,5 +1,7 @@
 {
   "component": "button",
+  "class_prefixes": ["focusRing", "Button", "Icon"],
+  "keep_class_tokens": [],
   "cases": [
     {
       "name": "default",

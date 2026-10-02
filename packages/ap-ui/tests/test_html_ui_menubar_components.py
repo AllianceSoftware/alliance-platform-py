@@ -26,6 +26,7 @@ from test_alliance_platform_ui.factory import UserFactory
 from test_alliance_platform_ui.models import User
 
 from tests.parity.base import HtmlUIParityTestCase
+from tests.parity.base import load_css_mappings
 from tests.parity.base import test_development_bundler
 from tests.test_utils import override_ap_frontend_settings
 from tests.test_utils import override_ap_ui_settings
@@ -73,10 +74,12 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn('aria-label="Primary navigation"', output)
         self.assertIn('class="Menubar_menubar Menubar_horizontal"', output)
         self.assertNotIn("data-apui-menu-item-tooltip", output)
-        # State class names exposed for the runtime
-        self.assertIn('data-open-class="Menubar_isOpen"', output)
-        self.assertIn('data-focused-class="Menubar_isFocused"', output)
-        self.assertIn('data-popover-open-class="Popover_isOpen"', output)
+        # State class names exposed for the runtime, as the mappings define them
+        menubar_classes = load_css_mappings()["@alliancesoftware/ui/components/menu-bar/Menubar.css.ts"]
+        popover_classes = load_css_mappings()["@alliancesoftware/ui/components/overlay/Popover.css.ts"]
+        self.assertIn(f'data-open-class="{menubar_classes["isOpen"]}"', output)
+        self.assertIn(f'data-focused-class="{menubar_classes["isFocused"]}"', output)
+        self.assertIn(f'data-popover-open-class="{popover_classes["isOpen"]}"', output)
         # Link item: real anchor with role/level/label and the content wrapper structure
         self.assertIn(
             '<li role="none" data-key="dashboard">'
@@ -102,7 +105,8 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn('d="M6 9L12 15L18 9"', output)  # chevron down
         # Popup: hidden popover wrapper containing the vertical menu
         self.assertIn(
-            '<div class="Popover_popover_bottom" role="presentation" hidden data-apui-menu-popover="" '
+            '<div class="Popover_popover_bottom OverlayCommon_overlay_bottom" role="presentation" hidden '
+            'data-apui-menu-popover="" '
             'data-placement="bottom"><div class="Popover_inner">'
             '<ul role="menu" id="apui-menu-users" class="Menubar_menubarMenu Menubar_vertical" '
             'data-apui-menu-container="" style="--level: 1">',
@@ -170,7 +174,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         # Inline presentation uses the same stable popover subtree as flyout layouts. CSS makes
         # the shell display: contents while inline; the wrapper still owns closed/open visibility.
         self.assertIn(
-            '<div class="Popover_popover_right" role="presentation" hidden '
+            '<div class="Popover_popover_right OverlayCommon_overlay_right" role="presentation" hidden '
             'data-apui-menu-popover="" data-placement="right"><div class="Popover_inner">'
             '<ul role="menu" id="apui-menu-users" class="Menubar_menubarMenu Menubar_vertical" '
             'data-apui-menu-container="" style="--level: 1">',
@@ -195,8 +199,8 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertEqual(output.count('id="apui-menu-users"'), 1)
         self.assertNotIn("data-apui-menu-popup", output)
         self.assertIn(
-            'class="Popover_popover_right Popover_isOpen" role="presentation" '
-            'data-apui-menu-popover="" data-placement="right"',
+            'class="Popover_popover_right OverlayCommon_overlay_right OverlayCommon_isOpen" '
+            'role="presentation" data-apui-menu-popover="" data-placement="right"',
             output,
         )
         self.assertNotIn(" hidden ", output)
@@ -565,7 +569,8 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn('d="M18 15L12 9L6 15"', output)
         # The popover renders visible (no hidden attribute) with the overlay isOpen class
         self.assertIn(
-            'class="Popover_popover_bottom Popover_isOpen" role="presentation" data-apui-menu-popover=""',
+            'class="Popover_popover_bottom OverlayCommon_overlay_bottom OverlayCommon_isOpen" '
+            'role="presentation" data-apui-menu-popover=""',
             output,
         )
         self.assertNotIn(" hidden ", output)

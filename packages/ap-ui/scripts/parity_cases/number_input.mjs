@@ -12,6 +12,16 @@ export const class_prefixes = [
 ];
 export const keep_class_tokens = ["LabeledInput_labeledInput"];
 
+export const stylesheets = [
+  "@alliancesoftware/ui/components/text-input/TextInputBase.css.ts",
+  "@alliancesoftware/ui/components/form/LabeledInput.css.ts",
+  "@alliancesoftware/ui/components/form/Label.css.ts",
+  "@alliancesoftware/ui/components/form/FormSection.css.ts",
+  "@alliancesoftware/ui/styles/base/focusRing.css.ts",
+  "@alliancesoftware/icons/Icon.css.ts",
+  "@alliancesoftware/ui/components/number-input/NumberInput.css.ts",
+];
+
 export async function loadComponents({ uiPackageDir, importDefault }) {
   return {
     NumberInput: await importDefault(

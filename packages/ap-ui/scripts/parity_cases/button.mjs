@@ -3,6 +3,12 @@ import path from "node:path";
 export const component = "button";
 export const class_prefixes = ["focusRing", "Button", "Icon"];
 
+export const stylesheets = [
+  "@alliancesoftware/ui/components/button/Button.css.ts",
+  "@alliancesoftware/ui/styles/base/focusRing.css.ts",
+  "@alliancesoftware/icons/Icon.css.ts",
+];
+
 export async function loadComponents({ uiPackageDir, importDefault }) {
   return {
     Button: await importDefault(

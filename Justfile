@@ -216,7 +216,8 @@ format-check:
 manage package *args:
     cd packages/{{package}} && uv run ./manage.py {{args}}
 
-# Regenerate ap-ui HTML parity fixtures using the alliance-platform-js runtime.
+# Regenerate ap-ui HTML parity fixtures and tests/fixtures/css-mappings.json using the
+# alliance-platform-js runtime.
 # Usage:
 #   just sync-html-ui-parity-fixtures
 #   just sync-html-ui-parity-fixtures ../alliance-platform-js button_group
@@ -229,13 +230,14 @@ sync-html-ui-parity-fixtures js_repo="../alliance-platform-js" component="":
         ./packages/ap-ui/scripts/syncHtmlUiParityFixtures.sh --js-repo "{{js_repo}}"
     fi
 
-# Check ap-ui HTML parity fixtures for drift.
+# Check ap-ui HTML parity fixtures and the class mappings they are tested with for drift.
 check-html-ui-parity-fixtures js_repo="../alliance-platform-js":
     #!/usr/bin/env bash
     set -euo pipefail
     ./packages/ap-ui/scripts/syncHtmlUiParityFixtures.sh --js-repo "{{js_repo}}"
     git diff --exit-code -- \
-        packages/ap-ui/tests/fixtures/ui_html_*_parity.json
+        packages/ap-ui/tests/fixtures/ui_html_*_parity.json \
+        packages/ap-ui/tests/fixtures/css-mappings.json
 
 # Build docs and watch for changes
 docs-watch:

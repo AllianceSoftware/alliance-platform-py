@@ -157,7 +157,12 @@ class UIInlineAlertRenderer(BaseHtmlUIComponentRenderer):
 
     @staticmethod
     def _has_class(html: str, class_name: str) -> bool:
-        return any(class_name in value.split() for value in re.findall(r'class=["\']([^"\']*)["\']', html))
+        # A part's class can be composed (heading's includes typography classes), so an element is
+        # that part when its class attribute has every one of the part's classes.
+        part_tokens = set(class_name.split())
+        return bool(part_tokens) and any(
+            part_tokens <= set(value.split()) for value in re.findall(r'class=["\']([^"\']*)["\']', html)
+        )
 
     def _contains_only_content(self, html: str, part_classes: dict[str, str]) -> bool:
         if not self._has_class(html, part_classes["content"]):

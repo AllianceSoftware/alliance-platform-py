@@ -87,6 +87,20 @@ class UIInlineAlertParityTestCase(HtmlUIParityTestCase):
             output,
         )
 
+    def test_heading_with_content_is_not_only_content(self):
+        # heading's class is composed with typography classes, so detection must match all of them
+        with self.setup_render_context():
+            output = self.render_ui_template(
+                '{% ui "inline_alert" %}'
+                '{% ui "heading" %}Check this{% endui %}'
+                '{% ui "content" %}Review the details.{% endui %}'
+                "{% endui %}"
+            )
+
+        self.assertIn('<h3 class="InlineAlert_heading">Check this</h3>', output)
+        self.assertNotIn("data-only-content", output)
+        self.assertNotIn("InlineAlert_onlyContent", output)
+
     def test_layout_component_can_select_a_non_default_slot(self):
         with self.setup_render_context():
             output = self.render_ui_template(

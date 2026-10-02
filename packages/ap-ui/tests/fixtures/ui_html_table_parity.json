@@ -1,5 +1,7 @@
 {
   "component": "table",
+  "class_prefixes": ["Table", "Icon"],
+  "keep_class_tokens": [],
   "cases": [
     {
       "name": "basic",

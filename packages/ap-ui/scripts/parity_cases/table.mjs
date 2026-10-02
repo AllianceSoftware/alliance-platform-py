@@ -3,6 +3,11 @@ import path from "node:path";
 export const component = "table";
 export const class_prefixes = ["Table", "Icon"];
 
+export const stylesheets = [
+  "@alliancesoftware/ui/components/table/Table.css.ts",
+  "@alliancesoftware/icons/Icon.css.ts",
+];
+
 export async function loadComponents({
   uiPackageDir,
   importDefault,

@@ -5,7 +5,6 @@ import re
 from typing import Any
 
 from tests.parity.base import HtmlUIParityTestCase
-from tests.parity.normalizers import normalize_html_fragment
 
 _STATIC_EXTENSION_ATTR_RES = [
     re.compile(r'\sdata-apui-attach="number-input"'),
@@ -37,18 +36,13 @@ def strip_static_visible_input_name(value: str) -> str:
 class UINumberInputParityTestCase(HtmlUIParityTestCase):
     fixture_component = "number_input"
 
-    def assert_parity_case(self, case: dict[str, Any], context_kwargs: dict[str, Any] | None = None):
-        with self.setup_render_context():
-            with self.capture_diagnostics() as diagnostics:
-                output = self.render_ui_template(case["template"], context_kwargs)
-
-        actual_html = normalize_html_fragment(
-            strip_static_visible_input_name(strip_static_number_input_extensions(output))
+    def normalize_static_html(self, html: str, fixture: dict[str, Any]) -> str:
+        return strip_static_visible_input_name(
+            strip_static_number_input_extensions(super().normalize_static_html(html, fixture))
         )
-        expected_html = normalize_html_fragment(strip_static_number_input_extensions(case["expected_html"]))
-        self.assertEqual(actual_html, expected_html)
 
-        self.assertEqual(diagnostics, case.get("expected_warnings", []))
+    def normalize_expected_html(self, html: str) -> str:
+        return strip_static_number_input_extensions(html)
 
     def test_fixture_cases(self):
         fixture = self.load_fixture()

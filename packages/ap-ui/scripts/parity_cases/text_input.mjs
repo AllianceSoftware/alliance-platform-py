@@ -13,6 +13,15 @@ export const class_prefixes = [
 // and Python renderers, so exempt it from the "drop parent when child token exists" rule.
 export const keep_class_tokens = ["LabeledInput_labeledInput"];
 
+export const stylesheets = [
+  "@alliancesoftware/ui/components/text-input/TextInputBase.css.ts",
+  "@alliancesoftware/ui/components/form/LabeledInput.css.ts",
+  "@alliancesoftware/ui/components/form/Label.css.ts",
+  "@alliancesoftware/ui/components/form/FormSection.css.ts",
+  "@alliancesoftware/ui/styles/base/focusRing.css.ts",
+  "@alliancesoftware/icons/Icon.css.ts",
+];
+
 export async function loadComponents({ uiPackageDir, importDefault }) {
   return {
     TextInput: await importDefault(
