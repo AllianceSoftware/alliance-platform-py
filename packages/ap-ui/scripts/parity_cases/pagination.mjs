@@ -18,9 +18,9 @@ export async function loadComponents({ importBareModule }) {
   };
 }
 
-// The static side's own extensions (the medium and small responsive ranges) are stripped by
-// strip_static_pagination_extensions() in tests/test_html_ui_pagination_parity.py; see
-// DEVELOPMENT.md for the full list.
+// The static side's own extensions (the medium and small responsive ranges, tabindex on disabled
+// links) are stripped by strip_static_pagination_extensions() in
+// tests/test_html_ui_pagination_parity.py; see DEVELOPMENT.md for the full list.
 export function normalize(root, testCase, helpers) {
   // Every control is a Button rendered as a link.
   helpers.normalizeButtons(root, testCase);

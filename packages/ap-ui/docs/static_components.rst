@@ -237,7 +237,10 @@ expressions).
 :ttag:`component <alliance-platform-frontend:component>` tag does, and
 ``resolve_vanilla_extract_mapping(path)`` returns the class names a ``.css.ts`` file exports. Read
 them with ``get_style_class(mapping, "label")``, ``get_nested_style_class(mapping, "value", size)``
-for style variants and ``get_recipe_classes`` for recipes. A missing class resolves to ``""``.
+for style variants and ``get_recipe_classes`` for recipes. A style the mapping does not have is
+reported as a :ref:`contract diagnostic <static-component-diagnostics>` naming the style and the
+stylesheet, and resolves to ``""``. While the mapping file is not available yet, as before the dev
+server has processed the stylesheet, classes resolve to ``""`` without a report.
 
 Components that inline icons with ``render_icon()`` should list each icon with
 ``alliance_platform.ui.icons.get_static_icon_resource(name, origin=self.origin)`` so the SVG is
@@ -257,8 +260,9 @@ is dropped, a part outside its parent renders nothing. Each report has a kind:
     A mistake fixed in template source or the environment: an unsupported, unknown, aliased,
     event-handler or non-scalar prop, an invalid prop value, a missing required prop, unsupported
     children, a component outside its required parent, a dynamic component name not in
-    ``allowed_components``, rich content that cannot be rendered, a missing icon file or style
-    variable, or a sortable column with no ``request`` to build its link from.
+    ``allowed_components``, rich content that cannot be rendered, a missing icon file, a style or
+    style variable missing from its stylesheet, or a sortable column with no ``request`` to build
+    its link from.
 ``data``
     A value that can legitimately vary per request: a page number past the last page, a row with
     more cells than the table has columns, or a sort descriptor that names no valid direction.
@@ -311,18 +315,24 @@ Testing
 -------
 
 ``alliance_platform.ui.test_utils.StaticComponentTestCase`` is a ``SimpleTestCase`` with two
-helpers:
+helpers and a hook:
 
 * ``static_render_context(style_mappings=None, *, bundler=None, frontend_resource_registry=None)``
   is a context manager that sets up what compiling and rendering components needs. It enters a
   ``BundlerAssetContext`` with its checks skipped, yields it so tests can inspect the resources
   used, and resolves vanilla-extract class names from ``style_mappings`` rather than the bundler's
   mapping files. ``style_mappings`` is plain data keyed by stylesheet file name, or a longer
-  trailing path when names collide, in the shape the vanilla-extract mapping files use. Classes
-  you leave out resolve to ``""``. ``bundler`` and ``frontend_resource_registry`` default to your
-  settings.
+  trailing path when names collide, in the shape the vanilla-extract mapping files use. As at
+  runtime, a style missing from a stylesheet you list is reported as a contract diagnostic and
+  resolves to ``""``. A stylesheet you leave out behaves like a mapping file that is not available
+  yet: its classes resolve to ``""`` and nothing is reported. ``bundler`` and
+  ``frontend_resource_registry`` default to your settings.
 * ``render_ui_template(template_body, context=None)`` compiles the template with
   ``alliance_platform.ui`` loaded and renders it. Call it inside ``static_render_context``.
+* ``missing_style_mapping(stylesheet)`` is called with the resolved path of a stylesheet that
+  ``style_mappings`` has no entry for. It returns the class data to use, or ``None`` (the default)
+  for none. Override it to supply data for shared stylesheets, or to fail the test so every
+  stylesheet a component uses must be listed.
 
 The stat's tests:
 
