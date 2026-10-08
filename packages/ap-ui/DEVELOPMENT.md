@@ -12,7 +12,12 @@ and tested in `tests/test_static_component_example.py`.
 1. Add a renderer class under `alliance_platform/ui/html_components/components/`. Set `name` to the
    snake_case component name and export the class from `components/__init__.py`. The root
    `data-apui` marker and generated id prefixes come from `apui_name`, which defaults to the
-   hyphenated `name`.
+   hyphenated `name`. Set `has_children = False` for a leaf, which is written without
+   `{% endui %}`, and `react_tag` to the React template tag that supports what the renderer
+   refuses (`Table`, or `component "@alliancesoftware/ui" "TextInput"` for a component without a
+   named tag). Add that React component to `LEGACY_COMPONENT_MIGRATIONS` in
+   `management/commands/ui_migration_check.py` with the renderer's name:
+   `test_react_tags_match_the_migration_table` fails until the two agree.
 2. Register it with `register_component("<name>", Renderer)` at the end of
    `alliance_platform/ui/html_components/registry.py`. `register_component` rejects names that are
    not snake_case, names that differ from the renderer's `name`, and a second renderer for a taken
@@ -37,6 +42,9 @@ Renderers report template mistakes with `self.report(message, kind=...)`, or wit
 `html_components/diagnostics.py` where there is no renderer, never with Python's `warnings`
 module. Use `kind="contract"` when the fix is in template source or the environment and
 `kind="data"` when the value can legitimately vary per request; when in doubt, use `contract`.
+The base class reports props refused through `unsupported_prop_reasons` and event handlers itself,
+appending `use {% <react_tag> %} instead` when the renderer has a `react_tag`, so write reasons
+without naming the React tag.
 Reports log through the `alliance_platform.ui` logger with the message text unchanged: the parity
 fixtures' `expected_warnings` hold React's `console.warn` strings and the parity tests compare them
 with the logged messages. Contract reports raise `StaticComponentContractError` when the
@@ -85,7 +93,7 @@ template, e.g. Django form widget templates:
 ```django
 {% load alliance_platform.ui %}
 
-{% ui "text_input" props=widget.attrs|merge_props:extra_widget_props type=widget.type name=widget.name defaultValue=widget.value %}
+{% ui "text_input" props=widget.attrs|merge_props:extra_widget_props type=widget.type name=widget.name default_value=widget.value %}
 ```
 
 Bulk prop keys are adapted to the component prop contract automatically: HTML attribute names are
@@ -133,7 +141,7 @@ are intentional extensions, so they will not show up as parity failures:
   `@alliancesoftware/icons` (`AlertCircleOutlined`, `CheckOutlined`, `ChevronUpOutlined`,
   `ChevronDownOutlined`). Matching NumberInput's documented React contract, validation state still
   colours the input while step controls are visible but the validation icon is only rendered when
-  `hideStepButtons=True`. If those icons change upstream the fixture drift check will catch it.
+  `hide_step_buttons=True`. If those icons change upstream the fixture drift check will catch it.
 - **Inline icon resources**: icon SVG files stay in frontend resource discovery for production
   builds, but are excluded from collected-asset embedding because the renderer already emits their
   markup inline. This prevents detached icon images from appearing at the document asset insertion

@@ -111,6 +111,12 @@ handler props (``on*``) are always dropped.
     subclass with a new name.
 ``slot_name``
     The slot this component reads parent-provided defaults from (see `Slot defaults`_).
+``has_children``
+    Whether the tag has children and an ``{% endui %}``, ``True`` by default. Set it to ``False``
+    for a leaf, like the built-in ``icon``: the tag is written without an end tag, as
+    ``{% ui "icon" name="CheckCircleOutlined" %}``, and ``children_html`` is always ``""``. A
+    dynamic ``{% ui %}`` tag cannot mix leaves and components with children in its
+    ``allowed_components``.
 ``supported_props``
     The accepted prop names. ``None`` leaves filtering to the renderer.
 ``prop_rules``
@@ -123,6 +129,12 @@ handler props (``on*``) are always dropped.
     both spellings are passed, the canonical one wins.
 ``unsupported_prop_reasons``
     Props that are refused with a specific explanation, typically React-only behaviour.
+``react_tag``
+    The React template tag that supports what the renderer refuses, written without the braces,
+    for example ``"Table"`` or ``'component "@alliancesoftware/ui" "TextInput"'``. Reports of props
+    refused through ``unsupported_prop_reasons`` and of event handlers end with
+    ``use {% <react_tag> %} instead``. Leave it ``None``, the default, when there is no React
+    equivalent.
 ``forwarded_props``
     Plain attributes, such as ``id`` and ``title``, that ``collect_forwarded_props()`` copies to
     the root element. They count as supported.
@@ -258,11 +270,10 @@ is dropped, a part outside its parent renders nothing. Each report has a kind:
 
 ``contract``
     A mistake fixed in template source or the environment: an unsupported, unknown, aliased,
-    event-handler or non-scalar prop, an invalid prop value, a missing required prop, unsupported
-    children, a component outside its required parent, a dynamic component name not in
-    ``allowed_components``, rich content that cannot be rendered, a missing icon file, a style or
-    style variable missing from its stylesheet, or a sortable column with no ``request`` to build
-    its link from.
+    event-handler or non-scalar prop, an invalid prop value, a missing required prop, a component
+    outside its required parent, a dynamic component name not in ``allowed_components``, rich
+    content that cannot be rendered, a missing icon file, a style or style variable missing from
+    its stylesheet, or a sortable column with no ``request`` to build its link from.
 ``data``
     A value that can legitimately vary per request: a page number past the last page, a row with
     more cells than the table has columns, or a sort descriptor that names no valid direction.

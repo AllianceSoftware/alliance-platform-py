@@ -35,6 +35,23 @@ Usage:
 
     {% ui "button" variant="solid" color="primary" %}Save{% endui %}
 
+Props are written in snake_case, for example ``is_disabled=True`` or ``aria_label="Close"``, and the
+tag converts them to the component's React prop names. The React camelCase spelling
+(``isDisabled=True``) is accepted too, and neither spelling is reported as a diagnostic.
+
+``icon``, ``pagination``, ``text_input``, ``number_input`` and ``text_area`` are leaf components:
+they take no children and are written without ``{% endui %}``:
+
+.. code-block:: html+django
+
+    {% ui "text_input" name="email" label="Email" %}
+
+    {% ui "button" %}{% ui "icon" name="Pencil01Outlined" %}Edit{% endui %}
+
+Nothing after a leaf belongs to it, so an ``{% endui %}`` that follows one closes the enclosing
+component, and at the top level of a template it is a ``TemplateSyntaxError``. Every other built-in
+component takes children and an ``{% endui %}``.
+
 Dynamic component names are supported when you provide a compile-time literal
 whitelist via ``allowed_components``:
 
@@ -43,6 +60,10 @@ whitelist via ``allowed_components``:
     {% ui component_name allowed_components="button,button_group" %}
       {{ label }}
     {% endui %}
+
+The tag is parsed before the name resolves, so the allowed components must agree on children:
+either all take children, or all are leaves and the tag has no ``{% endui %}``. Mixing them, as in
+``allowed_components="button,icon"``, is a ``TemplateSyntaxError``.
 
 The dispatcher also supports ``as <var>``:
 
@@ -82,9 +103,126 @@ the suggested static renderer (or native element), and one of these statuses:
 * ``NO-STATIC-EQUIVALENT`` — the Alliance UI component is recognised but has no static renderer
   yet.
 
+The suggested tag shows ``{% endui %}`` only for components with children: a button is suggested as
+``{% ui "button" %}...{% endui %}`` and an icon as ``{% ui "icon" %}``.
+
 Findings are informational and the command normally exits successfully. ``--strict`` makes any
 finding produce a nonzero exit status for an explicitly opted-in migration gate. Missing paths and
 template read failures always fail. Generic application component paths are ignored.
+
+React tags
+~~~~~~~~~~
+
+``{% ui %}`` is the default way to render these components. The React-rendered tags are the escape
+hatch: when a page needs a behaviour only React provides, write that component with its React tag
+instead, and a table or menubar together with its parts. ``{% ui %}`` never switches to React by
+itself; a refused prop is reported as a :ref:`contract diagnostic <static-component-diagnostics>`
+that names the React tag, for example ``Prop 'selectionMode' will be ignored: row selection is not
+supported by static table components; use {% Table %} instead``. Event handler props (``on_click``
+and other ``on_*`` props) are refused by every static component.
+
+.. list-table::
+    :header-rows: 1
+    :widths: 18 37 10 35
+
+    * - ``{% ui %}`` component
+      - React tag
+      - Children
+      - React-only behaviour
+    * - ``button``
+      - ``{% Button %}``
+      - Yes
+      - Press callbacks (``on_press``)
+    * - ``button_group``
+      - ``{% ButtonGroup %}``
+      - Yes
+      - Event handlers only
+    * - ``icon``
+      - ``{% Icon %}``
+      - No
+      - Event handlers only
+    * - ``inline_alert``
+      - ``{% InlineAlert %}``
+      - Yes
+      - Dismissal (``is_dismissable``, ``on_dismiss``)
+    * - ``pagination``
+      - ``{% Pagination %}``
+      - No
+      - Page-size selection, ``on_page_change`` and other callbacks, client-managed page state,
+        custom item rendering and custom ``breakpoints``
+    * - ``table``
+      - ``{% Table %}``
+      - Yes
+      - Row selection, client-side sorting (``on_sort_change``, ``sort_function``,
+        ``default_sort_order``), ``items`` and ``columns`` collections, keyboard grid and edit
+        mode, ``column_header_element_type``
+    * - ``table_header``
+      - ``{% TableHeader %}``
+      - Yes
+      - ``columns`` collection
+    * - ``table_body``
+      - ``{% TableBody %}``
+      - Yes
+      - ``items`` collection
+    * - ``table_column``
+      - ``{% Column %}``
+      - Yes
+      - Nested columns (``child_columns``)
+    * - ``table_row``
+      - ``{% Row %}``
+      - Yes
+      - Row selection state (``is_selected``, ``is_disabled``)
+    * - ``table_cell``
+      - ``{% Cell %}``
+      - Yes
+      - Event handlers only
+    * - ``menubar``
+      - ``{% Menubar %}``
+      - Yes
+      - ``on_action`` and other callbacks, selection, ``items`` collections, controlled
+        ``expanded_keys``, ``disabled_keys``, ``item_element_type``, overflow into a "More" menu,
+        ``close_on_select``
+    * - ``menubar_item``
+      - ``{% Menubar.Item %}``
+      - Yes
+      - ``on_action``, ``child_items`` collections
+    * - ``menubar_submenu``
+      - ``{% Menubar.SubMenu %}``
+      - Yes
+      - ``on_action``, ``child_items`` collections
+    * - ``menubar_section``
+      - ``{% Menubar.Section %}``
+      - Yes
+      - ``items`` collection
+    * - ``text_input``
+      - ``{% component "@alliancesoftware/ui" "TextInput" %}``
+      - No
+      - Render props (``render_input``), element props and refs (``input_props``,
+        ``input_ref``), client-side validation (``validate``)
+    * - ``number_input``
+      - ``{% component "@alliancesoftware/ui" "NumberInput" %}``
+      - No
+      - As ``text_input``
+    * - ``text_area``
+      - ``{% component "@alliancesoftware/ui" "TextArea" %}``
+      - No
+      - As ``text_input``
+    * - ``content``
+      - ``{% component "@alliancesoftware/ui" "Content" %}``
+      - Yes
+      - Event handlers only
+    * - ``heading``
+      - ``{% component "@alliancesoftware/ui" "Heading" %}``
+      - Yes
+      - Event handlers only
+    * - ``header``
+      - ``{% component "@alliancesoftware/ui" "Header" %}``
+      - Yes
+      - Event handlers only
+    * - ``footer``
+      - ``{% component "@alliancesoftware/ui" "Footer" %}``
+      - Yes
+      - Event handlers only
 
 Static buttons
 ~~~~~~~~~~~~~~
@@ -770,7 +908,7 @@ addon for an ``alliance_platform.ui`` ``TextInput`` you could do the following:
 
 .. code-block:: html+django
 
-    {% form_input field addonBefore="$" %}
+    {% form_input field addon_before="$" %}
 
 Note that the attributes supported here depend entirely on the widget. If the widget is a React component, you
 can also pass react components to the tag:
@@ -778,7 +916,7 @@ can also pass react components to the tag:
 .. code-block:: html+django
 
     {% Icon "SearchOutlined" as search_icon %}
-    {% form_input field addonBefore=search_icon %}
+    {% form_input field addon_before=search_icon %}
 
 The additional props are added to the key ``extra_widget_props`` - so the relevant widget template needs to include
 this for the props to be passed through. For a React component widget:
@@ -793,7 +931,7 @@ so ``html_attr_to_jsx`` is not needed):
 
 .. code-block:: html+django
 
-    {% ui "text_input" props=widget.attrs|merge_props:extra_widget_props type=widget.type name=widget.name defaultValue=widget.value %}
+    {% ui "text_input" props=widget.attrs|merge_props:extra_widget_props type=widget.type name=widget.name default_value=widget.value %}
 
 HTML in ``help_text`` is supported by both widget styles - the React path receives it as nested React elements while
 static ``{% ui %}`` inputs render it directly as HTML (dropping any inline event handler attributes).
