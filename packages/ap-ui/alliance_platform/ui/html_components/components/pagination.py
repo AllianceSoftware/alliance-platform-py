@@ -74,6 +74,7 @@ class PaginationItem:
 
 class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
     name = "pagination"
+    react_tag = "Pagination"
     slot_name = "pagination"
     has_children = False
     supported_props = frozenset(

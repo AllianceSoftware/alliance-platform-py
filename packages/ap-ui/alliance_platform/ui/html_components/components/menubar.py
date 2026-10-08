@@ -87,8 +87,8 @@ _COOKIE_NAME_RE = re.compile(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$")
 _EVENT_HANDLER_REASON = "event handlers are not supported by static menubar components"
 _CALLBACK_REASON = "client-side action callbacks are not supported by static menubar components"
 _COLLECTION_REASON = "collection render props are not supported by static menubar components"
-_SELECTION_REASON = "selection is not supported by static menubar components yet"
-_OVERFLOW_REASON = "width overflow handling is not supported by static menubar components yet"
+_SELECTION_REASON = "selection is not supported by static menubar components"
+_OVERFLOW_REASON = "width overflow handling is not supported by static menubar components"
 
 _MENUBAR_UNSUPPORTED_PROPS: Mapping[str, str] = {
     "items": _COLLECTION_REASON,
@@ -98,7 +98,10 @@ _MENUBAR_UNSUPPORTED_PROPS: Mapping[str, str] = {
     "selectedKeys": _SELECTION_REASON,
     "defaultSelectedKeys": _SELECTION_REASON,
     "onSelectionChange": _SELECTION_REASON,
-    "disabledKeys": "pass 'is_disabled' on the child components instead",
+    "disabledKeys": (
+        "disabled keys are not supported by static menubar components; pass 'is_disabled' on the "
+        "child components"
+    ),
     "expandedKeys": (
         "controlled expansion state is not supported by static menubar components; "
         "pass 'default_expanded_keys' for initial open state"
@@ -493,6 +496,7 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
 
 class UIMenubarRenderer(UIMenubarComponentRendererBase):
     name = "menubar"
+    react_tag = "Menubar"
     requires_menubar = False
     supported_props = frozenset(
         {
@@ -702,6 +706,7 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
 
 class UIMenubarItemRenderer(UIMenubarComponentRendererBase):
     name = "menubar_item"
+    react_tag = "Menubar.Item"
     supported_props = frozenset(
         {
             "id",
@@ -874,6 +879,7 @@ class UIMenubarItemRenderer(UIMenubarComponentRendererBase):
 
 class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
     name = "menubar_submenu"
+    react_tag = "Menubar.SubMenu"
     supported_props = frozenset(
         {
             "id",
@@ -1137,6 +1143,7 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
 
 class UIMenubarSectionRenderer(UIMenubarComponentRendererBase):
     name = "menubar_section"
+    react_tag = "Menubar.Section"
     supported_props = frozenset(
         {
             "id",

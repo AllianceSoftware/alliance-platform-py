@@ -47,14 +47,12 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
             '{% ui "text_input" label="Email" renderInput=render_input inputProps=input_props %}',
             {"render_input": lambda data: data, "input_props": {"rows": 4}},
         )
-        self.assertIn(
-            "Prop 'renderInput' will be ignored: React-only props are not supported by static input components",
-            caught,
-        )
-        self.assertIn(
-            "Prop 'inputProps' will be ignored: React-only props are not supported by static input components",
-            caught,
-        )
+        for prop_name in ("renderInput", "inputProps"):
+            self.assertIn(
+                f"Prop '{prop_name}' will be ignored: React-only props are not supported by static input "
+                'components; use {% component "@alliancesoftware/ui" "TextInput" %} instead',
+                caught,
+            )
         self.assertNotIn("renderInput", output)
         self.assertNotIn("rows", output)
 
@@ -94,14 +92,12 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         output, caught = self.render_with_warnings(
             '{% ui "text_input" label="Email" onClick="alert(1)" on_input="alert(2)" %}'
         )
-        self.assertIn(
-            "Prop 'onClick' will be ignored: event handlers are not supported by static input components",
-            caught,
-        )
-        self.assertIn(
-            "Prop 'onInput' will be ignored: event handlers are not supported by static input components",
-            caught,
-        )
+        for prop_name in ("onClick", "onInput"):
+            self.assertIn(
+                f"Prop '{prop_name}' will be ignored: event handlers are not supported by static input "
+                'components; use {% component "@alliancesoftware/ui" "TextInput" %} instead',
+                caught,
+            )
         self.assertNotIn("onclick", output.lower())
         self.assertNotIn("oninput", output.lower())
         self.assertNotIn("alert", output)

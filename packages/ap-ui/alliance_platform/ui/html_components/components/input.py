@@ -543,6 +543,7 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
 
 class UITextInputRenderer(UITextInputBaseRenderer):
     name = "text_input"
+    react_tag = 'component "@alliancesoftware/ui" "TextInput"'
     handled_props = UITextInputBaseRenderer.handled_props | {"type"}
     control_pass_through_props = _SHARED_CONTROL_PASS_THROUGH_PROPS | {"pattern", "size", "list"}
 
@@ -567,6 +568,7 @@ class UITextInputRenderer(UITextInputBaseRenderer):
 
 class UITextAreaRenderer(UITextInputBaseRenderer):
     name = "text_area"
+    react_tag = 'component "@alliancesoftware/ui" "TextArea"'
     control_tag = "textarea"
     handled_props = UITextInputBaseRenderer.handled_props | {"height", "type", "rows", "cols"}
     control_pass_through_props = _SHARED_CONTROL_PASS_THROUGH_PROPS | {"wrap"}
@@ -620,6 +622,7 @@ class UITextAreaRenderer(UITextInputBaseRenderer):
 
 class UINumberInputRenderer(UITextInputBaseRenderer):
     name = "number_input"
+    react_tag = 'component "@alliancesoftware/ui" "NumberInput"'
     handled_props = UITextInputBaseRenderer.handled_props | {
         "type",
         "minValue",

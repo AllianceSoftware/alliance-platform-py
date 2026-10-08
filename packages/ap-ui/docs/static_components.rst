@@ -296,8 +296,8 @@ off to log contract reports in development too:
 
 The exception's message is the report text followed by the component and template when they are
 known, for example ``Prop 'onPress' will be ignored: event handlers are not supported by static
-button components (component 'button' in /app/templates/nav.html)``. Its ``component`` and
-``origin`` attributes hold the component name and the template ``Origin``.
+button components; use {% Button %} instead (component 'button' in /app/templates/nav.html)``. Its
+``component`` and ``origin`` attributes hold the component name and the template ``Origin``.
 
 Reporting from a renderer
 ~~~~~~~~~~~~~~~~~~~~~~~~~

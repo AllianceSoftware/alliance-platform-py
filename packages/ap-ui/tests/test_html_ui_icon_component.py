@@ -97,7 +97,10 @@ class UIIconComponentTestCase(HtmlUIParityTestCase):
 
         self.assertEqual(
             caught,
-            ["Prop 'onClick' will be ignored: event handlers are not supported by static icon components"],
+            [
+                "Prop 'onClick' will be ignored: event handlers are not supported by static icon components; "
+                "use {% Icon %} instead"
+            ],
         )
         self.assertNotIn("alert", output)
 

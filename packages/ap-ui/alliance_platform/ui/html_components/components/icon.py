@@ -19,6 +19,7 @@ from ..static_icon import render_static_icon
 
 class UIIconRenderer(BaseHtmlUIComponentRenderer):
     name = "icon"
+    react_tag = "Icon"
     slot_name = "icon"
     has_children = False
     supported_props = frozenset({"name", "size", "variant", "color", "slot", "className"})

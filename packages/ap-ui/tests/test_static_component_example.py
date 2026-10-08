@@ -91,6 +91,16 @@ class StatComponentTestCase(StaticComponentTestCase):
             ["'stat_value' was rendered outside of a 'stat' component; rendering nothing"],
         )
 
+    def test_refused_props_name_no_react_tag(self):
+        # The stat has no React equivalent, so it sets no react_tag
+        with self.assertLogs("alliance_platform.ui", level="WARNING") as logs:
+            self.render('{% ui "stat" label="Open jobs" on_click="go()" %}{% endui %}')
+
+        self.assertEqual(
+            [record.getMessage() for record in logs.records],
+            ["Prop 'onClick' will be ignored: event handlers are not supported by static stat components"],
+        )
+
     def test_stylesheet_is_a_bundled_resource(self):
         with self.static_render_context(STYLE_MAPPINGS, bundler=test_development_bundler) as asset_context:
             self.render_ui_template('{% ui "stat" label="Open jobs" %}{% endui %}')

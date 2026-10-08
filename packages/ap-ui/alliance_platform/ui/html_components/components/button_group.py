@@ -26,6 +26,7 @@ _BUTTON_GROUP_FORWARDED_PROPS = frozenset(
 
 class UIButtonGroupRenderer(BaseHtmlUIComponentRenderer):
     name = "button_group"
+    react_tag = "ButtonGroup"
     slot_name = "buttonGroup"
     supported_props = frozenset(
         {

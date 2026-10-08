@@ -664,9 +664,9 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
             caught,
             [
                 "Prop 'onAction' will be ignored: client-side action callbacks are not supported "
-                "by static menubar components",
+                "by static menubar components; use {% Menubar %} instead",
                 "Prop 'onClick' will be ignored: event handlers are not supported by static "
-                "menubar components",
+                "menubar components; use {% Menubar.Item %} instead",
             ],
         )
 
@@ -682,9 +682,9 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
             caught,
             [
                 "Prop 'selectionMode' will be ignored: selection is not supported by static "
-                "menubar components yet",
+                "menubar components; use {% Menubar %} instead",
                 "Prop 'items' will be ignored: collection render props are not supported by "
-                "static menubar components",
+                "static menubar components; use {% Menubar %} instead",
             ],
         )
 

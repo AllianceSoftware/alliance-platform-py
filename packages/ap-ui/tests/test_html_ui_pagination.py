@@ -272,11 +272,13 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
         self.assertIn("<nav", output)
         self.assert_warning_contains(
             caught,
-            "Prop 'isPageSizeSelectable' will be ignored: page-size selection requires",
+            "Prop 'isPageSizeSelectable' will be ignored: page-size selection requires an interactive "
+            "form or JavaScript and is not supported by static pagination; use {% Pagination %} instead",
         )
         self.assert_warning_contains(
             caught,
-            "Prop 'onPageChange' will be ignored: callback pagination is not supported",
+            "Prop 'onPageChange' will be ignored: callback pagination is not supported; static "
+            "pagination uses ordinary links; use {% Pagination %} instead",
         )
         self.assert_warning_contains(
             caught,
