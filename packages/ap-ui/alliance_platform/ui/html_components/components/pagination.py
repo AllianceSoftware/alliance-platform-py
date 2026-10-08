@@ -75,6 +75,7 @@ class PaginationItem:
 class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
     name = "pagination"
     slot_name = "pagination"
+    has_children = False
     supported_props = frozenset(
         {
             "total",
@@ -132,10 +133,6 @@ class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
         ]
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
-        if children_html.strip():
-            self.report(
-                "'pagination' does not support children; the content will be ignored", kind="contract"
-            )
         if "total" not in props:
             self.report("'pagination' requires a 'total' prop and will not render", kind="contract")
             return ""

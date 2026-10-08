@@ -20,6 +20,7 @@ from ..static_icon import render_static_icon
 class UIIconRenderer(BaseHtmlUIComponentRenderer):
     name = "icon"
     slot_name = "icon"
+    has_children = False
     supported_props = frozenset({"name", "size", "variant", "color", "slot", "className"})
     forwarded_props = frozenset({"id", "title", "style"})
     allow_data_props = True
@@ -44,9 +45,6 @@ class UIIconRenderer(BaseHtmlUIComponentRenderer):
         ]
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
-        if children_html.strip():
-            self.report("'icon' does not support children; the content will be ignored", kind="contract")
-
         props = dict(props)
         name = props.pop("name", None)
         if not isinstance(name, str):

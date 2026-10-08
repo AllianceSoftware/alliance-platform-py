@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from alliance_platform.frontend.bundler.context import BundlerAssetContext
+from alliance_platform.ui.html_components import built_in_registry
 from alliance_platform.ui.html_components.diagnostics import StaticComponentContractError
 from django.template import Template
 from django.template import TemplateSyntaxError
@@ -11,6 +12,15 @@ from tests.parity.base import test_development_bundler
 from tests.test_utils import override_ap_frontend_settings
 from tests.test_utils import override_ap_ui_settings
 from tests.test_utils.bundler import bypass_frontend_resource_registry
+
+#: One tag for each built-in leaf component: none of them takes children or an end tag
+LEAF_TAGS = {
+    "icon": '{% ui "icon" name="CheckOutlined" %}',
+    "pagination": '{% ui "pagination" total=30 %}',
+    "text_input": '{% ui "text_input" label="Email" %}',
+    "number_input": '{% ui "number_input" label="Quantity" %}',
+    "text_area": '{% ui "text_area" label="Notes" %}',
+}
 
 
 class UIDispatcherTemplateTagTestCase(HtmlUIParityTestCase):
@@ -124,3 +134,57 @@ class UIDispatcherTemplateTagTestCase(HtmlUIParityTestCase):
         self.assertIn(
             'class="focusRing_base Button_baseButton Button_sizes_md alias-class named-class"', output
         )
+
+    def test_built_in_leaf_components(self):
+        renderers = {name: built_in_registry.get(name) for name in built_in_registry.list_names()}
+        leaves = {
+            name for name, renderer_cls in renderers.items() if renderer_cls and not renderer_cls.has_children
+        }
+        self.assertEqual(leaves, set(LEAF_TAGS))
+
+    def test_leaf_components_take_no_end_tag(self):
+        for component, tag in LEAF_TAGS.items():
+            with self.subTest(component=component):
+                with self.setup_render_context():
+                    output = self.render_ui_template(f"{tag}<p>after</p>")
+
+                self.assertTrue(output.endswith("<p>after</p>"))
+                self.assertNotEqual(output, "<p>after</p>")
+
+    def test_end_tag_after_a_top_level_leaf_is_a_syntax_error(self):
+        for component, tag in LEAF_TAGS.items():
+            with self.subTest(component=component):
+                with self.setup_render_context():
+                    with self.assertRaisesMessage(
+                        TemplateSyntaxError, "Invalid block tag on line 1: 'endui'"
+                    ):
+                        self.render_ui_template(f"{tag}{{% endui %}}")
+
+    def test_end_tag_after_a_nested_leaf_closes_the_enclosing_component(self):
+        with self.setup_render_context():
+            output = self.render_ui_template(
+                '{% ui "button" %}{% ui "icon" name="CheckOutlined" %}{% endui %}Approve'
+            )
+
+        self.assertTrue(output.endswith("</button>Approve"))
+
+    def test_dynamic_selector_over_leaf_components_takes_no_end_tag(self):
+        with self.setup_render_context():
+            output = self.render_ui_template(
+                '{% ui component allowed_components="text_input,text_area" label="Notes" %}<p>after</p>',
+                {"component": "text_area"},
+            )
+
+        self.assertIn("<textarea", output)
+        self.assertTrue(output.endswith("<p>after</p>"))
+
+    def test_dynamic_selector_cannot_mix_leaf_components_and_components_with_children(self):
+        with self.assertRaisesMessage(
+            TemplateSyntaxError,
+            "'ui' allowed_components cannot mix components that take children (button, button_group) "
+            "with leaf components that take no end tag (icon, text_input)",
+        ):
+            Template(
+                "{% load alliance_platform.ui %}"
+                '{% ui component allowed_components="button,icon,button_group,text_input" %}X{% endui %}'
+            )

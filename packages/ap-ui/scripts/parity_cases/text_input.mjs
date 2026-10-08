@@ -37,7 +37,7 @@ export function normalize(root, testCase, helpers) {
 export const cases = [
   {
     name: "default",
-    template: '{% ui "text_input" label="Email" %}{% endui %}',
+    template: '{% ui "text_input" label="Email" %}',
     buildElement({ React, components }) {
       const { TextInput } = components;
       return React.createElement(TextInput, { label: "Email" });
@@ -47,7 +47,7 @@ export const cases = [
   {
     name: "name_type_placeholder_default_value",
     template:
-      '{% ui "text_input" label="Email" name="email" type="email" placeholder="name@example.com" defaultValue="jane@example.com" %}{% endui %}',
+      '{% ui "text_input" label="Email" name="email" type="email" placeholder="name@example.com" defaultValue="jane@example.com" %}',
     buildElement({ React, components }) {
       const { TextInput } = components;
       return React.createElement(TextInput, {
@@ -63,7 +63,7 @@ export const cases = [
   {
     name: "description",
     template:
-      '{% ui "text_input" label="Name" description="Shown on your profile" %}{% endui %}',
+      '{% ui "text_input" label="Name" description="Shown on your profile" %}',
     buildElement({ React, components }) {
       const { TextInput } = components;
       return React.createElement(TextInput, {
@@ -76,7 +76,7 @@ export const cases = [
   {
     name: "invalid_with_error_message",
     template:
-      '{% ui "text_input" label="Email" validationState="invalid" errorMessage="Enter a valid email" %}{% endui %}',
+      '{% ui "text_input" label="Email" validationState="invalid" errorMessage="Enter a valid email" %}',
     buildElement({ React, components }) {
       const { TextInput } = components;
       return React.createElement(TextInput, {
@@ -90,7 +90,7 @@ export const cases = [
   {
     name: "invalid_error_replaces_description",
     template:
-      '{% ui "text_input" label="Email" validationState="invalid" errorMessage="Enter a valid email" description="Your work email" %}{% endui %}',
+      '{% ui "text_input" label="Email" validationState="invalid" errorMessage="Enter a valid email" description="Your work email" %}',
     buildElement({ React, components }) {
       const { TextInput } = components;
       return React.createElement(TextInput, {
@@ -104,8 +104,7 @@ export const cases = [
   },
   {
     name: "valid",
-    template:
-      '{% ui "text_input" label="Email" validationState="valid" %}{% endui %}',
+    template: '{% ui "text_input" label="Email" validationState="valid" %}',
     buildElement({ React, components }) {
       const { TextInput } = components;
       return React.createElement(TextInput, {
@@ -117,7 +116,7 @@ export const cases = [
   },
   {
     name: "disabled",
-    template: '{% ui "text_input" label="Email" isDisabled=True %}{% endui %}',
+    template: '{% ui "text_input" label="Email" isDisabled=True %}',
     buildElement({ React, components }) {
       const { TextInput } = components;
       return React.createElement(TextInput, {
@@ -130,7 +129,7 @@ export const cases = [
   {
     name: "readonly",
     template:
-      '{% ui "text_input" label="Code" value="ABC123" isReadOnly=True %}{% endui %}',
+      '{% ui "text_input" label="Code" value="ABC123" isReadOnly=True %}',
     buildElement({ React, components }) {
       const { TextInput } = components;
       return React.createElement(TextInput, {
@@ -143,7 +142,7 @@ export const cases = [
   },
   {
     name: "required",
-    template: '{% ui "text_input" label="Email" isRequired=True %}{% endui %}',
+    template: '{% ui "text_input" label="Email" isRequired=True %}',
     buildElement({ React, components }) {
       const { TextInput } = components;
       return React.createElement(TextInput, {
@@ -156,7 +155,7 @@ export const cases = [
   {
     name: "label_position_side_align_end",
     template:
-      '{% ui "text_input" label="Email" labelPosition="side" labelAlign="end" %}{% endui %}',
+      '{% ui "text_input" label="Email" labelPosition="side" labelAlign="end" %}',
     buildElement({ React, components }) {
       const { TextInput } = components;
       return React.createElement(TextInput, {
@@ -169,7 +168,7 @@ export const cases = [
   },
   {
     name: "input_size_md",
-    template: '{% ui "text_input" label="Email" inputSize="md" %}{% endui %}',
+    template: '{% ui "text_input" label="Email" inputSize="md" %}',
     buildElement({ React, components }) {
       const { TextInput } = components;
       return React.createElement(TextInput, {
@@ -182,7 +181,7 @@ export const cases = [
   {
     name: "addon_before_and_after",
     template:
-      '{% ui "text_input" label="Website" addonBefore="https://" addonAfter=".com" %}{% endui %}',
+      '{% ui "text_input" label="Website" addonBefore="https://" addonAfter=".com" %}',
     buildElement({ React, components }) {
       const { TextInput } = components;
       return React.createElement(TextInput, {
@@ -196,7 +195,7 @@ export const cases = [
   {
     name: "custom_class_names",
     template:
-      '{% ui "text_input" label="Email" className="custom-root" inputClassName="custom-input" %}{% endui %}',
+      '{% ui "text_input" label="Email" className="custom-root" inputClassName="custom-input" %}',
     buildElement({ React, components }) {
       const { TextInput } = components;
       return React.createElement(TextInput, {
@@ -210,7 +209,7 @@ export const cases = [
   {
     name: "caller_id_and_aria_describedby",
     template:
-      '{% ui "text_input" label="Email" id="my-id" aria_describedby="external-desc" description="Some description" %}{% endui %}',
+      '{% ui "text_input" label="Email" id="my-id" aria_describedby="external-desc" description="Some description" %}',
     buildElement({ React, components }) {
       const { TextInput } = components;
       return React.createElement(TextInput, {

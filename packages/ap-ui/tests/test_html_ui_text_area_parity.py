@@ -15,7 +15,7 @@ class UITextAreaParityTestCase(HtmlUIParityTestCase):
 
     def test_resources_are_registered(self):
         with self.setup_render_context() as asset_context:
-            self.render_ui_template('{% ui "text_area" label="Notes" %}{% endui %}')
+            self.render_ui_template('{% ui "text_area" label="Notes" %}')
             resource_paths = [str(resource.path) for resource in asset_context.get_resources_for_bundling()]
 
         for expected_suffix in [
@@ -29,7 +29,7 @@ class UITextAreaParityTestCase(HtmlUIParityTestCase):
 
     def test_default_height_is_marked_for_auto_grow_attachment(self):
         with self.setup_render_context():
-            output = self.render_ui_template('{% ui "text_area" label="Notes" rows=10 cols=40 %}{% endui %}')
+            output = self.render_ui_template('{% ui "text_area" label="Notes" rows=10 cols=40 %}')
 
         self.assertIn('data-apui-attach="text-area"', output)
         self.assertNotIn('rows="10"', output)
@@ -37,9 +37,7 @@ class UITextAreaParityTestCase(HtmlUIParityTestCase):
 
     def test_explicit_height_is_fixed_and_not_marked_for_attachment(self):
         with self.setup_render_context():
-            output = self.render_ui_template(
-                '{% ui "text_area" label="Notes" height=120 rows=10 cols=40 %}{% endui %}'
-            )
+            output = self.render_ui_template('{% ui "text_area" label="Notes" height=120 rows=10 cols=40 %}')
 
         self.assertIn('style="height: 120px"', output)
         self.assertNotIn("data-apui-attach", output)
@@ -48,7 +46,7 @@ class UITextAreaParityTestCase(HtmlUIParityTestCase):
 
     def test_auto_grow_runtime_is_embedded_from_collected_assets(self):
         with self.setup_render_context():
-            output = self.render_ui_document('{% ui "text_area" label="Notes" %}{% endui %}')
+            output = self.render_ui_document('{% ui "text_area" label="Notes" %}')
 
         self.assertIn("TextArea.auto.ts", output)
         self.assertIn("<script src=", output)

@@ -52,7 +52,7 @@ class UINumberInputParityTestCase(HtmlUIParityTestCase):
 
     def test_resources_are_registered(self):
         with self.setup_render_context() as asset_context:
-            self.render_ui_template('{% ui "number_input" label="Quantity" %}{% endui %}')
+            self.render_ui_template('{% ui "number_input" label="Quantity" %}')
             resource_paths = [str(resource.path) for resource in asset_context.get_resources_for_bundling()]
 
         for expected_suffix in [
@@ -78,7 +78,7 @@ class UINumberInputParityTestCase(HtmlUIParityTestCase):
     def render_number_input_value(self, value: Any) -> str:
         with self.setup_render_context():
             return self.render_ui_template(
-                '{% ui "number_input" label="Quantity" name="quantity" default_value=value %}{% endui %}',
+                '{% ui "number_input" label="Quantity" name="quantity" default_value=value %}',
                 {"value": value},
             )
 

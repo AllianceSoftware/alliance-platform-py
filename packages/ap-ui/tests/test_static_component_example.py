@@ -31,7 +31,7 @@ class StatComponentTestCase(StaticComponentTestCase):
     def test_renders_label_icon_and_value(self):
         output = self.render(
             '{% ui "stat" label="Open jobs" size="lg" %}'
-            '{% ui "icon" name="CheckCircleOutlined" %}{% endui %}'
+            '{% ui "icon" name="CheckCircleOutlined" %}'
             '{% ui "stat_value" %}42{% endui %}'
             "{% endui %}"
         )
@@ -47,7 +47,7 @@ class StatComponentTestCase(StaticComponentTestCase):
     def test_icon_size_prop_overrides_the_slot_default(self):
         output = self.render(
             '{% ui "stat" label="Open jobs" %}'
-            '{% ui "icon" name="CheckCircleOutlined" size="md" %}{% endui %}'
+            '{% ui "icon" name="CheckCircleOutlined" size="md" %}'
             '{% ui "stat_value" %}42{% endui %}'
             "{% endui %}"
         )

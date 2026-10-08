@@ -51,7 +51,7 @@ class UIButtonParityTestCase(HtmlUIParityTestCase):
         with self.setup_render_context():
             output = self.render_ui_template(
                 '{% ui "button" is_icon_only=False aria_label="Approve" %}'
-                '{% ui "icon" name="CheckOutlined" %}{% endui %}'
+                '{% ui "icon" name="CheckOutlined" %}'
                 "{% endui %}"
             )
 
@@ -60,9 +60,7 @@ class UIButtonParityTestCase(HtmlUIParityTestCase):
     def test_single_rendered_icon_is_detected_as_icon_only(self):
         with self.setup_render_context():
             output = self.render_ui_template(
-                '{% ui "button" aria_label="Approve" %}'
-                '{% ui "icon" name="CheckOutlined" %}{% endui %}'
-                "{% endui %}"
+                '{% ui "button" aria_label="Approve" %}{% ui "icon" name="CheckOutlined" %}{% endui %}'
             )
 
         self.assertIn('data-icon-only="true"', output)
@@ -70,10 +68,7 @@ class UIButtonParityTestCase(HtmlUIParityTestCase):
     def test_icon_followed_by_wrapped_text_is_not_detected_as_icon_only(self):
         with self.setup_render_context():
             output = self.render_ui_template(
-                '{% ui "button" %}'
-                '{% ui "icon" name="CheckOutlined" %}{% endui %}'
-                "<span>Approve</span>"
-                "{% endui %}"
+                '{% ui "button" %}{% ui "icon" name="CheckOutlined" %}<span>Approve</span>{% endui %}'
             )
 
         self.assertNotIn("data-icon-only", output)
@@ -81,7 +76,7 @@ class UIButtonParityTestCase(HtmlUIParityTestCase):
     def test_icon_followed_by_plain_text_wraps_the_label(self):
         with self.setup_render_context():
             output = self.render_ui_template(
-                '{% ui "button" %}{% ui "icon" name="CheckOutlined" %}{% endui %}Approve{% endui %}'
+                '{% ui "button" %}{% ui "icon" name="CheckOutlined" %}Approve{% endui %}'
             )
 
         self.assertIn("</span><span>Approve</span></button>", output)
@@ -92,7 +87,7 @@ class UIButtonParityTestCase(HtmlUIParityTestCase):
             output = self.render_ui_template(
                 '{% ui "button" %}'
                 '<span class="wrapper">'
-                '{% ui "icon" name="CheckOutlined" %}{% endui %}'
+                '{% ui "icon" name="CheckOutlined" %}'
                 "</span>"
                 "{% endui %}"
             )
@@ -103,7 +98,7 @@ class UIButtonParityTestCase(HtmlUIParityTestCase):
         with self.setup_render_context():
             output = self.render_ui_template(
                 '{% ui "button" %}'
-                '{% ui "icon" name="CheckOutlined" as saved_icon %}{% endui %}'
+                '{% ui "icon" name="CheckOutlined" as saved_icon %}'
                 "{{ saved_icon }}"
                 "{% endui %}"
             )
@@ -124,7 +119,7 @@ class UIButtonParityTestCase(HtmlUIParityTestCase):
                 with self.setup_render_context():
                     output = self.render_ui_template(
                         f'{{% ui "button" size="{button_size}" aria_label="Approve" %}}'
-                        '{% ui "icon" name="CheckOutlined" %}{% endui %}'
+                        '{% ui "icon" name="CheckOutlined" %}'
                         "{% endui %}"
                     )
 
@@ -135,7 +130,7 @@ class UIButtonParityTestCase(HtmlUIParityTestCase):
         with self.setup_render_context():
             output = self.render_ui_template(
                 '{% ui "button" size="sm" aria_label="Approve" %}'
-                '{% ui "icon" name="CheckOutlined" size="sm" %}{% endui %}'
+                '{% ui "icon" name="CheckOutlined" size="sm" %}'
                 "{% endui %}"
             )
 

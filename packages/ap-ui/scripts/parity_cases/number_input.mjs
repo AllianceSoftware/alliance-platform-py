@@ -43,7 +43,7 @@ export function normalize(root, testCase, helpers) {
 export const cases = [
   {
     name: "default",
-    template: '{% ui "number_input" label="Quantity" %}{% endui %}',
+    template: '{% ui "number_input" label="Quantity" %}',
     buildElement({ React, components }) {
       const { NumberInput } = components;
       return React.createElement(NumberInput, { label: "Quantity" });
@@ -53,7 +53,7 @@ export const cases = [
   {
     name: "name_and_default_value",
     template:
-      '{% ui "number_input" label="Quantity" name="qty" defaultValue=5 %}{% endui %}',
+      '{% ui "number_input" label="Quantity" name="qty" defaultValue=5 %}',
     buildElement({ React, components }) {
       const { NumberInput } = components;
       return React.createElement(NumberInput, {
@@ -70,7 +70,7 @@ export const cases = [
     // case documents that they are accepted without changing the rendered HTML.
     name: "min_max_step",
     template:
-      '{% ui "number_input" label="Quantity" minValue=1 maxValue=20 step=1 %}{% endui %}',
+      '{% ui "number_input" label="Quantity" minValue=1 maxValue=20 step=1 %}',
     buildElement({ React, components }) {
       const { NumberInput } = components;
       return React.createElement(NumberInput, {
@@ -85,7 +85,7 @@ export const cases = [
   {
     name: "hide_step_buttons",
     template:
-      '{% ui "number_input" label="Price" defaultValue=12.5 hideStepButtons=True %}{% endui %}',
+      '{% ui "number_input" label="Price" defaultValue=12.5 hideStepButtons=True %}',
     buildElement({ React, components }) {
       const { NumberInput } = components;
       return React.createElement(NumberInput, {
@@ -99,7 +99,7 @@ export const cases = [
   {
     name: "invalid_with_error_message",
     template:
-      '{% ui "number_input" label="Age" name="age" isInvalid=True errorMessage="Age is required" %}{% endui %}',
+      '{% ui "number_input" label="Age" name="age" isInvalid=True errorMessage="Age is required" %}',
     buildElement({ React, components }) {
       const { NumberInput } = components;
       return React.createElement(NumberInput, {
@@ -113,8 +113,7 @@ export const cases = [
   },
   {
     name: "disabled",
-    template:
-      '{% ui "number_input" label="Quantity" isDisabled=True %}{% endui %}',
+    template: '{% ui "number_input" label="Quantity" isDisabled=True %}',
     buildElement({ React, components }) {
       const { NumberInput } = components;
       return React.createElement(NumberInput, {
@@ -127,7 +126,7 @@ export const cases = [
   {
     name: "addon_after_with_step_buttons",
     template:
-      '{% ui "number_input" label="Price" addonAfter="AUD" defaultValue=12.5 %}{% endui %}',
+      '{% ui "number_input" label="Price" addonAfter="AUD" defaultValue=12.5 %}',
     buildElement({ React, components }) {
       const { NumberInput } = components;
       return React.createElement(NumberInput, {
@@ -141,7 +140,7 @@ export const cases = [
   {
     name: "custom_class_names",
     template:
-      '{% ui "number_input" label="Quantity" className="custom-root" inputClassName="custom-input" %}{% endui %}',
+      '{% ui "number_input" label="Quantity" className="custom-root" inputClassName="custom-input" %}',
     buildElement({ React, components }) {
       const { NumberInput } = components;
       return React.createElement(NumberInput, {

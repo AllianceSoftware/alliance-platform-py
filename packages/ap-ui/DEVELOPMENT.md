@@ -85,7 +85,7 @@ template, e.g. Django form widget templates:
 ```django
 {% load alliance_platform.ui %}
 
-{% ui "text_input" props=widget.attrs|merge_props:extra_widget_props type=widget.type name=widget.name defaultValue=widget.value %}{% endui %}
+{% ui "text_input" props=widget.attrs|merge_props:extra_widget_props type=widget.type name=widget.name defaultValue=widget.value %}
 ```
 
 Bulk prop keys are adapted to the component prop contract automatically: HTML attribute names are

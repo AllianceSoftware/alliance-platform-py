@@ -67,42 +67,42 @@ export const cases = [
   paginationCase({
     name: "middle_page_default_counts",
     template:
-      '{% ui "pagination" page=10 total=200 page_size=10 aria_label="Pagination" %}{% endui %}',
+      '{% ui "pagination" page=10 total=200 page_size=10 aria_label="Pagination" %}',
     props: { page: 10, total: 200, pageSize: 10 },
     currentUrl: "/users/?ordering=name&page=10",
   }),
   paginationCase({
     name: "first_page",
     template:
-      '{% ui "pagination" page=1 total=200 page_size=10 aria_label="Pagination" %}{% endui %}',
+      '{% ui "pagination" page=1 total=200 page_size=10 aria_label="Pagination" %}',
     props: { page: 1, total: 200, pageSize: 10 },
     currentUrl: "/users/",
   }),
   paginationCase({
     name: "last_page",
     template:
-      '{% ui "pagination" page=20 total=200 page_size=10 aria_label="Pagination" %}{% endui %}',
+      '{% ui "pagination" page=20 total=200 page_size=10 aria_label="Pagination" %}',
     props: { page: 20, total: 200, pageSize: 10 },
     currentUrl: "/users/?page=20",
   }),
   paginationCase({
     name: "compact_variant",
     template:
-      '{% ui "pagination" page=2 total=50 page_size=10 variant="compact" aria_label="Pagination" %}{% endui %}',
+      '{% ui "pagination" page=2 total=50 page_size=10 variant="compact" aria_label="Pagination" %}',
     props: { page: 2, total: 50, pageSize: 10, variant: "compact" },
     currentUrl: "/users/?page=2",
   }),
   paginationCase({
     name: "size_md",
     template:
-      '{% ui "pagination" page=2 total=50 page_size=10 size="md" aria_label="Pagination" %}{% endui %}',
+      '{% ui "pagination" page=2 total=50 page_size=10 size="md" aria_label="Pagination" %}',
     props: { page: 2, total: 50, pageSize: 10, size: "md" },
     currentUrl: "/users/?page=2",
   }),
   paginationCase({
     name: "disabled",
     template:
-      '{% ui "pagination" page=2 total=50 page_size=10 is_disabled=True aria_label="Pagination" %}{% endui %}',
+      '{% ui "pagination" page=2 total=50 page_size=10 is_disabled=True aria_label="Pagination" %}',
     props: { page: 2, total: 50, pageSize: 10, isDisabled: true },
     currentUrl: "/users/?page=2",
   }),

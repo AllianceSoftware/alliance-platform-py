@@ -34,7 +34,7 @@ function iconCase({
 }) {
   return {
     name,
-    template: `{% ui "icon" name="${icon}"${templateProps} %}{% endui %}`,
+    template: `{% ui "icon" name="${icon}"${templateProps} %}`,
     buildElement({ React, components }) {
       return React.createElement(components[icon], props);
     },

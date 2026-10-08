@@ -25,7 +25,7 @@ class UIIconComponentTestCase(HtmlUIParityTestCase):
         return output, diagnostics, asset_context
 
     def test_renders_default_outlined_icon(self):
-        output, caught, _ = self.render_with_warnings('{% ui "icon" name="Pencil01Outlined" %}{% endui %}')
+        output, caught, _ = self.render_with_warnings('{% ui "icon" name="Pencil01Outlined" %}')
 
         self.assertEqual(caught, [])
         self.assertIn('<span role="img" aria-hidden="true" data-apui-slot="icon"', output)
@@ -36,7 +36,7 @@ class UIIconComponentTestCase(HtmlUIParityTestCase):
 
     def test_collected_assets_document_emits_only_one_inline_icon(self):
         with self.setup_render_context():
-            output = self.render_ui_document('{% ui "icon" name="Pencil01Outlined" size="sm" %}{% endui %}')
+            output = self.render_ui_document('{% ui "icon" name="Pencil01Outlined" size="sm" %}')
 
         self.assertEqual(output.count("<svg"), 1)
         self.assertNotIn("<img", output)
@@ -46,9 +46,9 @@ class UIIconComponentTestCase(HtmlUIParityTestCase):
     def test_collected_assets_document_does_not_embed_distinct_icon_images(self):
         with self.setup_render_context():
             output = self.render_ui_document(
-                '{% ui "icon" name="Pencil01Outlined" %}{% endui %}'
-                '{% ui "icon" name="CheckCircleSolid" %}{% endui %}'
-                '{% ui "icon" name="AlertCircleDuoTone" %}{% endui %}'
+                '{% ui "icon" name="Pencil01Outlined" %}'
+                '{% ui "icon" name="CheckCircleSolid" %}'
+                '{% ui "icon" name="AlertCircleDuoTone" %}'
             )
 
         self.assertEqual(output.count("<svg"), 3)
@@ -56,16 +56,16 @@ class UIIconComponentTestCase(HtmlUIParityTestCase):
 
     def test_collected_assets_document_does_not_embed_repeated_icon_images(self):
         with self.setup_render_context():
-            output = self.render_ui_document('{% ui "icon" name="Pencil01Outlined" %}{% endui %}' * 3)
+            output = self.render_ui_document('{% ui "icon" name="Pencil01Outlined" %}' * 3)
 
         self.assertEqual(output.count("<svg"), 3)
         self.assertNotIn("<img", output)
 
     def test_renders_solid_duotone_and_duocolor_icons(self):
         output, caught, _ = self.render_with_warnings(
-            '{% ui "icon" name="CheckCircleSolid" %}{% endui %}'
-            '{% ui "icon" name="AlertCircleDuoTone" %}{% endui %}'
-            '{% ui "icon" name="Pencil01DuoColor" %}{% endui %}'
+            '{% ui "icon" name="CheckCircleSolid" %}'
+            '{% ui "icon" name="AlertCircleDuoTone" %}'
+            '{% ui "icon" name="Pencil01DuoColor" %}'
         )
 
         self.assertEqual(caught, [])
@@ -76,7 +76,7 @@ class UIIconComponentTestCase(HtmlUIParityTestCase):
     def test_applies_wrapper_props_and_accessible_label(self):
         output, caught, _ = self.render_with_warnings(
             '{% ui "icon" name="Pencil01Outlined" size="sm" variant="circle" color="destructive" '
-            'class="extra" id="edit-icon" title="Edit" data_testid="edit" aria_label="Edit" %}{% endui %}'
+            'class="extra" id="edit-icon" title="Edit" data_testid="edit" aria_label="Edit" %}'
         )
 
         self.assertEqual(caught, [])
@@ -90,36 +90,26 @@ class UIIconComponentTestCase(HtmlUIParityTestCase):
         self.assertIn('aria-label="Edit"', output)
         self.assertNotIn('aria-hidden="true"', output)
 
-    def test_warns_and_drops_event_handlers_and_children(self):
+    def test_warns_and_drops_event_handlers(self):
         output, caught, _ = self.render_with_warnings(
-            '{% ui "icon" name="Pencil01Outlined" onClick="alert(1)" %}ignored{% endui %}'
+            '{% ui "icon" name="Pencil01Outlined" onClick="alert(1)" %}'
         )
 
-        self.assertIn("'icon' does not support children; the content will be ignored", caught)
-        self.assertIn(
-            "Prop 'onClick' will be ignored: event handlers are not supported by static icon components",
+        self.assertEqual(
             caught,
+            ["Prop 'onClick' will be ignored: event handlers are not supported by static icon components"],
         )
         self.assertNotIn("alert", output)
-        self.assertNotIn("ignored", output)
 
     def test_dynamic_name_fails_during_resource_resolution(self):
         with self.setup_render_context():
             with self.assertRaisesMessage(TemplateSyntaxError, "static string literal"):
-                self.render_ui_template('{% ui "icon" name=icon_name %}{% endui %}', {"icon_name": "Pencil"})
-
-    def test_lowercase_icon_tag_supports_as_var(self):
-        output, caught, _ = self.render_with_warnings(
-            '{% icon "Pencil01Outlined" as user_icon %}{{ user_icon }}'
-        )
-
-        self.assertEqual(caught, [])
-        self.assertIn('<span role="img" aria-hidden="true" data-apui-slot="icon"', output)
+                self.render_ui_template('{% ui "icon" name=icon_name %}', {"icon_name": "Pencil"})
 
     def test_resource_discovery_includes_css_and_specific_icon(self):
         with self.setup_render_context() as asset_context:
             with self.capture_diagnostics() as diagnostics:
-                self.render_ui_template('{% ui "icon" name="Pencil01Outlined" %}{% endui %}')
+                self.render_ui_template('{% ui "icon" name="Pencil01Outlined" %}')
             resource_paths = [str(resource.path) for resource in asset_context.get_resources_for_bundling()]
 
         self.assertEqual(diagnostics, [])
@@ -141,9 +131,7 @@ class UIIconComponentTestCase(HtmlUIParityTestCase):
             return original_read_text(path, *args, **kwargs)
 
         with mock.patch("pathlib.Path.read_text", autospec=True, side_effect=spy_read_text):
-            output, caught, _ = self.render_with_warnings(
-                '{% ui "icon" name="Pencil01Outlined" %}{% endui %}'
-            )
+            output, caught, _ = self.render_with_warnings('{% ui "icon" name="Pencil01Outlined" %}')
 
         self.assertEqual(caught, [])
         self.assertIn("Pencil01Outlined", str(read_icon_paths[0]))
@@ -182,7 +170,7 @@ class UIIconComponentTestCase(HtmlUIParityTestCase):
             )
 
             with self.setup_render_context(bundler=production_bundler) as asset_context:
-                output = self.render_ui_document('{% ui "icon" name="Pencil01Outlined" %}{% endui %}')
+                output = self.render_ui_document('{% ui "icon" name="Pencil01Outlined" %}')
                 resource_paths = [
                     str(resource.path) for resource in asset_context.get_resources_for_bundling()
                 ]

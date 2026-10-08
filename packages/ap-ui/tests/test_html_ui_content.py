@@ -120,7 +120,7 @@ class StaticInputRichContentTestCase(HtmlUIParityTestCase):
         with self.setup_render_context():
             with self.capture_diagnostics() as diagnostics:
                 output = self.render_ui_template(
-                    '{% ui "text_input" label="Email" description=description %}{% endui %}',
+                    '{% ui "text_input" label="Email" description=description %}',
                     {"description": RenderableContent.from_html("Use <strong>bold</strong> text", origin)},
                 )
         self.assertEqual(diagnostics, [])
@@ -135,7 +135,7 @@ class StaticInputRichContentTestCase(HtmlUIParityTestCase):
         with self.setup_render_context():
             with self.capture_diagnostics() as diagnostics:
                 output = self.render_ui_template(
-                    '{% ui "text_input" label="Email" description=description %}{% endui %}',
+                    '{% ui "text_input" label="Email" description=description %}',
                     {
                         "description": RenderableContent.from_html(
                             '<span onclick="alert(1)">Help</span>', origin

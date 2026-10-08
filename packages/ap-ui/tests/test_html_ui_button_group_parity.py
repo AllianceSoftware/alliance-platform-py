@@ -74,7 +74,7 @@ class UIButtonGroupParityTestCase(HtmlUIParityTestCase):
         output, caught = self.render_with_warnings(
             '{% ui "button_group" size="sm" %}'
             '{% ui "button" aria_label="Approve" %}'
-            '{% ui "icon" name="CheckOutlined" %}{% endui %}'
+            '{% ui "icon" name="CheckOutlined" %}'
             "{% endui %}"
             "{% endui %}"
         )

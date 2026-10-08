@@ -53,7 +53,7 @@ class UIInlineAlertParityTestCase(HtmlUIParityTestCase):
         with self.setup_render_context():
             output = self.render_ui_template(
                 '{% ui "inline_alert" %}'
-                '{% ui "icon" name="AlertCircleOutlined" %}{% endui %}'
+                '{% ui "icon" name="AlertCircleOutlined" %}'
                 '{% ui "content" %}News{% endui %}'
                 "{% endui %}"
             )

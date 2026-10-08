@@ -825,7 +825,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
             partial = Template(
                 "{% load alliance_platform.ui %}"
                 '{% ui "menubar_item" href="/dashboard/" %}'
-                '{% ui "icon" name="Pencil01Outlined" %}{% endui %}'
+                '{% ui "icon" name="Pencil01Outlined" %}'
                 "Dashboard"
                 "{% endui %}"
             )
@@ -843,7 +843,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
             '{% ui "menubar" aria_label="Nav" %}'
             '{% ui "menubar_item" href="/account/" text_value="Account" %}'
             '<span class="account-icon">'
-            '{% ui "icon" name="Pencil01Outlined" %}{% endui %}'
+            '{% ui "icon" name="Pencil01Outlined" %}'
             "</span>Account"
             "{% endui %}"
             "{% endui %}"
@@ -999,7 +999,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         template = (
             '{% ui "menubar" aria_label="Primary navigation" %}'
             '{% ui "menubar_item" href="/settings/" text_value="Settings" %}'
-            '{% ui "icon" name="Pencil01Outlined" %}{% endui %}'
+            '{% ui "icon" name="Pencil01Outlined" %}'
             "Settings"
             "{% endui %}"
             '{% ui "menubar_submenu" key="users" title="Users" %}'
@@ -1031,12 +1031,12 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         template = (
             '{% ui "menubar" aria_label="Nav" layout="vertical" root_item_display="icon-only" %}'
             '{% ui "menubar_item" href="/dashboard/" text_value="Dashboard" %}'
-            '{% ui "icon" name="Pencil01Outlined" %}{% endui %}Dashboard'
+            '{% ui "icon" name="Pencil01Outlined" %}Dashboard'
             "{% endui %}"
             '{% ui "menubar_item" href="/help/" %}Help{% endui %}'
             '{% ui "menubar_submenu" key="admin" title="Administration" icon="Pencil01Outlined" %}'
             '{% ui "menubar_item" href="/users/" text_value="Users" %}'
-            '{% ui "icon" name="Pencil01Outlined" %}{% endui %}Users'
+            '{% ui "icon" name="Pencil01Outlined" %}Users'
             "{% endui %}"
             "{% endui %}"
             "{% endui %}"
@@ -1088,7 +1088,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
             '{% ui "menubar" aria_label="Nav" %}'
             '{% ui "menubar_submenu" key="users" title="Users" %}'
             '{% ui "menubar_item" href="/profile/" text_value="Profile" %}'
-            '{% ui "icon" name="Pencil01Outlined" %}{% endui %}Profile'
+            '{% ui "icon" name="Pencil01Outlined" %}Profile'
             "{% endui %}"
             "{% endui %}"
             "{% endui %}"

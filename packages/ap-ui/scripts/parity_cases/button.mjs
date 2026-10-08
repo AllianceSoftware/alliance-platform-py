@@ -90,7 +90,7 @@ export const cases = [
     preserve_icon_only: true,
     template:
       '{% ui "button" aria_label="Approve" %}' +
-      '{% ui "icon" name="CheckOutlined" %}{% endui %}' +
+      '{% ui "icon" name="CheckOutlined" %}' +
       "{% endui %}",
     buildElement({ React, components }) {
       const { Button, CheckOutlined } = components;
@@ -106,7 +106,7 @@ export const cases = [
     name: "icon_and_text",
     template:
       '{% ui "button" %}' +
-      '{% ui "icon" name="CheckOutlined" %}{% endui %}' +
+      '{% ui "icon" name="CheckOutlined" %}' +
       "Approve" +
       "{% endui %}",
     buildElement({ React, components }) {

@@ -260,7 +260,7 @@ class TemplateDiagnosticsTestCase(HtmlUIParityTestCase):
     def test_data_report_logs_when_strict(self):
         with self.setup_render_context():
             with self.assertLogs(LOGGER, level="WARNING") as logs:
-                output = self.render_ui_template('{% ui "pagination" total=20 page=5 %}{% endui %}')
+                output = self.render_ui_template('{% ui "pagination" total=20 page=5 %}')
 
         self.assertIn('aria-current="page"', output)
         self.assertEqual(
