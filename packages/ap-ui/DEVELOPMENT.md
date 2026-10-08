@@ -461,6 +461,9 @@ modules' `stylesheets`: each value is the mapping the Vite plugin's `extractMapp
 produces, the JSON Django reads at runtime. The sync script points vite-node at
 `scripts/vite.parity.config.mjs`, which loads the ui package's Vite config with vanilla-extract's
 identifiers pinned to `debug`, so classes read `Button_baseButton__1xyn7kcv` whatever the mode.
+That config also aliases `@alliancesoftware/vite-plugin-django` to its `src/` entry: the
+vanilla-extract plugin's source imports it by name and the package's entry points are build
+output, so a plain `yarn install` in the JS checkout is enough and no build step is needed.
 
 `HtmlUIParityTestCase` renders with these mappings; there are no mocks. A stylesheet a renderer
 resolves that the file lacks fails the test with the command to run, and a style missing from a
