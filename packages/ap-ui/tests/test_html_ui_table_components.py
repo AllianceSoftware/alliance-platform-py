@@ -403,7 +403,7 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
             caught,
             [
                 "Prop 'mode' will be ignored: React Aria edit-mode keyboard handling is not used "
-                "by static table components"
+                "by static table components; use {% Table %} instead"
             ],
         )
         self.assertNotIn("data-mode", output)
@@ -424,10 +424,10 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
             "{% endui %}"
         )
         output, caught = self.render_with_warnings(template)
-        for prop_name in ("onClick", "onclick", "onDoubleClick"):
+        for prop_name, react_tag in (("onClick", "Table"), ("onclick", "Row"), ("onDoubleClick", "Cell")):
             self.assertIn(
                 f"Prop '{prop_name}' will be ignored: event handlers are not supported by "
-                "static table components",
+                f"static table components; use {{% {react_tag} %}} instead",
                 caught,
             )
         self.assertNotIn("alert", output)
@@ -442,7 +442,7 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
         output, caught = self.render_with_warnings(template)
         self.assertIn(
             "Prop 'onSortChange' will be ignored: client-side sort callbacks are not supported "
-            "by static table components",
+            "by static table components; use {% Table %} instead",
             caught,
         )
         self.assertNotIn("onsortchange", output.lower())
@@ -456,10 +456,14 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
             "{% endui %}"
         )
         output, caught = self.render_with_warnings(template, {"selected": [1, 2]})
-        for prop_name in ("selectionMode", "selectedKeys", "isSelected"):
+        for prop_name, react_tag in (
+            ("selectionMode", "Table"),
+            ("selectedKeys", "Table"),
+            ("isSelected", "Row"),
+        ):
             self.assertIn(
                 f"Prop '{prop_name}' will be ignored: row selection is not supported by static "
-                "table components yet",
+                f"table components; use {{% {react_tag} %}} instead",
                 caught,
             )
         self.assertNotIn("data-selected", output)
@@ -475,7 +479,7 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
         for prop_name in ("items", "columns"):
             self.assertIn(
                 f"Prop '{prop_name}' will be ignored: collection render props are not supported "
-                "by static table components",
+                "by static table components; use {% Table %} instead",
                 caught,
             )
 

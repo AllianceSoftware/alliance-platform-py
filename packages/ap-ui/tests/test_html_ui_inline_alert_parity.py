@@ -129,8 +129,10 @@ class UIInlineAlertParityTestCase(HtmlUIParityTestCase):
             caught,
             [
                 "Invalid 'intent' prop passed: urgent",
-                "Prop 'isDismissable' will be ignored: dismissible alerts require client-side state and are not supported statically",
-                "Prop 'onDismiss' will be ignored: dismissible alerts require client-side state and are not supported statically",
+                "Prop 'isDismissable' will be ignored: dismissible alerts require client-side state and "
+                "are not supported statically; use {% InlineAlert %} instead",
+                "Prop 'onDismiss' will be ignored: dismissible alerts require client-side state and "
+                "are not supported statically; use {% InlineAlert %} instead",
             ],
         )
         self.assertIn('data-intent="default"', output)

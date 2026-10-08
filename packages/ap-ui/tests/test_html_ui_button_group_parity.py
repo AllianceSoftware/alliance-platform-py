@@ -108,7 +108,8 @@ class UIButtonGroupParityTestCase(HtmlUIParityTestCase):
             caught,
             [
                 "Prop 'unknownProp' is not a supported 'button_group' prop and will be ignored",
-                "Prop 'onClick' will be ignored: event handlers are not supported by static button-group components",
+                "Prop 'onClick' will be ignored: event handlers are not supported by static button-group "
+                "components; use {% ButtonGroup %} instead",
             ],
         )
         self.assertIn('title="Actions"', output)

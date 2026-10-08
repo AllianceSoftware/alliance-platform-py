@@ -8,6 +8,7 @@ from unittest import mock
 from alliance_platform.ui.html_components.components.button import UIButtonRenderer
 from alliance_platform.ui.html_components.registry import built_in_registry
 from alliance_platform.ui.management.commands.ui_migration_check import LEGACY_COMPONENT_MIGRATIONS
+from alliance_platform.ui.management.commands.ui_migration_check import LegacyComponentMigration
 from alliance_platform.ui.templatetags.alliance_platform.ui import register
 from django.core.management import call_command
 from django.core.management.base import CommandError
@@ -49,6 +50,39 @@ class UIMigrationCheckTestCase(SimpleTestCase):
             name for name, migration in LEGACY_COMPONENT_MIGRATIONS.items() if migration.named_tag
         }
         self.assertEqual(mapped_named_tags, registered_components)
+
+    def test_react_tags_match_the_migration_table(self):
+        # Each built-in renderer names its React tag in react_tag; the checker's table maps the same
+        # React components to the same renderers. Tags of components without a named template tag
+        # are written in the generic component form.
+        def react_tag_for(component: str, migration: LegacyComponentMigration) -> str:
+            return component if migration.named_tag else f'component "@alliancesoftware/ui" "{component}"'
+
+        migrations_by_renderer: dict[str, list[str]] = {}
+        for component, migration in LEGACY_COMPONENT_MIGRATIONS.items():
+            if migration.static_renderer is not None:
+                migrations_by_renderer.setdefault(migration.static_renderer, []).append(component)
+
+        for name in built_in_registry.list_names():
+            renderer_cls = built_in_registry.get(name)
+            assert renderer_cls is not None
+            if renderer_cls.react_tag is None:
+                continue
+            with self.subTest(renderer=name):
+                components = migrations_by_renderer.get(name, [])
+                self.assertEqual(len(components), 1, f"{name} needs one LEGACY_COMPONENT_MIGRATIONS entry")
+                component = components[0]
+                self.assertEqual(
+                    renderer_cls.react_tag, react_tag_for(component, LEGACY_COMPONENT_MIGRATIONS[component])
+                )
+
+        for component, migration in LEGACY_COMPONENT_MIGRATIONS.items():
+            if migration.static_renderer is None:
+                continue
+            with self.subTest(component=component):
+                renderer_cls = built_in_registry.get(migration.static_renderer)
+                self.assertIsNotNone(renderer_cls, f"{migration.static_renderer} is not registered")
+                self.assertEqual(renderer_cls.react_tag, react_tag_for(component, migration))
 
     def test_default_discovery_reports_relative_file_and_exact_line_and_skips_build_dirs(self):
         with TemporaryDirectory() as temp_dir:

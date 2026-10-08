@@ -168,7 +168,8 @@ class UIButtonParityTestCase(HtmlUIParityTestCase):
             caught,
             [
                 "Prop 'unknownProp' is not a supported 'button' prop and will be ignored",
-                "Prop 'onClick' will be ignored: event handlers are not supported by static button components",
+                "Prop 'onClick' will be ignored: event handlers are not supported by static button "
+                "components; use {% Button %} instead",
             ],
         )
         self.assertIn('type="submit"', output)

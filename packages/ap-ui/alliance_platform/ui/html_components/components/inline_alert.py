@@ -40,6 +40,7 @@ _ROOT_FORWARDED_PROPS = frozenset({"id", "title", "role", "tabIndex", "dir", "la
 
 class UIInlineAlertRenderer(BaseHtmlUIComponentRenderer):
     name = "inline_alert"
+    react_tag = "InlineAlert"
     supported_props = frozenset(
         {
             "intent",

@@ -65,7 +65,7 @@ _VISUALLY_HIDDEN_STYLE = (
 )
 
 _EVENT_HANDLER_REASON = "event handlers are not supported by static table components"
-_SELECTION_REASON = "row selection is not supported by static table components yet"
+_SELECTION_REASON = "row selection is not supported by static table components"
 _SORT_CALLBACK_REASON = "client-side sort callbacks are not supported by static table components"
 _COLLECTION_REASON = "collection render props are not supported by static table components"
 _NESTED_COLUMNS_REASON = "nested/grouped columns are not supported by static table components"
@@ -195,6 +195,7 @@ class UITableComponentRendererBase(BaseHtmlUIComponentRenderer):
 
 class UITableRenderer(UITableComponentRendererBase):
     name = "table"
+    react_tag = "Table"
     requires_table = False
     supported_props = frozenset(
         {
@@ -338,6 +339,7 @@ class UITableRenderer(UITableComponentRendererBase):
 
 class UITableHeaderRenderer(UITableComponentRendererBase):
     name = "table_header"
+    react_tag = "TableHeader"
     # The React TableHeader accepts no styling props; nested/grouped columns are a non-goal.
     supported_props = frozenset()
     unsupported_prop_reasons = {"columns": _COLLECTION_REASON}
@@ -349,6 +351,7 @@ class UITableHeaderRenderer(UITableComponentRendererBase):
 
 class UITableColumnRenderer(UITableComponentRendererBase):
     name = "table_column"
+    react_tag = "Column"
     supported_props = frozenset(
         {
             "id",
@@ -575,6 +578,7 @@ class UITableColumnRenderer(UITableComponentRendererBase):
 
 class UITableBodyRenderer(UITableComponentRendererBase):
     name = "table_body"
+    react_tag = "TableBody"
     supported_props = frozenset({"id", "className", "style"})
     unsupported_prop_reasons = {"items": _COLLECTION_REASON}
     allow_data_props = True
@@ -617,6 +621,7 @@ class UITableBodyRenderer(UITableComponentRendererBase):
 
 class UITableRowRenderer(UITableComponentRendererBase):
     name = "table_row"
+    react_tag = "Row"
     supported_props = frozenset({"id", "key", "className", "style"})
     unsupported_prop_reasons = {"isSelected": _SELECTION_REASON, "isDisabled": _SELECTION_REASON}
     allow_data_props = True
@@ -649,6 +654,7 @@ class UITableRowRenderer(UITableComponentRendererBase):
 
 class UITableCellRenderer(UITableComponentRendererBase):
     name = "table_cell"
+    react_tag = "Cell"
     supported_props = frozenset({"id", "className", "style", "colSpan", "rowSpan"})
     allow_data_props = True
     allow_aria_props = True

@@ -70,6 +70,7 @@ _BUTTON_FORWARDED_PROPS = frozenset(
 
 class UIButtonRenderer(BaseHtmlUIComponentRenderer):
     name = "button"
+    react_tag = "Button"
     slot_name = "button"
     supported_props = frozenset(
         {

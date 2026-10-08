@@ -199,7 +199,8 @@ class RendererReportTestCase(SimpleTestCase):
 
 
 ON_PRESS_MESSAGE = (
-    "Prop 'onPress' will be ignored: event handlers are not supported by static button components"
+    "Prop 'onPress' will be ignored: event handlers are not supported by static button components; "
+    "use {% Button %} instead"
 )
 
 

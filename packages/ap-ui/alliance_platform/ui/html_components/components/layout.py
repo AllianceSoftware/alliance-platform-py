@@ -35,6 +35,7 @@ class UILayoutPartRenderer(BaseHtmlUIComponentRenderer):
 
 class UIContentRenderer(UILayoutPartRenderer):
     name = "content"
+    react_tag = 'component "@alliancesoftware/ui" "Content"'
     slot_name = "content"
     tag_name = "section"
 
@@ -47,6 +48,7 @@ class UIContentRenderer(UILayoutPartRenderer):
 
 class UIHeadingRenderer(UILayoutPartRenderer):
     name = "heading"
+    react_tag = 'component "@alliancesoftware/ui" "Heading"'
     slot_name = "heading"
     tag_name = "h3"
     supported_props = UILayoutPartRenderer.supported_props | frozenset({"level"})
@@ -63,11 +65,13 @@ class UIHeadingRenderer(UILayoutPartRenderer):
 
 class UIHeaderRenderer(UILayoutPartRenderer):
     name = "header"
+    react_tag = 'component "@alliancesoftware/ui" "Header"'
     slot_name = "header"
     tag_name = "header"
 
 
 class UIFooterRenderer(UILayoutPartRenderer):
     name = "footer"
+    react_tag = 'component "@alliancesoftware/ui" "Footer"'
     slot_name = "footer"
     tag_name = "footer"

@@ -9,8 +9,8 @@ in frame payloads, never on ``self``.
 Contract attributes (class level): ``name``, ``apui_name``, ``slot_name``, ``has_children``,
 ``supported_props``, ``prop_rules``, ``prop_aliases``, ``deprecated_prop_aliases``,
 ``unsupported_prop_reasons``, ``forwarded_props``, ``allow_data_props``, ``allow_aria_props``,
-``extra_allowed_aria_props``, ``non_scalar_props``, ``none_meaningful_props``, and the diagnostic
-wording in ``prop_filter_context`` and ``event_handler_prop_reason``.
+``extra_allowed_aria_props``, ``non_scalar_props``, ``none_meaningful_props``, ``react_tag``, and
+the diagnostic wording in ``prop_filter_context`` and ``event_handler_prop_reason``.
 
 Hooks to override: ``render_component`` (required), ``render_children_for_component``,
 ``build_render_frame``, ``build_child_report``, ``resolve_component_resources`` and
@@ -248,6 +248,11 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
     extra_allowed_aria_props: frozenset[str] = frozenset()
     non_scalar_props: frozenset[str] = frozenset()
     none_meaningful_props: frozenset[str] = frozenset()
+    #: The React template tag to use instead when a prop this renderer refuses is needed, written as
+    #: in a template without the braces: ``Table``, or ``component "@alliancesoftware/ui" "TextInput"``
+    #: for a component with no tag of its own. Reports of props refused through
+    #: ``unsupported_prop_reasons`` and of event handlers end with ``use {% <react_tag> %} instead``.
+    react_tag: ClassVar[str | None] = None
     prop_filter_context = "static HTML ui components"
     event_handler_prop_reason = "event handlers are not supported by static HTML ui components"
 
@@ -384,12 +389,10 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
                 continue
             reason = self.unsupported_prop_reasons.get(key)
             if reason:
-                self.report(f"Prop '{key}' will be ignored: {reason}", kind="contract")
+                self._report_ignored_prop(key, reason)
                 continue
             if is_event_handler_attr(key):
-                self.report(
-                    f"Prop '{key}' will be ignored: {self.event_handler_prop_reason}", kind="contract"
-                )
+                self._report_ignored_prop(key, self.event_handler_prop_reason)
                 continue
             attr_name = _to_html_attr_name(key)
             if attr_name.startswith("data-") or attr_name.startswith("aria-"):
@@ -439,6 +442,13 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
                 continue
             filtered[key] = value
         return filtered
+
+    def _report_ignored_prop(self, key: str, reason: str) -> None:
+        # Name the React tag that supports the prop, when there is one
+        message = f"Prop '{key}' will be ignored: {reason}"
+        if self.react_tag:
+            message += f"; use {{% {self.react_tag} %}} instead"
+        self.report(message, kind="contract")
 
     def _is_supported_prop(self, key: str) -> bool:
         return (
