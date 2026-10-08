@@ -14,6 +14,7 @@ from django.template.base import UNKNOWN_SOURCE
 from django.template.base import FilterExpression
 from django.template.base import NodeList
 
+from .base import BaseHtmlUIComponentRenderer
 from .constants import ALLOWED_COMPONENTS_KWARG
 from .diagnostics import report
 from .registry import HtmlUIComponentRegistry
@@ -124,18 +125,17 @@ def parse_ui_tag(
         )
 
     selector_expr = args[0]
-    selector_is_static = is_static_expression(selector_expr)
-    static_selector_value: str | None = None
+    renderer_cls: type[BaseHtmlUIComponentRenderer] | None = None
 
-    if selector_is_static:
+    if is_static_expression(selector_expr):
         resolved_selector = selector_expr.resolve(Context())
         if not isinstance(resolved_selector, str):
             raise TemplateSyntaxError(
                 f"'{tag_name}' static selector must resolve to a string, received {type(resolved_selector).__name__}"
             )
-        static_selector_value = resolved_selector
-        if not registry.exists(static_selector_value):
-            raise TemplateSyntaxError(f"Unknown ui component '{static_selector_value}'")
+        renderer_cls = registry.get(resolved_selector)
+        if renderer_cls is None:
+            raise TemplateSyntaxError(f"Unknown ui component '{resolved_selector}'")
 
     allowed_components = _parse_allowed_components_literal(
         tag_name=tag_name,
@@ -143,20 +143,29 @@ def parse_ui_tag(
         registry=registry,
     )
 
-    if not selector_is_static and not allowed_components:
+    if renderer_cls is None and not allowed_components:
         raise TemplateSyntaxError(
             f"'{tag_name}' requires {ALLOWED_COMPONENTS_KWARG} when using a dynamic component selector"
         )
 
-    nodelist = parser.parse((f"end{tag_name}",))
-    parser.delete_first_token()
+    has_children = (
+        renderer_cls.has_children
+        if renderer_cls is not None
+        else _allowed_components_have_children(
+            tag_name=tag_name,
+            allowed_components=allowed_components,
+            registry=registry,
+        )
+    )
+    # A leaf tag has no end tag, so nothing after it is consumed: a following {% endui %} closes the
+    # enclosing component, or is an invalid block tag at the top level.
+    if has_children:
+        nodelist = parser.parse((f"end{tag_name}",))
+        parser.delete_first_token()
+    else:
+        nodelist = NodeList()
 
-    if static_selector_value is not None:
-        renderer_cls = registry.get(static_selector_value)
-        if renderer_cls is None:
-            # The registry was checked above, but keep this defensive error in case a custom
-            # registry is mutated while the tag is being parsed.
-            raise TemplateSyntaxError(f"Unknown ui component '{static_selector_value}'")
+    if renderer_cls is not None:
         return renderer_cls(
             props=kwargs,
             nodelist=nodelist,
@@ -168,11 +177,38 @@ def parse_ui_tag(
         selector=selector_expr,
         props=kwargs,
         nodelist=nodelist,
-        allowed_components=allowed_components if not selector_is_static else None,
+        allowed_components=allowed_components,
         target_var=target_var,
         origin=parser.origin,
         registry=registry,
     )
+
+
+def _allowed_components_have_children(
+    *,
+    tag_name: str,
+    allowed_components: list[str],
+    registry: HtmlUIComponentRegistry,
+) -> bool:
+    """Return whether a dynamic tag has children, which every allowed component must agree on.
+
+    The tag is parsed before the selector resolves, so whether it takes an end tag cannot depend on
+    which component renders.
+    """
+    with_children: list[str] = []
+    leaves: list[str] = []
+    for component_name in allowed_components:
+        renderer_cls = registry.get(component_name)
+        if renderer_cls is None:
+            # _parse_allowed_components_literal() rejected unknown names already
+            continue
+        (with_children if renderer_cls.has_children else leaves).append(component_name)
+    if with_children and leaves:
+        raise TemplateSyntaxError(
+            f"'{tag_name}' {ALLOWED_COMPONENTS_KWARG} cannot mix components that take children "
+            f"({', '.join(with_children)}) with leaf components that take no end tag ({', '.join(leaves)})"
+        )
+    return not leaves
 
 
 def _parse_allowed_components_literal(

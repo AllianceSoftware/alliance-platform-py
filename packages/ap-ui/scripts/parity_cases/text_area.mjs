@@ -35,7 +35,7 @@ export function normalize(root, testCase, helpers) {
 export const cases = [
   {
     name: "default",
-    template: '{% ui "text_area" label="Notes" %}{% endui %}',
+    template: '{% ui "text_area" label="Notes" %}',
     buildElement({ React, components }) {
       const { TextArea } = components;
       return React.createElement(TextArea, { label: "Notes" });
@@ -48,7 +48,7 @@ export const cases = [
     // as a static-render extension. That behaviour is covered by unit tests.
     name: "name_placeholder_default_value",
     template:
-      '{% ui "text_area" label="Notes" name="notes" placeholder="Write here" defaultValue="Initial text" %}{% endui %}',
+      '{% ui "text_area" label="Notes" name="notes" placeholder="Write here" defaultValue="Initial text" %}',
     buildElement({ React, components }) {
       const { TextArea } = components;
       return React.createElement(TextArea, {
@@ -62,7 +62,7 @@ export const cases = [
   },
   {
     name: "height",
-    template: '{% ui "text_area" label="Notes" height="120px" %}{% endui %}',
+    template: '{% ui "text_area" label="Notes" height="120px" %}',
     buildElement({ React, components }) {
       const { TextArea } = components;
       return React.createElement(TextArea, { label: "Notes", height: "120px" });
@@ -72,7 +72,7 @@ export const cases = [
   {
     name: "description",
     template:
-      '{% ui "text_area" label="Notes" description="Internal notes only" %}{% endui %}',
+      '{% ui "text_area" label="Notes" description="Internal notes only" %}',
     buildElement({ React, components }) {
       const { TextArea } = components;
       return React.createElement(TextArea, {
@@ -85,7 +85,7 @@ export const cases = [
   {
     name: "invalid_with_error_message",
     template:
-      '{% ui "text_area" label="Notes" validationState="invalid" errorMessage="Notes are required" %}{% endui %}',
+      '{% ui "text_area" label="Notes" validationState="invalid" errorMessage="Notes are required" %}',
     buildElement({ React, components }) {
       const { TextArea } = components;
       return React.createElement(TextArea, {
@@ -98,7 +98,7 @@ export const cases = [
   },
   {
     name: "disabled",
-    template: '{% ui "text_area" label="Notes" isDisabled=True %}{% endui %}',
+    template: '{% ui "text_area" label="Notes" isDisabled=True %}',
     buildElement({ React, components }) {
       const { TextArea } = components;
       return React.createElement(TextArea, {
@@ -111,7 +111,7 @@ export const cases = [
   {
     name: "readonly",
     template:
-      '{% ui "text_area" label="Notes" defaultValue="Locked" isReadOnly=True %}{% endui %}',
+      '{% ui "text_area" label="Notes" defaultValue="Locked" isReadOnly=True %}',
     buildElement({ React, components }) {
       const { TextArea } = components;
       return React.createElement(TextArea, {
@@ -125,7 +125,7 @@ export const cases = [
   {
     name: "custom_class_names",
     template:
-      '{% ui "text_area" label="Notes" className="custom-root" inputClassName="custom-input" %}{% endui %}',
+      '{% ui "text_area" label="Notes" className="custom-root" inputClassName="custom-input" %}',
     buildElement({ React, components }) {
       const { TextArea } = components;
       return React.createElement(TextArea, {

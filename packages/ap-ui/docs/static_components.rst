@@ -39,7 +39,7 @@ sit anywhere inside the stat, and an icon placed in the stat picks up the stat's
     {% load alliance_platform.ui %}
 
     {% ui "stat" label="Open jobs" size="lg" %}
-      {% ui "icon" name="CheckCircleOutlined" %}{% endui %}
+      {% ui "icon" name="CheckCircleOutlined" %}
       {% ui "stat_value" %}{{ open_jobs }}{% endui %}
     {% endui %}
 

@@ -54,9 +54,7 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
             "alliance_platform.ui.html_components.components.pagination.gettext",
             side_effect=lambda message: f"<{message}>",
         ):
-            output, caught = self.render_with_warnings(
-                '{% ui "pagination" page=2 total=30 page_size=10 %}{% endui %}'
-            )
+            output, caught = self.render_with_warnings('{% ui "pagination" page=2 total=30 page_size=10 %}')
 
         self.assertEqual(caught, [])
         self.assertIn('aria-label="&lt;Previous Page&gt;"', output)
@@ -95,8 +93,7 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
         ):
             with self.subTest(page=page):
                 output, caught = self.render_with_warnings(
-                    '{% ui "pagination" page=page total=1000 page_size=10 '
-                    'aria_label="Pagination" %}{% endui %}',
+                    '{% ui "pagination" page=page total=1000 page_size=10 aria_label="Pagination" %}',
                     {"page": page},
                 )
 
@@ -110,10 +107,10 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
                 self.assertIn('aria-current="page"', output)
 
         first_output, _ = self.render_with_warnings(
-            '{% ui "pagination" page=1 total=1000 aria_label="Pagination" %}{% endui %}'
+            '{% ui "pagination" page=1 total=1000 aria_label="Pagination" %}'
         )
         last_output, _ = self.render_with_warnings(
-            '{% ui "pagination" page=100 total=1000 aria_label="Pagination" %}{% endui %}'
+            '{% ui "pagination" page=100 total=1000 aria_label="Pagination" %}'
         )
         self.assertNotIn("href=", self.get_link(first_output, "Previous Page"))
         self.assertNotIn("href=", self.get_link(last_output, "Next Page"))
@@ -121,7 +118,7 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
     def test_boundary_and_sibling_counts_control_range(self):
         output, caught = self.render_with_warnings(
             '{% ui "pagination" page=50 total=1000 page_size=10 boundary_count=2 '
-            'sibling_count=1 aria_label="Pagination" %}{% endui %}'
+            'sibling_count=1 aria_label="Pagination" %}'
         )
 
         self.assertEqual(caught, [])
@@ -134,7 +131,7 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
 
     def test_total_zero_still_renders_one_current_page(self):
         output, caught = self.render_with_warnings(
-            '{% ui "pagination" page=1 total=0 aria_label="Pagination" %}{% endui %}'
+            '{% ui "pagination" page=1 total=0 aria_label="Pagination" %}'
         )
 
         self.assertEqual(caught, [])
@@ -151,7 +148,7 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
             {"status": "open", "tag": ["a", "b"], "page": 3, "pageSize": 50},
         )
         output, caught = self.render_with_warnings(
-            '{% ui "pagination" page=3 total=100 page_size=10 aria_label="Pagination" %}{% endui %}',
+            '{% ui "pagination" page=3 total=100 page_size=10 aria_label="Pagination" %}',
             {"request": request},
         )
 
@@ -169,7 +166,7 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
         )
         output, caught = self.render_with_warnings(
             '{% ui "pagination" page=2 total=100 page_size=25 page_query_param="p" '
-            'page_size_query_param="limit" aria_label="Pagination" %}{% endui %}',
+            'page_size_query_param="limit" aria_label="Pagination" %}',
             {"request": request},
         )
 
@@ -185,7 +182,7 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
         output, caught = self.render_with_warnings(
             '{% ui "pagination" page=2 total=30 variant="compact" size="md" '
             'class_name="custom-pagination" style=style aria_label="Result pages" '
-            'aria_describedby="page-help" data_testid="pager" %}{% endui %}',
+            'aria_describedby="page-help" data_testid="pager" %}',
             {"style": {"maxWidth": "40rem"}},
         )
 
@@ -205,7 +202,7 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
 
     def test_disabled_pagination_links_are_inert_without_javascript(self):
         output, caught = self.render_with_warnings(
-            '{% ui "pagination" page=2 total=30 is_disabled=True aria_label="Pagination" %}{% endui %}'
+            '{% ui "pagination" page=2 total=30 is_disabled=True aria_label="Pagination" %}'
         )
 
         self.assertEqual(caught, [])
@@ -220,7 +217,7 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
 
     def test_missing_and_invalid_values_warn_with_safe_fallbacks(self):
         missing_output, missing_warnings = self.render_with_warnings(
-            '{% ui "pagination" aria_label="Pagination" %}{% endui %}'
+            '{% ui "pagination" aria_label="Pagination" %}'
         )
         self.assertEqual(missing_output, "")
         self.assertEqual(missing_warnings, ["'pagination' requires a 'total' prop and will not render"])
@@ -228,7 +225,7 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
         output, caught = self.render_with_warnings(
             '{% ui "pagination" total=-1 page=0 page_size=0 boundary_count=-1 sibling_count=-1 '
             'variant="large" size="lg" page_query_param="" page_size_query_param="" '
-            'aria_label="Pagination" %}{% endui %}'
+            'aria_label="Pagination" %}'
         )
         for prop_name in (
             "total",
@@ -250,7 +247,7 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
 
     def test_page_above_total_is_clamped_with_warning(self):
         output, caught = self.render_with_warnings(
-            '{% ui "pagination" page=9 total=25 page_size=10 aria_label="Pagination" %}{% endui %}'
+            '{% ui "pagination" page=9 total=25 page_size=10 aria_label="Pagination" %}'
         )
 
         self.assertEqual(
@@ -263,7 +260,7 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
         output, caught = self.render_with_warnings(
             '{% ui "pagination" total=100 is_page_size_selectable=True page_sizes=page_sizes '
             "on_page_change=callback state=state render_item=callback breakpoints=breakpoints "
-            'aria_label="Pagination" %}{% endui %}',
+            'aria_label="Pagination" %}',
             {
                 "page_sizes": [10, 20],
                 "callback": lambda value: value,
@@ -296,9 +293,7 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
 
     def test_resources_and_collected_document_keep_icons_inline(self):
         with self.setup_render_context() as asset_context:
-            output = self.render_ui_document(
-                '{% ui "pagination" page=2 total=30 aria_label="Pagination" %}{% endui %}'
-            )
+            output = self.render_ui_document('{% ui "pagination" page=2 total=30 aria_label="Pagination" %}')
             resource_paths = [str(resource.path) for resource in asset_context.get_resources_for_bundling()]
 
         for expected in (
@@ -319,7 +314,7 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
 
     def test_capture_can_render_as_static_table_footer_content(self):
         template = (
-            '{% ui "pagination" page=1 total=30 aria_label="Pagination" as pagination %}{% endui %}'
+            '{% ui "pagination" page=1 total=30 aria_label="Pagination" as pagination %}'
             '{% ui "table" aria_label="Users" footer=pagination %}'
             '{% ui "table_header" %}{% ui "table_column" %}Name{% endui %}{% endui %}'
             '{% ui "table_body" %}{% endui %}'

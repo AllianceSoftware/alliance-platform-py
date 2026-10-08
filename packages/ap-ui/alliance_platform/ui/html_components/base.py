@@ -6,11 +6,11 @@ merges inherited slot defaults, applies the prop contract, pushes the frame from
 Renderer instances are shared by every render of a compiled template, so per-render state belongs
 in frame payloads, never on ``self``.
 
-Contract attributes (class level): ``name``, ``apui_name``, ``slot_name``, ``supported_props``,
-``prop_rules``, ``prop_aliases``, ``deprecated_prop_aliases``, ``unsupported_prop_reasons``,
-``forwarded_props``, ``allow_data_props``, ``allow_aria_props``, ``extra_allowed_aria_props``,
-``non_scalar_props``, ``none_meaningful_props``, and the diagnostic wording in
-``prop_filter_context`` and ``event_handler_prop_reason``.
+Contract attributes (class level): ``name``, ``apui_name``, ``slot_name``, ``has_children``,
+``supported_props``, ``prop_rules``, ``prop_aliases``, ``deprecated_prop_aliases``,
+``unsupported_prop_reasons``, ``forwarded_props``, ``allow_data_props``, ``allow_aria_props``,
+``extra_allowed_aria_props``, ``non_scalar_props``, ``none_meaningful_props``, and the diagnostic
+wording in ``prop_filter_context`` and ``event_handler_prop_reason``.
 
 Hooks to override: ``render_component`` (required), ``render_children_for_component``,
 ``build_render_frame``, ``build_child_report``, ``resolve_component_resources`` and
@@ -229,6 +229,10 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
     #: without also setting ``apui_name``.
     apui_name: ClassVar[str]
     slot_name: str | None = None
+    #: Whether the tag has children and a closing ``{% endui %}``. A leaf (``False``) is written
+    #: without an end tag, ``{% ui "icon" name="Pencil01Outlined" %}``, and always renders with an
+    #: empty ``nodelist``. Every component in a dynamic tag's ``allowed_components`` must agree.
+    has_children: ClassVar[bool] = True
     #: Props the component accepts. ``None`` defers the final prop-name allowlist to the
     #: component (useful for inputs, which split props across several elements).
     supported_props: frozenset[str] | None = None

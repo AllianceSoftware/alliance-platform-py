@@ -14,7 +14,7 @@ class UITextInputParityTestCase(HtmlUIParityTestCase):
 
     def test_resources_are_registered(self):
         with self.setup_render_context() as asset_context:
-            self.render_ui_template('{% ui "text_input" label="Email" %}{% endui %}')
+            self.render_ui_template('{% ui "text_input" label="Email" %}')
             resource_paths = [str(resource.path) for resource in asset_context.get_resources_for_bundling()]
 
         for expected_suffix in [

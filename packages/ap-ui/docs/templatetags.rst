@@ -97,8 +97,8 @@ form of the Alliance UI ``isIconOnly`` prop. Icon-only buttons must have an acce
 .. code-block:: html+django
 
     {% ui "button" is_icon_only=True aria_label="Toggle navigation" %}
-      <span data-state="closed">{% ui "icon" name="Menu01Outlined" %}{% endui %}</span>
-      <span data-state="open">{% ui "icon" name="XCloseOutlined" %}{% endui %}</span>
+      <span data-state="closed">{% ui "icon" name="Menu01Outlined" %}</span>
+      <span data-state="open">{% ui "icon" name="XCloseOutlined" %}</span>
     {% endui %}
 
 A disabled button with ``href`` (``is_disabled=True``) renders without the ``href`` and with
@@ -134,7 +134,7 @@ static Django number widget template can use it without loading the React templa
 
 .. code-block:: html+django
 
-    {% ui "number_input" name=widget.name default_value=widget.value|none_as_nan %}{% endui %}
+    {% ui "number_input" name=widget.name default_value=widget.value|none_as_nan %}
 
 Static pagination
 ~~~~~~~~~~~~~~~~~
@@ -145,7 +145,7 @@ Django ``Paginator`` results without a client-side state layer:
 
 .. code-block:: html+django
 
-    {% ui "pagination" page=page_obj.number total=paginator.count page_size=paginator.per_page boundary_count=2 sibling_count=1 aria_label="Pagination" %}{% endui %}
+    {% ui "pagination" page=page_obj.number total=paginator.count page_size=paginator.per_page boundary_count=2 sibling_count=1 aria_label="Pagination" %}
 
 The default page query parameter is ``page``. Page 1 removes that parameter instead of rendering
 ``?page=1``. Custom parameter names can be supplied with ``page_query_param`` and
@@ -165,7 +165,7 @@ The result can be captured and passed directly to a static table footer:
 
 .. code-block:: html+django
 
-    {% ui "pagination" page=page_obj.number total=paginator.count page_size=paginator.per_page aria_label="Pagination" as pagination %}{% endui %}
+    {% ui "pagination" page=page_obj.number total=paginator.count page_size=paginator.per_page aria_label="Pagination" as pagination %}
     {% ui "table" aria_label="Users" footer=pagination %}
       {# table header and body #}
     {% endui %}
@@ -793,7 +793,7 @@ so ``html_attr_to_jsx`` is not needed):
 
 .. code-block:: html+django
 
-    {% ui "text_input" props=widget.attrs|merge_props:extra_widget_props type=widget.type name=widget.name defaultValue=widget.value %}{% endui %}
+    {% ui "text_input" props=widget.attrs|merge_props:extra_widget_props type=widget.type name=widget.name defaultValue=widget.value %}
 
 HTML in ``help_text`` is supported by both widget styles - the React path receives it as nested React elements while
 static ``{% ui %}`` inputs render it directly as HTML (dropping any inline event handler attributes).

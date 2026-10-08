@@ -21,9 +21,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         return output, diagnostics
 
     def test_class_kwarg_merges_with_default_classes(self):
-        output, caught = self.render_with_warnings(
-            '{% ui "text_input" label="Email" class="extra-class" %}{% endui %}'
-        )
+        output, caught = self.render_with_warnings('{% ui "text_input" label="Email" class="extra-class" %}')
         self.assertIn(
             'class="LabeledInput_labeledInput LabeledInput_labeledInput_inputSize_sm '
             'LabeledInput_labeledInput_labelPosition_top extra-class"',
@@ -33,20 +31,20 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
 
     def test_class_and_class_name_kwargs_merge_together(self):
         output, _ = self.render_with_warnings(
-            '{% ui "text_input" label="Email" class="one" className="two" %}{% endui %}'
+            '{% ui "text_input" label="Email" class="one" className="two" %}'
         )
         self.assertIn("one two", output)
 
     def test_input_class_name_merges_onto_control_only(self):
         output, _ = self.render_with_warnings(
-            '{% ui "text_input" label="Email" inputClassName="custom-input" %}{% endui %}'
+            '{% ui "text_input" label="Email" inputClassName="custom-input" %}'
         )
         self.assertIn('class="TextInputBase_input custom-input"', output)
         self.assertNotIn("LabeledInput_labeledInput custom-input", output)
 
     def test_react_only_props_warn_and_are_ignored(self):
         output, caught = self.render_with_warnings(
-            '{% ui "text_input" label="Email" renderInput=render_input inputProps=input_props %}{% endui %}',
+            '{% ui "text_input" label="Email" renderInput=render_input inputProps=input_props %}',
             {"render_input": lambda data: data, "input_props": {"rows": 4}},
         )
         self.assertIn(
@@ -62,7 +60,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
 
     def test_non_scalar_prop_values_warn_and_are_ignored(self):
         output, caught = self.render_with_warnings(
-            '{% ui "text_input" label="Email" someProp=bad_value %}{% endui %}',
+            '{% ui "text_input" label="Email" someProp=bad_value %}',
             {"bad_value": {"nested": "dict"}},
         )
         self.assertIn(
@@ -76,7 +74,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
     def test_allowlisted_props_pass_through_to_control(self):
         output, caught = self.render_with_warnings(
             '{% ui "text_input" label="Email" autoComplete="email" maxLength=20 spellCheck="false" '
-            'pattern="[a-z]+" %}{% endui %}'
+            'pattern="[a-z]+" %}'
         )
         self.assertIn('autocomplete="email"', output)
         self.assertIn('maxlength="20"', output)
@@ -86,7 +84,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
 
     def test_data_and_aria_props_pass_through_to_control(self):
         output, caught = self.render_with_warnings(
-            '{% ui "text_input" label="Email" data_testid="email-field" aria_label="Email address" %}{% endui %}'
+            '{% ui "text_input" label="Email" data_testid="email-field" aria_label="Email address" %}'
         )
         self.assertIn('data-testid="email-field"', output)
         self.assertIn('aria-label="Email address"', output)
@@ -94,7 +92,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
 
     def test_event_handler_props_warn_and_are_never_rendered(self):
         output, caught = self.render_with_warnings(
-            '{% ui "text_input" label="Email" onClick="alert(1)" on_input="alert(2)" %}{% endui %}'
+            '{% ui "text_input" label="Email" onClick="alert(1)" on_input="alert(2)" %}'
         )
         self.assertIn(
             "Prop 'onClick' will be ignored: event handlers are not supported by static input components",
@@ -109,9 +107,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         self.assertNotIn("alert", output)
 
     def test_unknown_props_warn_and_are_ignored(self):
-        output, caught = self.render_with_warnings(
-            '{% ui "text_input" label="Email" unknownAttr="nope" %}{% endui %}'
-        )
+        output, caught = self.render_with_warnings('{% ui "text_input" label="Email" unknownAttr="nope" %}')
         self.assertIn(
             "Prop 'unknownAttr' is not a supported 'text_input' attribute and will be ignored",
             caught,
@@ -119,9 +115,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         self.assertNotIn("unknownattr", output.lower())
 
     def test_pattern_is_not_allowed_on_text_area(self):
-        output, caught = self.render_with_warnings(
-            '{% ui "text_area" label="Notes" pattern="[a-z]+" %}{% endui %}'
-        )
+        output, caught = self.render_with_warnings('{% ui "text_area" label="Notes" pattern="[a-z]+" %}')
         self.assertIn(
             "Prop 'pattern' is not a supported 'text_area' attribute and will be ignored",
             caught,
@@ -130,8 +124,8 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
 
     def test_generated_ids_are_unique_within_a_template_render(self):
         output, _ = self.render_with_warnings(
-            '{% ui "text_input" label="First" description="one" %}{% endui %}'
-            '{% ui "text_input" label="Second" description="two" %}{% endui %}'
+            '{% ui "text_input" label="First" description="one" %}'
+            '{% ui "text_input" label="Second" description="two" %}'
         )
         self.assertIn('id="apui-text-input-1"', output)
         self.assertIn('id="apui-text-input-2"', output)
@@ -147,7 +141,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
             partial = Template(
                 "{% load alliance_platform.ui %}"
                 '{% ui "text_input" label=label description=description '
-                "errorMessage=error validationState=validation_state %}{% endui %}"
+                "errorMessage=error validationState=validation_state %}"
             )
             output = self.render_ui_template(
                 '{% include input with label="First" description="First help" validation_state=None %}'
@@ -180,7 +174,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
     def test_generated_ids_survive_nested_include_only_boundaries(self):
         with self.setup_render_context():
             input_partial = Template(
-                '{% load alliance_platform.ui %}{% ui "text_input" label="Included input" %}{% endui %}'
+                '{% load alliance_platform.ui %}{% ui "text_input" label="Included input" %}'
             )
             outer_partial = Template("{% include input_partial only %}")
             output = self.render_ui_template(
@@ -201,8 +195,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
     def test_independent_template_renders_reset_generated_id_counter(self):
         with self.setup_render_context():
             template = Template(
-                "{% load alliance_platform.ui %}"
-                '{% ui "text_input" label="Email" description="Help" %}{% endui %}'
+                '{% load alliance_platform.ui %}{% ui "text_input" label="Email" description="Help" %}'
             )
             first = template.render(Context())
             second = template.render(Context())
@@ -213,14 +206,14 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
 
     def test_generated_ids_share_document_counter_with_menubar(self):
         output, caught = self.render_with_warnings(
-            '{% ui "text_input" label="First" description="Help" %}{% endui %}'
+            '{% ui "text_input" label="First" description="Help" %}'
             '{% ui "menubar" aria_label="Nav" %}'
             '{% ui "menubar_section" title="Account" %}'
             '{% ui "menubar_item" href="/profile/" %}Profile{% endui %}'
             "{% endui %}"
             "{% endui %}"
             '{% ui "text_input" label="Second" errorMessage="Required" '
-            'validationState="invalid" %}{% endui %}'
+            'validationState="invalid" %}'
         )
 
         self.assertEqual(caught, [])
@@ -233,20 +226,18 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
 
     def test_caller_aria_describedby_is_preserved_and_generated_ids_appended(self):
         output, _ = self.render_with_warnings(
-            '{% ui "text_input" label="Email" aria_describedby="external" description="Help" %}{% endui %}'
+            '{% ui "text_input" label="Email" aria_describedby="external" description="Help" %}'
         )
         self.assertIn('aria-describedby="apui-text-input-2 external"', output)
 
     def test_caller_id_is_preserved(self):
-        output, _ = self.render_with_warnings('{% ui "text_input" label="Email" id="custom-id" %}{% endui %}')
+        output, _ = self.render_with_warnings('{% ui "text_input" label="Email" id="custom-id" %}')
         self.assertIn('id="custom-id"', output)
         self.assertIn('for="custom-id"', output)
         self.assertNotIn("apui-text-input", output)
 
     def test_disabled_alias_warns_and_disables(self):
-        output, caught = self.render_with_warnings(
-            '{% ui "text_input" label="Email" disabled=True %}{% endui %}'
-        )
+        output, caught = self.render_with_warnings('{% ui "text_input" label="Email" disabled=True %}')
         self.assertIn("You passed 'disabled' - use 'isDisabled' instead", caught)
         self.assertIn("<input", output)
         self.assertIn(" disabled", output)
@@ -255,7 +246,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
     def test_invalid_enum_props_warn_and_fall_back(self):
         output, caught = self.render_with_warnings(
             '{% ui "text_input" label="Email" labelPosition="middle" inputSize="xl" '
-            'labelAlign="center" validationState="unknown" %}{% endui %}'
+            'labelAlign="center" validationState="unknown" %}'
         )
         self.assertEqual(
             caught,
@@ -273,27 +264,20 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         self.assertNotIn("data-valid", output)
 
     def test_is_loading_sets_aria_busy_and_data_loading(self):
-        output, _ = self.render_with_warnings('{% ui "text_input" label="Email" isLoading=True %}{% endui %}')
+        output, _ = self.render_with_warnings('{% ui "text_input" label="Email" isLoading=True %}')
         self.assertIn('aria-busy="true"', output)
         self.assertIn('data-loading="true"', output)
 
     def test_is_loading_when_disabled_keeps_aria_busy_but_not_data_loading(self):
         output, _ = self.render_with_warnings(
-            '{% ui "text_input" label="Email" isLoading=True isDisabled=True %}{% endui %}'
+            '{% ui "text_input" label="Email" isLoading=True isDisabled=True %}'
         )
         self.assertIn('aria-busy="true"', output)
         self.assertNotIn("data-loading", output)
 
-    def test_children_content_warns_and_is_ignored(self):
-        output, caught = self.render_with_warnings(
-            '{% ui "text_input" label="Email" %}unexpected content{% endui %}'
-        )
-        self.assertIn("'text_input' does not support children; the content will be ignored", caught)
-        self.assertNotIn("unexpected content", output)
-
     def test_label_and_value_are_escaped(self):
         output, _ = self.render_with_warnings(
-            '{% ui "text_input" label=label value=value %}{% endui %}',
+            '{% ui "text_input" label=label value=value %}',
             {"label": "<b>Email</b>", "value": '"><script>'},
         )
         self.assertIn("&lt;b&gt;Email&lt;/b&gt;", output)
@@ -302,28 +286,26 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         self.assertNotIn("<script>", output)
 
     def test_text_area_rows_and_cols_are_ignored_for_compact_first_paint(self):
-        output, caught = self.render_with_warnings(
-            '{% ui "text_area" label="Notes" rows=4 cols=40 %}{% endui %}'
-        )
+        output, caught = self.render_with_warnings('{% ui "text_area" label="Notes" rows=4 cols=40 %}')
         self.assertEqual(caught, [])
         self.assertNotIn('rows="4"', output)
         self.assertNotIn('cols="40"', output)
 
     def test_text_area_content_is_escaped(self):
         output, _ = self.render_with_warnings(
-            '{% ui "text_area" label="Notes" defaultValue=value %}{% endui %}',
+            '{% ui "text_area" label="Notes" defaultValue=value %}',
             {"value": "</textarea><script>alert(1)</script>"},
         )
         self.assertIn("&lt;/textarea&gt;&lt;script&gt;alert(1)&lt;/script&gt;", output)
         self.assertNotIn("</textarea><script>", output)
 
     def test_text_area_numeric_height_gets_px_suffix(self):
-        output, _ = self.render_with_warnings('{% ui "text_area" label="Notes" height=120 %}{% endui %}')
+        output, _ = self.render_with_warnings('{% ui "text_area" label="Notes" height=120 %}')
         self.assertIn('style="height: 120px"', output)
 
     def test_number_input_format_options_are_serialized_for_the_attach_runtime(self):
         output, caught = self.render_with_warnings(
-            '{% ui "number_input" label="Price" formatOptions=format_options defaultValue=12.5 %}{% endui %}',
+            '{% ui "number_input" label="Price" formatOptions=format_options defaultValue=12.5 %}',
             {"format_options": {"style": "currency", "currency": "AUD"}},
         )
         self.assertEqual(caught, [])
@@ -337,7 +319,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
 
     def test_number_input_min_max_step_are_serialized_for_the_attach_runtime(self):
         output, caught = self.render_with_warnings(
-            '{% ui "number_input" label="Qty" minValue=1 maxValue=20 step=2 %}{% endui %}'
+            '{% ui "number_input" label="Qty" minValue=1 maxValue=20 step=2 %}'
         )
         self.assertEqual(caught, [])
         self.assertIn('data-apui-number-input-min-value="1"', output)
@@ -349,7 +331,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
 
     def test_number_input_name_is_rendered_on_the_visible_input(self):
         output_with_name, _ = self.render_with_warnings(
-            '{% ui "number_input" label="Qty" name="qty" defaultValue=5 %}{% endui %}'
+            '{% ui "number_input" label="Qty" name="qty" defaultValue=5 %}'
         )
         # The visible input submits the field natively so it works without the attach runtime; the
         # runtime creates the hidden numeric input itself, so the server renders none.
@@ -360,20 +342,16 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         self.assertNotIn('type="hidden"', output_with_name)
         self.assertNotIn("data-apui-number-input-value-id", output_with_name)
 
-        output_without_name, _ = self.render_with_warnings('{% ui "number_input" label="Qty" %}{% endui %}')
+        output_without_name, _ = self.render_with_warnings('{% ui "number_input" label="Qty" %}')
         self.assertNotIn("name=", output_without_name)
         self.assertNotIn('type="hidden"', output_without_name)
 
     def test_number_input_zero_value_renders(self):
-        output, _ = self.render_with_warnings(
-            '{% ui "number_input" label="Qty" name="qty" value=0 %}{% endui %}'
-        )
+        output, _ = self.render_with_warnings('{% ui "number_input" label="Qty" name="qty" value=0 %}')
         self.assertRegex(output, r'<input(?=[^>]*type="text")(?=[^>]*name="qty")(?=[^>]*value="0")[^>]*/>')
 
     def test_number_input_integer_float_value_renders_without_decimal(self):
-        output, _ = self.render_with_warnings(
-            '{% ui "number_input" label="Qty" defaultValue=5.0 %}{% endui %}'
-        )
+        output, _ = self.render_with_warnings('{% ui "number_input" label="Qty" defaultValue=5.0 %}')
         self.assertIn('value="5"', output)
 
     def test_number_input_labels_are_translated_and_escaped(self):
@@ -381,8 +359,8 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
             "alliance_platform.ui.html_components.components.input.gettext",
             side_effect=lambda message: f"<{message}>",
         ):
-            labelled, caught = self.render_with_warnings('{% ui "number_input" label="Qty" %}{% endui %}')
-            unlabelled, _ = self.render_with_warnings('{% ui "number_input" %}{% endui %}')
+            labelled, caught = self.render_with_warnings('{% ui "number_input" label="Qty" %}')
+            unlabelled, _ = self.render_with_warnings('{% ui "number_input" %}')
 
         self.assertEqual(caught, [])
         self.assertIn('aria-roledescription="&lt;Number field&gt;"', labelled)
@@ -392,28 +370,22 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn('aria-label="&lt;Decrease&gt;"', unlabelled)
 
     def test_number_input_hide_step_buttons(self):
-        output, _ = self.render_with_warnings(
-            '{% ui "number_input" label="Qty" hideStepButtons=True %}{% endui %}'
-        )
+        output, _ = self.render_with_warnings('{% ui "number_input" label="Qty" hideStepButtons=True %}')
         self.assertNotIn("data-direction", output)
         self.assertNotIn('data-has-addon-after="true"', output)
         self.assertNotIn("TextInputBase_addonAfter", output)
 
     def test_number_input_step_buttons_disabled_when_input_disabled(self):
-        output, _ = self.render_with_warnings(
-            '{% ui "number_input" label="Qty" isDisabled=True %}{% endui %}'
-        )
+        output, _ = self.render_with_warnings('{% ui "number_input" label="Qty" isDisabled=True %}')
         self.assertIn('<button type="button" disabled', output)
 
     def test_number_input_step_buttons_disabled_when_input_readonly(self):
-        output, _ = self.render_with_warnings(
-            '{% ui "number_input" label="Qty" isReadOnly=True %}{% endui %}'
-        )
+        output, _ = self.render_with_warnings('{% ui "number_input" label="Qty" isReadOnly=True %}')
         self.assertEqual(output.count('<button type="button" disabled'), 2)
 
     def test_number_input_validation_icon_is_mutually_exclusive_with_step_buttons(self):
         with_steps, _ = self.render_with_warnings(
-            '{% ui "number_input" label="Qty" validationState="invalid" %}{% endui %}'
+            '{% ui "number_input" label="Qty" validationState="invalid" %}'
         )
         self.assertIn('data-invalid="true"', with_steps)
         self.assertIn('data-direction="up"', with_steps)
@@ -421,7 +393,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         self.assertEqual(with_steps.count("<svg"), 2)
 
         without_steps_invalid, _ = self.render_with_warnings(
-            '{% ui "number_input" label="Qty" validationState="invalid" hideStepButtons=True %}{% endui %}'
+            '{% ui "number_input" label="Qty" validationState="invalid" hideStepButtons=True %}'
         )
         self.assertNotIn("data-direction", without_steps_invalid)
         self.assertIn("TextInputBase_validationIcon", without_steps_invalid)
@@ -429,7 +401,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         self.assertEqual(without_steps_invalid.count("<svg"), 1)
 
         without_steps_valid, _ = self.render_with_warnings(
-            '{% ui "number_input" label="Qty" validationState="valid" hideStepButtons=True %}{% endui %}'
+            '{% ui "number_input" label="Qty" validationState="valid" hideStepButtons=True %}'
         )
         self.assertIn('data-valid="true"', without_steps_valid)
         self.assertIn("TextInputBase_validationIcon", without_steps_valid)
@@ -439,15 +411,15 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
     def test_number_input_validation_icon_remains_hidden_when_disabled(self):
         output, _ = self.render_with_warnings(
             '{% ui "number_input" label="Qty" validationState="invalid" hideStepButtons=True '
-            "isDisabled=True %}{% endui %}"
+            "isDisabled=True %}"
         )
         self.assertNotIn("TextInputBase_validationIcon", output)
         self.assertEqual(output.count("<svg"), 0)
 
     def test_number_input_sm_and_md_size_contract(self):
         output, _ = self.render_with_warnings(
-            '{% ui "number_input" label="Small" inputSize="sm" %}{% endui %}'
-            '{% ui "number_input" label="Medium" inputSize="md" %}{% endui %}'
+            '{% ui "number_input" label="Small" inputSize="sm" %}'
+            '{% ui "number_input" label="Medium" inputSize="md" %}'
         )
         self.assertIn("TextInputBase_sizes_sm", output)
         self.assertIn("TextInputBase_sizes_md", output)
@@ -455,18 +427,14 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn('data-size="md"', output)
 
     def test_number_input_is_marked_for_collected_external_auto_attachment(self):
-        output, _ = self.render_with_warnings(
-            '{% ui "number_input" label="Qty" name="qty" defaultValue=5 %}{% endui %}'
-        )
+        output, _ = self.render_with_warnings('{% ui "number_input" label="Qty" name="qty" defaultValue=5 %}')
         self.assertIn('data-apui-attach="number-input"', output)
         self.assertIn('data-apui-number-input-initial-value="5"', output)
         self.assertNotIn("<script", output)
 
     def test_number_input_collected_assets_do_not_emit_detached_icon_images(self):
         with self.setup_render_context():
-            output = self.render_ui_document(
-                '{% ui "number_input" label="Qty" validationState="invalid" %}{% endui %}'
-            )
+            output = self.render_ui_document('{% ui "number_input" label="Qty" validationState="invalid" %}')
 
         # Only the two inline step chevrons render. The validation/build dependency SVGs must not
         # be emitted at the collected-assets insertion point.
@@ -478,7 +446,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
     def test_number_input_collected_assets_keep_hide_step_validation_icon_in_place(self):
         with self.setup_render_context():
             output = self.render_ui_document(
-                '{% ui "number_input" label="Qty" validationState="valid" hideStepButtons=True %}{% endui %}'
+                '{% ui "number_input" label="Qty" validationState="valid" hideStepButtons=True %}'
             )
 
         self.assertEqual(output.count("<svg"), 1)
@@ -488,7 +456,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
     def test_bulk_props_accept_html_attribute_names(self):
         # Simulates a Django form widget template passing `props=widget.attrs`
         output, caught = self.render_with_warnings(
-            '{% ui "text_input" props=attrs name="email" %}{% endui %}',
+            '{% ui "text_input" props=attrs name="email" %}',
             {
                 "attrs": {
                     "id": "id_email",
@@ -518,7 +486,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         # widget.attrs expresses disabled state with the HTML attribute name; unlike an inline
         # disabled= kwarg this should not trigger the isDisabled alias warning
         output, caught = self.render_with_warnings(
-            '{% ui "text_input" label="Email" props=attrs %}{% endui %}',
+            '{% ui "text_input" label="Email" props=attrs %}',
             {"attrs": {"disabled": True}},
         )
         self.assertEqual(caught, [])
@@ -527,7 +495,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
 
     def test_bulk_props_take_precedence_except_class_names_merge(self):
         output, _ = self.render_with_warnings(
-            '{% ui "text_input" label="Inline label" className="inline-class" props=attrs %}{% endui %}',
+            '{% ui "text_input" label="Inline label" className="inline-class" props=attrs %}',
             {"attrs": {"label": "Dict label", "class": "dict-class"}},
         )
         self.assertIn("Dict label", output)
@@ -535,15 +503,13 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn("inline-class dict-class", output)
 
     def test_bulk_props_non_dict_warns_and_is_ignored(self):
-        output, caught = self.render_with_warnings(
-            '{% ui "text_input" label="Email" props="not-a-dict" %}{% endui %}'
-        )
+        output, caught = self.render_with_warnings('{% ui "text_input" label="Email" props="not-a-dict" %}')
         self.assertTrue(any(message.startswith("'props' must be a dict of props") for message in caught))
         self.assertIn("Email", output)
 
     def test_merge_props_filter_is_available_from_ui_library(self):
         output, caught = self.render_with_warnings(
-            '{% ui "text_input" props=attrs|merge_props:extra %}{% endui %}',
+            '{% ui "text_input" props=attrs|merge_props:extra %}',
             {"attrs": {"id": "id_field"}, "extra": {"label": "Merged label"}},
         )
         self.assertEqual(caught, [])
@@ -552,8 +518,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
 
     def test_none_as_nan_filter_is_available_from_ui_library(self):
         output, caught = self.render_with_warnings(
-            '{% ui "number_input" label="Quantity" name="quantity" '
-            "default_value=value|none_as_nan %}{% endui %}",
+            '{% ui "number_input" label="Quantity" name="quantity" default_value=value|none_as_nan %}',
             {"value": None},
         )
         self.assertEqual(caught, [])
@@ -566,7 +531,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         # Django form field labels are commonly lazy translation proxies (e.g.
         # AuthenticationForm's password field); these must render like plain strings
         output, caught = self.render_with_warnings(
-            '{% ui "text_input" props=attrs %}{% endui %}',
+            '{% ui "text_input" props=attrs %}',
             {
                 "attrs": {
                     "id": "id_password",
@@ -584,7 +549,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
 
     def test_decimal_values_render_on_number_input(self):
         output, caught = self.render_with_warnings(
-            '{% ui "number_input" label="Price" name="price" defaultValue=value %}{% endui %}',
+            '{% ui "number_input" label="Price" name="price" defaultValue=value %}',
             {"value": Decimal("12.50")},
         )
         self.assertEqual(caught, [])
@@ -595,7 +560,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
 
     def test_none_valued_props_are_treated_as_unset(self):
         output, caught = self.render_with_warnings(
-            '{% ui "text_input" label="Email" placeholder=missing_value labelAlign=missing_value %}{% endui %}',
+            '{% ui "text_input" label="Email" placeholder=missing_value labelAlign=missing_value %}',
             {"missing_value": None},
         )
         self.assertEqual(caught, [])

@@ -142,7 +142,7 @@ export const cases = [
     template:
       '{% ui "menubar" aria_label="Nav" layout="vertical" root_item_display="icon-only" %}' +
       '{% ui "menubar_item" href="/dashboard/" text_value="Dashboard" %}' +
-      '{% ui "icon" name="Pencil01Outlined" %}{% endui %}Dashboard' +
+      '{% ui "icon" name="Pencil01Outlined" %}Dashboard' +
       "{% endui %}" +
       '{% ui "menubar_submenu" key="admin" title="Administration" icon="Pencil01Outlined" %}' +
       '{% ui "menubar_item" href="/users/" %}Users{% endui %}' +

@@ -302,6 +302,8 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
 class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRenderer):
     """Shared rendering for text-like inputs, mirroring ``TextInputBase.tsx``."""
 
+    # text_input, number_input and text_area are leaf tags: no children and no {% endui %}
+    has_children = False
     unsupported_prop_reasons = {
         key: "React-only props are not supported by static input components" for key in _REACT_ONLY_PROPS
     }
@@ -398,10 +400,6 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
         ]
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
-        if children_html.strip():
-            self.report(
-                f"'{self.name}' does not support children; the content will be ignored", kind="contract"
-            )
         state = self.resolve_labeled_input_state(context, props)
 
         text_input_base_styles = self.resolve_vanilla_extract_mapping(_TEXT_INPUT_BASE_STYLE_PATH)

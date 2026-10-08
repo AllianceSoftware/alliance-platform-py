@@ -71,7 +71,7 @@ class StaticComponentTestCaseTestCase(StaticComponentTestCase):
     def test_yields_the_asset_context(self):
         with self.static_render_context(bundler=test_development_bundler) as asset_context:
             self.assertIs(BundlerAssetContext.get_current(), asset_context)
-            self.render_ui_template('{% ui "icon" name="CheckOutlined" %}{% endui %}')
+            self.render_ui_template('{% ui "icon" name="CheckOutlined" %}')
             resource_paths = [str(resource.path) for resource in asset_context.get_resources_for_bundling()]
 
         self.assertTrue(any(path.endswith("Icon.css.ts") for path in resource_paths))

@@ -312,7 +312,7 @@ def form_input(parser: template.base.Parser, token: template.base.Token):
 
     or, for static HTML widgets rendered with the ``{% ui %}`` dispatcher::
 
-        {% ui "text_input" props=widget.attrs|merge_props:extra_widget_props type=widget.type name=widget.name defaultValue=widget.value %}{% endui %}
+        {% ui "text_input" props=widget.attrs|merge_props:extra_widget_props type=widget.type name=widget.name defaultValue=widget.value %}
 
     ``extra_widget_props.description`` contains renderable content generated from ``help_text``.
     HTML in ``help_text`` is supported for both React and static HTML widgets: it is parsed into a

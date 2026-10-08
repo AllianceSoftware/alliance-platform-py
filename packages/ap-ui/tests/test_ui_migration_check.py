@@ -37,7 +37,7 @@ class UIMigrationCheckTestCase(SimpleTestCase):
         return stdout.getvalue()
 
     def test_central_mapping_covers_registered_legacy_component_tags(self):
-        registered_components = set(register.tags) - {"create_dict", "icon", "ui"}
+        registered_components = set(register.tags) - {"create_dict", "ui"}
         mapped_named_tags = {
             name for name, migration in LEGACY_COMPONENT_MIGRATIONS.items() if migration.named_tag
         }
