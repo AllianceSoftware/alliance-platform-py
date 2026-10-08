@@ -209,13 +209,18 @@ def _static_finding(
         if raw_value is not None and _static_string(raw_value) is None:
             notes.append(f"{literal_prop} must be a static string literal")
 
+    # Leaf components take no end tag
+    suggestion = f'{{% ui "{spec.static_renderer}" %}}'
+    if renderer.has_children:
+        suggestion += "...{% endui %}"
+
     return MigrationFinding(
         path=path,
         line=line,
         component=component,
         source=source,
         status="review" if notes else "ready",
-        suggestion=f'{{% ui "{spec.static_renderer}" %}}',
+        suggestion=suggestion,
         notes=tuple(notes),
     )
 
