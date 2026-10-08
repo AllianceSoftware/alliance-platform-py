@@ -3,13 +3,20 @@ from __future__ import annotations
 from io import StringIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest import mock
 
+from alliance_platform.ui.html_components.components.button import UIButtonRenderer
+from alliance_platform.ui.html_components.registry import built_in_registry
 from alliance_platform.ui.management.commands.ui_migration_check import LEGACY_COMPONENT_MIGRATIONS
 from alliance_platform.ui.templatetags.alliance_platform.ui import register
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import SimpleTestCase
 from django.test import override_settings
+
+
+class LeafButtonRenderer(UIButtonRenderer):
+    has_children = False
 
 
 class UIMigrationCheckTestCase(SimpleTestCase):
@@ -62,7 +69,7 @@ class UIMigrationCheckTestCase(SimpleTestCase):
             output = self.run_check(base_dir)
 
         self.assertIn(
-            'templates/navigation.html:3: [READY] tag Button -> {% ui "button" %}',
+            'templates/navigation.html:3: [READY] tag Button -> {% ui "button" %}...{% endui %}\n',
             output,
         )
         self.assertNotIn("ignored.html", output)
@@ -87,6 +94,35 @@ class UIMigrationCheckTestCase(SimpleTestCase):
         self.assertNotIn("data-testid", output)
         self.assertNotIn("aria-label", output)
         self.assertNotIn("isDisabled", output)
+
+    def test_suggestion_has_an_end_tag_only_for_components_with_children(self):
+        with TemporaryDirectory() as temp_dir:
+            base_dir = Path(temp_dir)
+            self.write_template(
+                base_dir,
+                "templates/mixed.html",
+                "{% Button %}Save{% endButton %}\n"
+                '{% Icon "CheckOutlined" %}\n'
+                '{% component "@alliancesoftware/ui" "NumberInput" %}{% endcomponent %}\n'
+                "{% Table %}{% endTable %}",
+            )
+
+            output = self.run_check(base_dir)
+            with mock.patch.dict(built_in_registry._renderers, {"button": LeafButtonRenderer}):
+                leaf_button_output = self.run_check(base_dir)
+
+        self.assertIn(
+            'templates/mixed.html:1: [READY] tag Button -> {% ui "button" %}...{% endui %}\n', output
+        )
+        self.assertIn('templates/mixed.html:2: [READY] tag Icon -> {% ui "icon" %}\n', output)
+        self.assertIn(
+            'templates/mixed.html:3: [READY] component "@alliancesoftware/ui" "NumberInput" '
+            '-> {% ui "number_input" %}\n',
+            output,
+        )
+        self.assertIn('templates/mixed.html:4: [READY] tag Table -> {% ui "table" %}...{% endui %}\n', output)
+        # The suggestion follows the registered renderer
+        self.assertIn('templates/mixed.html:1: [READY] tag Button -> {% ui "button" %}\n', leaf_button_output)
 
     def test_bulk_props_and_legacy_render_options_require_review(self):
         with TemporaryDirectory() as temp_dir:
@@ -118,7 +154,7 @@ class UIMigrationCheckTestCase(SimpleTestCase):
             output = self.run_check(base_dir)
 
         self.assertIn(
-            'component "@alliancesoftware/ui" "TextInput" -> {% ui "text_input" %}',
+            'component "@alliancesoftware/ui" "TextInput" -> {% ui "text_input" %}; ',
             output,
         )
         self.assertIn("unsupported props: madeUp", output)
@@ -147,7 +183,7 @@ class UIMigrationCheckTestCase(SimpleTestCase):
             output = self.run_check(base_dir)
 
         self.assertIn("templates/icons.html:1: [REVIEW] tag Icon", output)
-        self.assertIn("templates/icons.html:2: [READY] tag Icon", output)
+        self.assertIn('templates/icons.html:2: [READY] tag Icon -> {% ui "icon" %}\n', output)
         self.assertIn("icon name must be a static string literal", output)
         self.assertIn("templates/icons.html:3: [REVIEW] tag Menubar.SubMenu", output)
         self.assertIn("icon must be a static string literal", output)
@@ -172,11 +208,11 @@ class UIMigrationCheckTestCase(SimpleTestCase):
             output = self.run_check(base_dir)
 
         self.assertIn(
-            'templates/pagination.html:1: [READY] tag Pagination -> {% ui "pagination" %}',
+            'templates/pagination.html:1: [READY] tag Pagination -> {% ui "pagination" %}\n',
             output,
         )
         self.assertIn(
-            'templates/pagination.html:2: [REVIEW] tag Pagination -> {% ui "pagination" %}',
+            'templates/pagination.html:2: [REVIEW] tag Pagination -> {% ui "pagination" %}; ',
             output,
         )
         self.assertIn("unsupported props: isPageSizeSelectable, onPageChange", output)
@@ -198,7 +234,7 @@ class UIMigrationCheckTestCase(SimpleTestCase):
             output = self.run_check(base_dir)
 
         self.assertIn(
-            'templates/alerts.html:1: [READY] tag InlineAlert -> {% ui "inline_alert" %}',
+            'templates/alerts.html:1: [READY] tag InlineAlert -> {% ui "inline_alert" %}...{% endui %}\n',
             output,
         )
         self.assertIn(
@@ -230,7 +266,7 @@ class UIMigrationCheckTestCase(SimpleTestCase):
         ]:
             self.assertIn(
                 f'templates/layout.html:{line}: [READY] component "@alliancesoftware/ui" '
-                f'"{component}" -> {{% ui "{renderer}" %}}',
+                f'"{component}" -> {{% ui "{renderer}" %}}...{{% endui %}}\n',
                 output,
             )
 
