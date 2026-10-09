@@ -296,13 +296,13 @@ def form_input(parser: template.base.Parser, token: template.base.Token):
     In addition, you can pass through any extra attributes that should be set on the input. For example, to set an
     addon for an alliance-ui ``TextInput`` you could do the following::
 
-        {% form_input field addonBefore="$" %}
+        {% form_input field addon_before="$" %}
 
     Note that the attributes supported here depend entirely on the widget. If the widget is a React component, you
     can also pass react components to the tag::
 
         {% component "core-ui/icons" "Search" as search_icon %}${% endcomponent %}
-        {% form_input field addonBefore=search_icon %}
+        {% form_input field addon_before=search_icon %}
 
     The additional props are added to the key ``extra_widget_props`` - so the relevant widget template needs to include
     this for the props to be passed through::
