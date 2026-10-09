@@ -64,46 +64,21 @@
     "buttonGroup": "ButtonGroup_buttonGroup__ji0ooy0"
   },
   "@alliancesoftware/ui/components/form/FormSection.css.ts": {
-    "formSection": {
-      "top": "FormSection_formSection_top__xt4azd2 FormSection_formSection_top__xt4azd0",
-      "side": "FormSection_formSection_side__xt4azd3 FormSection_formSection_side__xt4azd1"
-    },
-    "label": {
-      "side": "FormSection_label_side__xt4azd4"
-    },
-    "labeledInput": {
-      "side": "FormSection_labeledInput_side__xt4azd7 FormSection_labeledInput_side__xt4azd6"
-    },
-    "inputHelpSideWrapper": "FormSection_inputHelpSideWrapper__xt4azd5"
+    "formSection": "FormSection_formSection__xt4azd0",
+    "sideLabelPlaceholder": "FormSection_sideLabelPlaceholder__xt4azd1",
+    "inputHelpSideWrapper": "FormSection_inputHelpSideWrapper__xt4azd2"
   },
   "@alliancesoftware/ui/components/form/Label.css.ts": {
     "label": "Label_label__1inzmmh0 font__1g6dhcj7r font_textSizes_sm__1g6dhcjb font_textBase__1g6dhcj1 font_fontWeightVariants_medium__1g6dhcjh",
-    "alignEnd": "Label_alignEnd__1inzmmh1",
-    "requiredIndicator": "Label_requiredIndicator__1inzmmh2 font__1g6dhcj7r font_textSizes_sm__1g6dhcjb font_textBase__1g6dhcj1 font_fontWeightVariants_medium__1g6dhcjh"
+    "requiredIndicator": "Label_requiredIndicator__1inzmmh1 font__1g6dhcj7r font_textSizes_sm__1g6dhcjb font_textBase__1g6dhcj1 font_fontWeightVariants_medium__1g6dhcjh"
   },
   "@alliancesoftware/ui/components/form/LabeledInput.css.ts": {
-    "label": {
-      "side": "LabeledInput_label_side__17lyobc2 LabeledInput_labelBase__17lyobc1",
-      "top": "LabeledInput_label_top__17lyobc3 LabeledInput_labelBase__17lyobc1"
-    },
-    "labeledValue": "LabeledInput_labeledValue__17lyobc5",
-    "input": "LabeledInput_input__17lyobc4",
-    "labeledInput": {
-      "base": "LabeledInput_labeledInput__17lyobc6",
-      "variants": {
-        "inputSize": {
-          "sm": "LabeledInput_labeledInput_inputSize_sm__17lyobc7",
-          "md": "LabeledInput_labeledInput_inputSize_md__17lyobc8"
-        },
-        "labelPosition": {
-          "side": "LabeledInput_labeledInput_labelPosition_side__17lyobc9",
-          "top": "LabeledInput_labeledInput_labelPosition_top__17lyobca"
-        }
-      }
-    },
-    "sideInputWrapper": "LabeledInput_sideInputWrapper__17lyobcb",
-    "helpText": "LabeledInput_helpText__17lyobcc font__1g6dhcj7o font_textSizes_sm__1g6dhcjb font_textBase__1g6dhcj1 font_fontWeightVariants_regular__1g6dhcjg",
-    "invalid": "LabeledInput_invalid__17lyobcd",
+    "label": "LabeledInput_label__17lyobc1",
+    "labeledValue": "LabeledInput_labeledValue__17lyobc3",
+    "input": "LabeledInput_input__17lyobc2",
+    "labeledInput": "LabeledInput_labeledInput__17lyobc4",
+    "sideInputWrapper": "LabeledInput_sideInputWrapper__17lyobc5",
+    "helpText": "LabeledInput_helpText__17lyobc6 font__1g6dhcj7o font_textSizes_sm__1g6dhcjb font_textBase__1g6dhcj1 font_fontWeightVariants_regular__1g6dhcjg",
     "vars": {
       "minHeight": "var(--minHeight__17lyobc0)",
       "width": "var(--components-labeledInput-width__1n87t70sz)"
@@ -182,10 +157,7 @@
     }
   },
   "@alliancesoftware/ui/components/number-input/NumberInput.css.ts": {
-    "stepButton": {
-      "pressed": "NumberInput_stepButton_pressed__17rv46z4 NumberInput_stepButtonBase__17rv46z2 NumberInput_stepButton_pressed__17rv46z3",
-      "default": "NumberInput_stepButton_default__17rv46z5 NumberInput_stepButtonBase__17rv46z2"
-    },
+    "stepButton": "NumberInput_stepButton__17rv46z2",
     "stepButtonContainer": "NumberInput_stepButtonContainer__17rv46z1"
   },
   "@alliancesoftware/ui/components/overlay/Popover.css.ts": {
@@ -265,22 +237,18 @@
     }
   },
   "@alliancesoftware/ui/components/text-input/TextInputBase.css.ts": {
-    "clearButton": "TextInputBase_clearButton__10cw8bfi",
-    "input": "TextInputBase_input__10cw8bfh font__1g6dhcj6x font_textSizes_md__1g6dhcja font_textBase__1g6dhcj1 font_fontWeightVariants_regular__1g6dhcjg",
+    "clearButton": "TextInputBase_clearButton__10cw8bfe",
+    "input": "TextInputBase_input__10cw8bfd font__1g6dhcj6x font_textSizes_md__1g6dhcja font_textBase__1g6dhcj1 font_fontWeightVariants_regular__1g6dhcjg",
     "inputWrapper": "TextInputBase_inputWrapper__10cw8bfc focusRing_base__186kryd4",
     "addonAfter": "TextInputBase_addonAfter__10cw8bf8",
     "addonBefore": "TextInputBase_addonBefore__10cw8bf9",
     "addonButton": "TextInputBase_addonButton__10cw8bfb",
     "addonText": "TextInputBase_addonText__10cw8bfa",
-    "adornmentIcon": "TextInputBase_adornmentIcon__10cw8bfk",
-    "adornmentButton": "TextInputBase_adornmentButton__10cw8bfj",
+    "adornmentIcon": "TextInputBase_adornmentIcon__10cw8bfg",
+    "adornmentButton": "TextInputBase_adornmentButton__10cw8bff",
     "focusRingActive": "focusRing_active__186kryd5",
-    "sizes": {
-      "sm": "TextInputBase_sizes_sm__10cw8bfe TextInputBase_sizes__10cw8bfd",
-      "md": "TextInputBase_sizes_md__10cw8bfg TextInputBase_sizes__10cw8bff"
-    },
-    "validationIcon": "TextInputBase_validationIcon__10cw8bfl",
-    "inputContainer": "TextInputBase_inputContainer__10cw8bfm",
+    "validationIcon": "TextInputBase_validationIcon__10cw8bfh",
+    "inputContainer": "TextInputBase_inputContainer__10cw8bfi",
     "vars": {
       "paddingRight": "var(--paddingRight__10cw8bf0)",
       "borderColor": "var(--borderColor__10cw8bf4)",

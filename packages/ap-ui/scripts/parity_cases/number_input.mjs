@@ -10,7 +10,6 @@ export const class_prefixes = [
   "Icon",
   "NumberInput",
 ];
-export const keep_class_tokens = ["LabeledInput_labeledInput"];
 
 export const stylesheets = [
   "@alliancesoftware/ui/components/text-input/TextInputBase.css.ts",
