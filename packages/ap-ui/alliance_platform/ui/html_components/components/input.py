@@ -194,26 +194,18 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
         form_section_styles = self.resolve_vanilla_extract_mapping(_FORM_SECTION_STYLE_PATH)
 
         is_side = state.label_position == "side"
-        root_class_names = [
-            *self.get_recipe_classes(
-                labeled_input_styles,
-                "labeledInput",
-                {"inputSize": state.input_size, "labelPosition": state.label_position},
-            ),
-            props.get("className"),
-        ]
-        if is_side:
-            # LabeledInput renders through the default FormSection layout which adds its own
-            # class for the side label layout
-            root_class_names.append(self.get_nested_style_class(form_section_styles, "labeledInput", "side"))
-
+        # LabeledInput.css and FormSection.css style the input size, the label position (including
+        # the default FormSection side layout LabeledInput renders through) and the invalid help
+        # text colour from these attributes, so the root carries only its own class
         root_attrs: dict[str, Any] = {
             "data-labeledinput": "1",
             "data-apui": "labeled-input",
             "data-label-position": state.label_position,
             "data-label-align": state.label_align,
             "data-input-size": state.input_size,
-            "className": self.join_classes(*root_class_names),
+            "className": self.join_classes(
+                self.get_style_class(labeled_input_styles, "labeledInput"), props.get("className")
+            ),
             "style": props.get("style"),
             # Matching getStateDataAttributes usage in LabeledInput; note TextInputBase does not
             # forward isDisabled to LabeledInput so there is no data-disabled at this level (it is
@@ -223,7 +215,7 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
             "data-readonly": "true" if state.is_readonly else None,
         }
 
-        label_html = self.render_label(state, labeled_input_styles, form_section_styles)
+        label_html = self.render_label(state, labeled_input_styles)
         help_text_html = self.render_help_text(context, state, labeled_input_styles)
         input_slot = mark_safe(
             f'<div class="{conditional_escape(self.get_style_class(labeled_input_styles, "input"))}">'
@@ -234,8 +226,8 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
             side_wrapper_class = self.get_style_class(form_section_styles, "inputHelpSideWrapper")
             if not label_html:
                 # The default FormSection side layout renders a placeholder cell when there is no label
-                side_label_class = self.get_nested_style_class(form_section_styles, "label", "side")
-                label_html = f'<div class="{conditional_escape(side_label_class)}"></div>'
+                placeholder_class = self.get_style_class(form_section_styles, "sideLabelPlaceholder")
+                label_html = f'<div class="{conditional_escape(placeholder_class)}"></div>'
             children_html = (
                 f"{label_html}"
                 f'<div class="{conditional_escape(side_wrapper_class)}">{input_slot}{help_text_html}</div>'
@@ -245,28 +237,18 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
 
         return self.render_tag("div", root_attrs, children_html)
 
-    def render_label(
-        self,
-        state: LabeledInputState,
-        labeled_input_styles: Any,
-        form_section_styles: Any,
-    ) -> str:
+    def render_label(self, state: LabeledInputState, labeled_input_styles: Any) -> str:
         if not state.label:
             return ""
         label_styles = self.resolve_vanilla_extract_mapping(_LABEL_STYLE_PATH)
-        class_names = [
-            self.get_style_class(label_styles, "label"),
-            self.get_nested_style_class(labeled_input_styles, "label", state.label_position),
-        ]
-        if state.label_position == "side":
-            class_names.append(self.get_nested_style_class(form_section_styles, "label", "side"))
-        if state.label_align == "end":
-            class_names.append(self.get_style_class(label_styles, "alignEnd"))
-
         attrs: dict[str, Any] = {
             "data-apui": "label",
+            # Label.css aligns the label to the end from this attribute
             "data-label-align": state.label_align,
-            "className": self.join_classes(*class_names),
+            "className": self.join_classes(
+                self.get_style_class(label_styles, "label"),
+                self.get_style_class(labeled_input_styles, "label"),
+            ),
             "htmlFor": state.input_id,
         }
         children = conditional_escape(state.label)
@@ -278,20 +260,15 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
         return self.render_tag("label", attrs, children)
 
     def render_help_text(self, context: Context, state: LabeledInputState, labeled_input_styles: Any) -> str:
+        # The root's data-invalid, set whenever state.is_invalid is, colours the error message and
+        # an invalid description
         help_text_class = self.get_style_class(labeled_input_styles, "helpText")
-        invalid_class = self.get_style_class(labeled_input_styles, "invalid")
         if state.error_rendered:
-            attrs = {
-                "className": self.join_classes(help_text_class, invalid_class),
-                "id": state.error_id,
-            }
+            attrs = {"className": help_text_class, "id": state.error_id}
             # errorMessage is deliberately plain text (see rich_content_props)
             return self.render_tag("div", attrs, conditional_escape(state.error_message))
         if state.description_rendered:
-            attrs = {
-                "className": self.join_classes(help_text_class, invalid_class if state.is_invalid else None),
-                "id": state.description_id,
-            }
+            attrs = {"className": help_text_class, "id": state.description_id}
             content = render_content(
                 state.description, context, prop_name="description", origin=self.origin, component=self.name
             )
@@ -441,10 +418,7 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
         container_attrs: dict[str, Any] = {
             "data-apui": self.apui_name,
             **self.get_container_extra_attrs(props, state),
-            "className": self.join_classes(
-                self.get_style_class(text_input_base_styles, "inputContainer"),
-                self.get_nested_style_class(text_input_base_styles, "sizes", state.input_size),
-            ),
+            "className": self.get_style_class(text_input_base_styles, "inputContainer"),
             "data-size": state.input_size,
             "data-element": "textarea" if self.control_tag == "textarea" else "input",
             "data-has-addon-before": "true" if addon_before_html else None,
@@ -771,7 +745,7 @@ class UINumberInputRenderer(UITextInputBaseRenderer):
     def render_step_buttons(self, props: dict[str, Any], state: LabeledInputState) -> str:
         number_input_styles = self.resolve_vanilla_extract_mapping(_NUMBER_INPUT_STYLE_PATH)
         container_class = self.get_style_class(number_input_styles, "stepButtonContainer")
-        button_class = self.get_nested_style_class(number_input_styles, "stepButton", "default")
+        button_class = self.get_style_class(number_input_styles, "stepButton")
 
         if state.label:
             aria_labels = {

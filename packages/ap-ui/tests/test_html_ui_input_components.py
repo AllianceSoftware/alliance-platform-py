@@ -22,11 +22,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
 
     def test_class_kwarg_merges_with_default_classes(self):
         output, caught = self.render_with_warnings('{% ui "text_input" label="Email" class="extra-class" %}')
-        self.assertIn(
-            'class="LabeledInput_labeledInput LabeledInput_labeledInput_inputSize_sm '
-            'LabeledInput_labeledInput_labelPosition_top extra-class"',
-            output,
-        )
+        self.assertIn('class="LabeledInput_labeledInput extra-class"', output)
         self.assertEqual(caught, [])
 
     def test_class_and_class_name_kwargs_merge_together(self):
@@ -259,6 +255,38 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         self.assertNotIn("data-invalid", output)
         self.assertNotIn("data-valid", output)
 
+    def test_side_layout_is_styled_from_data_attributes(self):
+        # FormSection.css styles the side layout from the root's data-label-position, so neither the
+        # root nor the label carries a class for it, and a missing label leaves a placeholder cell
+        output, caught = self.render_with_warnings(
+            '{% ui "text_input" label="Email" labelPosition="side" %}'
+            '{% ui "text_input" aria_label="Code" labelPosition="side" %}'
+        )
+        self.assertEqual(caught, [])
+        self.assertEqual(
+            output.count(
+                'data-label-position="side" data-input-size="sm" class="LabeledInput_labeledInput">'
+            ),
+            2,
+        )
+        self.assertIn('<label data-apui="label" class="Label_label LabeledInput_label"', output)
+        self.assertIn(
+            '<div class="FormSection_sideLabelPlaceholder"></div><div class="FormSection_inputHelpSideWrapper">',
+            output,
+        )
+        self.assertNotIn("FormSection_formSection", output)
+
+    def test_invalid_description_is_coloured_by_the_root(self):
+        # LabeledInput.css colours the help text from the root's data-invalid
+        output, caught = self.render_with_warnings(
+            '{% ui "text_input" label="Email" isInvalid=True description="Your work email" %}'
+        )
+        self.assertEqual(caught, [])
+        self.assertIn('class="LabeledInput_labeledInput" data-invalid="true"', output)
+        self.assertIn(
+            '<div class="LabeledInput_helpText" id="apui-text-input-2">Your work email</div>', output
+        )
+
     def test_is_loading_sets_aria_busy_and_data_loading(self):
         output, _ = self.render_with_warnings('{% ui "text_input" label="Email" isLoading=True %}')
         self.assertIn('aria-busy="true"', output)
@@ -417,10 +445,12 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
             '{% ui "number_input" label="Small" inputSize="sm" %}'
             '{% ui "number_input" label="Medium" inputSize="md" %}'
         )
-        self.assertIn("TextInputBase_sizes_sm", output)
-        self.assertIn("TextInputBase_sizes_md", output)
-        self.assertIn('data-size="sm"', output)
-        self.assertIn('data-size="md"', output)
+        # TextInputBase.css sizes the container from data-size and LabeledInput.css the root from
+        # data-input-size
+        self.assertIn('class="TextInputBase_inputContainer" data-size="sm"', output)
+        self.assertIn('class="TextInputBase_inputContainer" data-size="md"', output)
+        self.assertIn('data-input-size="sm" class="LabeledInput_labeledInput"', output)
+        self.assertIn('data-input-size="md" class="LabeledInput_labeledInput"', output)
 
     def test_number_input_is_marked_for_collected_external_auto_attachment(self):
         output, _ = self.render_with_warnings('{% ui "number_input" label="Qty" name="qty" defaultValue=5 %}')
@@ -470,7 +500,7 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn('id="id_email"', output)
         self.assertIn('for="id_email"', output)
         self.assertIn('maxlength="100"', output)
-        self.assertIn("LabeledInput_labeledInput_labelPosition_top widget-class", output)
+        self.assertIn('class="LabeledInput_labeledInput widget-class"', output)
         self.assertIn('aria-required="true"', output)
         self.assertIn('data-required="true"', output)
         self.assertIn(" readonly", output)

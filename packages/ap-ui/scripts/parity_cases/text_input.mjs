@@ -9,9 +9,6 @@ export const class_prefixes = [
   "FormSection",
   "Icon",
 ];
-// The LabeledInput recipe base class is emitted alongside its variant classes by both the JS
-// and Python renderers, so exempt it from the "drop parent when child token exists" rule.
-export const keep_class_tokens = ["LabeledInput_labeledInput"];
 
 export const stylesheets = [
   "@alliancesoftware/ui/components/text-input/TextInputBase.css.ts",
