@@ -49,7 +49,7 @@ which renders (whitespace and the SVG trimmed, class names depend on your styles
 
     <div data-apui="stat" data-size="lg" class="stat">
       <span class="stat-label">Open jobs</span>
-      <span role="img" aria-hidden="true" data-apui-slot="icon" class="icon icon-plain icon-sm stat-icon">…</span>
+      <span role="img" aria-hidden="true" data-apui-slot="icon" class="icon stat-icon" data-size="sm" data-variant="plain">…</span>
       <span data-apui="stat-value" class="stat-value-lg">42</span>
     </div>
 
