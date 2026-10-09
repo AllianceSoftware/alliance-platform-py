@@ -1,26 +1,6 @@
 {
   "@alliancesoftware/icons/Icon.css.ts": {
     "icon": "Icon_icon__17znlfq7",
-    "sizes": {
-      "xxs": "Icon_sizes_xxs__17znlfq8",
-      "xs": "Icon_sizes_xs__17znlfq9",
-      "sm": "Icon_sizes_sm__17znlfqa",
-      "md": "Icon_sizes_md__17znlfqb",
-      "lg": "Icon_sizes_lg__17znlfqc",
-      "xl": "Icon_sizes_xl__17znlfqd"
-    },
-    "variants": {
-      "plain": "Icon_variants_plain__17znlfqe",
-      "circle": "Icon_variants_circle__17znlfqf",
-      "circle-outlined": "Icon_variants_circle-outlined__17znlfqg"
-    },
-    "colors": {
-      "primary": "Icon_colors_primary__17znlfqh",
-      "secondary": "Icon_colors_secondary__17znlfqi",
-      "warning": "Icon_colors_warning__17znlfqj",
-      "destructive": "Icon_colors_destructive__17znlfqk",
-      "success": "Icon_colors_success__17znlfql"
-    },
     "vars": {
       "containerSize": "var(--containerSize__17znlfq0)",
       "iconSize": "var(--iconSize__17znlfq1)"
@@ -28,13 +8,6 @@
   },
   "@alliancesoftware/ui/components/button/Button.css.ts": {
     "baseButton": "Button_baseButton__1xyn7kcv",
-    "sizes": {
-      "sm": "Button_sizes_sm__1xyn7kcw",
-      "md": "Button_sizes_md__1xyn7kcx",
-      "lg": "Button_sizes_lg__1xyn7kcy",
-      "xl": "Button_sizes_xl__1xyn7kcz",
-      "2xl": "Button_sizes_2xl__1xyn7kc10"
-    },
     "focusRingActive": "focusRing_active__186kryd5",
     "vars": {
       "sizes": {
