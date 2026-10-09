@@ -47,9 +47,6 @@ def render_static_icon(
     icon_styles = renderer.resolve_vanilla_extract_mapping(ICON_STYLE_PATH)
     wrapper_class_name = renderer.join_classes(
         renderer.get_style_class(icon_styles, "icon"),
-        renderer.get_nested_style_class(icon_styles, "variants", variant),
-        renderer.get_nested_style_class(icon_styles, "colors", color) if color else None,
-        renderer.get_nested_style_class(icon_styles, "sizes", size),
         *(extra_class_names or []),
         class_name,
     )
@@ -66,6 +63,9 @@ def render_static_icon(
         wrapper_attrs["data-apui-slot"] = slot
     wrapper_attrs["class"] = wrapper_class_name
     wrapper_attrs.update(attrs or {})
+    # The stylesheet keys size, variant and color off these. Icon sets them after the props it
+    # passes through, so they replace a passed attribute, and an unset color omits data-color.
+    wrapper_attrs.update({"data-size": size, "data-variant": variant, "data-color": color})
 
     for attr_name in list(wrapper_attrs.keys()):
         if is_event_handler_attr(attr_name):

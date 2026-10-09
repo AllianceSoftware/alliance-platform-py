@@ -404,7 +404,6 @@ class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
         class_name = self.join_classes(
             self.get_style_class(focus_ring_styles, "base"),
             self.get_style_class(button_styles, "baseButton"),
-            self.get_nested_style_class(button_styles, "sizes", size),
             item_class,
         )
         attrs: dict[str, Any] = {

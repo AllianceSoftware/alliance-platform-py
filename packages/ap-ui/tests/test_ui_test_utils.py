@@ -10,29 +10,29 @@ from tests.parity.base import test_development_bundler
 class StaticComponentTestCaseTestCase(StaticComponentTestCase):
     def test_renders_with_supplied_class_names(self):
         style_mappings = {
-            "Button.css.ts": {"baseButton": "button", "sizes": {"md": "button-md"}},
+            "Button.css.ts": {"baseButton": "button"},
             "focusRing.css.ts": {"base": "focus-ring"},
         }
         with self.static_render_context(style_mappings, bundler=test_development_bundler):
             output = self.render_ui_template('{% ui "button" %}Save{% endui %}')
 
         self.assertInHTML(
-            '<button class="focus-ring button button-md" data-apui="button" data-variant="solid" '
+            '<button class="focus-ring button" data-apui="button" data-variant="solid" '
             'data-color="primary" data-size="md" data-shape="default"><span>Save</span></button>',
             output,
         )
 
     def test_missing_styles_are_reported_and_resolve_to_empty_class_names(self):
         with self.static_render_context(
-            {"Button.css.ts": {"baseButton": "button"}}, bundler=test_development_bundler
+            {"Button.css.ts": {"focusRingActive": "button-focus-ring"}}, bundler=test_development_bundler
         ):
             with self.assertLogs("alliance_platform.ui", level="WARNING") as logs:
                 output = self.render_ui_template('{% ui "button" class_name="extra" %}Save{% endui %}')
 
-        self.assertIn('class="button extra"', output)
+        self.assertIn('class="extra"', output)
         # Only the listed stylesheet is checked; focusRing.css.ts has no entry
         [message] = logs.output
-        self.assertIn("Style 'sizes' does not exist in '", message)
+        self.assertIn("Style 'baseButton' does not exist in '", message)
         self.assertIn("@alliancesoftware/ui/components/button/Button.css.ts'", message)
 
     def test_unlisted_stylesheets_resolve_to_empty_class_names_without_reports(self):
@@ -51,22 +51,22 @@ class StaticComponentTestCaseTestCase(StaticComponentTestCase):
                 return {"base": "focus-ring"} if stylesheet.name == "focusRing.css.ts" else None
 
         test_case = SuppliesFocusRing()
-        style_mappings = {"Button.css.ts": {"baseButton": "button", "sizes": {"md": "button-md"}}}
+        style_mappings = {"Button.css.ts": {"baseButton": "button"}}
         with test_case.static_render_context(style_mappings, bundler=test_development_bundler):
             output = test_case.render_ui_template('{% ui "button" %}Save{% endui %}')
 
         self.assertEqual(requested, ["focusRing.css.ts"])
-        self.assertIn('class="focus-ring button button-md"', output)
+        self.assertIn('class="focus-ring button"', output)
 
     def test_longest_matching_stylesheet_key_wins(self):
         style_mappings = {
-            "Button.css.ts": {"baseButton": "by-name", "sizes": {"md": "md-by-name"}},
-            "components/button/Button.css.ts": {"baseButton": "by-path", "sizes": {"md": "md-by-path"}},
+            "Button.css.ts": {"baseButton": "by-name"},
+            "components/button/Button.css.ts": {"baseButton": "by-path"},
         }
         with self.static_render_context(style_mappings, bundler=test_development_bundler):
             output = self.render_ui_template('{% ui "button" %}Save{% endui %}')
 
-        self.assertIn('class="by-path md-by-path"', output)
+        self.assertIn('class="by-path"', output)
 
     def test_yields_the_asset_context(self):
         with self.static_render_context(bundler=test_development_bundler) as asset_context:

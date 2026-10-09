@@ -131,9 +131,7 @@ class UIDispatcherTemplateTagTestCase(HtmlUIParityTestCase):
 
         self.assertIn("alias-class", output)
         self.assertIn("named-class", output)
-        self.assertIn(
-            'class="focusRing_base Button_baseButton Button_sizes_md alias-class named-class"', output
-        )
+        self.assertIn('class="focusRing_base Button_baseButton alias-class named-class"', output)
 
     def test_built_in_leaf_components(self):
         renderers = {name: built_in_registry.get(name) for name in built_in_registry.list_names()}

@@ -1013,7 +1013,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertEqual(output.count("<svg"), 2)
         self.assertNotIn("<img", output)
         self.assertIn(
-            'class="Icon_icon Icon_variants_plain Icon_sizes_xs Menubar_itemIcon"',
+            'class="Icon_icon Menubar_itemIcon" data-size="xs" data-variant="plain"',
             output,
         )
         self.assertIn(
@@ -1123,7 +1123,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn("Menubar_sectionHeadingText", output)
         self.assertIn('</span><span data-apui-slot="label">Manage</span>', output)
         self.assertIn(
-            'class="Icon_icon Icon_variants_plain Icon_sizes_xs Menubar_sectionHeadingIcon"', output
+            'class="Icon_icon Menubar_sectionHeadingIcon" data-size="xs" data-variant="plain"', output
         )
         self.assertIn('data-apui-slot="icon"', output)
         for icon_name in ("Pencil01Outlined.svg", "AlertCircleOutlined.svg"):

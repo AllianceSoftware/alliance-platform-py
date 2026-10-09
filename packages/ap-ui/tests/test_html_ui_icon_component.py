@@ -29,7 +29,8 @@ class UIIconComponentTestCase(HtmlUIParityTestCase):
 
         self.assertEqual(caught, [])
         self.assertIn('<span role="img" aria-hidden="true" data-apui-slot="icon"', output)
-        self.assertIn('class="Icon_icon Icon_variants_plain Icon_sizes_xs"', output)
+        # A plain icon without a color has no data-color
+        self.assertIn('class="Icon_icon" data-size="xs" data-variant="plain">', output)
         self.assertIn("<svg", output)
         self.assertIn('focusable="false"', output)
         self.assertIn('stroke-width="2"', output)
@@ -40,7 +41,7 @@ class UIIconComponentTestCase(HtmlUIParityTestCase):
 
         self.assertEqual(output.count("<svg"), 1)
         self.assertNotIn("<img", output)
-        self.assertIn('class="Icon_icon Icon_variants_plain Icon_sizes_sm"', output)
+        self.assertIn('class="Icon_icon" data-size="sm" data-variant="plain"', output)
         self.assertIn('<svg width="24" height="24"', output)
 
     def test_collected_assets_document_does_not_embed_distinct_icon_images(self):
@@ -81,7 +82,8 @@ class UIIconComponentTestCase(HtmlUIParityTestCase):
 
         self.assertEqual(caught, [])
         self.assertIn(
-            'class="Icon_icon Icon_variants_circle Icon_circleBase Icon_colors_destructive Icon_sizes_sm extra"',
+            'class="Icon_icon extra" id="edit-icon" title="Edit" data-testid="edit" data-size="sm" '
+            'data-variant="circle" data-color="destructive"',
             output,
         )
         self.assertIn('id="edit-icon"', output)
@@ -89,6 +91,26 @@ class UIIconComponentTestCase(HtmlUIParityTestCase):
         self.assertIn('data-testid="edit"', output)
         self.assertIn('aria-label="Edit"', output)
         self.assertNotIn('aria-hidden="true"', output)
+
+    def test_circle_variants_default_to_the_secondary_color(self):
+        output, caught, _ = self.render_with_warnings(
+            '{% ui "icon" name="Pencil01Outlined" variant="circle-outlined" %}'
+        )
+
+        self.assertEqual(caught, [])
+        self.assertIn('data-variant="circle-outlined" data-color="secondary"', output)
+
+    def test_size_variant_and_color_replace_passed_data_attributes(self):
+        # As in Icon.tsx, which sets them after the props it passes through
+        output, caught, _ = self.render_with_warnings(
+            '{% ui "icon" name="Pencil01Outlined" data_size="xl" data_variant="circle" data_color="primary" %}'
+        )
+
+        self.assertEqual(caught, [])
+        self.assertIn('data-size="xs"', output)
+        self.assertIn('data-variant="plain"', output)
+        self.assertNotIn("data-color", output)
+        self.assertNotIn('data-size="xl"', output)
 
     def test_warns_and_drops_event_handlers(self):
         output, caught, _ = self.render_with_warnings(

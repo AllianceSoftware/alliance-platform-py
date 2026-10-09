@@ -108,8 +108,14 @@ class ParityHarnessTestCase(HtmlUIParityTestCase):
 
     def test_render_helpers_return_readable_class_names(self):
         with self.setup_render_context():
-            output = self.render_ui_template('{% ui "button" size="lg" %}Save{% endui %}')
+            output = self.render_ui_template(
+                '{% ui "pagination" page=1 total=10 page_size=10 aria_label="Pagination" %}'
+            )
 
-        # Hashes are stripped, typography composed into the size class is left out and the
-        # generic Button_sizes class is collapsed into the specific one.
-        self.assertIn('class="focusRing_base Button_baseButton Button_sizes_lg"', output)
+        # Hashes are stripped and the typography composed into the page button class is left out
+        self.assertIn(
+            'class="focusRing_base Button_baseButton Pagination_pageButton Pagination_grayButtonBase '
+            'Pagination_basePageButton Pagination_currentPage"',
+            output,
+        )
+        self.assertNotIn("font_", output)

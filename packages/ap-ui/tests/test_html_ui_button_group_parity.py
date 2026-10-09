@@ -81,7 +81,7 @@ class UIButtonGroupParityTestCase(HtmlUIParityTestCase):
 
         self.assertEqual(caught, [])
         self.assertIn('data-size="sm"', output)
-        self.assertIn("Icon_sizes_xxs", output)
+        self.assertIn('class="Icon_icon" data-size="xxs"', output)
 
     def test_group_slot_defaults_survive_include_only(self):
         with self.setup_render_context():
