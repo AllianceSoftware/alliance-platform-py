@@ -249,6 +249,13 @@ page-size parameter removed. Page-size selection, callbacks, client-managed stat
 renderers and custom `breakpoints` are reported and dropped. "Static pagination" in
 `docs/templatetags.rst` documents the behaviour for projects.
 
+The markup carries only root and part classes: `pagination` on the nav, `wrapper` on the list,
+`lastPageNumberWrapper` on the page number no page number or ellipsis follows, and the Button and
+part classes on the links. The stylesheet keys the rest off attributes the renderer sets: the
+variant off the nav's `data-variant`, each list item off its `data-item-type` (`previous`, `page`,
+`ellipsis` or `next`) and the current page off its `aria-current="page"`. Page-size selection is
+unsupported, so the nav never has the `data-has-page-size-select` React sets for it.
+
 The parity cases render React with `renderPaginationItemAsLink` and record the URL its links are
 built from in `meta.current_url`; the Python parity test builds a `RequestFactory` request for the
 same URL. Regenerate with `just sync-html-ui-parity-fixtures ../alliance-platform-js pagination`.
@@ -261,14 +268,12 @@ Reconciled by `normalize()` in `scripts/parity_cases/pagination.mjs` (React side
 - **Responsive ranges**: React measures the nav with a resize observer and re-renders with fewer
   pages below its 620px and 450px breakpoints, so its SSR output holds only the configured
   `siblingCount`/`boundaryCount` range. The static renderer renders all three ranges up front, the
-  configured one plus the two breakpoint ranges, each `<li>` marked with a
-  `responsiveItemVisibility` class (`large`, `medium`, `small`) that the stylesheet shows through
-  container queries at the matching width. The parity test drops the medium and small items and the large class.
+  configured one plus the two breakpoint ranges, each `<li>` marked with its range in
+  `data-responsive-range` (`large`, `medium`, `small`), which the stylesheet shows through container
+  queries at the matching width. Each range's last page number gets `lastPageNumberWrapper`. The
+  parity test drops the medium and small items and the large range's attribute.
 - **Absolute link URLs**: `renderPaginationItemAsLink` builds absolute URLs from `currentUrl`; the
   static renderer writes the path and query only. The generator strips the origin.
-- **`aria-current`**: React's `PaginationItem` passes a boolean, so every page link gets
-  `aria-current="true"` or `"false"`. The static renderer marks only the current page, with the
-  `page` token. The generator maps `"true"` to `"page"` and drops `"false"`.
 - **Disabled controls**: the static renderer renders `tabindex="-1"` on a disabled link, which the
   parity test strips.
 
