@@ -61,6 +61,14 @@ The input renderers live in
 components all render through `LabeledInput` + `TextInputBase`. Future input-like components (search
 input, select, date picker) should reuse the same base classes.
 
+The markup carries only root and part classes. The stylesheets key the rest off data attributes the
+renderers set: the input size off `data-size` on the input container and `data-input-size` on the
+root, the label position off the root's `data-label-position` (which also drives the default
+FormSection side layout LabeledInput renders through, so neither the root nor the label gets a
+FormSection class), end alignment off the label's `data-label-align`, and the invalid help text
+colour off the root's `data-invalid`. A side layout input without a label renders a
+`sideLabelPlaceholder` cell.
+
 Generated element ids use a deterministic `apui-<apui_name>-<n>` scheme (for example
 `apui-text-input-1`) where the counter is unique within a template render (stored in
 `context.render_context`). The fixture normalisation (`remapReactAriaIds()` in
