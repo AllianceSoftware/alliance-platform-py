@@ -193,7 +193,7 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
             'style="max-width: 40rem">',
             output,
         )
-        self.assertIn("focusRing_base Button_baseButton Button_sizes_md Pagination_prevButton", output)
+        self.assertIn("focusRing_base Button_baseButton Pagination_prevButton", output)
         self.assertIn('data-variant="outlined"', output)
         self.assertIn('data-color="gray"', output)
         self.assertIn('data-size="md"', output)
@@ -243,7 +243,8 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
         for visibility in ("large", "medium", "small"):
             self.assertEqual(self.get_page_numbers(output, visibility), [1])
         self.assertIn("Pagination_pagination_default", output)
-        self.assertIn("Button_sizes_sm", output)
+        self.assertIn('data-size="sm"', output)
+        self.assertNotIn('data-size="lg"', output)
 
     def test_page_above_total_is_clamped_with_warning(self):
         output, caught = self.render_with_warnings(

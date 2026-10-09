@@ -2,22 +2,19 @@ from __future__ import annotations
 
 from alliance_platform.ui.html_components import built_in_registry
 from alliance_platform.ui.test_utils import StaticComponentTestCase
+from alliance_platform.ui.test_utils import StyleMappings
 from test_alliance_platform_ui.static_components import StatRenderer
 
 from tests.parity.base import test_development_bundler
 
-STYLE_MAPPINGS = {
+STYLE_MAPPINGS: StyleMappings = {
     "Stat.css.ts": {
         "stat": "stat",
         "label": "stat-label",
         "icon": "stat-icon",
         "value": {"md": "stat-value-md", "lg": "stat-value-lg"},
     },
-    "Icon.css.ts": {
-        "icon": "icon",
-        "variants": {"plain": "icon-plain"},
-        "sizes": {"xs": "icon-xs", "sm": "icon-sm", "md": "icon-md"},
-    },
+    "Icon.css.ts": {"icon": "icon"},
 }
 
 
@@ -39,7 +36,7 @@ class StatComponentTestCase(StaticComponentTestCase):
         self.assertTrue(output.startswith('<div data-apui="stat" data-size="lg" class="stat">'))
         self.assertIn('<span class="stat-label">Open jobs</span>', output)
         # The icon's size and class come from the stat's slot defaults
-        self.assertIn('class="icon icon-plain icon-sm stat-icon"', output)
+        self.assertIn('class="icon stat-icon" data-size="sm"', output)
         # The value's class comes from the stat's payload
         self.assertIn('<span data-apui="stat-value" class="stat-value-lg">42</span>', output)
         self.assertNotIn("data-empty", output)
@@ -52,7 +49,7 @@ class StatComponentTestCase(StaticComponentTestCase):
             "{% endui %}"
         )
 
-        self.assertIn('class="icon icon-plain icon-md stat-icon"', output)
+        self.assertIn('class="icon stat-icon" data-size="md"', output)
 
     def test_payload_reaches_values_nested_in_markup(self):
         output = self.render(

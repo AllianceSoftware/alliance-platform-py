@@ -288,8 +288,11 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
         down_icon = 'd="M12 5V19M12 19L19 12M12 19L5 12"'
         self.assertIn(up_icon, output)
         self.assertIn(down_icon, output)
-        self.assertIn("Icon_icon Icon_variants_plain Icon_sizes_xs Table_sortIcon", output)
-        self.assertIn("Icon_icon Icon_variants_plain Icon_sizes_xs Table_sortIconUnsorted", output)
+        self.assertIn('class="Icon_icon Table_sortIcon" data-size="xs" data-variant="plain"', output)
+        self.assertIn(
+            'class="Icon_icon Table_sortIconUnsorted Table_sortIcon" data-size="xs" data-variant="plain"',
+            output,
+        )
         # Multi-sort with more than one descriptor shows sort positions
         self.assertIn('<span class="Table_sortWrapper">', output)
         self.assertIn('data-apui-slot="icon"', output)

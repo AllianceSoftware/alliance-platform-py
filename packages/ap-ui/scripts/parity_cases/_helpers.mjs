@@ -256,25 +256,9 @@ export function normalizeInputComponent(root, component) {
   normalizeInlineStyles(root);
 }
 
-function normalizeDisabledButtonLinks(root) {
-  // Button passes `href` after useButton's props, so a disabled link keeps it, and because the
-  // inferred anchor element type is not passed to useButton the link also gets the button-only
-  // `disabled` attribute. React cancels navigation with a click handler. Static HTML has no
-  // handler, so the static renderer omits `href` and marks the link `aria-disabled`, which is
-  // what useButton renders for a disabled non-button element.
-  for (const link of root.querySelectorAll(
-    'a[data-apui="button"][data-disabled="true"]'
-  )) {
-    link.removeAttribute("href");
-    link.removeAttribute("disabled");
-    link.setAttribute("aria-disabled", "true");
-  }
-}
-
 // Normalisation for markup containing `Button`s (the button and button_group cases).
 export function normalizeButtons(root, testCase) {
   removeAttributeMatching(root, "type", "button");
-  normalizeDisabledButtonLinks(root);
   // React optimistically marks a sole element as icon-only during SSR. Preserve that state only
   // for cases whose static source can make the same determination without mounting a DOM.
   if (!testCase.preserve_icon_only) {

@@ -2,24 +2,24 @@
   "@alliancesoftware/icons/Icon.css.ts": {
     "icon": "Icon_icon__17znlfq7",
     "sizes": {
-      "xxs": "Icon_sizes_xxs__17znlfqe Icon_sizes_xxs__17znlfq8",
-      "xs": "Icon_sizes_xs__17znlfqf Icon_sizes_xs__17znlfq9",
-      "sm": "Icon_sizes_sm__17znlfqg Icon_sizes_sm__17znlfqa",
-      "md": "Icon_sizes_md__17znlfqh Icon_sizes_md__17znlfqb",
-      "lg": "Icon_sizes_lg__17znlfqi Icon_sizes_lg__17znlfqc",
-      "xl": "Icon_sizes_xl__17znlfqj Icon_sizes_xl__17znlfqd"
+      "xxs": "Icon_sizes_xxs__17znlfq8",
+      "xs": "Icon_sizes_xs__17znlfq9",
+      "sm": "Icon_sizes_sm__17znlfqa",
+      "md": "Icon_sizes_md__17znlfqb",
+      "lg": "Icon_sizes_lg__17znlfqc",
+      "xl": "Icon_sizes_xl__17znlfqd"
     },
     "variants": {
-      "plain": "Icon_variants_plain__17znlfqx Icon_variants_plain__17znlfqv",
-      "circle": "Icon_variants_circle__17znlfqy Icon_circleBase__17znlfqu",
-      "circle-outlined": "Icon_variants_circle-outlined__17znlfqz Icon_circleBase__17znlfqu Icon_variants__17znlfqw"
+      "plain": "Icon_variants_plain__17znlfqe",
+      "circle": "Icon_variants_circle__17znlfqf",
+      "circle-outlined": "Icon_variants_circle-outlined__17znlfqg"
     },
     "colors": {
-      "primary": "Icon_colors_primary__17znlfqp Icon_colors_primary__17znlfqk",
-      "secondary": "Icon_colors_secondary__17znlfqq Icon_colors_secondary__17znlfql",
-      "warning": "Icon_colors_warning__17znlfqr Icon_colors_warning__17znlfqm",
-      "destructive": "Icon_colors_destructive__17znlfqs Icon_colors_destructive__17znlfqn",
-      "success": "Icon_colors_success__17znlfqt Icon_colors_success__17znlfqo"
+      "primary": "Icon_colors_primary__17znlfqh",
+      "secondary": "Icon_colors_secondary__17znlfqi",
+      "warning": "Icon_colors_warning__17znlfqj",
+      "destructive": "Icon_colors_destructive__17znlfqk",
+      "success": "Icon_colors_success__17znlfql"
     },
     "vars": {
       "containerSize": "var(--containerSize__17znlfq0)",
@@ -29,11 +29,11 @@
   "@alliancesoftware/ui/components/button/Button.css.ts": {
     "baseButton": "Button_baseButton__1xyn7kcv",
     "sizes": {
-      "sm": "Button_sizes_sm__1xyn7kcx Button_sizes__1xyn7kcw font__1g6dhcj7u font_textSizes_sm__1g6dhcjb font_textBase__1g6dhcj1 font_fontWeightVariants_semiBold__1g6dhcji",
-      "md": "Button_sizes_md__1xyn7kcz Button_sizes__1xyn7kcy font__1g6dhcj7u font_textSizes_sm__1g6dhcjb font_textBase__1g6dhcj1 font_fontWeightVariants_semiBold__1g6dhcji",
-      "lg": "Button_sizes_lg__1xyn7kc11 Button_sizes__1xyn7kc10 font__1g6dhcj73 font_textSizes_md__1g6dhcja font_textBase__1g6dhcj1 font_fontWeightVariants_semiBold__1g6dhcji",
-      "xl": "Button_sizes_xl__1xyn7kc13 Button_sizes__1xyn7kc12 font__1g6dhcj73 font_textSizes_md__1g6dhcja font_textBase__1g6dhcj1 font_fontWeightVariants_semiBold__1g6dhcji",
-      "2xl": "Button_sizes_2xl__1xyn7kc15 Button_sizes__1xyn7kc14 font__1g6dhcj6c font_textSizes_lg__1g6dhcj9 font_textBase__1g6dhcj1 font_fontWeightVariants_semiBold__1g6dhcji"
+      "sm": "Button_sizes_sm__1xyn7kcw",
+      "md": "Button_sizes_md__1xyn7kcx",
+      "lg": "Button_sizes_lg__1xyn7kcy",
+      "xl": "Button_sizes_xl__1xyn7kcz",
+      "2xl": "Button_sizes_2xl__1xyn7kc10"
     },
     "focusRingActive": "focusRing_active__186kryd5",
     "vars": {

@@ -124,7 +124,7 @@ class UIButtonParityTestCase(HtmlUIParityTestCase):
                     )
 
                 self.assertIn(f'data-size="{button_size}"', output)
-                self.assertIn(f"Icon_sizes_{icon_size}", output)
+                self.assertIn(f'class="Icon_icon" data-size="{icon_size}"', output)
 
     def test_explicit_icon_size_overrides_button_slot_default(self):
         with self.setup_render_context():
@@ -135,8 +135,8 @@ class UIButtonParityTestCase(HtmlUIParityTestCase):
             )
 
         self.assertIn('data-size="sm"', output)
-        self.assertIn("Icon_sizes_sm", output)
-        self.assertNotIn("Icon_sizes_xxs", output)
+        self.assertIn('class="Icon_icon" data-size="sm"', output)
+        self.assertNotIn('data-size="xxs"', output)
 
     def test_invalid_enum_props_are_normalized_by_shared_rules(self):
         output, caught = self.render_with_warnings(

@@ -123,11 +123,9 @@ class UIButtonRenderer(BaseHtmlUIComponentRenderer):
         button_styles = self.resolve_vanilla_extract_mapping(_BUTTON_STYLE_PATH)
         focus_ring_styles = self.resolve_vanilla_extract_mapping(_FOCUS_RING_STYLE_PATH)
 
-        size_class_name = self.get_nested_style_class(button_styles, "sizes", size)
         class_name = self.join_classes(
             self.get_style_class(focus_ring_styles, "base"),
             self.get_style_class(button_styles, "baseButton"),
-            size_class_name,
             props.get("className"),
         )
 
@@ -151,8 +149,7 @@ class UIButtonRenderer(BaseHtmlUIComponentRenderer):
                 attrs["disabled"] = True
             else:
                 attrs["aria-disabled"] = "true"
-        # A disabled link must not navigate. React keeps the href and cancels the click with an
-        # event handler, which static HTML does not have, so the href is omitted instead.
+        # As in React's Button, a disabled link renders without href so it cannot navigate
         if href is not None and not is_disabled:
             attrs["href"] = href
 
