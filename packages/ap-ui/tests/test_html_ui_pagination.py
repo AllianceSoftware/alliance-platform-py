@@ -27,17 +27,17 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
             self.fail(f"No link found with aria-label={aria_label!r}")
         return unescape(match.group(0))
 
-    def get_responsive_range_html(self, output: str, visibility: str) -> str:
+    def get_responsive_range_html(self, output: str, responsive_range: str) -> str:
         return "".join(
             re.findall(
-                rf'<li class="[^"]*Pagination_responsiveItemVisibility_{visibility}[^"]*">(.*?)</li>',
+                rf'<li\b[^>]*\sdata-responsive-range="{responsive_range}"[^>]*>(.*?)</li>',
                 output,
                 flags=re.DOTALL,
             )
         )
 
-    def get_page_numbers(self, output: str, visibility: str) -> list[int]:
-        range_html = self.get_responsive_range_html(output, visibility)
+    def get_page_numbers(self, output: str, responsive_range: str) -> list[int]:
+        range_html = self.get_responsive_range_html(output, responsive_range)
         return [
             int(page)
             for page in re.findall(r'aria-label="(?:Go to page|Current Page, Page) (\d+)"', range_html)
@@ -98,10 +98,10 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
                 )
 
                 self.assertEqual(caught, [])
-                for visibility, (expected_pages, ellipsis_count) in expected_ranges.items():
-                    with self.subTest(page=page, visibility=visibility):
-                        range_html = self.get_responsive_range_html(output, visibility)
-                        self.assertEqual(self.get_page_numbers(output, visibility), expected_pages)
+                for responsive_range, (expected_pages, ellipsis_count) in expected_ranges.items():
+                    with self.subTest(page=page, responsive_range=responsive_range):
+                        range_html = self.get_responsive_range_html(output, responsive_range)
+                        self.assertEqual(self.get_page_numbers(output, responsive_range), expected_pages)
                         self.assertEqual(range_html.count("Pagination_ellipsisButton"), ellipsis_count)
                 self.assertIn(f'aria-label="Current Page, Page {page}"', output)
                 self.assertIn('aria-current="page"', output)
@@ -135,8 +135,8 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
         )
 
         self.assertEqual(caught, [])
-        for visibility in ("large", "medium", "small"):
-            self.assertEqual(self.get_page_numbers(output, visibility), [1])
+        for responsive_range in ("large", "medium", "small"):
+            self.assertEqual(self.get_page_numbers(output, responsive_range), [1])
         self.assertIn('aria-label="Current Page, Page 1"', output)
         self.assertIn('aria-current="page"', output)
         self.assertIn('aria-disabled="true"', self.get_link(output, "Previous Page"))
@@ -189,8 +189,8 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
         self.assertEqual(caught, [])
         self.assertIn(
             '<nav aria-label="Result pages" aria-describedby="page-help" data-testid="pager" '
-            'class="Pagination_pagination_compact Pagination_basePagination custom-pagination" '
-            'style="max-width: 40rem">',
+            'class="Pagination_pagination custom-pagination" style="max-width: 40rem" '
+            'data-variant="compact">',
             output,
         )
         self.assertIn("focusRing_base Button_baseButton Pagination_prevButton", output)
@@ -199,6 +199,49 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
         self.assertIn('data-size="md"', output)
         self.assertIn('data-apui-slot="icon"', output)
         self.assertEqual(output.count("<svg"), 2)
+
+    def test_items_are_styled_from_data_attributes(self):
+        # Pagination.css styles the nav from data-variant, each item from data-item-type, the items of
+        # a responsive range from data-responsive-range and the current page from aria-current; the
+        # last page number of each range keeps its class
+        output, caught = self.render_with_warnings(
+            '{% ui "pagination" page=5 total=100 page_size=10 aria_label="Pagination" %}'
+        )
+
+        self.assertEqual(caught, [])
+        self.assertIn(
+            '<nav aria-label="Pagination" class="Pagination_pagination" data-variant="default">', output
+        )
+        self.assertNotIn("data-has-page-size-select", output)
+        last_page = 'class="Pagination_lastPageNumberWrapper"'
+        self.assertEqual(
+            re.findall(r"<li\b[^>]*>", output),
+            [
+                '<li data-item-type="previous">',
+                *['<li data-item-type="page" data-responsive-range="large">'] * 7,
+                '<li data-item-type="ellipsis" data-responsive-range="large">',
+                f'<li data-item-type="page" data-responsive-range="large" {last_page}>',
+                '<li data-item-type="page" data-responsive-range="medium">',
+                '<li data-item-type="ellipsis" data-responsive-range="medium">',
+                *['<li data-item-type="page" data-responsive-range="medium">'] * 3,
+                '<li data-item-type="ellipsis" data-responsive-range="medium">',
+                f'<li data-item-type="page" data-responsive-range="medium" {last_page}>',
+                *['<li data-item-type="page" data-responsive-range="small">'] * 2,
+                f'<li data-item-type="page" data-responsive-range="small" {last_page}>',
+                '<li data-item-type="next">',
+            ],
+        )
+        current_links = re.findall(r'<a\b[^>]*\saria-current="page"[^>]*>', output)
+        self.assertEqual(len(current_links), 3)
+        for link in current_links:
+            with self.subTest(link=link):
+                self.assertIn('aria-label="Current Page, Page 5"', link)
+                self.assertIn(
+                    'class="focusRing_base Button_baseButton Pagination_pageButton '
+                    'Pagination_grayButtonBase Pagination_basePageButton"',
+                    link,
+                )
+        self.assertEqual(output.count("aria-current"), 3)
 
     def test_disabled_pagination_links_are_inert_without_javascript(self):
         output, caught = self.render_with_warnings(
@@ -240,9 +283,9 @@ class UIPaginationRendererTestCase(HtmlUIParityTestCase):
         ):
             with self.subTest(prop_name=prop_name):
                 self.assert_warning_contains(caught, f"Invalid '{prop_name}' prop passed")
-        for visibility in ("large", "medium", "small"):
-            self.assertEqual(self.get_page_numbers(output, visibility), [1])
-        self.assertIn("Pagination_pagination_default", output)
+        for responsive_range in ("large", "medium", "small"):
+            self.assertEqual(self.get_page_numbers(output, responsive_range), [1])
+        self.assertIn('class="Pagination_pagination" data-variant="default"', output)
         self.assertIn('data-size="sm"', output)
         self.assertNotIn('data-size="lg"', output)
 

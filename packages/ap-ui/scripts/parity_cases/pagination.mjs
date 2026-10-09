@@ -18,9 +18,10 @@ export async function loadComponents({ importBareModule }) {
   };
 }
 
-// The static side's own extensions (the medium and small responsive ranges, tabindex on disabled
-// links) are stripped by strip_static_pagination_extensions() in
-// tests/test_html_ui_pagination_parity.py; see DEVELOPMENT.md for the full list.
+// The static side's own extensions (the medium and small responsive ranges, the large range's
+// data-responsive-range, tabindex on disabled links) are stripped by
+// strip_static_pagination_extensions() in tests/test_html_ui_pagination_parity.py; see
+// DEVELOPMENT.md for the full list.
 export function normalize(root, testCase, helpers) {
   // Every control is a Button rendered as a link.
   helpers.normalizeButtons(root, testCase);
@@ -30,14 +31,6 @@ export function normalize(root, testCase, helpers) {
     const href = element.getAttribute("href");
     if (href?.startsWith("http://testserver")) {
       element.setAttribute("href", href.slice("http://testserver".length));
-    }
-    // PaginationItem passes a boolean, so every page link gets aria-current="true" or "false";
-    // the static renderer marks only the current page, with the "page" token.
-    const ariaCurrent = element.getAttribute("aria-current");
-    if (ariaCurrent === "false") {
-      element.removeAttribute("aria-current");
-    } else if (ariaCurrent === "true") {
-      element.setAttribute("aria-current", "page");
     }
   }
 }

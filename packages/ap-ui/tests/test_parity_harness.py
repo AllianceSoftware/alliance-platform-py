@@ -115,7 +115,7 @@ class ParityHarnessTestCase(HtmlUIParityTestCase):
         # Hashes are stripped and the typography composed into the page button class is left out
         self.assertIn(
             'class="focusRing_base Button_baseButton Pagination_pageButton Pagination_grayButtonBase '
-            'Pagination_basePageButton Pagination_currentPage"',
+            'Pagination_basePageButton"',
             output,
         )
         self.assertNotIn("font_", output)
