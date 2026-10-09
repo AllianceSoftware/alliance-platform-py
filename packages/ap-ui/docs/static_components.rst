@@ -180,9 +180,8 @@ nothing. Override these hooks:
 ``resolve_props(context)`` can also be overridden, for example to refuse to render outside a
 required parent. Helpers to call from hooks include ``report``, ``render_children``, ``render_tag``,
 ``render_icon``, ``collect_forwarded_props``, ``join_classes``, ``resolve_frontend_resource``,
-``resolve_vanilla_extract_mapping`` and the style getters ``get_style_class``,
-``get_nested_style_class`` and ``get_recipe_classes``. Names starting with an underscore are
-internal.
+``resolve_vanilla_extract_mapping`` and the style getters ``get_style_class`` and
+``get_nested_style_class``. Names starting with an underscore are internal.
 
 Frames and typed payloads
 -------------------------
@@ -248,9 +247,9 @@ expressions).
 ``resolve_frontend_resource(path)`` resolves a path through the bundler the same way the
 :ttag:`component <alliance-platform-frontend:component>` tag does, and
 ``resolve_vanilla_extract_mapping(path)`` returns the class names a ``.css.ts`` file exports. Read
-them with ``get_style_class(mapping, "label")``, ``get_nested_style_class(mapping, "value", size)``
-for style variants and ``get_recipe_classes`` for recipes. A style the mapping does not have is
-reported as a :ref:`contract diagnostic <static-component-diagnostics>` naming the style and the
+them with ``get_style_class(mapping, "label")``, and style variants with
+``get_nested_style_class(mapping, "value", size)``. A style the mapping does not have is reported
+as a :ref:`contract diagnostic <static-component-diagnostics>` naming the style and the
 stylesheet, and resolves to ``""``. While the mapping file is not available yet, as before the dev
 server has processed the stylesheet, classes resolve to ``""`` without a report.
 

@@ -20,10 +20,6 @@ STYLESHEET = Path("/project/node_modules/@alliancesoftware/ui/components/button/
 CLASSES = {
     "baseButton": "Button_baseButton__1",
     "sizes": {"sm": "Button_sizes_sm__2"},
-    "labeledInput": {
-        "base": "LabeledInput_labeledInput__3",
-        "variants": {"inputSize": {"sm": "LabeledInput_labeledInput_inputSize_sm__4"}},
-    },
 }
 
 
@@ -94,10 +90,6 @@ class StyleGetterTestCase(SimpleTestCase):
             self.assertEqual(
                 self.renderer.get_nested_style_class(mapping, "sizes", "sm"), "Button_sizes_sm__2"
             )
-            self.assertEqual(
-                self.renderer.get_recipe_classes(mapping, "labeledInput", {"inputSize": "sm"}),
-                ["LabeledInput_labeledInput__3", "LabeledInput_labeledInput_inputSize_sm__4"],
-            )
 
     def test_missing_style_is_reported_once_and_resolves_to_empty(self):
         mapping = self.make_mapping(CLASSES)
@@ -139,29 +131,6 @@ class StyleGetterTestCase(SimpleTestCase):
             ],
         )
 
-    def test_missing_recipe_entries_are_reported_and_skipped(self):
-        mapping = self.make_mapping(CLASSES)
-
-        with self.assertLogs(LOGGER, level="WARNING") as logs:
-            self.assertEqual(
-                self.renderer.get_recipe_classes(
-                    mapping, "labeledInput", {"inputSize": "lg", "labelPosition": "side"}
-                ),
-                ["LabeledInput_labeledInput__3"],
-            )
-            self.assertEqual(self.renderer.get_recipe_classes(mapping, "label", {}), [])
-            self.assertEqual(self.renderer.get_recipe_classes(mapping, "baseButton", {}), [])
-
-        self.assertEqual(
-            [record.getMessage() for record in logs.records],
-            [
-                f"Style 'labeledInput' variant inputSize='lg' does not exist in '{STYLESHEET}'",
-                f"Style 'labeledInput' variant labelPosition='side' does not exist in '{STYLESHEET}'",
-                f"Style 'label' does not exist in '{STYLESHEET}'",
-                f"Style 'baseButton' is not a recipe in '{STYLESHEET}'",
-            ],
-        )
-
     def test_styles_are_checked_against_reloaded_data(self):
         mapping = ReloadingMapping()
 
@@ -188,7 +157,6 @@ class StyleGetterTestCase(SimpleTestCase):
             with self.assertNoLogs(LOGGER, level="WARNING"):
                 self.assertEqual(self.renderer.get_style_class(mapping, "baseButton"), "")
                 self.assertEqual(self.renderer.get_nested_style_class(mapping, "sizes", "sm"), "")
-                self.assertEqual(self.renderer.get_recipe_classes(mapping, "labeledInput", {}), [])
 
         # The mapping class warns that it could not resolve the classes, as it did before
         self.assertTrue(caught_warnings)
