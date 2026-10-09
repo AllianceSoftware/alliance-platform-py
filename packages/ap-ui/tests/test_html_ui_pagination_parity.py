@@ -8,20 +8,20 @@ from django.test import RequestFactory
 from tests.parity.base import HtmlUIParityTestCase
 
 # The static renderer precomputes the item ranges React picks from the rendered width: the
-# configured counts (large) plus the 620px and 450px breakpoint ranges (medium, small), each
-# marked with a responsiveItemVisibility class. React's SSR output has the configured counts only.
+# configured counts (large) plus the 620px and 450px breakpoint ranges (medium, small), each item
+# marked with its range in data-responsive-range. React's SSR output has the configured counts only.
 _SMALLER_RANGE_ITEM_RE = re.compile(
-    r'<li class="[^"]*\bPagination_responsiveItemVisibility_(?:medium|small)\b[^"]*">.*?</li>',
+    r'<li\b[^>]*\sdata-responsive-range="(?:medium|small)"[^>]*>.*?</li>',
     re.DOTALL,
 )
-_LARGE_RANGE_CLASS_RE = re.compile(r"\sPagination_responsiveItemVisibility_large(?=[\s\"])")
+_LARGE_RANGE_ATTRIBUTE_RE = re.compile(r'\sdata-responsive-range="large"')
 # Disabled links have no href; the static renderer also gives them tabindex="-1".
 _DISABLED_LINK_RE = re.compile(r'<a\b[^>]*\saria-disabled="true"[^>]*>')
 
 
 def strip_static_pagination_extensions(value: str) -> str:
     normalized = _SMALLER_RANGE_ITEM_RE.sub("", value)
-    normalized = _LARGE_RANGE_CLASS_RE.sub("", normalized)
+    normalized = _LARGE_RANGE_ATTRIBUTE_RE.sub("", normalized)
     return _DISABLED_LINK_RE.sub(lambda match: match.group(0).replace(' tabindex="-1"', ""), normalized)
 
 

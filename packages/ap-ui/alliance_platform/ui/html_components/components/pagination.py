@@ -34,7 +34,7 @@ _ARROW_RIGHT_ICON = "ArrowRightOutlined"
 
 VALID_VARIANTS = ("default", "compact")
 VALID_SIZES = ("sm", "md")
-ResponsiveVisibility = Literal["large", "medium", "small"]
+ResponsiveRange = Literal["large", "medium", "small"]
 
 _PAGE_SIZE_REASON = (
     "page-size selection requires an interactive form or JavaScript and is not supported by static pagination"
@@ -157,13 +157,16 @@ class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
         size = str(props.get("size", "sm"))
 
         pagination_styles = self.resolve_vanilla_extract_mapping(_PAGINATION_STYLE_PATH)
+        # Pagination.css styles the variant from data-variant. Page-size selection is unsupported, so
+        # the nav never has the data-has-page-size-select React sets for it.
         root_attrs: dict[str, Any] = {
             **self.collect_forwarded_props(props),
             "className": self.join_classes(
-                self.get_nested_style_class(pagination_styles, "pagination", variant),
+                self.get_style_class(pagination_styles, "pagination"),
                 props.get("className"),
             ),
             "style": props.get("style"),
+            "data-variant": variant,
         }
         large_items = self.generate_items(
             page=page,
@@ -172,7 +175,7 @@ class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
             boundary_count=boundary_count,
             is_disabled=is_disabled,
         )
-        responsive_ranges: tuple[tuple[ResponsiveVisibility, list[PaginationItem]], ...] = (
+        responsive_ranges: tuple[tuple[ResponsiveRange, list[PaginationItem]], ...] = (
             ("large", large_items[1:-1]),
             (
                 "medium",
@@ -202,14 +205,14 @@ class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
             pagination_styles=pagination_styles,
             size=size,
         )
-        for visibility, items in responsive_ranges:
+        for responsive_range, items in responsive_ranges:
             list_html += self.render_items(
                 context,
                 props,
                 items,
                 pagination_styles=pagination_styles,
                 size=size,
-                responsive_visibility=visibility,
+                responsive_range=responsive_range,
             )
         list_html += self.render_items(
             context,
@@ -316,30 +319,26 @@ class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
         *,
         pagination_styles: Any,
         size: str,
-        responsive_visibility: ResponsiveVisibility | None = None,
+        responsive_range: ResponsiveRange | None = None,
     ) -> str:
         rendered: list[str] = []
         for index, item in enumerate(items):
-            wrapper_classes = []
-            if item.type in {"page", "ellipsis"}:
-                wrapper_classes.append(self.get_style_class(pagination_styles, "pageNumberWrapper"))
-            elif item.type == "previous":
-                wrapper_classes.append(self.get_style_class(pagination_styles, "prevButtonWrapper"))
-            elif item.type == "next":
-                wrapper_classes.append(self.get_style_class(pagination_styles, "nextButtonWrapper"))
-            if item.type == "page" and (
+            # The page number that no page number or ellipsis follows, which React marks too: here the
+            # last page number of each responsive range
+            is_last_page_number = item.type == "page" and (
                 index + 1 == len(items) or items[index + 1].type not in {"page", "ellipsis"}
-            ):
-                wrapper_classes.append(self.get_style_class(pagination_styles, "lastPageNumberWrapper"))
-            if responsive_visibility is not None:
-                wrapper_classes.append(
-                    self.get_nested_style_class(
-                        pagination_styles,
-                        "responsiveItemVisibility",
-                        responsive_visibility,
-                    )
-                )
-
+            )
+            # Pagination.css styles each item from data-item-type, and shows the items of a
+            # responsive range only at the container width its data-responsive-range names
+            item_attrs = {
+                "data-item-type": item.type,
+                "data-responsive-range": responsive_range,
+                "className": (
+                    self.get_style_class(pagination_styles, "lastPageNumberWrapper")
+                    if is_last_page_number
+                    else None
+                ),
+            }
             content = self.render_item(
                 context,
                 props,
@@ -347,9 +346,7 @@ class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
                 pagination_styles=pagination_styles,
                 size=size,
             )
-            rendered.append(
-                self.render_tag("li", {"className": self.join_classes(*wrapper_classes)}, content)
-            )
+            rendered.append(self.render_tag("li", item_attrs, content))
         return mark_safe("".join(rendered))
 
     def render_item(
@@ -387,10 +384,8 @@ class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
                 conditional_escape(gettext("Next")),
             ) + self.render_icon(_ARROW_RIGHT_ICON, "xxs")
         else:
-            item_class = self.join_classes(
-                self.get_style_class(pagination_styles, "pageButton"),
-                self.get_style_class(pagination_styles, "currentPage") if item.is_current else None,
-            )
+            # Pagination.css styles the current page from the aria-current="page" below
+            item_class = self.get_style_class(pagination_styles, "pageButton")
             if item.is_current:
                 label = gettext("Current Page, Page %(page)s") % {"page": item.page}
             else:

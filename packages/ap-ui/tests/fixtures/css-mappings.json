@@ -180,29 +180,15 @@
     "inner": "Popover_inner__ovoqx81"
   },
   "@alliancesoftware/ui/components/pagination/Pagination.css.ts": {
-    "ellipsisButton": "Pagination_ellipsisButton__1negsl6s Pagination_basePageButton__1negsl6p Pagination_ellipsisButton__1negsl6r",
-    "pagination": {
-      "default": "Pagination_pagination_default__1negsl64 Pagination_basePagination__1negsl61 Pagination_pagination_default__1negsl62",
-      "compact": "Pagination_pagination_compact__1negsl65 Pagination_basePagination__1negsl61 Pagination_pagination_compact__1negsl63"
-    },
-    "nextButton": "Pagination_nextButton__1negsl6m Pagination_baseNavButton__1negsl6k focusRing_base__186kryd4 Pagination_grayButtonBase__1negsl6i Pagination_baseNavButton__1negsl6j Pagination_nextButton__1negsl6l",
-    "prevButton": "Pagination_prevButton__1negsl6o Pagination_baseNavButton__1negsl6k focusRing_base__186kryd4 Pagination_grayButtonBase__1negsl6i Pagination_baseNavButton__1negsl6j Pagination_prevButton__1negsl6n",
-    "pageButton": "Pagination_pageButton__1negsl6q Pagination_grayButtonBase__1negsl6i Pagination_basePageButton__1negsl6p font__1g6dhcj7r font_textSizes_sm__1g6dhcjb font_textBase__1g6dhcj1 font_fontWeightVariants_medium__1g6dhcjh",
-    "currentPage": "Pagination_currentPage__1negsl6t",
-    "wrapper": "Pagination_wrapper__1negsl66",
-    "buttonText": "Pagination_buttonText__1negsl6h",
-    "pageNumberWrapper": "Pagination_pageNumberWrapper__1negsl6g",
-    "prevButtonWrapper": "Pagination_prevButtonWrapper__1negsl69 Pagination_prevNextWrapper__1negsl68",
-    "nextButtonWrapper": "Pagination_nextButtonWrapper__1negsl6c Pagination_prevNextWrapper__1negsl68",
-    "pageSizeSelect": "Pagination_pageSizeSelect__1negsl67",
-    "pageSizeSelectWrapper": "Pagination_pageSizeSelectWrapper__1negsl6b",
-    "lastPageNumberWrapper": "Pagination_lastPageNumberWrapper__1negsl6a",
-    "hasPageSizeSelect": "Pagination_hasPageSizeSelect__1negsl60",
-    "responsiveItemVisibility": {
-      "large": "Pagination_responsiveItemVisibility_large__1negsl6d",
-      "medium": "Pagination_responsiveItemVisibility_medium__1negsl6e",
-      "small": "Pagination_responsiveItemVisibility_small__1negsl6f"
-    }
+    "ellipsisButton": "Pagination_ellipsisButton__1negsl6f Pagination_basePageButton__1negsl6c Pagination_ellipsisButton__1negsl6e",
+    "pagination": "Pagination_pagination__1negsl60",
+    "nextButton": "Pagination_nextButton__1negsl69 Pagination_baseNavButton__1negsl67 focusRing_base__186kryd4 Pagination_grayButtonBase__1negsl65 Pagination_baseNavButton__1negsl66 Pagination_nextButton__1negsl68",
+    "prevButton": "Pagination_prevButton__1negsl6b Pagination_baseNavButton__1negsl67 focusRing_base__186kryd4 Pagination_grayButtonBase__1negsl65 Pagination_baseNavButton__1negsl66 Pagination_prevButton__1negsl6a",
+    "pageButton": "Pagination_pageButton__1negsl6d Pagination_grayButtonBase__1negsl65 Pagination_basePageButton__1negsl6c font__1g6dhcj7r font_textSizes_sm__1g6dhcjb font_textBase__1g6dhcj1 font_fontWeightVariants_medium__1g6dhcjh",
+    "wrapper": "Pagination_wrapper__1negsl61",
+    "buttonText": "Pagination_buttonText__1negsl64",
+    "pageSizeSelect": "Pagination_pageSizeSelect__1negsl62",
+    "lastPageNumberWrapper": "Pagination_lastPageNumberWrapper__1negsl63"
   },
   "@alliancesoftware/ui/components/table/Table.css.ts": {
     "footer": "Table_footer__165xtj0c",
