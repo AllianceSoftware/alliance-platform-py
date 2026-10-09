@@ -19,7 +19,7 @@ parent component), ``allow_non_scalar_prop`` and the ``supports_prop_name`` clas
 
 Helpers to call: ``report``, ``render_children``, ``render_tag``, ``render_icon``,
 ``resolve_frontend_resource``, ``resolve_optional_resource_path``, ``resolve_vanilla_extract_mapping``,
-the style getters (``get_style_class``, ``get_nested_style_class``, ``get_recipe_classes``),
+the style getters (``get_style_class``, ``get_nested_style_class``),
 ``collect_forwarded_props``, ``join_classes``, ``build_attrs_string`` and the
 ``canonical_prop_name`` classmethod. Module level: :class:`PropRule`, :func:`enum_prop_rule`,
 :func:`typed_prop_rule`, :func:`build_attrs_string`, :func:`is_event_handler_attr` and
@@ -637,33 +637,6 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         if group is not None and self._mapping_loaded(mapping):
             self._report_missing_style(mapping, f"'{key}.{nested_key}'")
         return ""
-
-    def get_recipe_classes(self, mapping: Any, key: str, selections: dict[str, str]) -> list[str]:
-        """Resolve classes for a vanilla-extract recipe export.
-
-        Recipes are serialized by ``@alliancesoftware/vite-plugin-django-vanilla-extract`` as
-        ``{"base": <class>, "variants": {<group>: {<value>: <class>}}}``. Returns the base class
-        followed by the class for each selected variant. A missing recipe or variant is reported,
-        as for :meth:`get_style_class`, and skipped.
-        """
-        recipe = self._get_style(mapping, key, None)
-        if not isinstance(recipe, Mapping):
-            if recipe is not None and self._mapping_loaded(mapping):
-                self._report_missing_style(mapping, f"'{key}'", problem="is not a recipe")
-            return []
-        classes: list[str] = []
-        base_class = recipe.get("base", "")
-        if isinstance(base_class, str) and base_class:
-            classes.append(base_class)
-        variants = recipe.get("variants", {})
-        for group, value in selections.items():
-            group_mapping = variants.get(group, {}) if isinstance(variants, Mapping) else {}
-            variant_class = group_mapping.get(value, "") if isinstance(group_mapping, Mapping) else ""
-            if isinstance(variant_class, str) and variant_class:
-                classes.append(variant_class)
-            elif self._mapping_loaded(mapping):
-                self._report_missing_style(mapping, f"'{key}' variant {group}={value!r}")
-        return classes
 
     @staticmethod
     def _loaded_styles(mapping: Any) -> Mapping[str, Any] | None:
