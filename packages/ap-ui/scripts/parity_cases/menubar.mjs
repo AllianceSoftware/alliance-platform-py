@@ -44,17 +44,6 @@ export function normalize(root, testCase, helpers) {
     if (element.getAttribute("aria-hidden") === "false") {
       element.removeAttribute("aria-hidden");
     }
-    // React emits hasLeadingIcon optimistically during SSR, before useHasChild inspects the DOM.
-    if (element.hasAttribute("class")) {
-      element.classList.forEach((token) => {
-        if (/^Menubar_hasLeadingIcon__/.test(token)) {
-          element.classList.remove(token);
-        }
-      });
-      if (!element.className) {
-        element.removeAttribute("class");
-      }
-    }
   }
   helpers.normalizeCssVarHashes(root);
 
