@@ -53,6 +53,48 @@ capture diagnostics with `HtmlUIParityTestCase.capture_diagnostics()`, which yie
 messages and allows an empty list, or with `assertLogs`. `docs/static_components.rst` documents the
 behaviour for projects.
 
+## Static runtime
+
+Components with browser behaviour (`menubar`, `number_input`, `text_area`, `button_group`) mark
+their root with `add_auto_attach_marker(attrs, token)` and list
+`resolve_static_runtime_resource(self)`, both from `html_components/runtime.py`. That resolves
+`STATIC_RUNTIME_MODULE_PATH`, `@alliancesoftware/ui/static-runtime.auto.ts`, and raises a
+`TemplateSyntaxError` asking for a compatible `@alliancesoftware/ui` when it cannot, so a declared
+runtime is always required. The asset context deduplicates resources and embed items, so a page
+embeds the entry once whatever the number and kind of components
+(`test_static_runtime_entry_is_collected_once_for_different_components`).
+
+In the JS repo, `packages/ui/static-runtime.ts` is the registry: `registerRuntime(token, loader)`,
+`attachAll(root = document)` and the opt-in `observe(root)`. `static-runtime.auto.ts` registers the
+built-in tokens (`menubar`, `number-input`, `text-area`, `smart-orientation`) with `import()`
+loaders and calls `attachAll()` when it loads, so a page downloads a component's `*.attach.ts` only
+when it has a root marked with that token. `attachAll` calls each loader once and each attach
+function at most once for an element, then dispatches a bubbling `apui:attached` event on the
+element whose `detail.tokens` lists the tokens it attached. A runtime registered after `attachAll()`
+ran for the document is attached to the marked elements already there, so a project runtime
+registered from its own module works whichever module loads first. The `data-apui-attach` tokens
+name runtimes and stay separate from the `data-apui` identity attribute. Controllers come from the
+component attach functions (`attachMenubar` and so on): they are idempotent, so they return the
+controller auto-attachment created. The tests are `packages/ui/tests/static-runtime.test.ts` and
+`packages/ui/tests/static-runtime.auto.test.ts`.
+
+Embedding and builds:
+
+- `FrontendResource.from_path` makes the entry a `JavascriptResource`. In production,
+  `ViteJavaScriptEmbed.get_dependencies` (`ap-frontend`, `bundler/vite.py`) embeds the CSS of the
+  entry and of its static imports only (`AssetDependencies.get_css_dependencies`); the CSS of a
+  dynamically imported chunk is left to Vite's preload helper, which loads it when `import()` runs.
+  None of the four attach modules imports CSS, nor does anything they import
+  (`Menubar.persistence.ts`, `@internationalized/number`), so the runtime chunks have no CSS to
+  miss. The component styles are the `.css.ts` resources the renderers list themselves.
+- For static components, `extract_frontend_resources` lists the `.css.ts` stylesheets (`css`), the
+  static icon SVGs (`image`) and the entry (`javascript`), nothing else. The Django Vite plugin
+  (`getResourcesForBuild` in `packages/vite-plugin-django/src/djangoIntegrationPlugin.ts` in the JS
+  repo) makes every resource a client build input and drops `css` and `image` resources from the
+  SSR build, so the entry is the only JavaScript input a static component adds to either build, and
+  Rollup reaches the attach modules through its `import()` calls. The entry is an SSR input too, as
+  the per-component entries were before it, but nothing executes it there.
+
 ## Input components (`text_input`, `number_input`, `text_area`)
 
 The input renderers live in
@@ -132,8 +174,8 @@ are intentional extensions, so they will not show up as parity failures:
   no autosize behaviour. They are covered by unit tests, not parity fixtures.
 - **`number_input` runtime configuration**: `minValue`, `maxValue`, `step`, `locale` and
   `formatOptions` are serialized as `data-apui-number-input-*` attributes for the standalone
-  `NumberInput.attach.ts` runtime. These static-only attributes and the per-root attach script are
-  removed by the NumberInput parity test before comparison with React SSR.
+  `NumberInput.attach.ts` runtime. These static-only attributes and the `data-apui-attach` marker
+  are removed by the NumberInput parity test before comparison with React SSR.
 - **Number formatting and submission**: the server fallback renders the unformatted numeric value
   with `str()` (integral floats collapse to integers). The attach runtime applies `Intl.NumberFormat`
   display formatting, parses supported locale/currency/unit/percent input, and keeps the hidden
@@ -162,21 +204,21 @@ are intentional extensions, so they will not show up as parity failures:
 
 ### Static NumberInput attach runtime
 
-`number_input` attaches
-`@alliancesoftware/ui/components/number-input/NumberInput.attach.ts` to its
-`data-apui="number-input"` container with the same per-root `data-djid` + module-script pattern used
-by Menubar and SmartOrientation. The server renders the field `name` on the visible input and no
-hidden input, so without the runtime (JavaScript disabled, the script failed, or an
-`@alliancesoftware/ui` without `NumberInput.auto.ts`) the field submits the unformatted number the
-user typed. On attach, when the visible input has a `name`, the runtime creates a hidden input with
-that name (copying any `form` attribute and mirroring `disabled`), appends it to the container and
-removes `name` from the visible input, so the visible input can show locale formatting while the
-hidden input carries the numeric value. It synchronizes on `input`, `change`, and form `submit` (the
-last also covers a script assigning the visible value without dispatching an input event), formats
-on attach/blur, handles the rendered step buttons and arrow keys, and keeps cleanup state in a
-`WeakMap` so repeated attachment does not duplicate listeners or hidden inputs. `disconnect()`
-writes the numeric value back into the visible input, moves `name` back to it and removes the hidden
-input, so a later native submit sends a plain number. The runtime tests live in the JS repo:
+`number_input` marks its `data-apui="number-input"` container with
+`data-apui-attach="number-input"`, and the static runtime entry attaches
+`@alliancesoftware/ui/components/number-input/NumberInput.attach.ts` to it, as it attaches the
+Menubar and SmartOrientation runtimes (see "Static runtime" above). The server renders the field
+`name` on the visible input and no hidden input, so without the runtime (JavaScript disabled or the
+script failed to load) the field submits the unformatted number the user typed. On attach, when
+the visible input has a `name`, the runtime creates a hidden input with that name (copying any
+`form` attribute and mirroring `disabled`), appends it to the container and removes `name` from the
+visible input, so the visible input can show locale formatting while the hidden input carries the
+numeric value. It synchronizes on `input`, `change`, and form `submit` (the last also covers a
+script assigning the visible value without dispatching an input event), formats on attach/blur,
+handles the rendered step buttons and arrow keys, and keeps cleanup state in a `WeakMap` so
+repeated attachment does not duplicate listeners or hidden inputs. `disconnect()` writes the
+numeric value back into the visible input, moves `name` back to it and removes the hidden input, so
+a later native submit sends a plain number. The runtime tests live in the JS repo:
 `packages/ui/components/number-input/tests/NumberInput.attach.test.ts`.
 
 ## Table components (`table`, `table_header`, `table_body`, `table_column`, `table_row`, `table_cell`)
@@ -322,9 +364,10 @@ The static menubar renderers live in
 `alliance_platform/ui/html_components/components/menubar.py` and
 mirror `@alliancesoftware/ui`'s `Menubar.tsx` for server-rendered navigation menus. Interactivity
 comes from a standalone runtime module in the JS repo —
-`@alliancesoftware/ui/components/menu-bar/Menubar.attach.ts` — attached through
-`attach_module_script()` exactly like the button group's `SmartOrientation.attach.ts` (per-root
-`data-djid` + module script; the runtime is idempotent and holds cleanup state in a `WeakMap`).
+`@alliancesoftware/ui/components/menu-bar/Menubar.attach.ts` — which the static runtime entry
+attaches to the root marked `data-apui-attach="menubar"`, as it attaches the button group's
+`SmartOrientation.attach.ts` (see "Static runtime" above; the runtime is idempotent and holds
+cleanup state in a `WeakMap`).
 
 The markup carries only root and part classes: `menubar` on the root, `menubarMenu` on each submenu
 list, `menubarMenuItem` on each item and submenu trigger, the content, icon, section and separator
@@ -447,13 +490,13 @@ tests live in the JS repo: `packages/ui/components/menu-bar/tests/Menubar.attach
 
 `nav_primary.html` can migrate from the React `PrimaryNav` to the static path following the
 example in `docs/templatetags.rst` (the `Users` submenu's `component:omit_if_empty=True` becomes
-automatic empty-pruning, logout stays a POST `<button form="logout-form">`). The standalone
-runtime's `attach(root)` returns a controller with `setLayout(layout)`, so one rendered menubar can
-switch between horizontal, vertical and inline layout without duplicating menu markup. Submenus
-always keep the same popover/inner/menu subtree, including when the initial layout is inline, so a
-later vertical or horizontal layout can position them as flyouts. A responsive mobile drawer still
-requires its own static drawer/disclosure behaviour; layout switching alone does not supply that
-container interaction. Root-item presentation is independent: render
+automatic empty-pruning, logout stays a POST `<button form="logout-form">`). `attachMenubar(root)`
+returns the controller the static runtime created, with `setLayout(layout)`, so one rendered
+menubar can switch between horizontal, vertical and inline layout without duplicating menu markup.
+Submenus always keep the same popover/inner/menu subtree, including when the initial layout is
+inline, so a later vertical or horizontal layout can position them as flyouts. A responsive mobile
+drawer still requires its own static drawer/disclosure behaviour; layout switching alone does not
+supply that container interaction. Root-item presentation is independent: render
 `root_item_display="icon-only"` initially or call `controller.setRootItemDisplay(display)` after
 attachment; neither operation creates another menu tree.
 
