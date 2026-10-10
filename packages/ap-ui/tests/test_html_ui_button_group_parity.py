@@ -3,6 +3,7 @@ from __future__ import annotations
 from unittest.mock import patch
 
 from alliance_platform.ui.html_components.components.button_group import UIButtonGroupRenderer
+from alliance_platform.ui.html_components.runtime import STATIC_RUNTIME_MODULE_PATH
 from django.template import Template
 from django.template import TemplateSyntaxError
 
@@ -118,11 +119,11 @@ class UIButtonGroupParityTestCase(HtmlUIParityTestCase):
         self.assertNotIn("nope", output)
         self.assertNotIn("alert", output)
 
-    def test_missing_smart_orientation_runtime_is_an_upgrade_error(self):
+    def test_missing_static_runtime_is_an_upgrade_error(self):
         original = UIButtonGroupRenderer.resolve_frontend_resource
 
         def resolve_frontend_resource(renderer, path, resolve_extensions=None):
-            if path.endswith("SmartOrientation.auto.ts"):
+            if path == STATIC_RUNTIME_MODULE_PATH:
                 raise TemplateSyntaxError("missing runtime")
             return original(renderer, path, resolve_extensions)
 

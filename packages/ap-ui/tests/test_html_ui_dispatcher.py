@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import re
+
 from alliance_platform.frontend.bundler.context import BundlerAssetContext
 from alliance_platform.ui.html_components import built_in_registry
 from alliance_platform.ui.html_components.diagnostics import StaticComponentContractError
+from alliance_platform.ui.html_components.runtime import STATIC_RUNTIME_MODULE_PATH
 from django.template import Template
 from django.template import TemplateSyntaxError
 from django.test import override_settings
@@ -105,7 +108,7 @@ class UIDispatcherTemplateTagTestCase(HtmlUIParityTestCase):
             "@alliancesoftware/ui/styles/base/focusRing.css.ts",
             "@alliancesoftware/ui/components/button/ButtonGroup.css.ts",
             "@alliancesoftware/ui/components/layout/SmartOrientation.css.ts",
-            "@alliancesoftware/ui/components/layout/SmartOrientation.auto.ts",
+            "@alliancesoftware/ui/static-runtime.auto.ts",
         ]
 
         indices = []
@@ -114,6 +117,27 @@ class UIDispatcherTemplateTagTestCase(HtmlUIParityTestCase):
             self.assertNotEqual(index, -1, msg=f"Could not find expected resource suffix: {suffix}")
             indices.append(index)
         self.assertEqual(indices, sorted(indices))
+
+    def test_static_runtime_entry_is_collected_once_for_different_components(self):
+        template = (
+            '{% ui "button_group" %}{% ui "button" %}One{% endui %}{% endui %}'
+            '{% ui "number_input" label="Quantity" %}'
+        )
+        with self.setup_render_context() as asset_context:
+            output = self.render_ui_document(template)
+            resource_paths = [str(resource.path) for resource in asset_context.get_resources_for_bundling()]
+
+        self.assertEqual(
+            len([path for path in resource_paths if path.endswith(STATIC_RUNTIME_MODULE_PATH)]), 1
+        )
+        self.assertIn('data-apui-attach="smart-orientation"', output)
+        self.assertIn('data-apui-attach="number-input"', output)
+        # One script tag embeds the entry, and nothing else refers to it
+        self.assertEqual(
+            len(re.findall(r'<script src="[^"]*/static-runtime\.auto\.ts" type="module"></script>', output)),
+            1,
+        )
+        self.assertEqual(output.count("static-runtime.auto.ts"), 1)
 
     def test_resource_introspection_does_not_require_active_context(self):
         with override_ap_frontend_settings(BUNDLER=test_development_bundler):

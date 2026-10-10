@@ -23,6 +23,7 @@ from ..content import is_rich_content_value
 from ..content import render_content
 from ..render_context import generate_html_id
 from ..runtime import add_auto_attach_marker
+from ..runtime import resolve_static_runtime_resource
 from ..static_icon import ICON_STYLE_PATH
 
 if TYPE_CHECKING:
@@ -42,9 +43,7 @@ _LABELED_INPUT_STYLE_PATH = "@alliancesoftware/ui/components/form/LabeledInput.c
 _LABEL_STYLE_PATH = "@alliancesoftware/ui/components/form/Label.css.ts"
 _FORM_SECTION_STYLE_PATH = "@alliancesoftware/ui/components/form/FormSection.css.ts"
 _FOCUS_RING_STYLE_PATH = "@alliancesoftware/ui/styles/base/focusRing.css.ts"
-_TEXT_AREA_RUNTIME_MODULE_PATH = "@alliancesoftware/ui/components/text-input/TextArea.auto.ts"
 _NUMBER_INPUT_STYLE_PATH = "@alliancesoftware/ui/components/number-input/NumberInput.css.ts"
-_NUMBER_INPUT_RUNTIME_MODULE_PATH = "@alliancesoftware/ui/components/number-input/NumberInput.auto.ts"
 
 _ALERT_CIRCLE_ICON = "AlertCircleOutlined"
 _CHECK_ICON = "CheckOutlined"
@@ -548,20 +547,7 @@ class UITextAreaRenderer(UITextInputBaseRenderer):
     control_pass_through_props = _SHARED_CONTROL_PASS_THROUGH_PROPS | {"wrap"}
 
     def resolve_component_resources(self) -> list[FrontendResource]:
-        resources = super().resolve_component_resources()
-        runtime_resource = self._resolve_runtime_resource()
-        if runtime_resource is not None:
-            resources.append(runtime_resource)
-        return resources
-
-    def _resolve_runtime_resource(self) -> FrontendResource | None:
-        runtime_path = self.resolve_optional_resource_path(
-            _TEXT_AREA_RUNTIME_MODULE_PATH,
-            resolve_extensions=[".ts", ".tsx", ".js", ".mjs"],
-        )
-        if runtime_path is None:
-            return None
-        return FrontendResource.from_path(runtime_path)
+        return [*super().resolve_component_resources(), resolve_static_runtime_resource(self)]
 
     def configure_container_runtime(
         self,
@@ -570,7 +556,8 @@ class UITextAreaRenderer(UITextInputBaseRenderer):
         state: LabeledInputState,
         container_attrs: dict[str, Any],
     ) -> None:
-        if props.get("height") is not None or self._resolve_runtime_resource() is None:
+        # A fixed height does not auto-grow
+        if props.get("height") is not None:
             return
         add_auto_attach_marker(container_attrs, "text-area")
 
@@ -608,25 +595,13 @@ class UINumberInputRenderer(UITextInputBaseRenderer):
     }
 
     def resolve_component_resources(self) -> list[FrontendResource]:
-        resources = [
+        return [
             *super().resolve_component_resources(),
             self.resolve_frontend_resource(_NUMBER_INPUT_STYLE_PATH),
             get_static_icon_resource(_CHEVRON_UP_ICON, origin=self.origin),
             get_static_icon_resource(_CHEVRON_DOWN_ICON, origin=self.origin),
+            resolve_static_runtime_resource(self),
         ]
-        runtime_resource = self._resolve_runtime_resource()
-        if runtime_resource is not None:
-            resources.append(runtime_resource)
-        return resources
-
-    def _resolve_runtime_resource(self) -> FrontendResource | None:
-        runtime_path = self.resolve_optional_resource_path(
-            _NUMBER_INPUT_RUNTIME_MODULE_PATH,
-            resolve_extensions=[".ts", ".tsx", ".js", ".mjs"],
-        )
-        if runtime_path is None:
-            return None
-        return FrontendResource.from_path(runtime_path)
 
     def allow_non_scalar_prop(self, key: str, value: Any) -> bool:
         # formatOptions is dict valued; it gets its own more specific validation before rendering.
@@ -681,9 +656,6 @@ class UINumberInputRenderer(UITextInputBaseRenderer):
         state: LabeledInputState,
         container_attrs: dict[str, Any],
     ) -> None:
-        runtime_resource = self._resolve_runtime_resource()
-        if runtime_resource is None:
-            return
         add_auto_attach_marker(container_attrs, "number-input")
 
     def format_number_value(self, value: Any) -> str:

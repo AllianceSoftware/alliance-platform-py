@@ -4,11 +4,11 @@ from typing import Any
 
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from django.template import Context
-from django.template import TemplateSyntaxError
 
 from ..base import BaseHtmlUIComponentRenderer
 from ..base import enum_prop_rule
 from ..runtime import add_auto_attach_marker
+from ..runtime import resolve_static_runtime_resource
 from .button import BUTTON_PROP_RULES
 
 VALID_ORIENTATIONS = ("horizontal", "vertical")
@@ -17,7 +17,6 @@ VALID_DENSITIES = ("compact", "xxs", "xs", "sm", "md", "lg", "xl", "xxl", "xxxl"
 
 _BUTTON_GROUP_STYLE_PATH = "@alliancesoftware/ui/components/button/ButtonGroup.css.ts"
 _SMART_ORIENTATION_STYLE_PATH = "@alliancesoftware/ui/components/layout/SmartOrientation.css.ts"
-_RUNTIME_MODULE_PATH = "@alliancesoftware/ui/components/layout/SmartOrientation.auto.ts"
 
 _BUTTON_GROUP_FORWARDED_PROPS = frozenset(
     {"id", "title", "role", "tabIndex", "dir", "lang", "hidden", "draggable"}
@@ -61,7 +60,7 @@ class UIButtonGroupRenderer(BaseHtmlUIComponentRenderer):
         return [
             self.resolve_frontend_resource(_BUTTON_GROUP_STYLE_PATH),
             self.resolve_frontend_resource(_SMART_ORIENTATION_STYLE_PATH),
-            self._resolve_runtime_resource(),
+            resolve_static_runtime_resource(self),
         ]
 
     def render_children_for_component(self, context: Context, props: dict[str, Any]) -> str:
@@ -112,15 +111,3 @@ class UIButtonGroupRenderer(BaseHtmlUIComponentRenderer):
         add_auto_attach_marker(attrs, "smart-orientation")
 
         return self.render_tag("div", attrs, children_html)
-
-    def _resolve_runtime_resource(self) -> FrontendResource:
-        try:
-            return self.resolve_frontend_resource(
-                _RUNTIME_MODULE_PATH,
-                resolve_extensions=[".ts", ".tsx", ".js", ".mjs"],
-            )
-        except TemplateSyntaxError as exc:
-            raise TemplateSyntaxError(
-                "Static button-group rendering requires "
-                f"'{_RUNTIME_MODULE_PATH}'. Upgrade @alliancesoftware/ui to a compatible version."
-            ) from exc

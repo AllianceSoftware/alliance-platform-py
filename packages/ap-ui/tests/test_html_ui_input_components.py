@@ -4,8 +4,11 @@ from decimal import Decimal
 import re
 from unittest import mock
 
+from alliance_platform.ui.html_components.base import BaseHtmlUIComponentRenderer
+from alliance_platform.ui.html_components.runtime import STATIC_RUNTIME_MODULE_PATH
 from django.template import Context
 from django.template import Template
+from django.template import TemplateSyntaxError
 from django.utils.translation import gettext_lazy
 
 from tests.parity.base import HtmlUIParityTestCase
@@ -467,7 +470,28 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         self.assertEqual(output.count("<svg"), 2)
         self.assertNotIn("<img", output)
         self.assertNotIn("TextInputBase_validationIcon", output)
-        self.assertIn("NumberInput.auto.ts", output)
+        self.assertIn("static-runtime.auto.ts", output)
+
+    def test_missing_static_runtime_is_an_upgrade_error(self):
+        original = BaseHtmlUIComponentRenderer.resolve_frontend_resource
+
+        def resolve_frontend_resource(renderer, path, resolve_extensions=None):
+            if path == STATIC_RUNTIME_MODULE_PATH:
+                raise TemplateSyntaxError("missing runtime")
+            return original(renderer, path, resolve_extensions)
+
+        for name in ("text_area", "number_input"):
+            with self.subTest(component=name), self.setup_render_context():
+                with mock.patch.object(
+                    BaseHtmlUIComponentRenderer, "resolve_frontend_resource", resolve_frontend_resource
+                ):
+                    with self.assertRaisesMessage(
+                        TemplateSyntaxError,
+                        f"The static '{name}' component requires "
+                        "'@alliancesoftware/ui/static-runtime.auto.ts'. "
+                        "Upgrade @alliancesoftware/ui to a compatible version.",
+                    ):
+                        self.render_ui_template(f'{{% ui "{name}" label="Notes" %}}')
 
     def test_number_input_collected_assets_keep_hide_step_validation_icon_in_place(self):
         with self.setup_render_context():

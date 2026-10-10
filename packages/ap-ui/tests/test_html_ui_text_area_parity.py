@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from alliance_platform.ui.html_components.runtime import STATIC_RUNTIME_MODULE_PATH
+
 from tests.parity.base import HtmlUIParityTestCase
 
 
@@ -22,7 +24,7 @@ class UITextAreaParityTestCase(HtmlUIParityTestCase):
             "@alliancesoftware/ui/components/text-input/TextInputBase.css.ts",
             "@alliancesoftware/ui/components/form/LabeledInput.css.ts",
             "@alliancesoftware/ui/styles/base/focusRing.css.ts",
-            "@alliancesoftware/ui/components/text-input/TextArea.auto.ts",
+            STATIC_RUNTIME_MODULE_PATH,
         ]:
             with self.subTest(resource=expected_suffix):
                 self.assertTrue(any(path.endswith(expected_suffix) for path in resource_paths))
@@ -48,5 +50,5 @@ class UITextAreaParityTestCase(HtmlUIParityTestCase):
         with self.setup_render_context():
             output = self.render_ui_document('{% ui "text_area" label="Notes" %}')
 
-        self.assertIn("TextArea.auto.ts", output)
+        self.assertIn("static-runtime.auto.ts", output)
         self.assertIn("<script src=", output)
