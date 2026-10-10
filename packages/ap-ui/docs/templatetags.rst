@@ -224,6 +224,29 @@ and other ``on_*`` props) are refused by every static component.
       - Yes
       - Event handlers only
 
+.. _static-component-runtimes:
+
+Static component runtimes
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``menubar``, ``number_input``, ``text_area`` and ``button_group`` get their browser behaviour from
+small runtimes in ``@alliancesoftware/ui`` rather than React. Each marks its root with the token of
+its runtime in a ``data-apui-attach`` attribute and lists the static runtime entry,
+``@alliancesoftware/ui/static-runtime.auto.ts``, as a resource, so
+``{% bundler_embed_collected_assets %}`` embeds that one module once per page however many
+components the page has. No inline script is rendered. When the module loads it attaches the
+runtimes of the marked roots, downloading a component's runtime only when the page has that
+component, and dispatches a bubbling ``apui:attached`` event on each root it attached. The entry is
+required: if the installed ``@alliancesoftware/ui`` does not have it, rendering raises a
+``TemplateSyntaxError`` asking you to upgrade it.
+
+A page that inserts static markup after load, for example from a fetched fragment, attaches it
+with ``attachAll(root)`` from ``@alliancesoftware/ui/static-runtime``, or calls ``observe()`` from
+the same module once to attach inserted markup as it appears. Application code that needs a
+component's controller imports the component's attach function, such as ``attachMenubar`` from
+``@alliancesoftware/ui/components/menu-bar/Menubar.attach``; it returns the controller the runtime
+created for that root.
+
 Static buttons
 ~~~~~~~~~~~~~~
 
@@ -250,18 +273,18 @@ Nested static icons inherit the same default size as React: ``sm`` and ``md`` bu
 Static text areas
 ~~~~~~~~~~~~~~~~~
 
-Static ``text_area`` components match React's compact initial height and automatically grow with
-their content when the optional ``TextArea.auto.ts`` runtime is available. Django widget ``rows``
-and ``cols`` attributes are accepted but omitted so they cannot create a tall first paint. Pass an
-explicit ``height`` for a fixed-height text area; fixed-height instances do not attach the auto-grow
-runtime.
+Static ``text_area`` components match React's compact initial height and grow with their content
+once the static runtime (see :ref:`static-component-runtimes`) has attached. Django widget
+``rows`` and ``cols`` attributes are accepted but omitted so they cannot create a tall first paint.
+Pass an explicit ``height`` for a fixed-height text area; fixed-height instances are not marked for
+the auto-grow runtime.
 
 Static number inputs
 ~~~~~~~~~~~~~~~~~~~~
 
-Without JavaScript, a static ``number_input`` submits the unformatted number the user typed. When
-the optional ``NumberInput.auto.ts`` runtime is available, the visible field shows locale formatting
-while a hidden field created by the runtime carries the numeric value.
+Without JavaScript, a static ``number_input`` submits the unformatted number the user typed. Once
+the static runtime (see :ref:`static-component-runtimes`) has attached, the visible field shows
+locale formatting while a hidden field created by the runtime carries the numeric value.
 
 Static ``number_input`` components treat numeric NaN values as empty. This includes both Python
 ``float`` and ``Decimal`` NaN values, so the ``none_as_nan`` compatibility value used by legacy
@@ -387,10 +410,10 @@ Static menubar components
 ``{% ui "menubar" %}`` and its child components render the Alliance UI ``Menubar`` as static
 HTML with the same visual classes, layout and state data attributes as the React component.
 Links are real ``<a href>`` elements and form actions are real ``<button>`` elements, so
-top-level navigation works even with JavaScript disabled; a small standalone runtime module
-(loaded automatically once per page, no inline script and no React) adds the dropdown behaviour:
-opening/closing submenus, keyboard navigation with roving tabindex, Escape/outside-click handling,
-typeahead and viewport-aware flyout positioning.
+top-level navigation works even with JavaScript disabled; a small standalone runtime (attached by
+the static runtime entry, see :ref:`static-component-runtimes`; no inline script and no React) adds
+the dropdown behaviour: opening/closing submenus, keyboard navigation with roving tabindex,
+Escape/outside-click handling, typeahead and viewport-aware flyout positioning.
 
 Use it for server-rendered navigation menus. Use the React-backed :ttag:`Menubar` tag instead
 when you need client-side callbacks (``on_action``), selection state, dynamic ``items``
@@ -468,8 +491,9 @@ Other notable behaviour:
 
 * ``layout`` can be ``"horizontal"`` (default), ``"vertical"`` or ``"inline"``. Horizontal and
   vertical menus open submenus in viewport-aware flyout popovers; inline menus expand submenus in
-  place. Application code that changes the layout can use the public, idempotent
-  default ``attach(root)`` controller from ``Menubar.attach.ts`` without duplicating listeners.
+  place. Application code that changes the layout gets the menu's controller from the public,
+  idempotent ``attachMenubar(root)`` in ``Menubar.attach.ts``, which returns the controller the
+  runtime created without duplicating listeners.
 * ``root_item_display`` can be ``"icon-and-label"`` (default) or ``"icon-only"``. Icon-only
   presentation applies only to icon-bearing root items: their label remains in the DOM for
   accessibility and typeahead, and the renderer adds an ``aria-hidden`` visual tooltip. Root
@@ -500,14 +524,18 @@ Other notable behaviour:
   <static-component-diagnostics>` and ignored rather than rendering broken interactivity.
 * JavaScript is required for the dropdown interactivity only; closed submenu contents are
   rendered hidden in the page and links inside them still work once opened.
-* The renderer emits one menu tree whose root can be passed directly to the standalone runtime's
-  ``attach(root)`` function. The returned controller supports ``setLayout("horizontal" |
-  "vertical" | "inline")`` for responsive layout changes without rendering a second menu. The
-  runtime updates ``data-layout``, ``data-orientation`` and ``aria-orientation`` in place. Submenus
-  keep one stable popover/inner/menu subtree in every layout; inline CSS presents that subtree in
-  place, while a later vertical or horizontal layout can position the same submenu as a flyout.
+* The renderer emits one menu tree whose root can be passed directly to ``attachMenubar(root)``
+  from ``@alliancesoftware/ui/components/menu-bar/Menubar.attach``. The returned controller
+  supports ``setLayout("horizontal" | "vertical" | "inline")`` for responsive layout changes
+  without rendering a second menu. The runtime updates ``data-layout``, ``data-orientation`` and
+  ``aria-orientation`` in place. Submenus keep one stable popover/inner/menu subtree in every
+  layout; inline CSS presents that subtree in place, while a later vertical or horizontal layout
+  can position the same submenu as a flyout.
   ``setRootItemDisplay("icon-and-label" | "icon-only")`` independently changes root-item
   presentation on that same tree.
+* A page that inserts menubar markup after it loaded attaches it with ``attachAll(root)``, or calls
+  ``observe()`` once to attach inserted markup as it appears; both come from
+  ``@alliancesoftware/ui/static-runtime`` (see :ref:`static-component-runtimes`).
 
 .. templatetag:: Button
 

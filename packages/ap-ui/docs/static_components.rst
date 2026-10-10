@@ -21,7 +21,8 @@ from that app's ``AppConfig``. Helper modules sit next to the base class:
 * ``alliance_platform.ui.html_components.slots``: slot defaults for child components.
 * ``alliance_platform.ui.html_components.content``: rendering rich content props
   (``RenderableContent``) safely.
-* ``alliance_platform.ui.html_components.runtime``: marking a root for a JavaScript runtime.
+* ``alliance_platform.ui.html_components.runtime``: browser runtimes, marking a root for one and
+  listing the static runtime entry that attaches it.
 * ``alliance_platform.ui.html_components.diagnostics``: reporting template mistakes (see
   `Diagnostics`_).
 
@@ -256,8 +257,36 @@ server has processed the stylesheet, classes resolve to ``""`` without a report.
 Components that inline icons with ``render_icon()`` should list each icon with
 ``alliance_platform.ui.icons.get_static_icon_resource(name, origin=self.origin)`` so the SVG is
 built, and leave the image out of ``get_resources_to_embed()`` because its markup is already in
-the page. A component with a JavaScript runtime lists the module and marks its root with
-``add_auto_attach_marker(attrs, token)`` from the ``runtime`` module.
+the page.
+
+A component with a browser runtime marks its root with ``add_auto_attach_marker(attrs, token)``
+from the ``runtime`` module and lists two JavaScript resources: its own module, which registers the
+runtime for ``token`` with ``registerRuntime(token, loader)`` from
+``@alliancesoftware/ui/static-runtime``, and the static runtime entry that
+``resolve_static_runtime_resource(self)`` from the ``runtime`` module resolves:
+
+.. code-block:: python
+
+    def resolve_component_resources(self) -> list[FrontendResource]:
+        return [
+            self.resolve_frontend_resource("frontend/src/components/copyButton.runtime.ts"),
+            resolve_static_runtime_resource(self),
+        ]
+
+.. code-block:: typescript
+
+    // frontend/src/components/copyButton.runtime.ts
+    import { registerRuntime } from '@alliancesoftware/ui/static-runtime';
+
+    registerRuntime('copy-button', () =>
+        import('./CopyButton.attach').then(module => module.attachCopyButton)
+    );
+
+The entry's ``attachAll()`` does the rest: it attaches the runtime to each root marked with the
+token, whichever of the two modules loads first, and the dynamic ``import()`` keeps the runtime off
+pages that do not render the component. The page embeds each module once however many components
+list it. See :ref:`static-component-runtimes` for markup inserted after load and for getting a
+component's controller.
 
 .. _static-component-diagnostics:
 
