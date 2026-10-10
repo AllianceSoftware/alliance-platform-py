@@ -134,13 +134,10 @@ class UIInlineAlertRenderer(BaseHtmlUIComponentRenderer):
             )
             content_html = f"{icon_html}{content_html}"
 
-        inner_class_name = self.join_classes(
-            self.get_nested_style_class(styles, "alert", intent)
-            or self.get_nested_style_class(styles, "alert", "default"),
-            self.get_style_class(styles, "onlyContent") if only_content else None,
-        )
-        inner_html = self.render_tag("div", {"className": inner_class_name}, content_html)
+        inner_html = self.render_tag("div", {"className": self.get_style_class(styles, "base")}, content_html)
 
+        # InlineAlert.css styles the intent's colours and the compact layout of an alert holding only
+        # content from these attributes on the root
         attrs: dict[str, Any] = {
             **self.collect_forwarded_props(props),
             "data-apui": self.apui_name,
