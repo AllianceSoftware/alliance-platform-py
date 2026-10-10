@@ -219,20 +219,32 @@ behind it.
 The React table is an interactive ARIA grid (grid roles, tab indexes, focus management). The
 static renderer intentionally keeps native table semantics instead: no grid roles or tab indexes,
 `scope="col"` and `aria-sort` on `<th>` header cells (direction when sorted, `"none"` when
-sortable-but-unsorted), and row-header cells as `<td role="rowheader">` rather than
-`<th scope="row">` so browser default `<th>` styling cannot diverge visually from React.
-`normalize()` in `scripts/parity_cases/table.mjs` reconciles these documented differences; see the
-comments there for the full list (grid roles, `data-collection`/`data-key` bookkeeping, absolute vs
-relative sort hrefs, CSS var hashes in `style`). The table parity test strips the same CSS var
-hashes from the static output.
+sortable-but-unsorted), and row-header cells as `<th scope="row">`. React keeps
+`<td role="rowheader">`: its row header is a cell of the grid, which react-aria's `useTableCell`
+gives the `rowheader` role and the id the row is labelled by, and the released React markup stays
+as it is, so a React table never has a `<th>` in its body. `Table.css` styles a body
+`th[scope="row"]` like a `td`: a reset (`tbody th[scope="row"]` under the wrapper, specificity
+0,2,2) gives it the `td` text and padding and undoes the header cell rule's typography,
+background, bottom border and width (`th`, 0,1,1); its alignment comes from a rule with the
+attribute in `:where()` (0,1,2), which the `[data-align]` rules (0,2,0) override; and each body
+cell rule (hover, focus within, selection, corner focus ring radius, row focus indicator) matches
+the row header through a selector one attribute more specific than its `td` one. Like a header
+cell, and unlike a `td`, a row header gets its background, bottom border, width and alignment from
+rules that a single class on the cell does not override.
+
+`normalize()` in `scripts/parity_cases/table.mjs` reconciles these documented differences,
+including the mapping of React's `<td role="rowheader">` to `<th scope="row">`; see the comments
+there for the full list (grid roles, `data-collection`/`data-key` bookkeeping, absolute vs relative
+sort hrefs, CSS var hashes in `style`). The table parity test strips the same CSS var hashes from
+the static output.
 
 The Table stylesheet is deliberately "class-free" for consumers: all structural styling hangs off
 the `tableWrapper` class on the root element, with rows/cells targeted through element and
-data-attribute selectors (`tbody tr`, `td`, `[data-align]`, `[data-spans-multiple]`,
-`[data-has-header]`/`[data-has-footer]`). Only the root and the header chrome
-(`headerCellWrapper`, `headerCellContent`, `sortWrapper`, sort icon classes, `noResults`) carry
-classes, so user `className` values render alone on `<th>`/`<tr>`/`<td>` and the data attributes
-are load-bearing — don't drop them as informational.
+data-attribute selectors (`tbody tr`, `td`, `tbody th[scope="row"]`, `[data-align]`,
+`[data-spans-multiple]`, `[data-has-header]`/`[data-has-footer]`). Only the root and the header
+chrome (`headerCellWrapper`, `headerCellContent`, `sortWrapper`, sort icon classes, `noResults`)
+carry classes, so user `className` values render alone on `<th>`/`<tr>`/`<td>` and the data
+attributes are load-bearing — don't drop them as informational.
 
 Sortable-column fixtures record the URL the React SSR render happened at in `meta.current_url`
 (the generator exposes it via `globalSsrContext.currentUrl`, which `ColumnHeaderLink` reads during
