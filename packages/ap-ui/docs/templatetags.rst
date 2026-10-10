@@ -368,8 +368,9 @@ link generation; alternatively pass an explicit URL when it is computed elsewher
 
 Other notable behaviour:
 
-* The first column is treated as the row header for accessibility; set ``is_row_header=True`` on
-  one or more columns to override this.
+* The first column is treated as the row header for accessibility: its cells render as
+  ``<th scope="row">``, styled like the other cells of their row. Set ``is_row_header=True`` on one
+  or more columns to override this.
 * ``table_cell`` inherits alignment and row-header status from the ``table_column`` at the same
   position, so alignment is set once on the column.
 * An empty ``table_body`` renders a "No results" empty state spanning all columns. Customise it
