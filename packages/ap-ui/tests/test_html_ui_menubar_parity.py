@@ -29,9 +29,6 @@ _STATIC_ATTR_RES = [
     re.compile(r'\sid="apui-menu-[^"]*"'),
     re.compile(r'\sdata-open="false"'),
     re.compile(r'\sdata-current="true"'),
-    re.compile(r'\sdata-open-class="[^"]*"'),
-    re.compile(r'\sdata-focused-class="[^"]*"'),
-    re.compile(r'\sdata-popover-open-class="[^"]*"'),
     re.compile(r'\sdata-should-focus-wrap="[^"]*"'),
     re.compile(r'\sdata-default-focused-key="[^"]*"'),
     re.compile(r'\stabindex="-?\d+"'),
@@ -121,7 +118,6 @@ def strip_static_menubar_extensions(value: str) -> str:
     normalized = _unwrap_visible_popovers(normalized)
     for attr_re in _STATIC_ATTR_RES:
         normalized = attr_re.sub("", normalized)
-    normalized = re.sub(r"\sMenubar_hasLeadingIcon(?=[\s\"])", "", normalized)
     return normalized
 
 

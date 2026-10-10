@@ -1,11 +1,13 @@
 """Static HTML renderers for the Alliance UI menubar components.
 
 These mirror ``@alliancesoftware/ui``'s ``Menubar`` (see ``components/menu-bar/Menubar.tsx``) for
-server-rendered navigation menus: the same markup structure, vanilla-extract classes and state
-data attributes, with interactivity provided by a small standalone runtime
-(``Menubar.auto.ts``/``Menubar.attach.ts``) rather than React. Links are real anchors and form
-actions are real buttons, so navigation and submission work without JavaScript; the runtime only
-adds menu open/close and keyboard behaviour.
+server-rendered navigation menus: the same markup structure, part classes and state data
+attributes, with interactivity provided by a small standalone runtime
+(``Menubar.auto.ts``/``Menubar.attach.ts``) rather than React. ``Menubar.css`` styles item state
+from the data attributes alone, so the runtime updates attributes (``data-open``,
+``data-focused``, ``hidden``) and never class names. Links are real anchors and form actions are
+real buttons, so navigation and submission work without JavaScript; the runtime only adds menu
+open/close and keyboard behaviour.
 
 Client-side selection state, dynamic collections (``items``), callbacks (``onAction``) and width
 overflow into a "More" submenu are intentionally unsupported.
@@ -22,8 +24,8 @@ covered by unit tests instead):
   :class:`~alliance_platform.frontend.templatetags.react.OmitComponentFromRendering`).
 - Submenu popups keep one in-place ``data-apui-menu-popover``/inner/menu subtree in every layout;
   closed wrappers are hidden, and inline presentation is supplied by CSS rather than alternate DOM.
-- The root exposes the ``isOpen``/``isFocused``/popover-``isOpen`` class names through
-  ``data-*-class`` attributes so the runtime can toggle them without importing the CSS mapping.
+  The wrapper has ``Popover.css``'s ``popoverBase`` and a ``data-placement`` from which
+  ``Menubar.css`` gives a flyout the overlay's shadow and offset.
 - ``data-current`` marks current items and their ancestors.
 """
 
@@ -460,29 +462,11 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
             str(conditional_escape(text_value)),
         )
 
-    def build_item_class_name(
-        self,
-        menubar_styles: Any,
-        *,
-        element_type: str,
-        is_disabled: bool,
-        level: int,
-        is_open: bool = False,
-        has_dropdown: bool = False,
-        user_class: Any = None,
-    ) -> str:
-        # Class order matches the React cx() call in MenubarMenuItem, with the user className
-        # merged after the defaults (mergeProps ordering).
+    def build_item_class_name(self, menubar_styles: Any, user_class: Any = None) -> str:
+        # The user className follows the item class, as mergeProps orders them in MenubarMenuItem.
+        # Menubar.css styles the item's level, state and element from its data attributes and tag.
         return self.join_classes(
             self.get_style_class(menubar_styles, "menubarMenuItem"),
-            self.get_style_class(menubar_styles, "menubarMenuItemButton")
-            if element_type == "button"
-            else None,
-            self.get_style_class(menubar_styles, "disabled") if is_disabled else None,
-            self.get_style_class(menubar_styles, "subMenu") if level > 0 else None,
-            self.get_style_class(menubar_styles, "isOpen") if is_open else None,
-            self.get_style_class(menubar_styles, "hasDropdown") if has_dropdown else None,
-            self.get_style_class(menubar_styles, "rootMenuItem") if level == 0 else None,
             str(user_class) if user_class else None,
         )
 
@@ -666,16 +650,10 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
             return ""
 
         menubar_styles = self.resolve_menubar_styles()
-        popover_styles = self.resolve_vanilla_extract_mapping(_POPOVER_STYLE_PATH)
-
-        # Class order matches the React cx() call: base class, user className, then layout classes
+        # Class order matches the React cx() call: base class, then user className
         class_name = self.join_classes(
             self.get_style_class(menubar_styles, "menubar"),
             props.get("className"),
-            self.get_style_class(menubar_styles, "vertical") if state.orientation == "vertical" else None,
-            self.get_style_class(menubar_styles, "inline") if layout == "inline" else None,
-            self.get_style_class(menubar_styles, "horizontal") if layout == "horizontal" else None,
-            self.get_style_class(menubar_styles, "hasLeadingIcon") if root_frame.has_leading_icon else None,
         )
 
         attrs: dict[str, Any] = {
@@ -692,10 +670,6 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
             "data-should-focus-wrap": "false" if not state.should_focus_wrap else None,
             "data-default-focused-key": state.default_focused_key,
             "data-expanded-keys-storage-key": props.get("expandedKeysStorageKey"),
-            # State class names the runtime toggles; it cannot resolve the CSS mapping itself.
-            "data-open-class": self.get_style_class(menubar_styles, "isOpen") or None,
-            "data-focused-class": self.get_style_class(menubar_styles, "isFocused") or None,
-            "data-popover-open-class": self.get_style_class(popover_styles, "isOpen") or None,
             **self.collect_forwarded_props(props),
         }
 
@@ -806,13 +780,7 @@ class UIMenubarItemRenderer(UIMenubarComponentRendererBase):
 
         attrs: dict[str, Any] = {
             "role": "menuitem",
-            "className": self.build_item_class_name(
-                menubar_styles,
-                element_type=element_type,
-                is_disabled=is_disabled,
-                level=level,
-                user_class=props.get("className"),
-            ),
+            "className": self.build_item_class_name(menubar_styles, props.get("className")),
             "id": props.get("id"),
             "style": props.get("style"),
             "data-level": level,
@@ -1018,15 +986,7 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
 
         trigger_attrs: dict[str, Any] = {
             "role": "menuitem",
-            "className": self.build_item_class_name(
-                menubar_styles,
-                element_type=element_type,
-                is_disabled=is_disabled,
-                level=level,
-                is_open=is_open,
-                has_dropdown=True,
-                user_class=props.get("className"),
-            ),
+            "className": self.build_item_class_name(menubar_styles, props.get("className")),
             "id": props.get("id"),
             "style": props.get("style"),
             "data-level": level,
@@ -1114,24 +1074,18 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
         menu_attrs: dict[str, Any] = {
             "role": "menu",
             "id": popup_id,
-            "className": self.join_classes(
-                self.get_style_class(menubar_styles, "menubarMenu"),
-                self.get_style_class(menubar_styles, "vertical"),
-                self.get_style_class(menubar_styles, "hasLeadingIcon") if has_leading_icon else None,
-            ),
+            "className": self.get_style_class(menubar_styles, "menubarMenu"),
             "data-has-leading-icon": "true" if has_leading_icon else None,
             "data-apui-menu-container": "",
             "style": menu_style,
         }
 
         menu_html = self.render_tag("ul", menu_attrs, children_html)
+        # Shown whenever it is not hidden: Menubar.css gives the flyout the drop shadow and the
+        # offset of its data-placement that React's Popover gets from the overlay classes.
         placement = "bottom" if level == 0 and state.orientation == "horizontal" else "right"
-        popover_class = self.join_classes(
-            self.get_nested_style_class(popover_styles, "popover", placement),
-            self.get_style_class(popover_styles, "isOpen") if is_open else None,
-        )
         popover_attrs: dict[str, Any] = {
-            "className": popover_class,
+            "className": self.get_style_class(popover_styles, "popoverBase"),
             "role": "presentation",
             "hidden": not is_open,
             "data-apui-menu-popover": "",

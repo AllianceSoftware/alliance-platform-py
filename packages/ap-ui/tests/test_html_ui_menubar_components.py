@@ -26,7 +26,6 @@ from test_alliance_platform_ui.factory import UserFactory
 from test_alliance_platform_ui.models import User
 
 from tests.parity.base import HtmlUIParityTestCase
-from tests.parity.base import load_css_mappings
 from tests.parity.base import test_development_bundler
 from tests.test_utils import override_ap_frontend_settings
 from tests.test_utils import override_ap_ui_settings
@@ -72,18 +71,14 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn('role="menubar"', output)
         self.assertIn('aria-orientation="horizontal"', output)
         self.assertIn('aria-label="Primary navigation"', output)
-        self.assertIn('class="Menubar_menubar Menubar_horizontal"', output)
+        self.assertIn('class="Menubar_menubar"', output)
         self.assertNotIn("data-apui-menu-item-tooltip", output)
-        # State class names exposed for the runtime, as the mappings define them
-        menubar_classes = load_css_mappings()["@alliancesoftware/ui/components/menu-bar/Menubar.css.ts"]
-        popover_classes = load_css_mappings()["@alliancesoftware/ui/components/overlay/Popover.css.ts"]
-        self.assertIn(f'data-open-class="{menubar_classes["isOpen"]}"', output)
-        self.assertIn(f'data-focused-class="{menubar_classes["isFocused"]}"', output)
-        self.assertIn(f'data-popover-open-class="{popover_classes["isOpen"]}"', output)
+        # Menubar.css styles state from attributes, so the runtime is given no class names
+        self.assertNotRegex(output, r"data-[\w-]+-class=")
         # Link item: real anchor with role/level/label and the content wrapper structure
         self.assertIn(
             '<li role="none" data-key="dashboard">'
-            '<a role="menuitem" class="Menubar_menubarMenuItem Menubar_menubarMenuItemBase Menubar_rootMenuItem" data-level="0" '
+            '<a role="menuitem" class="Menubar_menubarMenuItem Menubar_menubarMenuItemBase" data-level="0" '
             'aria-label="Dashboard" tabindex="0" href="/dashboard/">'
             '<div data-apui-menu-item-content-wrapper="">'
             '<span class="Menubar_menubarMenuItemContent" data-contentlevel="0" '
@@ -100,21 +95,22 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn('aria-expanded="false"', output)
         self.assertIn('data-open="false"', output)
         self.assertIn('aria-controls="apui-menu-users"', output)
-        self.assertIn("Menubar_hasDropdown", output)
         self.assertIn("Menubar_dropdownIcon", output)
         self.assertIn('d="M6 9L12 15L18 9"', output)  # chevron down
-        # Popup: hidden popover wrapper containing the vertical menu
+        # Popup: hidden popover wrapper containing the menu. Menubar.css offsets the flyout by its
+        # data-placement; it needs no overlay classes.
         self.assertIn(
-            '<div class="Popover_popover_bottom OverlayCommon_overlay_bottom" role="presentation" hidden '
+            '<div class="Popover_popoverBase" role="presentation" hidden '
             'data-apui-menu-popover="" '
             'data-placement="bottom"><div class="Popover_inner">'
-            '<ul role="menu" id="apui-menu-users" class="Menubar_menubarMenu Menubar_vertical" '
+            '<ul role="menu" id="apui-menu-users" class="Menubar_menubarMenu" '
             'data-apui-menu-container="" style="--level: 1">',
             output,
         )
+        self.assertNotIn("OverlayCommon_", output)
         # Submenu children are one level deeper and unfocusable while hidden
         self.assertIn(
-            '<a role="menuitem" class="Menubar_menubarMenuItem Menubar_menubarMenuItemBase Menubar_subMenu" data-level="1" '
+            '<a role="menuitem" class="Menubar_menubarMenuItem Menubar_menubarMenuItemBase" data-level="1" '
             'aria-label="Admin" tabindex="-1" href="/admin/">',
             output,
         )
@@ -152,10 +148,10 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn('data-layout="vertical"', output)
         self.assertIn('data-orientation="vertical"', output)
         self.assertIn('aria-orientation="vertical"', output)
-        self.assertIn('class="Menubar_menubar Menubar_vertical"', output)
+        self.assertIn('class="Menubar_menubar"', output)
         # Vertical root submenus fly out to the right with a right-pointing chevron
+        self.assertIn('class="Popover_popoverBase" role="presentation" hidden', output)
         self.assertIn('data-placement="right"', output)
-        self.assertIn('class="Popover_popover_right', output)
         self.assertIn('d="M9 18L15 12L9 6"', output)
 
     def test_inline_layout(self):
@@ -170,13 +166,13 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertEqual(caught, [])
         self.assertIn('data-layout="inline"', output)
         self.assertIn('data-orientation="vertical"', output)
-        self.assertIn('class="Menubar_menubar Menubar_vertical Menubar_inline"', output)
+        self.assertIn('class="Menubar_menubar"', output)
         # Inline presentation uses the same stable popover subtree as flyout layouts. CSS makes
         # the shell display: contents while inline; the wrapper still owns closed/open visibility.
         self.assertIn(
-            '<div class="Popover_popover_right OverlayCommon_overlay_right" role="presentation" hidden '
+            '<div class="Popover_popoverBase" role="presentation" hidden '
             'data-apui-menu-popover="" data-placement="right"><div class="Popover_inner">'
-            '<ul role="menu" id="apui-menu-users" class="Menubar_menubarMenu Menubar_vertical" '
+            '<ul role="menu" id="apui-menu-users" class="Menubar_menubarMenu" '
             'data-apui-menu-container="" style="--level: 1">',
             output,
         )
@@ -199,8 +195,8 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertEqual(output.count('id="apui-menu-users"'), 1)
         self.assertNotIn("data-apui-menu-popup", output)
         self.assertIn(
-            'class="Popover_popover_right OverlayCommon_overlay_right OverlayCommon_isOpen" '
-            'role="presentation" data-apui-menu-popover="" data-placement="right"',
+            'class="Popover_popoverBase" role="presentation" data-apui-menu-popover="" '
+            'data-placement="right"',
             output,
         )
         self.assertNotIn(" hidden ", output)
@@ -336,7 +332,12 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn('form="logout-form"', output)
         self.assertIn('name="action"', output)
         self.assertIn('value="logout"', output)
-        self.assertIn("Menubar_menubarMenuItemButton", output)
+        # Menubar.css gives a button item its reset from the element
+        self.assertIn(
+            '<button role="menuitem" class="Menubar_menubarMenuItem Menubar_menubarMenuItemBase" '
+            'data-level="0"',
+            output,
+        )
 
     def test_button_only_props_warn_on_anchors(self):
         template = (
@@ -405,15 +406,9 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         )
         output, caught = self.render_with_warnings(template)
         self.assertEqual(caught, [])
-        self.assertIn('class="Menubar_menubar my-menubar Menubar_horizontal"', output)
-        self.assertIn(
-            'class="Menubar_menubarMenuItem Menubar_menubarMenuItemBase Menubar_rootMenuItem my-item"', output
-        )
-        self.assertIn(
-            'class="Menubar_menubarMenuItem Menubar_menubarMenuItemBase Menubar_menubarMenuItemButton Menubar_hasDropdown '
-            'Menubar_rootMenuItem my-trigger"',
-            output,
-        )
+        self.assertIn('class="Menubar_menubar my-menubar"', output)
+        self.assertIn('class="Menubar_menubarMenuItem Menubar_menubarMenuItemBase my-item"', output)
+        self.assertIn('class="Menubar_menubarMenuItem Menubar_menubarMenuItemBase my-trigger"', output)
         self.assertIn('class="Menubar_section my-section"', output)
         self.assertIn('class="Menubar_separator my-separator"', output)
 
@@ -518,7 +513,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn("data-apui-menu-submenu", output)
         self.assertIn('aria-controls="apui-menu-users"', output)
         self.assertIn(
-            '<ul role="menu" id="apui-menu-users" class="Menubar_menubarMenu Menubar_vertical" '
+            '<ul role="menu" id="apui-menu-users" class="Menubar_menubarMenu" '
             'data-apui-menu-container="" style="--level: 1"></ul>',
             output,
         )
@@ -564,16 +559,17 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertEqual(caught, [])
         self.assertIn('aria-expanded="true"', output)
         self.assertIn('data-open="true"', output)
-        self.assertIn("Menubar_isOpen", output)
         # Chevron points up while open (horizontal root)
         self.assertIn('d="M18 15L12 9L6 15"', output)
-        # The popover renders visible (no hidden attribute) with the overlay isOpen class
+        # The popover renders visible (no hidden attribute), which is all Menubar.css needs to
+        # show it
         self.assertIn(
-            'class="Popover_popover_bottom OverlayCommon_overlay_bottom OverlayCommon_isOpen" '
-            'role="presentation" data-apui-menu-popover=""',
+            'class="Popover_popoverBase" role="presentation" data-apui-menu-popover="" '
+            'data-placement="bottom"',
             output,
         )
         self.assertNotIn(" hidden ", output)
+        self.assertNotIn("OverlayCommon_", output)
 
     def test_separator_renders_between_sections_only(self):
         template = (
@@ -753,7 +749,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertEqual(caught, [])
         # Disabled anchors become divs with no href, matching React
         self.assertIn(
-            '<div role="menuitem" class="Menubar_menubarMenuItem Menubar_menubarMenuItemBase Menubar_disabled Menubar_rootMenuItem" '
+            '<div role="menuitem" class="Menubar_menubarMenuItem Menubar_menubarMenuItemBase" '
             'data-level="0" data-disabled="true" aria-disabled="true" aria-label="Home" tabindex="-1">',
             output,
         )
@@ -853,7 +849,6 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
 
         self.assertEqual(caught, [])
         self.assertNotIn("data-has-leading-icon", output)
-        self.assertNotIn("Menubar_hasLeadingIcon", output)
 
     def test_captured_item_does_not_keep_an_empty_menubar_visible(self):
         template = (
@@ -1024,7 +1019,6 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         )
         self.assertIn('</span><span data-apui-slot="label">Settings</span>', output)
         self.assertIn('data-has-leading-icon="true"', output)
-        self.assertIn("Menubar_hasLeadingIcon", output)
         self.assertIn("Menubar.auto.ts", output)
 
     def test_icon_only_root_items_keep_accessible_labels_and_render_visual_tooltips(self):
@@ -1097,10 +1091,10 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
 
         self.assertEqual(caught, [])
         self.assertIn(
-            'class="Menubar_menubarMenu Menubar_vertical Menubar_hasLeadingIcon"',
+            '<ul role="menu" id="apui-menu-users" class="Menubar_menubarMenu" '
+            'data-has-leading-icon="true" data-apui-menu-container=""',
             output,
         )
-        self.assertIn('data-has-leading-icon="true"', output)
 
     def test_icon_props_render_safe_submenu_and_section_titles(self):
         template = (
