@@ -2,9 +2,9 @@
 
 These mirror ``@alliancesoftware/ui``'s ``Menubar`` (see ``components/menu-bar/Menubar.tsx``) for
 server-rendered navigation menus: the same markup structure, part classes and state data
-attributes, with interactivity provided by a small standalone runtime
-(``Menubar.auto.ts``/``Menubar.attach.ts``) rather than React. ``Menubar.css`` styles item state
-from the data attributes alone, so the runtime updates attributes (``data-open``,
+attributes, with interactivity provided by a small standalone runtime (``Menubar.attach.ts``,
+which the static runtime entry attaches to the root) rather than React. ``Menubar.css`` styles
+item state from the data attributes alone, so the runtime updates attributes (``data-open``,
 ``data-focused``, ``hidden``) and never class names. Links are real anchors and form actions are
 real buttons, so navigation and submission work without JavaScript; the runtime only adds menu
 open/close and keyboard behaviour.
@@ -68,13 +68,11 @@ from ..render_context import generate_html_id
 from ..render_context import get_current_component_frame
 from ..render_context import push_render_frame
 from ..runtime import add_auto_attach_marker
+from ..runtime import resolve_static_runtime_resource
 from ..static_icon import ICON_STYLE_PATH
 
 _MENUBAR_STYLE_PATH = "@alliancesoftware/ui/components/menu-bar/Menubar.css.ts"
 _POPOVER_STYLE_PATH = "@alliancesoftware/ui/components/overlay/Popover.css.ts"
-# Menubar's DOM and CSS contracts rely on this runtime for submenu and keyboard behaviour. Treat a
-# missing module as an incompatible @alliancesoftware/ui version instead of silently degrading.
-_RUNTIME_MODULE_PATH = "@alliancesoftware/ui/components/menu-bar/Menubar.auto.ts"
 
 VALID_LAYOUTS = ("horizontal", "vertical", "inline")
 VALID_ROOT_ITEM_DISPLAYS = ("icon-and-label", "icon-only")
@@ -512,28 +510,15 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
         # Icon.css and Popover.css are included unconditionally: submenu chevrons and flyout
         # popovers are part of normal menubar output, and conditional inclusion would make
         # resource discovery non-deterministic.
-        resources = [
+        return [
             self.resolve_frontend_resource(_MENUBAR_STYLE_PATH),
             self.resolve_frontend_resource(_POPOVER_STYLE_PATH),
             self.resolve_frontend_resource(ICON_STYLE_PATH),
             get_static_icon_resource(_CHEVRON_DOWN_ICON, origin=self.origin),
             get_static_icon_resource(_CHEVRON_RIGHT_ICON, origin=self.origin),
             get_static_icon_resource(_CHEVRON_UP_ICON, origin=self.origin),
+            resolve_static_runtime_resource(self),
         ]
-        resources.append(self._resolve_runtime_resource())
-        return resources
-
-    def _resolve_runtime_resource(self) -> FrontendResource:
-        try:
-            return self.resolve_frontend_resource(
-                _RUNTIME_MODULE_PATH,
-                resolve_extensions=[".ts", ".tsx", ".js", ".mjs"],
-            )
-        except TemplateSyntaxError as exc:
-            raise TemplateSyntaxError(
-                "Static menubar rendering requires "
-                f"'{_RUNTIME_MODULE_PATH}'. Upgrade @alliancesoftware/ui to a compatible version."
-            ) from exc
 
     def render_children_for_component(self, context: Context, props: dict[str, Any]) -> str:
         # Children are rendered in render_component so the render state (which render_component

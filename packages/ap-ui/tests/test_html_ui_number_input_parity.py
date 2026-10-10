@@ -4,6 +4,8 @@ from decimal import Decimal
 import re
 from typing import Any
 
+from alliance_platform.ui.html_components.runtime import STATIC_RUNTIME_MODULE_PATH
+
 from tests.parity.base import HtmlUIParityTestCase
 
 _STATIC_EXTENSION_ATTR_RES = [
@@ -59,7 +61,7 @@ class UINumberInputParityTestCase(HtmlUIParityTestCase):
             "@alliancesoftware/ui/components/text-input/TextInputBase.css.ts",
             "@alliancesoftware/ui/components/form/LabeledInput.css.ts",
             "@alliancesoftware/ui/components/number-input/NumberInput.css.ts",
-            "@alliancesoftware/ui/components/number-input/NumberInput.auto.ts",
+            STATIC_RUNTIME_MODULE_PATH,
             "@alliancesoftware/ui/styles/base/focusRing.css.ts",
         ]:
             with self.subTest(resource=expected_suffix):

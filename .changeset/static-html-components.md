@@ -7,8 +7,9 @@ Add the server-rendered `{% ui %}` component system with parity renderers for ic
 groups, text and number inputs, text areas, inline alerts, Menubars, and tables. The `icon`,
 `pagination`, `text_input`, `number_input` and `text_area` components take no end tag. The
 components support Django-native links and form submission, permission-aware menu pruning,
-backend-driven table sorting, unique input associations, and deduplicated external runtimes for
-interactive Menubars and NumberInputs. Inline Menubars can optionally persist expanded submenu paths
+backend-driven table sorting, unique input associations, and one external runtime entry, embedded
+once per page, that loads the browser behaviour of Menubars, NumberInputs, text areas and button
+groups on demand. Inline Menubars can optionally persist expanded submenu paths
 in a server-readable cookie so the initial HTML renders without a state flash. Static table sort
 icons remain inline while their SVG files are tracked as build dependencies, avoiding duplicate
 document images.

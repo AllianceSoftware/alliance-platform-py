@@ -11,6 +11,7 @@ from urllib.parse import quote
 from alliance_platform.frontend.templatetags.react import DeferredProp
 from alliance_platform.frontend.templatetags.react import OmitComponentFromRendering
 from alliance_platform.ui.html_components.components.menubar import UIMenubarRenderer
+from alliance_platform.ui.html_components.runtime import STATIC_RUNTIME_MODULE_PATH
 from allianceutils.auth.permission import AmbiguousGlobalPermissionWarning
 from allianceutils.tests.util import warning_filter
 from django.conf import settings
@@ -965,7 +966,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
             "static-svg/outlined/ChevronDownOutlined.svg",
             "static-svg/outlined/ChevronRightOutlined.svg",
             "static-svg/outlined/ChevronUpOutlined.svg",
-            "@alliancesoftware/ui/components/menu-bar/Menubar.auto.ts",
+            STATIC_RUNTIME_MODULE_PATH,
         ):
             self.assertTrue(
                 any(path.endswith(expected) for path in resource_paths),
@@ -978,7 +979,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
 
         self.assertEqual(output.count("<svg"), 1)
         self.assertNotIn("<img", output)
-        self.assertIn("Menubar.auto.ts", output)
+        self.assertIn("static-runtime.auto.ts", output)
         self.assertIn("<script src=", output)
         self.assertIn("Menubar_menubar", output)
 
@@ -986,7 +987,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         with self.setup_render_context():
             output = self.render_ui_document(BASIC_MENUBAR_TEMPLATE + BASIC_MENUBAR_TEMPLATE)
 
-        self.assertEqual(output.count("Menubar.auto.ts"), 1)
+        self.assertEqual(output.count("static-runtime.auto.ts"), 1)
         self.assertEqual(output.count('data-apui-attach="menubar"'), 2)
         self.assertNotIn('<script type="module">', output)
 
@@ -1019,7 +1020,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         )
         self.assertIn('</span><span data-apui-slot="label">Settings</span>', output)
         self.assertIn('data-has-leading-icon="true"', output)
-        self.assertIn("Menubar.auto.ts", output)
+        self.assertIn("static-runtime.auto.ts", output)
 
     def test_icon_only_root_items_keep_accessible_labels_and_render_visual_tooltips(self):
         template = (
@@ -1140,7 +1141,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
             "@alliancesoftware/ui/components/overlay/Popover.css.ts",
             "@alliancesoftware/icons/Icon.css.ts",
         )
-        runtime_path = "@alliancesoftware/ui/components/menu-bar/Menubar.auto.ts"
+        runtime_path = STATIC_RUNTIME_MODULE_PATH
 
         with TemporaryDirectory() as temp_dir:
             build_dir = Path(temp_dir)
@@ -1154,7 +1155,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
                     "css": [f"assets/{style_name}-built.css"],
                 }
             manifest[runtime_path] = {
-                "file": "assets/Menubar.auto-built.js",
+                "file": "assets/static-runtime.auto-built.js",
                 "src": runtime_path,
             }
 
@@ -1187,7 +1188,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
 
         self.assertEqual(output.count("<svg"), 1)
         self.assertNotIn("<img", output)
-        self.assertIn("/static/assets/Menubar.auto-built.js", output)
+        self.assertIn("/static/assets/static-runtime.auto-built.js", output)
         self.assertIn("/static/assets/Menubar-built.css", output)
         for icon_name in (
             "ChevronDownOutlined.svg",
@@ -1209,7 +1210,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
             )
             resource_paths = [str(resource.path) for resource in renderer.get_resources_for_bundling()]
         self.assertEqual(len(resource_paths), 7)
-        self.assertTrue(any("Menubar.auto" in path for path in resource_paths))
+        self.assertTrue(any(path.endswith(STATIC_RUNTIME_MODULE_PATH) for path in resource_paths))
         self.assertTrue(any("ChevronDownOutlined.svg" in path for path in resource_paths))
 
     def test_missing_runtime_resource_is_an_incompatible_ui_version_error(self):
@@ -1224,7 +1225,7 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
             resolve_frontend_resource = renderer.resolve_frontend_resource
 
             def resolve_with_missing_runtime(path, resolve_extensions=None):
-                if path.endswith("Menubar.auto.ts"):
+                if path == STATIC_RUNTIME_MODULE_PATH:
                     raise TemplateSyntaxError("module not found")
                 return resolve_frontend_resource(path, resolve_extensions)
 

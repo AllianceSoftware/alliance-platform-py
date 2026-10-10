@@ -18,7 +18,7 @@ Hooks to override: ``render_component`` (required), ``render_children_for_compon
 parent component), ``allow_non_scalar_prop`` and the ``supports_prop_name`` classmethod.
 
 Helpers to call: ``report``, ``render_children``, ``render_tag``, ``render_icon``,
-``resolve_frontend_resource``, ``resolve_optional_resource_path``, ``resolve_vanilla_extract_mapping``,
+``resolve_frontend_resource``, ``resolve_vanilla_extract_mapping``,
 the style getters (``get_style_class``, ``get_nested_style_class``),
 ``collect_forwarded_props``, ``join_classes``, ``build_attrs_string`` and the
 ``canonical_prop_name`` classmethod. Module level: :class:`PropRule`, :func:`enum_prop_rule`,
@@ -581,16 +581,6 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
     def _resolve_resource_path(self, path: str, resolve_extensions: list[str] | None = None) -> Path:
         resolver_context = ResolveContext(self.bundler.root_dir, self.origin.name if self.origin else None)
         return self.bundler.resolve_path(path, resolver_context, resolve_extensions=resolve_extensions)
-
-    def resolve_optional_resource_path(
-        self,
-        path: str,
-        resolve_extensions: list[str] | None = None,
-    ) -> Path | None:
-        try:
-            return self._resolve_resource_path(path, resolve_extensions=resolve_extensions)
-        except template.TemplateSyntaxError:
-            return None
 
     def resolve_frontend_resource(
         self,
