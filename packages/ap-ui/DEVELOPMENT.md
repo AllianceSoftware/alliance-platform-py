@@ -313,8 +313,17 @@ comes from a standalone runtime module in the JS repo —
 `@alliancesoftware/ui/components/menu-bar/Menubar.attach.ts` — attached through
 `attach_module_script()` exactly like the button group's `SmartOrientation.attach.ts` (per-root
 `data-djid` + module script; the runtime is idempotent and holds cleanup state in a `WeakMap`).
-The runtime never imports CSS mappings: the Python renderer exposes the state class names it must
-toggle through `data-open-class` / `data-focused-class` / `data-popover-open-class` on the root.
+
+The markup carries only root and part classes: `menubar` on the root, `menubarMenu` on each submenu
+list, `menubarMenuItem` on each item and submenu trigger, the content, icon, section and separator
+parts, and `Popover.css`'s `popoverBase` and `inner` on a submenu's popover wrapper. `Menubar.css`
+keys the rest off attributes: the layout off the root's `data-layout` and `data-orientation`, an
+item off its `data-level` (rounded root items, bordered nested items), `data-has-dropdown`,
+`data-disabled` and `data-focused`, and a button item's reset off its element. The runtime never
+reads or writes class names: it sets `data-open` and `aria-expanded` on an open submenu's trigger,
+`hidden` on a closed popup and `data-focused` on the item holding DOM focus. React sets
+`data-focused` on the item its selection manager highlights, which includes a submenu trigger
+while focus is in its submenu.
 
 ### Cross-component render state
 
@@ -338,13 +347,13 @@ deciding what to render:
    everything else renders `tabindex="-1"` and the runtime moves the roving tab stop.
 5. Static icons publish a structured report after successful uncaptured rendering. Menubar items
    use ordered reports anchored against their rendered children to identify a direct leading icon;
-   adjacent plain text is wrapped like the React `Text` component, and `hasLeadingIcon` state is
-   propagated to the containing
-   root or submenu `<ul>` for consistent indentation. The item wrapper and content span emit the
-   shared `data-apui-menu-item-content-wrapper` and `data-apui-menu-item-content` markers used by
-   `Menubar.css.ts` to space leading icons. Each icon-bearing item also emits its own
-   `data-has-leading-icon` marker. With `root_item_display="icon-only"`, icon-bearing level-zero
-   items get an `aria-hidden` tooltip while iconless items retain their visible label.
+   adjacent plain text is wrapped like the React `Text` component, and `data-has-leading-icon` is
+   propagated to the containing root or submenu `<ul>`, as React sets it. The item wrapper and
+   content span emit the shared `data-apui-menu-item-content-wrapper` and
+   `data-apui-menu-item-content` markers used by `Menubar.css.ts` to space leading icons. Each
+   icon-bearing item also emits its own `data-has-leading-icon` marker. With
+   `root_item_display="icon-only"`, icon-bearing level-zero items get an `aria-hidden` tooltip
+   while iconless items retain their visible label.
 6. Structural nodes expose the same stable runtime hooks as React: submenu owner/trigger/chevron,
    popover/menu container, section owner/heading/items, and separator. Sections and separators use
    the same zero-based `data-level` convention as menu items; heading icon and label content use
@@ -390,11 +399,14 @@ Reconciled by `normalize()` in `scripts/parity_cases/menubar.mjs` (React side) a
 `strip_static_menubar_extensions()` in `tests/test_html_ui_menubar_parity.py` (static side):
 
 - **Stable submenu popups**: React renders open flyouts in a portal and closed menus not at all;
-  the static renderer always renders a `Popover.css`-styled wrapper
-  (`data-apui-menu-popover`) in place. Inline layout uses the same wrapper with the CSS
-  `display: contents` contract, so `MenubarController.setLayout()` can switch that DOM tree to a
-  positioned flyout. Closed wrappers are stripped for parity; visible inline wrappers are
-  unwrapped so the `defaultExpandedKeys` fixtures still compare their submenu content.
+  the static renderer always renders a wrapper (`data-apui-menu-popover`) in place, with
+  `Popover.css`'s `popoverBase` and a `data-placement` (`bottom` under a horizontal menubar's root
+  items, `right` otherwise). The wrapper shows whenever it is not `hidden`, and `Menubar.css` gives
+  a flyout the drop shadow, gap and offset that React's Popover gets from the overlay placement and
+  open classes. Inline layout uses the same wrapper with the CSS `display: contents` contract, so
+  `MenubarController.setLayout()` can switch that DOM tree to a positioned flyout. Closed wrappers
+  are stripped for parity; visible inline wrappers are unwrapped so the `defaultExpandedKeys`
+  fixtures still compare their submenu content.
 - **Submenu trigger element**: React defaults to `<div>` for triggers without `href`; the static
   renderer uses `<button type="button">` so menus work without React synthetic events. Fixture
   cases pass `elementType="button"` on the React side; the `type="button"` attribute is stripped
@@ -402,10 +414,10 @@ Reconciled by `normalize()` in `scripts/parity_cases/menubar.mjs` (React side) a
 - **`aria-controls`/popup ids, roving `tabindex`, `data-open="false"`, `data-current`,
   `data-key`**: static extensions (or explicit values React leaves implicit); stripped and unit
   tested instead.
-- **`hasLeadingIcon` during SSR**: React initially emits this state optimistically before
+- **`data-has-leading-icon` during SSR**: React initially emits it optimistically before
   `useHasChild` inspects the DOM. The static renderer computes the actual value from rendered
-  leading icon slots, so the React SSR value is stripped for fixture parity and focused unit tests
-  cover the shared class/data contract.
+  leading icon slots, so the attribute is stripped on both sides for fixture parity and focused
+  unit tests cover it.
 - **Selection indicator**: React-selected items expose `data-apui-menu-item-selected-icon` on the
   check icon. Static menubar selection is intentionally unsupported, so the renderer never emits a
   selected icon; consumers can rely on the hook when the React component owns selection.
