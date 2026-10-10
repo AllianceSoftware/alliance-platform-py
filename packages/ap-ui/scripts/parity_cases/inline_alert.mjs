@@ -31,7 +31,8 @@ export async function loadComponents({ uiPackageDir, importDefault }) {
 }
 
 // React's useHasChild only detects an alert holding nothing but content after mount, so SSR never
-// marks it; the static renderer knows at render time. Mark the SSR output the same way.
+// marks it; the static renderer knows at render time. Mark the SSR output the same way: the
+// compact layout is keyed off data-only-content on the root.
 export function normalize(root, testCase, helpers) {
   const alertRoot = root.querySelector('[data-apui="inline-alert"]');
   const alertInner = alertRoot?.firstElementChild;
@@ -49,7 +50,6 @@ export function normalize(root, testCase, helpers) {
       .some((token) => token.startsWith("InlineAlert_content"))
   ) {
     alertRoot.setAttribute("data-only-content", "true");
-    alertInner.classList.add("InlineAlert_onlyContent");
   }
   helpers.normalizeInlineStyles(root);
 }

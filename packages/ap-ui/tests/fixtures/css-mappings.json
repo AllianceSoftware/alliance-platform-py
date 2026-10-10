@@ -85,24 +85,15 @@
     }
   },
   "@alliancesoftware/ui/components/inline-alert/InlineAlert.css.ts": {
-    "alert": {
-      "danger": "InlineAlert_alert_danger__1nz3j5tb InlineAlert_base__1nz3j5t9 font__1g6dhcj7o font_textSizes_sm__1g6dhcjb font_textBase__1g6dhcj1 font_fontWeightVariants_regular__1g6dhcjg",
-      "warning": "InlineAlert_alert_warning__1nz3j5tc InlineAlert_base__1nz3j5t9 font__1g6dhcj7o font_textSizes_sm__1g6dhcjb font_textBase__1g6dhcj1 font_fontWeightVariants_regular__1g6dhcjg",
-      "success": "InlineAlert_alert_success__1nz3j5td InlineAlert_base__1nz3j5t9 font__1g6dhcj7o font_textSizes_sm__1g6dhcjb font_textBase__1g6dhcj1 font_fontWeightVariants_regular__1g6dhcjg",
-      "info": "InlineAlert_alert_info__1nz3j5te InlineAlert_base__1nz3j5t9 font__1g6dhcj7o font_textSizes_sm__1g6dhcjb font_textBase__1g6dhcj1 font_fontWeightVariants_regular__1g6dhcjg",
-      "default": "InlineAlert_alert_default__1nz3j5tf InlineAlert_base__1nz3j5t9 font__1g6dhcj7o font_textSizes_sm__1g6dhcjb font_textBase__1g6dhcj1 font_fontWeightVariants_regular__1g6dhcjg"
-    },
-    "icon": "InlineAlert_icon__1nz3j5tn",
-    "base": "InlineAlert_base__1nz3j5t9 font__1g6dhcj7o font_textSizes_sm__1g6dhcjb font_textBase__1g6dhcj1 font_fontWeightVariants_regular__1g6dhcjg",
-    "wrapper": "InlineAlert_wrapper__1nz3j5tg",
-    "footer": "InlineAlert_footer__1nz3j5tk",
-    "closeButton": "InlineAlert_closeButton__1nz3j5tl",
-    "buttonGroup": "InlineAlert_buttonGroup__1nz3j5tm",
-    "content": "InlineAlert_content__1nz3j5tj",
-    "heading": "InlineAlert_heading__1nz3j5th font__1g6dhcj7u font_textSizes_sm__1g6dhcjb font_textBase__1g6dhcj1 font_fontWeightVariants_semiBold__1g6dhcji",
-    "header": "InlineAlert_header__1nz3j5ti",
-    "isDismissed": "InlineAlert_isDismissed__1nz3j5to",
-    "onlyContent": "InlineAlert_onlyContent__1nz3j5ta"
+    "icon": "InlineAlert_icon__1nz3j5th",
+    "base": "InlineAlert_base__1nz3j5ta font__1g6dhcj7o font_textSizes_sm__1g6dhcjb font_textBase__1g6dhcj1 font_fontWeightVariants_regular__1g6dhcjg",
+    "wrapper": "InlineAlert_wrapper__1nz3j5t9",
+    "footer": "InlineAlert_footer__1nz3j5te",
+    "closeButton": "InlineAlert_closeButton__1nz3j5tf",
+    "buttonGroup": "InlineAlert_buttonGroup__1nz3j5tg",
+    "content": "InlineAlert_content__1nz3j5td",
+    "heading": "InlineAlert_heading__1nz3j5tb font__1g6dhcj7u font_textSizes_sm__1g6dhcjb font_textBase__1g6dhcj1 font_fontWeightVariants_semiBold__1g6dhcji",
+    "header": "InlineAlert_header__1nz3j5tc"
   },
   "@alliancesoftware/ui/components/layout/SmartOrientation.css.ts": {
     "container": {

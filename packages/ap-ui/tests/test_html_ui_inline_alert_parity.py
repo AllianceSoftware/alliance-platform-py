@@ -99,7 +99,32 @@ class UIInlineAlertParityTestCase(HtmlUIParityTestCase):
 
         self.assertIn('<h3 class="InlineAlert_heading">Check this</h3>', output)
         self.assertNotIn("data-only-content", output)
-        self.assertNotIn("InlineAlert_onlyContent", output)
+
+    def test_intent_and_layout_are_styled_from_root_attributes(self):
+        # InlineAlert.css keys the intent's colours and the compact layout off the root's
+        # data-intent and data-only-content; the element inside has only the base class
+        with self.setup_render_context():
+            only_content = self.render_ui_template(
+                '{% ui "inline_alert" intent="danger" hide_icon=True %}Try again.{% endui %}'
+            )
+            structured = self.render_ui_template(
+                '{% ui "inline_alert" intent="warning" hide_icon=True %}'
+                '{% ui "heading" %}Check this{% endui %}'
+                '{% ui "content" %}Review the details.{% endui %}'
+                "{% endui %}"
+            )
+
+        self.assertEqual(
+            only_content,
+            '<div data-apui="inline-alert" data-intent="danger" data-only-content="true" '
+            'class="InlineAlert_wrapper" role="alert"><div class="InlineAlert_base">'
+            '<section class="InlineAlert_content">Try again.</section></div></div>',
+        )
+        self.assertIn(
+            '<div data-apui="inline-alert" data-intent="warning" class="InlineAlert_wrapper" role="alert">'
+            '<div class="InlineAlert_base"><h3 class="InlineAlert_heading">',
+            structured,
+        )
 
     def test_layout_component_can_select_a_non_default_slot(self):
         with self.setup_render_context():
