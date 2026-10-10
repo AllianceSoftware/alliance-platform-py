@@ -71,6 +71,18 @@ export function normalize(root, testCase, helpers) {
   for (const heading of root.querySelectorAll("th")) {
     helpers.prependAttribute(heading, "scope", "col");
   }
+  // React renders a row header as td role="rowheader", the static table as th scope="row"
+  for (const cell of root.querySelectorAll('td[role="rowheader"]')) {
+    const rowHeader = cell.ownerDocument.createElement("th");
+    rowHeader.setAttribute("scope", "row");
+    for (const attribute of Array.from(cell.attributes)) {
+      if (attribute.name !== "role") {
+        rowHeader.setAttribute(attribute.name, attribute.value);
+      }
+    }
+    rowHeader.append(...cell.childNodes);
+    cell.replaceWith(rowHeader);
+  }
   // Body rows carry no class in the static table (it styles rows from the wrapper).
   for (const row of root.querySelectorAll("tbody > tr")) {
     const classNames = helpers

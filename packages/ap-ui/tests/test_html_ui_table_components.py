@@ -72,10 +72,12 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
         )
         self.assertIn("<tbody>", output)
         self.assertIn('<tr data-key="1">', output)
-        self.assertIn('<td role="rowheader">Jane</td>', output)
+        self.assertIn('<th scope="row">Jane</th>', output)
         self.assertIn("<td>jane@example.com</td>", output)
-        # No ARIA grid behaviour is rendered by the static implementation
+        # No ARIA grid behaviour is rendered by the static implementation: the row header is a
+        # native <th scope="row"> rather than React's <td role="rowheader">
         self.assertNotIn('role="grid"', output)
+        self.assertNotIn('role="rowheader"', output)
         self.assertNotIn("tabindex", output)
 
     def test_class_kwargs_merge_with_default_classes(self):
@@ -99,7 +101,7 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn('<th class="my-column" scope="col">', output)
         self.assertIn('<tbody class="my-body">', output)
         self.assertIn('<tr class="my-row">', output)
-        self.assertIn('<td class="my-cell" role="rowheader">', output)
+        self.assertIn('<th class="my-cell" scope="row">', output)
 
     def test_column_align_applies_to_header_and_body_cells(self):
         template = (
@@ -141,8 +143,8 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
 
     def test_first_column_is_row_header_by_default(self):
         output, _ = self.render_with_warnings(BASIC_TABLE_TEMPLATE)
-        self.assertIn('<td role="rowheader">Jane</td>', output)
-        self.assertNotIn('role="rowheader">jane@example.com', output)
+        self.assertIn('<th scope="row">Jane</th>', output)
+        self.assertIn("<td>jane@example.com</td>", output)
 
     def test_explicit_is_row_header_overrides_first_column_default(self):
         template = (
@@ -162,7 +164,7 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
         output, caught = self.render_with_warnings(template)
         self.assertEqual(caught, [])
         self.assertIn("<td>Jane</td>", output)
-        self.assertIn('<td role="rowheader">jane@example.com</td>', output)
+        self.assertIn('<th scope="row">jane@example.com</th>', output)
 
     def test_column_width_renders_css_variable(self):
         template = make_sortable_table_template(columns='{% ui "table_column" width=96 %}Name{% endui %}')
@@ -633,7 +635,7 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
         )
         output, caught = self.render_with_warnings(template)
         self.assertEqual(caught, [])
-        self.assertIn('<td colspan="2" role="rowheader">Jane</td>', output)
+        self.assertIn('<th colspan="2" scope="row">Jane</th>', output)
         # The cell after a colspan=2 cell inherits metadata from the third column
         self.assertIn('<td data-align="end">10</td>', output)
 
@@ -663,7 +665,7 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
         output, caught = self.render_with_warnings(template)
         self.assertEqual(caught, [])
         # Inner cell is the inner table's first column: row header with alignment from inner column
-        self.assertIn('<td data-align="end" role="rowheader">inner-cell</td>', output)
+        self.assertIn('<th data-align="end" scope="row">inner-cell</th>', output)
         # The outer table's empty state/row counting is unaffected
         self.assertNotIn("Table_noResults", output)
 

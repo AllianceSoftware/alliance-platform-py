@@ -11,8 +11,9 @@ and the React Aria keyboard grid behaviour are intentionally unsupported.
 
 Because the React table is an interactive ARIA grid and the static table is not, native table
 semantics are preferred: no grid roles or tab indexes are rendered, ``aria-sort``/``scope="col"``
-are set on header cells, and row-header cells render as ``<td role="rowheader">`` (rather than
-``<th scope="row">``) so browser default ``<th>`` styling cannot diverge from the React output.
+are set on header cells, and row-header cells render as ``<th scope="row">`` where React renders
+``<td role="rowheader">``. ``Table.css`` styles a body ``th`` with ``scope="row"`` like the other
+cells of its row, so browser default ``<th>`` styling does not diverge from the React output.
 
 Cross-component coordination (column metadata inherited by body cells and row/cell counting for
 the empty state) uses :class:`TableRenderState` as a typed payload on the shared document
@@ -694,16 +695,18 @@ class UITableCellRenderer(UITableComponentRendererBase):
 
         attrs: dict[str, Any] = {
             # Cells carry no default classes; cell typography and alignment are driven by the
-            # `td` element and [data-align] selectors under the tableWrapper.
+            # `td` and `th[scope="row"]` element selectors and [data-align] selectors under the
+            # tableWrapper.
             "className": props.get("className"),
             "id": props.get("id"),
             "style": props.get("style"),
             "data-align": align,
             "colspan": col_span,
             "rowspan": row_span,
-            # Rendered as <td role="rowheader"> rather than <th scope="row"> so browser default
-            # <th> styling (bold, centered) cannot diverge from the React table's appearance.
-            "role": "rowheader" if is_row_header else None,
+            # A row header is a native <th scope="row">, where React renders <td role="rowheader">
+            # for its ARIA grid. Table.css styles it like the td cells of its row, overriding the
+            # header cell look and browser default <th> styling (bold, centered).
+            "scope": "row" if is_row_header else None,
             **self.collect_forwarded_props(props),
         }
-        return self.render_tag("td", attrs, children_html)
+        return self.render_tag("th" if is_row_header else "td", attrs, children_html)
