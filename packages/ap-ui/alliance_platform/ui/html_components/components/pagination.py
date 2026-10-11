@@ -75,6 +75,8 @@ class PaginationItem:
 class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
     name = "pagination"
     react_tag = "Pagination"
+    # As React's Pagination, the nav has no data-apui marker; its links are marked as buttons
+    has_apui_marker = False
     slot_name = "pagination"
     has_children = False
     supported_props = frozenset(
@@ -101,6 +103,17 @@ class UIPaginationRenderer(BaseHtmlUIComponentRenderer):
     unsupported_prop_reasons = _UNSUPPORTED_PROPS
     prop_filter_context = "static pagination components"
     event_handler_prop_reason = _CALLBACK_REASON
+    prop_docs = {
+        "total": "Required, as there is no ``state`` to take it from: without it nothing renders.",
+        "pageQueryParam": (
+            "The query parameter the page links set, ``page`` by default and removed for page 1; "
+            "React takes it in ``render_item_props``."
+        ),
+        "pageSizeQueryParam": (
+            "The page-size query parameter, ``pageSize`` by default, which the links remove, as "
+            "page-size selection is not supported."
+        ),
+    }
     prop_rules = {
         "total": typed_prop_rule(int, validator=_is_int_at_least(0), invalid_fallback=0),
         "page": typed_prop_rule(int, validator=_is_int_at_least(1), invalid_fallback=1),

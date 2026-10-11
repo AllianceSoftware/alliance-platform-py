@@ -338,6 +338,14 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
     prop_rules = _LABELED_INPUT_PROP_RULES
     prop_filter_context = "static input components"
     event_handler_prop_reason = "event handlers are not supported by static input components"
+    prop_docs = {
+        "id": (
+            "The control's id, which also names the help text ``<id>_helptext`` and the error message "
+            "``<id>_error``, as Django names a form field's."
+        ),
+        "readOnly": "Same as ``is_read_only``, in the HTML attribute's spelling.",
+        "required": "Same as ``is_required``, in the HTML attribute's spelling.",
+    }
 
     @classmethod
     def supports_prop_name(cls, key: str) -> bool:
@@ -353,6 +361,13 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
                 or canonical in cls.prop_rules
                 or canonical in cls.forwarded_props
             )
+        )
+
+    @classmethod
+    def documented_props(cls) -> frozenset[str]:
+        # supported_props is None: these are the names supports_prop_name accepts
+        return cls._documented_prop_names(
+            {*cls.handled_props, *cls.control_pass_through_props, *cls.prop_rules, *cls.forwarded_props}
         )
 
     #: tag rendered for the actual control
@@ -586,12 +601,25 @@ class UITextInputRenderer(UITextInputBaseRenderer):
         return mark_safe(f"<input{self.build_attrs_string(attrs)}/>")
 
 
+_TEXT_AREA_SIZE_PROP_DOC = (
+    "Accepted, as Django's ``Textarea`` widget sets it, and not rendered, so the text area keeps React's "
+    "compact first paint."
+)
+
+
 class UITextAreaRenderer(UITextInputBaseRenderer):
     name = "text_area"
     react_tag = 'component "@alliancesoftware/ui" "TextArea"'
+    runtime_token = "text-area"
     control_tag = "textarea"
     handled_props = UITextInputBaseRenderer.handled_props | {"height", "type", "rows", "cols"}
     control_pass_through_props = _SHARED_CONTROL_PASS_THROUGH_PROPS | {"wrap"}
+    prop_docs = {
+        **UITextInputBaseRenderer.prop_docs,
+        "rows": _TEXT_AREA_SIZE_PROP_DOC,
+        "cols": _TEXT_AREA_SIZE_PROP_DOC,
+        "type": "Accepted and not rendered, as a ``<textarea>`` has no type.",
+    }
 
     def resolve_component_resources(self) -> list[FrontendResource]:
         return [*super().resolve_component_resources(), resolve_static_runtime_resource(self)]
@@ -606,7 +634,7 @@ class UITextAreaRenderer(UITextInputBaseRenderer):
         # A fixed height does not auto-grow
         if props.get("height") is not None:
             return
-        add_auto_attach_marker(container_attrs, "text-area")
+        add_auto_attach_marker(container_attrs, self.runtime_token)
 
     def render_control(
         self,
@@ -636,9 +664,20 @@ class UITextAreaRenderer(UITextInputBaseRenderer):
 class UINumberInputRenderer(UITextInputBaseRenderer):
     name = "number_input"
     react_tag = 'component "@alliancesoftware/ui" "NumberInput"'
+    runtime_token = "number-input"
     # Django's NumberInput widget sets the native min and max attributes for a field's min_value and
     # max_value, as a number input expects them; NumberInput takes them as minValue and maxValue
     prop_aliases = {"min": "minValue", "max": "maxValue"}
+    prop_docs = {
+        **UITextInputBaseRenderer.prop_docs,
+        "minValue": "``min`` is the attribute Django's ``NumberInput`` widget sets for ``min_value``.",
+        "maxValue": "``max`` is the attribute Django's ``NumberInput`` widget sets for ``max_value``.",
+        "name": (
+            "Rendered on the visible input, so the unformatted number submits without JavaScript; the "
+            "runtime moves it to a hidden input when it formats the value."
+        ),
+        "type": "Accepted and not rendered: the control is always a text input, as in React.",
+    }
     handled_props = UITextInputBaseRenderer.handled_props | {
         "type",
         "minValue",
@@ -711,7 +750,7 @@ class UINumberInputRenderer(UITextInputBaseRenderer):
         state: LabeledInputState,
         container_attrs: dict[str, Any],
     ) -> None:
-        add_auto_attach_marker(container_attrs, "number-input")
+        add_auto_attach_marker(container_attrs, self.runtime_token)
 
     def format_number_value(self, value: Any) -> str:
         """Format a numeric value the way the React component displays it.
@@ -865,6 +904,25 @@ class UILabeledInputRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRen
     prop_rules = _LABELED_INPUT_PROP_RULES
     prop_filter_context = "static labeled inputs"
     event_handler_prop_reason = "event handlers are not supported by static labeled inputs"
+    prop_docs = {
+        "inputId": (
+            "The id of the control the children render: the label's ``for``, and the base of the help "
+            "text and error message ids, ``<input_id>_helptext`` and ``<input_id>_error``."
+        ),
+        "validationState": (
+            '``"invalid"`` sets ``is_invalid``, as ``{% LabeledInput %}`` converts it for '
+            "``{% form_input %}``; React's ``LabeledInput`` has no such prop."
+        ),
+        **dict.fromkeys(
+            _SHARED_CONTROL_PASS_THROUGH_PROPS,
+            "Accepted so a widget template can pass ``extra_widget_props`` whole, and not rendered: it "
+            "belongs on the control the children render.",
+        ),
+        **dict.fromkeys(
+            ("data-*", "aria-*"),
+            "Accepted and not rendered: they belong on the control the children render.",
+        ),
+    }
 
     def resolve_component_resources(self) -> list[FrontendResource]:
         return [

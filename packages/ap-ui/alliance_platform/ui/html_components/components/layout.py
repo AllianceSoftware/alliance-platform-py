@@ -15,6 +15,8 @@ _EVENT_HANDLER_REASON = "event handlers are not supported by static layout compo
 
 
 class UILayoutPartRenderer(BaseHtmlUIComponentRenderer):
+    # As the React layout components, the parts have no data-apui marker
+    has_apui_marker = False
     slot_name: str
     tag_name: str
     supported_props = frozenset({"className", "style", "children", "slot"})

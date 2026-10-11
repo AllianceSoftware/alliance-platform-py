@@ -177,6 +177,8 @@ class UITableComponentRendererBase(BaseHtmlUIComponentRenderer):
     prop_filter_context = "static table components"
     event_handler_prop_reason = _EVENT_HANDLER_REASON
     requires_table = True
+    # As React's table parts, only the table's root has a data-apui marker
+    has_apui_marker = False
 
     def resolve_props(self, context: Context) -> dict[str, Any]:
         if self.requires_table and get_current_table_state(context) is None:
@@ -198,6 +200,7 @@ class UITableRenderer(UITableComponentRendererBase):
     name = "table"
     react_tag = "Table"
     requires_table = False
+    has_apui_marker = True
     supported_props = frozenset(
         {
             "id",
@@ -220,6 +223,21 @@ class UITableRenderer(UITableComponentRendererBase):
     prop_rules = {
         "sortMode": enum_prop_rule(VALID_SORT_MODES, invalid_fallback="single"),
         "sortBehavior": enum_prop_rule(VALID_SORT_BEHAVIORS, invalid_fallback="toggle"),
+    }
+    prop_docs = {
+        "renderEmptyState": (
+            "The empty state's content rather than a function: ``True``, the default, renders "
+            '"No results", and ``None`` or ``False`` renders none, as ``null`` does in React.'
+        ),
+        "emptyState": "Same as ``render_empty_state``, which wins when both are passed.",
+        "sortQueryParam": (
+            "The query parameter the sort links set, ``ordering`` by default, as the "
+            "``sort_query_param`` of ``{% ColumnHeaderLink %}`` is."
+        ),
+        "sortBehavior": (
+            "With ``replace`` a sort link always replaces the other sorted columns, as the ctrl/cmd-click "
+            "that keeps them in React needs JavaScript."
+        ),
     }
 
     def resolve_component_resources(self) -> list[FrontendResource]:
@@ -375,6 +393,31 @@ class UITableColumnRenderer(UITableComponentRendererBase):
     prop_rules = {
         "align": enum_prop_rule(VALID_ALIGNMENTS),
         "sortDirection": enum_prop_rule(VALID_SORT_DIRECTIONS),
+    }
+    prop_docs = {
+        "sortHref": (
+            "The URL of the header's sort link, for when the table cannot build one from ``key`` and the "
+            "``request``."
+        ),
+        "sortDirection": (
+            "The sort direction to show, in place of the one the table's ``sort_order`` gives the "
+            "column's ``key``."
+        ),
+        "sortPosition": (
+            "The sort position to show, in place of the column's place in the table's ``sort_order``."
+        ),
+        "showSortPosition": (
+            'Whether to show the sort position; by default it shows when ``sort_mode="multiple"`` and more '
+            "than one column is sorted."
+        ),
+        "colSpan": (
+            "Rendered as the header cell's ``colspan``; React derives a column's span from nested columns, "
+            "which the static table does not support."
+        ),
+        "hideHeader": (
+            "Hides the header content visually, keeping it for screen readers, without the tooltip React "
+            "shows on focus."
+        ),
     }
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
@@ -659,6 +702,12 @@ class UITableCellRenderer(UITableComponentRendererBase):
     supported_props = frozenset({"id", "className", "style", "colSpan", "rowSpan"})
     allow_data_props = True
     allow_aria_props = True
+    prop_docs = {
+        "rowSpan": (
+            "Rendered as the cell's ``rowspan``, which React's ``Cell`` does not take; the cells of later "
+            "rows still take their column's alignment and row header by position."
+        ),
+    }
 
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
         state = get_current_table_state(context)

@@ -20,6 +20,8 @@ from ..static_icon import render_static_icon
 class UIIconRenderer(BaseHtmlUIComponentRenderer):
     name = "icon"
     react_tag = "Icon"
+    # As React's Icon, the root has no data-apui marker
+    has_apui_marker = False
     slot_name = "icon"
     has_children = False
     supported_props = frozenset({"name", "size", "variant", "color", "slot", "className"})
@@ -28,6 +30,12 @@ class UIIconRenderer(BaseHtmlUIComponentRenderer):
     allow_aria_props = True
     prop_filter_context = "static icon components"
     event_handler_prop_reason = "event handlers are not supported by static icon components"
+    prop_docs = {
+        "name": (
+            "The icon's name, such as ``Pencil01Outlined``, as a string literal so its SVG is found for "
+            "production builds; ``{% Icon %}`` takes it as its first argument."
+        ),
+    }
 
     def resolve_component_resources(self) -> list[FrontendResource]:
         name = self._resolve_static_icon_name()

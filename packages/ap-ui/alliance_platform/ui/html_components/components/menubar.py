@@ -90,6 +90,15 @@ _COLLECTION_REASON = "collection render props are not supported by static menuba
 _SELECTION_REASON = "selection is not supported by static menubar components"
 _OVERFLOW_REASON = "width overflow handling is not supported by static menubar components"
 
+_IS_CURRENT_PROP_DOC = (
+    'Marks the item for the current page: it renders ``aria-current="page"``, which ``aria_current`` '
+    'overrides, and ``data-current="true"``, which the submenus and sections around it get too.'
+)
+_ICON_PROP_DOC = (
+    "The name of an icon to show before the ``title``, as a string literal so its SVG is found for "
+    "production builds; React takes an icon in the ``title``."
+)
+
 _MENUBAR_UNSUPPORTED_PROPS: Mapping[str, str] = {
     "items": _COLLECTION_REASON,
     "onAction": _CALLBACK_REASON,
@@ -202,6 +211,8 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
     #: static icon-name props whose SVGs must be included in resource discovery
     static_icon_props: tuple[str, ...] = ()
     requires_menubar = True
+    # As React's menubar parts, only the menubar's root has a data-apui marker
+    has_apui_marker = False
 
     def resolve_component_resources(self) -> list[FrontendResource]:
         resources: list[FrontendResource] = []
@@ -479,7 +490,9 @@ class UIMenubarComponentRendererBase(BaseHtmlUIComponentRenderer):
 class UIMenubarRenderer(UIMenubarComponentRendererBase):
     name = "menubar"
     react_tag = "Menubar"
+    runtime_token = "menubar"
     requires_menubar = False
+    has_apui_marker = True
     supported_props = frozenset(
         {
             "id",
@@ -504,6 +517,17 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
             VALID_ROOT_ITEM_DISPLAYS,
             invalid_fallback="icon-and-label",
         ),
+    }
+    prop_docs = {
+        "renderWhenEmpty": (
+            "Renders the menubar when none of its children rendered, as when every link failed its "
+            "``url_with_perm`` check; it renders nothing then by default."
+        ),
+        "expandedKeysStorageKey": (
+            "Saves an inline menu's expanded submenus in a cookie of this name rather than "
+            "``localStorage``, so the server renders them open; it must be a valid cookie name."
+        ),
+        "defaultExpandedKeys": "Also takes a comma-separated string of submenu keys.",
     }
 
     def resolve_component_resources(self) -> list[FrontendResource]:
@@ -658,7 +682,7 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
             **self.collect_forwarded_props(props),
         }
 
-        add_auto_attach_marker(attrs, "menubar")
+        add_auto_attach_marker(attrs, self.runtime_token)
 
         return self.render_tag("ul", attrs, children_html)
 
@@ -700,6 +724,18 @@ class UIMenubarItemRenderer(UIMenubarComponentRendererBase):
     }
     prop_aliases = {"disabled": "isDisabled", "current": "isCurrent"}
     prop_rules = {"elementType": enum_prop_rule(VALID_ITEM_ELEMENT_TYPES)}
+    prop_docs = {
+        "isCurrent": _IS_CURRENT_PROP_DOC,
+        "isDisabled": (
+            "Disables the item, which React does with the menubar's ``disabled_keys``: it renders "
+            '``aria-disabled="true"``, a link renders as a ``<div>``, and keyboard navigation skips it.'
+        ),
+        "textValue": (
+            "The accessible label and typeahead text; without it plain text content is used, after a "
+            "leading icon, and other content is reported."
+        ),
+        "title": "Rendered as the HTML ``title`` attribute, which React does not render.",
+    }
 
     #: props only rendered for anchor items
     anchor_only_props = frozenset({"target", "rel", "download"})
@@ -857,6 +893,25 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
     prop_rules = {"elementType": enum_prop_rule(VALID_ITEM_ELEMENT_TYPES)}
     non_scalar_props = frozenset({"title"})
     static_icon_props = ("icon",)
+    prop_docs = {
+        "isCurrent": (
+            "Marks the submenu for the current page, as on ``menubar_item``; a submenu with a current item "
+            'inside gets ``data-current="true"`` without it.'
+        ),
+        "isDisabled": (
+            "Disables the submenu, which React does with the menubar's ``disabled_keys``: it renders "
+            'closed with ``aria-disabled="true"``, and keyboard navigation skips it.'
+        ),
+        "textValue": (
+            "The accessible label and typeahead text; without it a plain text ``title`` is used, after an "
+            "icon, and other titles are reported."
+        ),
+        "icon": _ICON_PROP_DOC,
+        "hideWhenEmpty": (
+            "Pass ``False`` to render the submenu when none of its children rendered, as when every link "
+            "failed its ``url_with_perm`` check; it renders nothing then by default."
+        ),
+    }
 
     def render_children_for_component(self, context: Context, props: dict[str, Any]) -> str:
         # Children are rendered in render_component inside the nested frame
@@ -1099,6 +1154,17 @@ class UIMenubarSectionRenderer(UIMenubarComponentRendererBase):
     unsupported_prop_reasons = {"items": _COLLECTION_REASON}
     non_scalar_props = frozenset({"title"})
     static_icon_props = ("icon",)
+    prop_docs = {
+        "icon": _ICON_PROP_DOC,
+        "headingId": (
+            "The id of the heading the section's items are labelled by; a document-unique id is generated "
+            "otherwise."
+        ),
+        "hideWhenEmpty": (
+            "Pass ``False`` to render the section when none of its children rendered; it renders nothing "
+            "then by default."
+        ),
+    }
 
     def render_children_for_component(self, context: Context, props: dict[str, Any]) -> str:
         # Children are rendered in render_component inside the nested frame

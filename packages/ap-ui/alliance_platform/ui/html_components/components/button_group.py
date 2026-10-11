@@ -26,6 +26,7 @@ _BUTTON_GROUP_FORWARDED_PROPS = frozenset(
 class UIButtonGroupRenderer(BaseHtmlUIComponentRenderer):
     name = "button_group"
     react_tag = "ButtonGroup"
+    runtime_token = "smart-orientation"
     slot_name = "buttonGroup"
     supported_props = frozenset(
         {
@@ -108,6 +109,6 @@ class UIButtonGroupRenderer(BaseHtmlUIComponentRenderer):
             "style": props.get("style"),
         }
 
-        add_auto_attach_marker(attrs, "smart-orientation")
+        add_auto_attach_marker(attrs, self.runtime_token)
 
         return self.render_tag("div", attrs, children_html)

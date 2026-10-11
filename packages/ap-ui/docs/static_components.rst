@@ -110,6 +110,11 @@ handler props (``on*``) are always dropped.
     (``apui-<apui_name>-1``). Defaults to ``name`` with hyphens, so the example's value part is
     marked ``data-apui="stat-value"``. Set it to keep an existing marker, for example in a
     subclass with a new name.
+``has_apui_marker``
+    Whether the component marks its element with ``data-apui="<apui_name>"``, ``True`` by default.
+    It documents the markup for generated documentation; the renderer writes the marker itself.
+    Set it to ``False`` for a component without one, as the built-in ``icon`` and ``pagination``
+    are.
 ``slot_name``
     The slot this component reads parent-provided defaults from (see `Slot defaults`_).
 ``has_children``
@@ -136,6 +141,16 @@ handler props (``on*``) are always dropped.
     refused through ``unsupported_prop_reasons`` and of event handlers end with
     ``use {% <react_tag> %} instead``. Leave it ``None``, the default, when there is no React
     equivalent.
+``runtime_token``
+    The token of the browser runtime the component needs, ``None`` by default. The renderer marks
+    its root with it (see `Resources`_).
+``prop_docs``
+    One sentence of reStructuredText for each prop that the component adds to its React component
+    or treats differently, keyed by the canonical prop name, for example
+    ``{"sortHref": "The URL of the header's sort link, ..."}``. The keys ``data-*`` and ``aria-*``
+    describe the open-ended attributes. Generated documentation shows the sentences next to the
+    props and leaves the other props to the React docs, so for a component without a React
+    equivalent, describe every prop.
 ``forwarded_props``
     Plain attributes, such as ``id`` and ``title``, that ``collect_forwarded_props()`` copies to
     the root element. They count as supported.
@@ -179,7 +194,11 @@ nothing. Override these hooks:
     Returns the subset of those resources to add to the page. Defaults to all of them.
 
 ``resolve_props(context)`` can also be overridden, for example to refuse to render outside a
-required parent. Helpers to call from hooks include ``report``, ``render_children``, ``render_tag``,
+required parent. A renderer that sets ``supported_props`` to ``None`` decides which props it
+accepts in the ``supports_prop_name(key)`` classmethod, and returns their names from the
+``documented_props()`` classmethod for generated documentation, which by default returns the names
+in ``supported_props``, ``prop_rules`` and ``forwarded_props``. Helpers to call from hooks include
+``report``, ``render_children``, ``render_tag``,
 ``render_icon``, ``collect_forwarded_props``, ``join_classes``, ``resolve_frontend_resource``,
 ``resolve_vanilla_extract_mapping`` and the style getters ``get_style_class`` and
 ``get_nested_style_class``. Names starting with an underscore are internal.
@@ -259,13 +278,15 @@ Components that inline icons with ``render_icon()`` should list each icon with
 built, and leave the image out of ``get_resources_to_embed()`` because its markup is already in
 the page.
 
-A component with a browser runtime marks its root with ``add_auto_attach_marker(attrs, token)``
-from the ``runtime`` module and lists two JavaScript resources: its own module, which registers the
-runtime for ``token`` with ``registerRuntime(token, loader)`` from
-``@alliancesoftware/ui/static-runtime``, and the static runtime entry that
-``resolve_static_runtime_resource(self)`` from the ``runtime`` module resolves:
+A component with a browser runtime declares the runtime's token as ``runtime_token``, marks its
+root with ``add_auto_attach_marker(attrs, self.runtime_token)`` from the ``runtime`` module and lists
+two JavaScript resources: its own module, which registers the runtime for the token with
+``registerRuntime(token, loader)`` from ``@alliancesoftware/ui/static-runtime``, and the static
+runtime entry that ``resolve_static_runtime_resource(self)`` from the ``runtime`` module resolves:
 
 .. code-block:: python
+
+    runtime_token = "copy-button"
 
     def resolve_component_resources(self) -> list[FrontendResource]:
         return [

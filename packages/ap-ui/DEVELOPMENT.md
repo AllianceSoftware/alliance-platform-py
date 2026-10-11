@@ -17,7 +17,11 @@ and tested in `tests/test_static_component_example.py`.
    refuses (`Table`, or `component "@alliancesoftware/ui" "TextInput"` for a component without a
    named tag). Add that React component to `LEGACY_COMPONENT_MIGRATIONS` in
    `management/commands/ui_migration_check.py` with the renderer's name:
-   `test_react_tags_match_the_migration_table` fails until the two agree.
+   `test_react_tags_match_the_migration_table` fails until the two agree. Set `runtime_token` when
+   the component has a browser runtime, `has_apui_marker = False` when its root has no `data-apui`
+   marker, and `prop_docs` for each prop the React component lacks or treats differently. Add a
+   template for the component to `test_has_apui_marker_matches_the_rendered_markup` in
+   `tests/test_docs_ui_component_directive.py`, which fails until every built-in has one.
 2. Register it with `register_component("<name>", Renderer)` at the end of
    `alliance_platform/ui/html_components/registry.py`. `register_component` rejects names that are
    not snake_case, names that differ from the renderer's `name`, and a second renderer for a taken
@@ -55,9 +59,10 @@ behaviour for projects.
 
 ## Static runtime
 
-Components with browser behaviour (`menubar`, `number_input`, `text_area`, `button_group`) mark
-their root with `add_auto_attach_marker(attrs, token)` and list
-`resolve_static_runtime_resource(self)`, both from `html_components/runtime.py`. That resolves
+Components with browser behaviour (`menubar`, `number_input`, `text_area`, `button_group`) declare
+their token as `runtime_token`, mark their root with
+`add_auto_attach_marker(attrs, self.runtime_token)` and list `resolve_static_runtime_resource(self)`,
+both from `html_components/runtime.py`. That resolves
 `STATIC_RUNTIME_MODULE_PATH`, `@alliancesoftware/ui/static-runtime.auto.ts`, and raises a
 `TemplateSyntaxError` asking for a compatible `@alliancesoftware/ui` when it cannot, so a declared
 runtime is always required. The asset context deduplicates resources and embed items, so a page

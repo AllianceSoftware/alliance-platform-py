@@ -1,6 +1,7 @@
 """Browser runtimes for static components.
 
-A component that needs JavaScript marks its root with :func:`add_auto_attach_marker` and lists
+A component that needs JavaScript declares its runtime's token as ``runtime_token``, marks its root
+with ``add_auto_attach_marker(attrs, self.runtime_token)`` and lists
 :func:`resolve_static_runtime_resource` in ``resolve_component_resources()``. The resource is the
 ``@alliancesoftware/ui`` static runtime entry: it registers the runtime of each built-in component,
 loads a runtime only when the page has a root marked with its token, and attaches it to those

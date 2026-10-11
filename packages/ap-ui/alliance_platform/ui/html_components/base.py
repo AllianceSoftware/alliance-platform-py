@@ -6,16 +6,18 @@ merges inherited slot defaults, applies the prop contract, pushes the frame from
 Renderer instances are shared by every render of a compiled template, so per-render state belongs
 in frame payloads, never on ``self``.
 
-Contract attributes (class level): ``name``, ``apui_name``, ``slot_name``, ``has_children``,
-``supported_props``, ``prop_rules``, ``prop_aliases``, ``deprecated_prop_aliases``,
+Contract attributes (class level): ``name``, ``apui_name``, ``has_apui_marker``, ``slot_name``,
+``has_children``, ``supported_props``, ``prop_rules``, ``prop_aliases``, ``deprecated_prop_aliases``,
 ``unsupported_prop_reasons``, ``forwarded_props``, ``allow_data_props``, ``allow_aria_props``,
-``extra_allowed_aria_props``, ``non_scalar_props``, ``none_meaningful_props``, ``react_tag``, and
-the diagnostic wording in ``prop_filter_context`` and ``event_handler_prop_reason``.
+``extra_allowed_aria_props``, ``non_scalar_props``, ``none_meaningful_props``, ``react_tag``,
+``runtime_token``, ``prop_docs``, and the diagnostic wording in ``prop_filter_context`` and
+``event_handler_prop_reason``.
 
 Hooks to override: ``render_component`` (required), ``render_children_for_component``,
 ``build_render_frame``, ``build_child_report``, ``resolve_component_resources`` and
 ``get_resources_to_embed``. Renderers may also override ``resolve_props`` (for example to require a
-parent component), ``allow_non_scalar_prop`` and the ``supports_prop_name`` classmethod.
+parent component), ``allow_non_scalar_prop`` and the ``supports_prop_name`` and
+``documented_props`` classmethods.
 
 Helpers to call: ``report``, ``render_children``, ``render_tag``, ``render_icon``,
 ``resolve_frontend_resource``, ``resolve_vanilla_extract_mapping``,
@@ -37,6 +39,7 @@ import re
 from typing import Any
 from typing import Callable
 from typing import ClassVar
+from typing import Iterable
 from typing import Mapping
 
 from alliance_platform.frontend.bundler import get_bundler
@@ -228,6 +231,11 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
     #: Defaults to ``name`` with underscores replaced by hyphens whenever a class sets ``name``
     #: without also setting ``apui_name``.
     apui_name: ClassVar[str]
+    #: Whether the component marks its element with ``data-apui="<apui_name>"``, as components do
+    #: by convention. It documents the markup, which the renderer writes itself: the built-ins whose
+    #: React component has no marker (``icon``, ``pagination``, the layout parts and the table and
+    #: menubar parts) render none and set it to ``False``.
+    has_apui_marker: ClassVar[bool] = True
     slot_name: str | None = None
     #: Whether the tag has children and a closing ``{% endui %}``. A leaf (``False``) is written
     #: without an end tag, ``{% ui "icon" name="Pencil01Outlined" %}``, and always renders with an
@@ -253,6 +261,15 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
     #: for a component with no tag of its own. Reports of props refused through
     #: ``unsupported_prop_reasons`` and of event handlers end with ``use {% <react_tag> %} instead``.
     react_tag: ClassVar[str | None] = None
+    #: The token of the browser runtime the component needs, or ``None`` for none. The renderer
+    #: marks its root with ``add_auto_attach_marker(attrs, self.runtime_token)`` (see
+    #: :mod:`~alliance_platform.ui.html_components.runtime`), which writes it to ``data-apui-attach``.
+    runtime_token: ClassVar[str | None] = None
+    #: One sentence of reStructuredText per prop that the component adds to the React component or
+    #: treats differently from it, keyed by the canonical prop name (``sortHref``). The keys
+    #: ``data-*`` and ``aria-*`` describe the open-ended attributes. Generated documentation shows
+    #: them; the React docs document the other props.
+    prop_docs: ClassVar[Mapping[str, str]] = {}
     prop_filter_context = "static HTML ui components"
     event_handler_prop_reason = "event handlers are not supported by static HTML ui components"
 
@@ -482,6 +499,31 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
             or canonical in cls.supported_props
             or canonical in cls.prop_rules
             or canonical in cls.forwarded_props
+        )
+
+    @classmethod
+    def documented_props(cls) -> frozenset[str]:
+        """Return the canonical names of the props the renderer accepts, for generated documentation.
+
+        These are the names in ``supported_props``, ``prop_rules`` and ``forwarded_props`` that
+        :meth:`supports_prop_name` accepts, less any that an alias maps to another name. The
+        open-ended ``data-*`` and ``aria-*`` attributes are left to ``allow_data_props``,
+        ``allow_aria_props`` and ``extra_allowed_aria_props``. A renderer that sets
+        ``supported_props`` to ``None`` and decides in ``supports_prop_name`` overrides this to
+        return the names it accepts.
+        """
+        return cls._documented_prop_names(
+            {*(cls.supported_props or ()), *cls.prop_rules, *cls.forwarded_props}
+        )
+
+    @classmethod
+    def _documented_prop_names(cls, names: Iterable[str]) -> frozenset[str]:
+        return frozenset(
+            name
+            for name in names
+            if not name.startswith(("data-", "aria-"))
+            and cls.canonical_prop_name(name) == name
+            and cls.supports_prop_name(name)
         )
 
     def collect_forwarded_props(self, props: Mapping[str, Any]) -> dict[str, Any]:
