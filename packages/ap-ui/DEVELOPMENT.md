@@ -122,13 +122,24 @@ it too, and the JS repo's `packages/ui/tests/static-contract.test.ts` compares t
 (part-class keys, attribute selectors, runtime tokens, static SVG styles) with a committed snapshot
 and fails when it changes without a version bump.
 
-## Input components (`text_input`, `number_input`, `text_area`)
+## Input components (`text_input`, `number_input`, `text_area`, `labeled_input`)
 
 The input renderers live in
 `alliance_platform/ui/html_components/components/input.py` and share the
 `UILabeledInputRendererMixin` / `UITextInputBaseRenderer` rendering path, mirroring how the React
 components all render through `LabeledInput` + `TextInputBase`. Future input-like components (search
 input, select, date picker) should reuse the same base classes.
+
+`labeled_input` renders the mixin's `LabeledInput` markup around its children, a control it does not
+own, as `{% LabeledInput %}` does. The mixin's class attributes hold where it differs from the
+inputs: the control id comes from `inputId` (`input_id_prop`), no control id is generated
+(`generate_input_id`), the root takes `data-disabled` (`root_marks_disabled`) and `labelAlign` falls
+back to the default form layout's `"start"` (`default_label_align`), which the inputs never get as
+`TextInputBase` always passes `LabeledInput` its own, undefined or not. It accepts the props an input
+puts on its control without rendering them, as React's `LabeledInput` ignores them, so a widget
+template can pass `extra_widget_props` whole. Its parity cases give React's `LabeledInput` the label
+`for` and the help text and error ids the static renderer derives from `input_id`, so its fixture
+needs no id normalisation.
 
 The markup carries only root and part classes. The stylesheets key the rest off data attributes the
 renderers set: the input size off `data-size` on the input container and `data-input-size` on the
@@ -138,7 +149,12 @@ FormSection class), end alignment off the label's `data-label-align`, and the in
 colour off the root's `data-invalid`. A side layout input without a label renders a
 `sideLabelPlaceholder` cell.
 
-Generated element ids use a deterministic `apui-<apui_name>-<n>` scheme (for example
+A given control id (`id` on the inputs, `input_id` on `labeled_input`) names the help text
+`<id>_helptext` and the error message `<id>_error`, the ids Django gives a form field's, so the
+`aria-describedby` Django 5.0+ gives a widget points at them. The inputs list each id once in their
+control's `aria-describedby`, as Django's value repeats them; `labeled_input` adds nothing to the
+control it wraps and reports a label without `input_id` as a contract problem. Without a given id,
+generated element ids use a deterministic `apui-<apui_name>-<n>` scheme (for example
 `apui-text-input-1`) where the counter is unique within a template render (stored in
 `context.render_context`). The fixture normalisation (`remapReactAriaIds()` in
 `scripts/parity_cases/_helpers.mjs`) remaps the react-aria generated ids to the same scheme so
@@ -153,13 +169,16 @@ string value would otherwise render as a live inline event handler, which React 
 
 `RenderableContent` (in `alliance_platform.frontend.renderable_content`) is the supported way to
 pass rich (HTML) content into static HTML renderers — `{% form_input %}` produces it for
-`help_text`, and the same value works for both React `{% component %}` widgets and static
-`{% ui %}` widgets. Renderers declare which props accept it via `rich_content_props` (currently
-only `description` on inputs; `errorMessage` and labels are deliberately plain escaped text) and
-must render it through `html_components/content.py`'s `render_content()` helper — never `str()`
-or `mark_safe()` on the raw value. `render_content()` escapes text and attribute values; event
-handler attributes (`on*`) and values it cannot render (anything other than strings,
-`RenderableContent` and lists of them) are reported as contract diagnostics and dropped.
+`help_text`, and for an error message when one of the field's errors is marked safe, and the same
+value works for both React `{% component %}` widgets and static `{% ui %}` widgets. Renderers
+declare which props accept it via `rich_content_props` (`description`, `errorMessage`,
+`addonBefore` and `addonAfter` on the inputs, `description` and `errorMessage` on `labeled_input`;
+labels stay plain escaped text) and must render it through `html_components/content.py`'s
+`render_content()` helper — never `str()` or `mark_safe()` on the raw value. A safe string, such as
+a component captured with `{% ui ... as var %}`, renders as is, as Django renders one anywhere, and
+a plain string is escaped. `render_content()` escapes text and attribute values and renders numbers
+as text; event handler attributes (`on*`) and values it cannot render (anything other than strings,
+numbers, `RenderableContent` and lists of them) are reported as contract diagnostics and dropped.
 
 ### Bulk props (`props=` kwarg)
 
@@ -183,6 +202,20 @@ props still pass through the same unsupported-prop filtering as inline kwargs, s
 values are reported and dropped unless the prop accepts rich content (see above).
 `merge_props` is registered in both the `react` and `alliance_platform.ui` template tag libraries.
 
+### Static form widgets (`StaticFormRenderer`)
+
+ap-ui ships `alliance_platform/ui/widgets/input.html`, `number.html` and `textarea.html` (under
+`alliance_platform/ui/templates/`), static widget templates like those above. `StaticFormRenderer` in
+`alliance_platform/ui/forms/renderers.py` overrides `get_template`: for a name in
+`static_widget_templates` it loads the template the name resolves to and returns the ap-ui one only
+when that is Django's own, a Django backend template whose `origin.name` is under `django.forms`'
+`templates` directory. Django's input widget templates are an `{% include %}` of `input.html`, the
+template projects usually override, so for those it requires `input.html` to be Django's too. An
+`attrs.html` of a project's does not count: the static components render attributes themselves.
+`tests/test_alliance_ui_form.py` adds the project template directories in
+`test_alliance_platform_ui/form_widget_overrides/` with `override_settings(TEMPLATES=...)` for the
+tests that need one, so the other tests keep Django's widget templates.
+
 ### Deliberate static-render differences from React
 
 These are normalized away by the input case modules' `normalize()` (which share
@@ -193,12 +226,29 @@ are intentional extensions, so they will not show up as parity failures:
   `aria-labelledby`/label `id` pair. The static renderer relies on the native `<label for>`
   association only.
 - **`aria-describedby`**: react-aria reserves description/error slot ids during SSR even when
-  neither renders. The static renderer only generates ids for help text that actually renders.
-  Caller supplied `aria-describedby` values are preserved with generated ids prepended (matching
-  react-aria's ordering).
+  neither renders. The static renderer only references help text that actually renders. Caller
+  supplied `aria-describedby` values are preserved after the help text and error ids (matching
+  react-aria's ordering), without repeating an id.
+- **Help text ids of a control with a given id**: react-aria generates the description and error
+  message ids whatever the control's id; the static inputs name them after a given id (see above).
+  `nameHelpTextAfterControlId()` in `scripts/parity_cases/_helpers.mjs`, which
+  `normalizeInputComponent()` runs first, renames the slot ids that render on a control with a
+  given id the same way.
+- **Icons in addons**: a static icon always carries `data-apui-slot="icon"`, which React's Icon only
+  gets from a parent's slot context and an addon provides none. `normalize()` in
+  `scripts/parity_cases/text_input.mjs` adds it to an icon in a React addon.
 - **`rows`/`cols` on `text_area`**: the React component drops these in favour of runtime
-  autosizing; the static renderer passes them through as normal textarea attributes since there is
-  no autosize behaviour. They are covered by unit tests, not parity fixtures.
+  autosizing; the static renderer accepts them, as Django's Textarea widget sets them, and drops
+  them too, so they cannot make a tall first paint. They are covered by unit tests, not parity
+  fixtures.
+- **Leading line break in `text_area`**: the HTML parser drops a line break right after
+  `<textarea>`, so like React the static renderer writes another in front of a value starting with
+  one. Unlike React it also does so for a value starting with CRLF, as a submitted value's line
+  breaks are. Covered by unit tests.
+- **`min`/`max` on `number_input`**: Django's NumberInput widget sets the native `min` and `max`
+  attributes; the static renderer takes them as `minValue` and `maxValue` (`prop_aliases`), so a
+  widget template passing `widget.attrs` keeps them. React's NumberInput takes only `minValue` and
+  `maxValue`.
 - **`number_input` runtime configuration**: `minValue`, `maxValue`, `step`, `locale` and
   `formatOptions` are serialized as `data-apui-number-input-*` attributes for the standalone
   `NumberInput.attach.ts` runtime. These static-only attributes and the `data-apui-attach` marker

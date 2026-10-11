@@ -4,7 +4,7 @@
 ---
 
 Add the server-rendered `{% ui %}` component system with parity renderers for icons, buttons, button
-groups, text and number inputs, text areas, inline alerts, Menubars, and tables. The `icon`,
+groups, text and number inputs, text areas, labeled inputs, inline alerts, Menubars, and tables. The `icon`,
 `pagination`, `text_input`, `number_input` and `text_area` components take no end tag. The
 components support Django-native links and form submission, permission-aware menu pruning,
 backend-driven table sorting, unique input associations, and one external runtime entry, embedded
@@ -20,9 +20,19 @@ slot styling contract as their React equivalents. Dismissal callbacks remain a d
 behaviour.
 
 The dispatcher accepts bulk props through the reserved `props` argument and exports `merge_props` from
-the UI template library. New backend-neutral `RenderableContent` preserves trusted HTML form help text
-for both React and static renderers, while frontend resource resolution now supports reading source and
-production assets required by static icons and component runtimes.
+the UI template library. New backend-neutral `RenderableContent` preserves trusted HTML form help text,
+and form errors marked safe, for both React and static renderers, while frontend resource resolution
+now supports reading source and production assets required by static icons and component runtimes.
+Input addons and error messages take rich content too, such as an icon captured with
+`{% ui "icon" ... as icon %}`.
+
+`{% ui "labeled_input" %}` wraps a control of your own, such as a native select or a Django widget, in
+the label, help text and error message of the inputs; given the control's id, it and the inputs name
+the help text and error message as Django names a form field's, so Django's `aria-describedby` points
+at them. ap-ui ships static templates for Django's text, number and text area widgets, and the opt-in
+`StaticFormRenderer` (`FORM_RENDERER = "alliance_platform.ui.forms.renderers.StaticFormRenderer"`)
+renders them where Django's own widget templates would render; a project's own widget templates,
+React or static, still render as before.
 
 Static components log template mistakes through the `alliance_platform.ui` logger, and the
 `STATIC_COMPONENT_STRICT` UI setting, which defaults to `DEBUG`, makes them raise

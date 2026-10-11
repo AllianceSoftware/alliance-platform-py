@@ -72,6 +72,14 @@ The dispatcher also supports ``as <var>``:
     {% ui "button" as save_button_html %}Save{% endui %}
     {{ save_button_html }}
 
+The captured markup is safe, so it can be passed to a prop that takes rich content, such as an
+input's ``addon_before``, ``addon_after``, ``description`` or ``error_message``:
+
+.. code-block:: html+django
+
+    {% ui "icon" name="SearchMdOutlined" as search_icon %}
+    {% ui "text_input" name="q" label="Search" addon_before=search_icon %}
+
 Projects can register their own components with the dispatcher; see :doc:`static_components`.
 
 Finding legacy component usages
@@ -207,6 +215,11 @@ and other ``on_*`` props) are refused by every static component.
       - ``{% component "@alliancesoftware/ui" "TextArea" %}``
       - No
       - As ``text_input``
+    * - ``labeled_input``
+      - ``{% LabeledInput %}``
+      - Yes
+      - Element props and refs (``label_props``, ``description_props``, ``error_message_props``),
+        a custom label element (``element_type``)
     * - ``content``
       - ``{% component "@alliancesoftware/ui" "Content" %}``
       - Yes
@@ -296,6 +309,62 @@ static Django number widget template can use it without loading the React templa
 .. code-block:: html+django
 
     {% ui "number_input" name=widget.name default_value=widget.value|none_as_nan %}
+
+A Django ``NumberInput`` widget sets the native ``min`` and ``max`` attributes for a field's
+``min_value`` and ``max_value``; ``number_input`` takes them as ``min_value`` and ``max_value``, so
+``props=widget.attrs`` carries them over.
+
+.. _static-labeled-inputs:
+
+Static labeled inputs
+~~~~~~~~~~~~~~~~~~~~~
+
+``{% ui "labeled_input" %}`` renders the label, help text and error message an input renders around
+a control you write yourself, as :ttag:`LabeledInput` does, for a control with no static component
+of its own, such as a native ``<select>``:
+
+.. code-block:: html+django
+
+    {% ui "labeled_input" label="Colour" input_id="colour" description="Shown on your profile" %}
+      <select id="colour" name="colour" aria-describedby="colour_helptext">
+        <option value="red">Red</option>
+        <option value="blue">Blue</option>
+      </select>
+    {% endui %}
+
+``input_id`` is the id of the control inside. It is the label's ``for``, and the help text and the
+error message take ids made from it, ``<input_id>_helptext`` and ``<input_id>_error``, the ids Django
+gives a form field's help text and errors. The component adds nothing to the control it wraps, so
+point the control's ``aria-describedby`` at them. Django does this for a form widget (for the help
+text from Django 5.0, for the errors from Django 5.2), so a widget renders inside with no changes:
+
+.. code-block:: html+django
+
+    {% ui "labeled_input" label=form.colour.label input_id=form.colour.auto_id description=form.colour.help_text %}
+      {{ form.colour }}
+    {% endui %}
+
+A label without an ``input_id`` is reported as a :ref:`contract diagnostic
+<static-component-diagnostics>` and renders without ``for``; the help text and error message then
+get generated ids.
+
+``labeled_input`` takes ``label``, ``label_position``, ``label_align``, ``input_size``,
+``is_required``, ``is_invalid``, ``is_disabled``, ``is_read_only``, ``description``,
+``error_message``, ``class`` and ``style``, with the same values as the inputs.
+``validation_state="invalid"`` sets ``is_invalid``, as :ttag:`LabeledInput` does, and
+``description`` and ``error_message`` take rich content. It accepts the attributes an input puts on
+its control, such as ``auto_focus`` and ``data-*`` and ``aria-*`` attributes, so a widget template
+can pass it the ``extra_widget_props`` of :ttag:`form_input` whole, but does not render them: write
+them on the control. For example, the template of a widget class of your own,
+``template_name = "my_app/widgets/labeled_select.html"``, can wrap Django's select markup:
+
+.. code-block:: html+django
+
+    {% load alliance_platform.ui %}
+
+    {% ui "labeled_input" props=extra_widget_props input_id=widget.attrs.id %}
+      {% include "django/forms/widgets/select.html" %}
+    {% endui %}
 
 Static pagination
 ~~~~~~~~~~~~~~~~~
@@ -648,7 +717,8 @@ Render an `LabeledInput <https://main--64894ae38875dcf46367336f.chromatic.com/?p
 from the Alliance UI React library with the specified props.
 
 This can be useful with custom widgets that get rendered with :ttag:`form_input` where you want standard rendering
-of label, help text, validation, required indicator etc.
+of label, help text, validation, required indicator etc. ``{% ui "labeled_input" %}`` renders the same
+markup without React (see :ref:`static-labeled-inputs`).
 
 .. code-block:: html+django
 
@@ -889,6 +959,10 @@ Usage:
 
         FORM_RENDERER = "alliance_platform.ui.forms.renderers.FormInputContextRenderer"
 
+    or to :class:`~alliance_platform.ui.forms.renderers.StaticFormRenderer`, which also renders
+    Django's text, number and text area widgets as static ``{% ui %}`` components (see
+    :ref:`static-form-widgets`).
+
 .. templatetag:: form_input
 
 ``form_input``
@@ -902,6 +976,10 @@ Renders a form input with additional props supported by widgets from ``alliance_
 
         FORM_RENDERER = "alliance_platform.ui.forms.renderers.FormInputContextRenderer"
 
+    or to :class:`~alliance_platform.ui.forms.renderers.StaticFormRenderer`, which also renders
+    Django's text, number and text area widgets as static ``{% ui %}`` components (see
+    :ref:`static-form-widgets`).
+
 This tag set's two extra template variables to be used by the widget template:
 
 - ``raw_value`` - the raw value of the field. This is useful for components that need to access the raw value, not the
@@ -911,7 +989,9 @@ This tag set's two extra template variables to be used by the widget template:
 
 - ``label`` - the label for the field. This will be the ``label`` value passed to the tag if any, otherwise ``field.label``.
 - ``errorMessage`` - the error message for the field when in an invalid state. This is a comma separated list of errors
-  as defined on ``field.errors``.
+  as defined on ``field.errors``, as a string, unless an error is marked safe (for example
+  ``ValidationError(mark_safe(...))``): it is then renderable content like ``description``, with the safe errors as
+  HTML and the others as escaped text.
 - ``validationState`` - ``"invalid"`` where there is an error, otherwise ``"valid"`` depending on the value of ``show_valid_state`` option
 - ``is_required`` - whether the field is required. This is based on the ``required`` attribute on the form field unless overridden with the ``is_required`` option to this tag.
 - ``description`` - renderable content generated from the help text for the field. You can explicitly specify this with
@@ -944,7 +1024,14 @@ can also pass react components to the tag:
 
 .. code-block:: html+django
 
-    {% Icon "SearchOutlined" as search_icon %}
+    {% Icon "SearchMdOutlined" as search_icon %}
+    {% form_input field addon_before=search_icon %}
+
+A static ``{% ui %}`` widget takes a static component captured the same way:
+
+.. code-block:: html+django
+
+    {% ui "icon" name="SearchMdOutlined" as search_icon %}
     {% form_input field addon_before=search_icon %}
 
 The additional props are added to the key ``extra_widget_props`` - so the relevant widget template needs to include
@@ -961,6 +1048,9 @@ so ``html_attr_to_jsx`` is not needed):
 .. code-block:: html+django
 
     {% ui "text_input" props=widget.attrs|merge_props:extra_widget_props type=widget.type name=widget.name default_value=widget.value %}
+
+:class:`~alliance_platform.ui.forms.renderers.StaticFormRenderer` renders Django's text, number and text area
+widgets with templates like this one that ap-ui ships (see :ref:`static-form-widgets`).
 
 HTML in ``help_text`` is supported by both widget styles - the React path receives it as nested React elements while
 static ``{% ui %}`` inputs render it directly as HTML (dropping any inline event handler attributes).
@@ -992,6 +1082,9 @@ static ``{% ui %}`` inputs render it directly as HTML (dropping any inline event
     .. code-block:: html+django
 
         {% form_input field non_standard_widget=True %}
+
+    For a widget template without React, wrap the widget in ``{% ui "labeled_input" %}`` instead (see
+    :ref:`static-labeled-inputs`).
 
 .. templatetag:: create_dict
 

@@ -34,6 +34,55 @@ Ensure that ``FORM_RENDERER`` is be set as follows:
 
 This is used by the :ttag:`form` and :ttag:`form_input` tags.
 
+.. _static-form-widgets:
+
+Static form widgets
+~~~~~~~~~~~~~~~~~~~
+
+To render Django's text, number and text area widgets as static ``{% ui %}`` components, set
+``FORM_RENDERER`` to :class:`~alliance_platform.ui.forms.renderers.StaticFormRenderer` instead:
+
+.. code-block:: python
+
+    FORM_RENDERER = "alliance_platform.ui.forms.renderers.StaticFormRenderer"
+
+It is a ``FormInputContextRenderer``, so the :ttag:`form` and :ttag:`form_input` tags work as before,
+and it renders these widgets with templates ap-ui ships, which take the label, help text and
+error message :ttag:`form_input` passes:
+
+.. list-table::
+    :header-rows: 1
+    :widths: 44 38 18
+
+    * - Django widget template
+      - ap-ui template
+      - Component
+    * - ``django/forms/widgets/text.html``, ``email.html``, ``url.html``, ``password.html``,
+        ``tel.html`` and ``search.html``
+      - ``alliance_platform/ui/widgets/input.html``
+      - ``text_input``
+    * - ``django/forms/widgets/number.html``
+      - ``alliance_platform/ui/widgets/number.html``
+      - ``number_input``
+    * - ``django/forms/widgets/textarea.html``
+      - ``alliance_platform/ui/widgets/textarea.html``
+      - ``text_area``
+
+It uses an ap-ui template only where Django's own template would render the widget. A template of
+your own for the widget, anywhere in ``TEMPLATES`` and whether it renders a React or a static
+component, renders as it would without this renderer, as does a template from a backend other than
+Django's. Django's templates for the input widgets above are an ``{% include %}`` of
+``django/forms/widgets/input.html``, so your own ``input.html`` counts as a template for each of them;
+a project that wrote its own static ``input.html``, ``number.html`` and ``textarea.html`` can delete
+them. Every other widget, including the hidden, date, time, checkbox, radio, select and file inputs,
+renders as it would with ``FormInputContextRenderer``, so keep your templates for those. To give a
+control without a static component the same label, help text and error message, wrap it in
+``{% ui "labeled_input" %}`` (see :ref:`static-labeled-inputs`).
+
+Like ``FormInputContextRenderer`` it loads templates through the ``TEMPLATES`` setting, so the app
+directories that hold Django's form templates (``django.forms`` in ``INSTALLED_APPS``) and ap-ui's must
+be searched.
+
 Settings
 ~~~~~~~~
 
