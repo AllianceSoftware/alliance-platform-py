@@ -17,6 +17,12 @@ from ...bundler.context import get_all_templates_files
 from ...settings import ap_frontend_settings
 
 
+def _path_for_display(path: Path) -> Path:
+    """``path`` relative to the bundler root, or unchanged when it is outside the root"""
+    root_dir = get_bundler().root_dir
+    return path.relative_to(root_dir) if path.is_relative_to(root_dir) else path
+
+
 def extract_resources_from_templates() -> tuple[list[Any], dict[str, Collection[str]], list[str], list[str]]:
     """Scans all template files for assets that need to be bundled
 
@@ -43,7 +49,7 @@ def extract_resources_from_templates() -> tuple[list[Any], dict[str, Collection[
                     breakdown_templates[str(file)] = sorted({str(p.path) for p in template_assets})
             except TemplateSyntaxError:
                 warnings.append(
-                    f"Failed to parse {file.relative_to(get_bundler().root_dir)} - any tags in that file will be ignored"
+                    f"Failed to parse {_path_for_display(file)} - any tags in that file will be ignored"
                 )
         all_resources.update(asset_context.get_resources_for_bundling())
         breakdown["templates"] = dict(sorted(breakdown_templates.items()))
