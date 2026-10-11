@@ -27,3 +27,9 @@ production assets required by static icons and component runtimes.
 Static components log template mistakes through the `alliance_platform.ui` logger, and the
 `STATIC_COMPONENT_STRICT` UI setting, which defaults to `DEBUG`, makes them raise
 `StaticComponentContractError` instead.
+
+A system check reports an installed `@alliancesoftware/ui` or `@alliancesoftware/icons` whose
+`static-contract.json` does not hold the static contract version the renderers support, a missing
+static SVG icon directory and a missing static runtime entry. `extract_frontend_resources` runs the
+system checks tagged `alliance_platform_frontend_build`, this one included, and fails the build when
+one reports an error.
