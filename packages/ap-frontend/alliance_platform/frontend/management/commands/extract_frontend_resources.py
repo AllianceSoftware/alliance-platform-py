@@ -6,7 +6,9 @@ import sys
 from typing import Any
 from typing import Collection
 
+from django.core.checks import run_checks
 from django.core.management import BaseCommand
+from django.core.management import CommandError
 from django.core.management.base import OutputWrapper
 from django.template import TemplateSyntaxError
 from django.template.loader import get_template
@@ -14,6 +16,7 @@ from django.template.loader import get_template
 from ...bundler import get_bundler
 from ...bundler.context import BundlerAssetContext
 from ...bundler.context import get_all_templates_files
+from ...checks import FRONTEND_BUILD_CHECK_TAG
 from ...settings import ap_frontend_settings
 
 
@@ -79,6 +82,10 @@ class Command(BaseCommand):
 
     Outputs a valid JSON dump as an array of string paths to files.
 
+    Before extracting, runs the system checks registered with
+    :data:`~alliance_platform.frontend.checks.FRONTEND_BUILD_CHECK_TAG`, also when ``--skip-checks``
+    is passed, and fails if any reports an error that is not silenced.
+
     Usage::
 
         # Will write data to output.json
@@ -100,6 +107,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, quiet=False, output=None, **kwargs):
+        self.run_build_checks()
         stderr_warn = OutputWrapper(sys.stderr)
         stderr_warn.style_func = self.style.WARNING
         f = io.StringIO()
@@ -118,3 +126,20 @@ class Command(BaseCommand):
                 output_path.write_text(data)
             else:
                 self.stdout.write(data)
+
+    def run_build_checks(self):
+        """Run the system checks tagged :data:`~alliance_platform.frontend.checks.FRONTEND_BUILD_CHECK_TAG`
+
+        Writes the errors that are not silenced to stderr and raises ``CommandError`` if there are any.
+        Warnings and other messages below ``ERROR`` are ignored.
+        """
+        errors = [
+            message
+            for message in run_checks(tags=[FRONTEND_BUILD_CHECK_TAG])
+            if message.is_serious() and not message.is_silenced()
+        ]
+        if errors:
+            self.stderr.write("\n".join(str(message) for message in errors))
+            raise CommandError(
+                f"The system checks tagged '{FRONTEND_BUILD_CHECK_TAG}' reported {len(errors)} error(s)"
+            )
