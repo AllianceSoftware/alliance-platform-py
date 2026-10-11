@@ -16,6 +16,9 @@ IconStyle = Literal["outlined", "solid", "duotone", "duocolor"]
 
 _ICON_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9]*$")
 
+#: The directory of the static SVG icons, with a subdirectory for each ``IconStyle``
+STATIC_SVG_DIR = "@alliancesoftware/icons/static-svg"
+
 
 @dataclass(frozen=True)
 class StaticIconDefinition:
@@ -47,7 +50,7 @@ def resolve_icon_style_dir(name: str) -> IconStyle:
 
 def get_static_icon_request_path(name: str) -> str:
     style = resolve_icon_style_dir(name)
-    return f"@alliancesoftware/icons/static-svg/{style}/{name}.svg"
+    return f"{STATIC_SVG_DIR}/{style}/{name}.svg"
 
 
 def resolve_static_icon_path(name: str, *, origin: Origin | None = None) -> Path:

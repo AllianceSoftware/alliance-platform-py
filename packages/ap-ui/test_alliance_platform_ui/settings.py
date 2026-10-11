@@ -57,6 +57,19 @@ ALLIANCE_PLATFORM: AlliancePlatformSettings = {
 
 VITE_BUNDLER_MODE = "development"
 
+# The test project's npm packages are stand-ins: its bundler maps @alliancesoftware/ui and
+# @alliancesoftware/icons to packages/ap-ui/node_modules, where nothing is installed, and the tests
+# render with fixtures. The static contract check would report both packages missing, so its errors
+# are silenced here; tests/test_static_contract_check.py tests the check directly.
+SILENCED_SYSTEM_CHECKS = [
+    "alliance_platform_ui.E001",
+    "alliance_platform_ui.E002",
+    "alliance_platform_ui.E003",
+    "alliance_platform_ui.E004",
+    "alliance_platform_ui.E005",
+    "alliance_platform_ui.E006",
+]
+
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 
 DATABASES = {

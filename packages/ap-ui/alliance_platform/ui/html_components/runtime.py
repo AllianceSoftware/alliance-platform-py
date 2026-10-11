@@ -20,6 +20,8 @@ if TYPE_CHECKING:
 
 #: The self-executing entry that registers the built-in runtimes and attaches the marked roots
 STATIC_RUNTIME_MODULE_PATH = "@alliancesoftware/ui/static-runtime.auto.ts"
+#: The extensions tried when resolving the entry
+STATIC_RUNTIME_RESOLVE_EXTENSIONS = [".ts", ".tsx", ".js", ".mjs"]
 
 
 def resolve_static_runtime_resource(renderer: BaseHtmlUIComponentRenderer) -> FrontendResource:
@@ -31,7 +33,7 @@ def resolve_static_runtime_resource(renderer: BaseHtmlUIComponentRenderer) -> Fr
     try:
         return renderer.resolve_frontend_resource(
             STATIC_RUNTIME_MODULE_PATH,
-            resolve_extensions=[".ts", ".tsx", ".js", ".mjs"],
+            resolve_extensions=STATIC_RUNTIME_RESOLVE_EXTENSIONS,
         )
     except TemplateSyntaxError as exc:
         raise TemplateSyntaxError(
