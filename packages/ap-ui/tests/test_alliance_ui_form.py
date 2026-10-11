@@ -1,4 +1,6 @@
 from contextlib import contextmanager
+from pathlib import Path
+from typing import Iterator
 from typing import cast
 from unittest import mock
 
@@ -6,20 +8,26 @@ from alliance_platform.codegen.printer import TypescriptPrinter
 from alliance_platform.frontend.bundler.context import BundlerAssetContext
 from alliance_platform.frontend.templatetags.react import ComponentProps
 from alliance_platform.frontend.templatetags.react import ComponentSourceCodeGenerator
+from alliance_platform.ui.forms.renderers import StaticFormRenderer
 from alliance_platform.ui.forms.renderers import form_input_context_key
 from allianceutils.auth.permission import AmbiguousGlobalPermissionWarning
 from allianceutils.tests.util import warning_filter
 import django
 from django import forms
+from django.conf import settings
+from django.forms.renderers import TemplatesSetting
 from django.forms.renderers import get_default_renderer
 from django.template import Context
+from django.template import Origin
 from django.template import Template
+from django.template import TemplateDoesNotExist
 from django.test import TestCase
 from django.test import override_settings
 from django.urls import reverse
 from test_alliance_platform_ui.factory import UserFactory
 from test_alliance_platform_ui.models import User
 
+from .parity.base import HtmlUIParityTestCase
 from .test_utils import override_ap_frontend_settings
 from .test_utils.bundler import TestViteBundler
 from .test_utils.bundler import bundler_kwargs
@@ -42,6 +50,31 @@ class ReactHelpTextForm(forms.Form):
         help_text="Use your <strong>work</strong> email",
         widget=ReactTextInputWidget,
     )
+
+
+STATIC_FORM_RENDERER = "alliance_platform.ui.forms.renderers.StaticFormRenderer"
+#: Each directory holds a project's own template for a Django widget template
+WIDGET_OVERRIDES_DIR = (
+    Path(__file__).resolve().parent.parent / "test_alliance_platform_ui/form_widget_overrides"
+)
+
+
+class StaticWidgetForm(forms.Form):
+    name = forms.CharField(label="Name", help_text="Your full name", max_length=50)
+    email = forms.EmailField(label="Email")
+    age = forms.IntegerField(label="Age", min_value=0)
+    notes = forms.CharField(label="Notes", widget=forms.Textarea, required=False)
+    token = forms.CharField(widget=forms.HiddenInput, required=False)
+
+
+class RawDescriptionWidget(forms.TextInput):
+    """Widget template that outputs ``extra_widget_props.description`` directly."""
+
+    template_name = "test_widgets/raw_description.html"
+
+
+class RawDescriptionForm(forms.Form):
+    plain = forms.CharField(label="Plain", help_text="No markup here", widget=RawDescriptionWidget)
 
 
 test_development_bundler = TestViteBundler(
@@ -153,6 +186,13 @@ class FormRenderingTestCase(TestCase):
 
     def test_form_input_html_help_text_react_widget(self):
         """HTML help_text should reach React widgets as nested elements (via RenderableContent)"""
+        self.assert_react_help_text_widget()
+
+    @override_settings(FORM_RENDERER=STATIC_FORM_RENDERER)
+    def test_static_form_renderer_keeps_a_widget_template_of_its_own(self):
+        self.assert_react_help_text_widget()
+
+    def assert_react_help_text_widget(self):
         # Django only links help text to the widget through aria-describedby from 5.0
         help_text_attrs = 'aria-describedby="id_email_helptext"' if django.VERSION >= (5, 0) else ""
         self.assertComponentEqual(
@@ -205,3 +245,127 @@ class FormRenderingTestCase(TestCase):
             """<div />""",
             my_form=TestForm(),
         )
+
+
+@override_settings(FORM_RENDERER=STATIC_FORM_RENDERER)
+class StaticFormRendererTestCase(HtmlUIParityTestCase):
+    """StaticFormRenderer renders Django's text, number and text area widget templates as static
+    components."""
+
+    def setUp(self):
+        clear_default_renderer_cache()
+
+    def tearDown(self):
+        clear_default_renderer_cache()
+
+    def render_form(self, form: forms.Form) -> str:
+        with self.setup_render_context():
+            with self.capture_diagnostics() as diagnostics:
+                output = self.render_ui_template(
+                    "{% load alliance_platform.form %}{% form my_form %}"
+                    "{% for field in my_form.visible_fields %}{% form_input field %}{% endfor %}"
+                    "{% for field in my_form.hidden_fields %}{{ field }}{% endfor %}"
+                    "{% endform %}",
+                    {"my_form": form},
+                )
+        self.assertEqual(diagnostics, [])
+        return output
+
+    @contextmanager
+    def project_widget_templates(self, directory: str) -> Iterator[None]:
+        """Add a project template directory from ``WIDGET_OVERRIDES_DIR``."""
+        templates = [{**settings.TEMPLATES[0], "DIRS": [WIDGET_OVERRIDES_DIR / directory]}]
+        with override_settings(TEMPLATES=templates):
+            yield
+
+    def test_renders_text_number_and_text_area_widgets_as_static_components(self):
+        form = StaticWidgetForm(
+            data={"name": "Jane", "email": "jane@", "age": "5", "notes": "Hello", "token": "abc"}
+        )
+        output = self.render_form(form)
+
+        self.assertEqual(output.count('data-apui="text-input"'), 2)
+        self.assertEqual(output.count('data-apui="number-input"'), 1)
+        self.assertEqual(output.count('data-apui="text-area"'), 1)
+        for field, label in [("name", "Name"), ("email", "Email"), ("age", "Age"), ("notes", "Notes")]:
+            with self.subTest(field=field):
+                self.assertIn(f'for="id_{field}">{label}', output)
+        self.assertRegex(output, r'<input(?=[^>]* type="text")(?=[^>]* name="name")(?=[^>]* value="Jane")')
+        self.assertRegex(output, r'<input(?=[^>]* type="email")(?=[^>]* name="email")(?=[^>]* value="jane@")')
+        self.assertRegex(output, r'<input(?=[^>]* name="age")(?=[^>]* value="5")')
+        self.assertIn('data-apui-number-input-min-value="0"', output)
+        self.assertIn(
+            '<textarea name="notes" id="id_notes" class="TextInputBase_input">Hello</textarea>', output
+        )
+        # The help text and error message take the ids Django gives them
+        self.assertIn('<div class="LabeledInput_helpText" id="id_name_helptext">Your full name</div>', output)
+        self.assertRegex(output, r'<input(?=[^>]* id="id_name")(?=[^>]* aria-describedby="id_name_helptext")')
+        self.assertIn(
+            '<div class="LabeledInput_helpText" id="id_email_error">Enter a valid email address.</div>',
+            output,
+        )
+        self.assertRegex(output, r'<input(?=[^>]* id="id_email")(?=[^>]* aria-describedby="id_email_error")')
+        # Django's template still renders a hidden input
+        self.assertIn('<input type="hidden" name="token" value="abc" id="id_token">', output)
+
+    def test_maps_each_django_widget_template_to_a_static_template(self):
+        renderer = StaticFormRenderer()
+        for template_name, static_template_name in renderer.static_widget_templates.items():
+            with self.subTest(template=template_name):
+                try:
+                    TemplatesSetting().get_template(template_name)
+                except TemplateDoesNotExist:
+                    # tel.html and search.html are new in Django 5.2
+                    self.skipTest(f"Django {django.get_version()} has no {template_name}")
+                # Compiling a {% ui %} template registers its frontend resources
+                with self.setup_render_context():
+                    template = renderer.get_template(template_name)
+                self.assertTrue(template.origin.name.endswith(f"/templates/{static_template_name}"))
+
+    def test_a_project_widget_template_wins(self):
+        with self.project_widget_templates("text"):
+            output = self.render_form(StaticWidgetForm())
+
+        self.assertIn('<input type="text" name="name" data-project-widget="text.html">', output)
+        # The email input has no template of the project's
+        self.assertEqual(output.count('data-apui="text-input"'), 1)
+        self.assertEqual(output.count('data-apui="number-input"'), 1)
+        self.assertEqual(output.count('data-apui="text-area"'), 1)
+
+    def test_a_project_input_template_wins_for_the_widget_templates_including_it(self):
+        with self.project_widget_templates("input"):
+            output = self.render_form(StaticWidgetForm())
+
+        for name, input_type in [
+            ("name", "text"),
+            ("email", "email"),
+            ("age", "number"),
+            ("token", "hidden"),
+        ]:
+            with self.subTest(field=name):
+                self.assertIn(
+                    f'<input type="{input_type}" name="{name}" data-project-widget="input.html">', output
+                )
+        self.assertNotIn('data-apui="text-input"', output)
+        self.assertNotIn('data-apui="number-input"', output)
+        # Django's textarea.html does not include input.html
+        self.assertEqual(output.count('data-apui="text-area"'), 1)
+
+    def test_widget_template_of_its_own_gets_extra_widget_props(self):
+        output = self.render_form(RawDescriptionForm())
+
+        self.assertEqual(output, '<span class="raw-description">No markup here</span>')
+
+    def test_templates_of_other_backends_are_left_in_place(self):
+        class OtherBackendTemplate:
+            # A template another backend loaded from Django's file, with an origin as the Jinja2
+            # backend's templates have
+            origin = Origin(str(Path(forms.__file__).parent / "templates/django/forms/widgets/textarea.html"))
+
+        template = OtherBackendTemplate()
+
+        def get_template(template_name: str):
+            return template if template_name.startswith("django/") else object()
+
+        with mock.patch.object(TemplatesSetting, "get_template", side_effect=get_template):
+            self.assertIs(StaticFormRenderer().get_template("django/forms/widgets/textarea.html"), template)
