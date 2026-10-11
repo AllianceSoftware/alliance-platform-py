@@ -156,6 +156,19 @@ class UILabeledInputTestCase(HtmlUIParityTestCase):
         # Help text falls back to a generated id
         self.assertIn('<div class="LabeledInput_helpText" id="apui-labeled-input-1">Pick one</div>', output)
 
+    def test_empty_input_id_is_no_input_id(self):
+        # As input_id=field.auto_id gives for a form without auto ids
+        form = ColourForm(auto_id=False)
+        output, caught = self.render_with_warnings(
+            '{% ui "labeled_input" label=field.label input_id=field.auto_id description=field.help_text %}'
+            "{{ field }}{% endui %}",
+            {"field": form["colour"]},
+        )
+
+        self.assertEqual(caught, [MISSING_INPUT_ID])
+        self.assertNotIn("for=", output)
+        self.assertIn('id="apui-labeled-input-1">Pick one</div>', output)
+
     @override_ap_ui_settings(STATIC_COMPONENT_STRICT=True)
     def test_label_without_input_id_is_a_contract_problem(self):
         with self.assertRaisesMessage(StaticComponentContractError, MISSING_INPUT_ID):

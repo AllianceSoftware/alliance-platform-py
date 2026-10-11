@@ -203,7 +203,8 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
             error_message=props.get("errorMessage"),
         )
 
-        given_input_id = props.get(self.input_id_prop)
+        # An empty id, as a template variable for a form without auto ids gives, is no id
+        given_input_id = props.get(self.input_id_prop) or None
         if given_input_id is not None:
             state.input_id = str(given_input_id)
         elif state.label and self.generate_input_id:
