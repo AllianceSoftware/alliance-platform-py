@@ -66,7 +66,7 @@ LEGACY_COMPONENT_MIGRATIONS: dict[str, LegacyComponentMigration] = {
     "DatePicker": LegacyComponentMigration(None, named_tag=True),
     "Fragment": LegacyComponentMigration(None, named_tag=True),
     "InlineAlert": LegacyComponentMigration("inline_alert", named_tag=True),
-    "LabeledInput": LegacyComponentMigration(None, named_tag=True),
+    "LabeledInput": LegacyComponentMigration("labeled_input", named_tag=True),
     "Pagination": LegacyComponentMigration("pagination", named_tag=True),
     "TimeInput": LegacyComponentMigration(None, named_tag=True),
 }

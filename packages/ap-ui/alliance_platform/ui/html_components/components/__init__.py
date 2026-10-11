@@ -2,6 +2,7 @@ from .button import UIButtonRenderer
 from .button_group import UIButtonGroupRenderer
 from .icon import UIIconRenderer
 from .inline_alert import UIInlineAlertRenderer
+from .input import UILabeledInputRenderer
 from .input import UINumberInputRenderer
 from .input import UITextAreaRenderer
 from .input import UITextInputRenderer
@@ -30,6 +31,7 @@ __all__ = [
     "UIHeadingRenderer",
     "UIIconRenderer",
     "UIInlineAlertRenderer",
+    "UILabeledInputRenderer",
     "UIMenubarItemRenderer",
     "UIMenubarRenderer",
     "UIMenubarSectionRenderer",

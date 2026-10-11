@@ -93,6 +93,7 @@ from .components import UIHeaderRenderer  # noqa: E402
 from .components import UIHeadingRenderer  # noqa: E402
 from .components import UIIconRenderer  # noqa: E402
 from .components import UIInlineAlertRenderer  # noqa: E402
+from .components import UILabeledInputRenderer  # noqa: E402
 from .components import UIMenubarItemRenderer  # noqa: E402
 from .components import UIMenubarRenderer  # noqa: E402
 from .components import UIMenubarSectionRenderer  # noqa: E402
@@ -114,6 +115,7 @@ register_component("icon", UIIconRenderer)
 register_component("text_input", UITextInputRenderer)
 register_component("number_input", UINumberInputRenderer)
 register_component("text_area", UITextAreaRenderer)
+register_component("labeled_input", UILabeledInputRenderer)
 register_component("inline_alert", UIInlineAlertRenderer)
 register_component("content", UIContentRenderer)
 register_component("heading", UIHeadingRenderer)

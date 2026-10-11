@@ -1,0 +1,42 @@
+{
+  "component": "labeled_input",
+  "class_prefixes": ["LabeledInput", "Label", "FormSection"],
+  "keep_class_tokens": [],
+  "cases": [
+    {
+      "name": "label",
+      "template": "{% ui \"labeled_input\" input_id=\"email\" label=\"Email\" %}<input id=\"email\" name=\"email\"/>{% endui %}",
+      "expected_html": "<div data-labeledinput=\"1\" data-apui=\"labeled-input\" data-label-position=\"top\" data-label-align=\"start\" data-input-size=\"sm\" class=\"LabeledInput_labeledInput\"><label data-apui=\"label\" data-label-align=\"start\" class=\"Label_label LabeledInput_label\" for=\"email\">Email</label><div class=\"LabeledInput_input\"><input id=\"email\" name=\"email\"/></div></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "description",
+      "template": "{% ui \"labeled_input\" input_id=\"email\" label=\"Email\" description=\"Your work email\" %}<input id=\"email\" name=\"email\"/>{% endui %}",
+      "expected_html": "<div data-labeledinput=\"1\" data-apui=\"labeled-input\" data-label-position=\"top\" data-label-align=\"start\" data-input-size=\"sm\" class=\"LabeledInput_labeledInput\"><label data-apui=\"label\" data-label-align=\"start\" class=\"Label_label LabeledInput_label\" for=\"email\">Email</label><div class=\"LabeledInput_input\"><input id=\"email\" name=\"email\"/></div><div id=\"email_helptext\" class=\"LabeledInput_helpText\">Your work email</div></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "error_message",
+      "template": "{% ui \"labeled_input\" input_id=\"email\" label=\"Email\" description=\"Your work email\" validation_state=\"invalid\" error_message=\"Enter a valid email\" %}<input id=\"email\" name=\"email\"/>{% endui %}",
+      "expected_html": "<div data-labeledinput=\"1\" data-apui=\"labeled-input\" data-label-position=\"top\" data-label-align=\"start\" data-input-size=\"sm\" class=\"LabeledInput_labeledInput\" data-invalid=\"true\"><label data-apui=\"label\" data-label-align=\"start\" class=\"Label_label LabeledInput_label\" for=\"email\">Email</label><div class=\"LabeledInput_input\"><input id=\"email\" name=\"email\"/></div><div class=\"LabeledInput_helpText\" id=\"email_error\">Enter a valid email</div></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "side_layout",
+      "template": "{% ui \"labeled_input\" input_id=\"email\" label=\"Email\" label_position=\"side\" label_align=\"end\" description=\"Your work email\" %}<input id=\"email\" name=\"email\"/>{% endui %}",
+      "expected_html": "<div data-labeledinput=\"1\" data-apui=\"labeled-input\" data-label-position=\"side\" data-label-align=\"end\" data-input-size=\"sm\" class=\"LabeledInput_labeledInput\"><label data-apui=\"label\" data-label-align=\"end\" class=\"Label_label LabeledInput_label\" for=\"email\">Email</label><div class=\"FormSection_inputHelpSideWrapper\"><div class=\"LabeledInput_input\"><input id=\"email\" name=\"email\"/></div><div id=\"email_helptext\" class=\"LabeledInput_helpText\">Your work email</div></div></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "required_disabled_readonly",
+      "template": "{% ui \"labeled_input\" input_id=\"email\" label=\"Email\" is_required=True is_disabled=True is_read_only=True %}<input id=\"email\" name=\"email\"/>{% endui %}",
+      "expected_html": "<div data-labeledinput=\"1\" data-apui=\"labeled-input\" data-label-position=\"top\" data-label-align=\"start\" data-input-size=\"sm\" class=\"LabeledInput_labeledInput\" data-disabled=\"true\" data-required=\"true\" data-readonly=\"true\"><label data-apui=\"label\" data-label-align=\"start\" class=\"Label_label LabeledInput_label\" for=\"email\">Email<span aria-hidden=\"true\" class=\"Label_requiredIndicator\">*</span></label><div class=\"LabeledInput_input\"><input id=\"email\" name=\"email\"/></div></div>",
+      "expected_warnings": [],
+      "meta": {}
+    }
+  ]
+}

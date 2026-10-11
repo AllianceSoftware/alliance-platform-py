@@ -69,6 +69,14 @@ _REACT_ONLY_PROPS = frozenset(
     }
 )
 
+# Rules for the LabeledInput props every component rendering its markup takes
+_LABELED_INPUT_PROP_RULES = {
+    "labelPosition": enum_prop_rule(VALID_LABEL_POSITIONS, invalid_fallback="top"),
+    "labelAlign": enum_prop_rule(VALID_LABEL_ALIGNS),
+    "inputSize": enum_prop_rule(VALID_INPUT_SIZES, invalid_fallback="sm"),
+    "validationState": enum_prop_rule(VALID_VALIDATION_STATES),
+}
+
 # Attributes that may be passed through to the control element for all input components, in
 # addition to data-*/aria-* attributes. Anything else that is not explicitly handled is reported
 # and dropped rather than rendered (mirroring how react-aria's filterDOMProps drops unknown
@@ -140,13 +148,35 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
     them. Without one they get generated ids.
     """
 
+    #: The prop holding the id of the control: ``id`` on the inputs, which render the control, and
+    #: ``inputId`` on ``labeled_input``, whose children render it.
+    input_id_prop = "id"
+    #: Whether a label without a given control id gets a generated one. Only a renderer that renders
+    #: the control can put a generated id on it.
+    generate_input_id = True
+    #: Whether the root carries ``data-disabled`` for ``isDisabled``. ``LabeledInput`` sets it from
+    #: its own ``isDisabled``, which ``TextInputBase`` does not pass it, so the inputs set
+    #: ``data-disabled`` on their input wrapper instead.
+    root_marks_disabled = False
+    #: ``labelAlign`` when none is given. ``LabeledInput`` falls back to the default form layout's
+    #: ``"start"``, but ``TextInputBase`` always passes it a ``labelAlign``, undefined when it has
+    #: none, so the inputs have no fallback.
+    default_label_align: str | None = None
+    #: Props that accept renderable rich content (``RenderableContent``, such as the help text
+    #: ``{% form_input %}`` passes, or a list of parts) as well as plain text, which is escaped.
+    #: errorMessage is deliberately plain text for now.
+    rich_content_props: frozenset[str] = frozenset({"description"})
+
+    def allow_non_scalar_prop(self, key: str, value: Any) -> bool:
+        return key in self.rich_content_props and is_rich_content_value(value)
+
     def generate_html_id(self, context: Context) -> str:
         """Generate a deterministic id, unique within the current document render."""
         return generate_html_id(context, f"apui-{self.apui_name}")
 
     def resolve_labeled_input_state(self, context: Context, props: dict[str, Any]) -> LabeledInputState:
         label_position = str(props.get("labelPosition", "top"))
-        label_align = props.get("labelAlign")
+        label_align = props.get("labelAlign", self.default_label_align)
         input_size = str(props.get("inputSize", "sm"))
         validation_state = props.get("validationState")
 
@@ -172,10 +202,10 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
             error_message=props.get("errorMessage"),
         )
 
-        given_input_id = props.get("id")
+        given_input_id = props.get(self.input_id_prop)
         if given_input_id is not None:
             state.input_id = str(given_input_id)
-        elif state.label:
+        elif state.label and self.generate_input_id:
             state.input_id = self.generate_html_id(context)
 
         if state.description_rendered:
@@ -218,10 +248,9 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
                 self.get_style_class(labeled_input_styles, "labeledInput"), props.get("className")
             ),
             "style": props.get("style"),
-            # Matching getStateDataAttributes usage in LabeledInput; note TextInputBase does not
-            # forward isDisabled to LabeledInput so there is no data-disabled at this level (it is
-            # set on the input wrapper instead).
+            # Matching getStateDataAttributes usage in LabeledInput (see root_marks_disabled)
             "data-invalid": "true" if state.is_invalid else None,
+            "data-disabled": "true" if self.root_marks_disabled and state.is_disabled else None,
             "data-required": "true" if state.is_required else None,
             "data-readonly": "true" if state.is_readonly else None,
         }
@@ -298,12 +327,7 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
     allow_data_props = True
     allow_aria_props = True
     deprecated_prop_aliases = {"disabled": "isDisabled"}
-    prop_rules = {
-        "labelPosition": enum_prop_rule(VALID_LABEL_POSITIONS, invalid_fallback="top"),
-        "labelAlign": enum_prop_rule(VALID_LABEL_ALIGNS),
-        "inputSize": enum_prop_rule(VALID_INPUT_SIZES, invalid_fallback="sm"),
-        "validationState": enum_prop_rule(VALID_VALIDATION_STATES),
-    }
+    prop_rules = _LABELED_INPUT_PROP_RULES
     prop_filter_context = "static input components"
     event_handler_prop_reason = "event handlers are not supported by static input components"
 
@@ -328,9 +352,6 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
     #: attrs that may pass through to the control element (plus data-*/aria-*); anything else
     #: not in ``handled_props`` is reported and dropped
     control_pass_through_props = _SHARED_CONTROL_PASS_THROUGH_PROPS
-    #: props that accept renderable rich content (e.g. RenderableContent from form_input help
-    #: text) in addition to plain strings. errorMessage is deliberately plain text for now.
-    rich_content_props = frozenset({"description"})
     #: props consumed by the renderer itself; everything else is passed through or reported
     handled_props = frozenset(
         {
@@ -445,9 +466,6 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
         container_html = mark_safe(self.render_tag("div", container_attrs, container_children_html))
 
         return mark_safe(self.render_labeled_input(context, props, state, container_html))
-
-    def allow_non_scalar_prop(self, key: str, value: Any) -> bool:
-        return key in self.rich_content_props and is_rich_content_value(value)
 
     def get_container_extra_attrs(self, props: dict[str, Any], state: LabeledInputState) -> dict[str, Any]:
         return {}
@@ -752,3 +770,91 @@ class UINumberInputRenderer(UITextInputBaseRenderer):
             }
             buttons.append(self.render_tag("button", attrs, self.render_icon(icon_name, "xxs", slot=False)))
         return f'<div class="{conditional_escape(container_class)}">{"".join(buttons)}</div>'
+
+
+# LabeledInput props with no static equivalent: the props of the elements it renders, a custom label
+# element and refs. Reported, with the React tag to use, and ignored.
+_LABELED_INPUT_REACT_ONLY_PROPS = frozenset(
+    {
+        "labelProps",
+        "descriptionProps",
+        "errorMessageProps",
+        "containerProps",
+        "elementType",
+        "ref",
+        "labelRef",
+        "inputRef",
+        "containerRef",
+    }
+)
+
+
+class UILabeledInputRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRenderer):
+    """Wraps what its children render in the label, help text and error message of ``LabeledInput``.
+
+    Mirrors ``LabeledInput.tsx`` as ``{% LabeledInput %}`` renders it, with the markup the inputs
+    render around their own control, for a control its children render: a native ``<select>`` or a
+    Django widget, say. ``inputId`` is that control's id: the label's ``for`` and the base of the
+    help text and error message ids (``<inputId>_helptext``, ``<inputId>_error``). The renderer does
+    not own the control's markup and adds nothing to it; Django 5.0+ points a form widget's
+    ``aria-describedby`` at those ids.
+    """
+
+    name = "labeled_input"
+    react_tag = "LabeledInput"
+    input_id_prop = "inputId"
+    # The control is the children's, so a generated id could not be put on it
+    generate_input_id = False
+    root_marks_disabled = True
+    default_label_align = "start"
+    # The props the inputs put on their control are accepted, so a widget template can pass
+    # extra_widget_props whole ({% form_input %} adds autoFocus to it), but not rendered: they
+    # belong on the control, which the children render. LabeledInput ignores them too.
+    supported_props = (
+        frozenset(
+            {
+                "label",
+                "labelPosition",
+                "labelAlign",
+                "inputSize",
+                "isRequired",
+                "isInvalid",
+                "validationState",
+                "isDisabled",
+                "isReadOnly",
+                "description",
+                "errorMessage",
+                "inputId",
+                "className",
+                "style",
+            }
+        )
+        | _SHARED_CONTROL_PASS_THROUGH_PROPS
+    )
+    allow_data_props = True
+    allow_aria_props = True
+    unsupported_prop_reasons = {
+        key: "React-only props are not supported by static labeled inputs"
+        for key in _LABELED_INPUT_REACT_ONLY_PROPS
+    }
+    # validationState="invalid" sets isInvalid, as {% LabeledInput %} does
+    prop_rules = _LABELED_INPUT_PROP_RULES
+    prop_filter_context = "static labeled inputs"
+    event_handler_prop_reason = "event handlers are not supported by static labeled inputs"
+
+    def resolve_component_resources(self) -> list[FrontendResource]:
+        return [
+            self.resolve_frontend_resource(_LABELED_INPUT_STYLE_PATH),
+            self.resolve_frontend_resource(_LABEL_STYLE_PATH),
+            self.resolve_frontend_resource(_FORM_SECTION_STYLE_PATH),
+        ]
+
+    def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
+        state = self.resolve_labeled_input_state(context, props)
+        if state.label and state.input_id is None:
+            self.report(
+                "'labeled_input' has a label but no 'input_id', so the label is not associated with "
+                "a control: pass the id of the control it wraps",
+                kind="contract",
+            )
+        return self.render_labeled_input(context, props, state, children_html)
