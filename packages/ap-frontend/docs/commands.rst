@@ -13,6 +13,13 @@ in the system are loaded to gather all used resources. You can exclude specific 
 :data:`~alliance_platform.frontend.settings.AlliancePlatformFrontendSettingsType.EXTRACT_ASSETS_EXCLUDE_DIRS`
 to either a :class:`pathlib.Path` or ``re.Pattern``.
 
+Before reading any template, the command runs the system checks registered with the
+:data:`~alliance_platform.frontend.checks.FRONTEND_BUILD_CHECK_TAG` tag, even with
+``--skip-checks``, and exits with an error if any of them reports an error that is not silenced in
+``SILENCED_SYSTEM_CHECKS``, so a production build fails before it starts. Packages register checks
+of the npm packages they depend on with this tag, such as the static contract check of
+``alliance_platform.ui``.
+
 Outputs a valid JSON dump with the following keys:
 
 - ``resources`` - a list of resources used in templates. The exact shape depends on the specific resource :class:`~alliance_platform.frontend.bundler.frontend_resource.FrontendResource.serialize`

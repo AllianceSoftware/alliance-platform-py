@@ -95,6 +95,28 @@ Embedding and builds:
   Rollup reaches the attach modules through its `import()` calls. The entry is an SSR input too, as
   the per-component entries were before it, but nothing executes it there.
 
+## Contract version
+
+The renderers depend on a DOM and CSS contract of two npm packages: the data attributes and part
+classes the styles and runtimes key off, the runtime tokens and the static SVG icon layout. In
+alliance-platform-js, `packages/ui/static-contract.json` and `packages/icons/static-contract.json`
+hold the version of each package's side as an integer `version`; here,
+`SUPPORTED_STATIC_CONTRACT_VERSIONS` in `html_components/contract.py` holds the version of each that
+the renderers are written for. `check_static_contract` in `alliance_platform/ui/checks.py` (ids
+`alliance_platform_ui.E001` to `E006`, documented in `docs/installation.rst`) compares them and
+checks for `static-svg` and the runtime entry, wherever `NODE_MODULES_DIR` exists and the bundler
+is in development mode. It is registered with ap-frontend's `FRONTEND_BUILD_CHECK_TAG`, so
+`extract_frontend_resources` runs it and fails the build. The test project silences the six ids,
+as its packages are stand-ins; `tests/test_static_contract_check.py` tests the check.
+
+A JS change that alters a package's contract bumps its `version`, and nothing else does: it is not
+the npm version (the rule is in the header comments of `packages/ui/static-runtime.ts` and
+`packages/icons/create-icons-from-svgs.ts`). The PY change that adapts the renderers raises the
+supported version. The fixture drift workflow also runs nightly against alliance-platform-js
+`main`, ignoring the `.github/alliance-platform-js-ref` pin, so a merged JS change that alters the
+markup or class mappings without the matching change here fails it within a day. Pull requests of
+cross-repo work pin the JS branch in that file until it merges (see "CI fixture drift check").
+
 ## Input components (`text_input`, `number_input`, `text_area`)
 
 The input renderers live in
@@ -581,9 +603,10 @@ The cross-repo fixture drift workflow is defined in:
 - `.github/workflows/ap-ui-fixture-drift.yml`
 
 It runs on pull requests that touch the fixtures, `css-mappings.json`, `scripts/`, the JS ref pin
-or the workflow, and on manual dispatch. It checks out both `alliance-platform-py` and
-`alliance-platform-js`, installs the JS dependencies, runs the sync script, and fails if any
-`ui_html_*_parity.json` fixture or `css-mappings.json` changed.
+or the workflow, on manual dispatch, and nightly at 18:23 UTC against alliance-platform-js `main`.
+It checks out both `alliance-platform-py` and `alliance-platform-js`, installs the JS dependencies,
+runs the sync script, and fails if any `ui_html_*_parity.json` fixture or `css-mappings.json`
+changed.
 
 ### Testing against an unmerged alliance-platform-js branch
 
@@ -594,9 +617,9 @@ JS fix), pin the ref in:
 - `.github/alliance-platform-js-ref` — single line containing the branch/tag/SHA to check out.
 
 Commit the pin with your PR so CI tests the pair together, and reset the file to `main` once the
-JS branch merges (until then, `main` runs of the drift check will use the pinned ref, so don't
-leave stale pins behind). Manual runs can override the ref with the `js_ref` input on
-`workflow_dispatch` without touching the file.
+JS branch merges (until then, pull request and manual runs of the drift check use the pinned ref,
+so don't leave stale pins behind; the nightly run ignores the pin and always uses `main`). Manual
+runs can override the ref with the `js_ref` input on `workflow_dispatch` without touching the file.
 
 For private `alliance-platform-js` access in GitHub Actions, configure:
 

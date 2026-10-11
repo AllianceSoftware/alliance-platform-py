@@ -60,6 +60,58 @@ The UI package's own settings are all optional. Set them under ``ALLIANCE_PLATFO
 
 ``STATIC_COMPONENT_STRICT`` is described under :ref:`static component diagnostics <static-component-diagnostics>`.
 
+.. _static-contract-check:
+
+System checks
+-------------
+
+The static ``{% ui %}`` components emit markup for a DOM and CSS contract defined by the
+``@alliancesoftware/ui`` and ``@alliancesoftware/icons`` npm packages. Each package records the
+version of its side of the contract as an integer ``version`` in a ``static-contract.json`` file at
+its root, and each release of ``alliance_platform_ui`` supports one version of each. A system check
+verifies the installed packages, resolving their files through the bundler as the components do:
+
+.. list-table::
+    :header-rows: 1
+    :widths: 30 70
+
+    * - Id
+      - Reports
+    * - ``alliance_platform_ui.E001``
+      - ``@alliancesoftware/ui/static-contract.json`` cannot be resolved or read, is not valid JSON
+        or has no integer ``version``.
+    * - ``alliance_platform_ui.E002``
+      - The installed ``@alliancesoftware/ui`` has a different contract version than the supported
+        one.
+    * - ``alliance_platform_ui.E003``
+      - As ``E001``, for ``@alliancesoftware/icons/static-contract.json``.
+    * - ``alliance_platform_ui.E004``
+      - As ``E002``, for ``@alliancesoftware/icons``.
+    * - ``alliance_platform_ui.E005``
+      - ``@alliancesoftware/icons/static-svg``, the directory of the static SVG icons, does not
+        resolve to a directory.
+    * - ``alliance_platform_ui.E006``
+      - ``@alliancesoftware/ui/static-runtime.auto.ts``, the static runtime entry, does not resolve
+        to a file.
+
+The hint of each error names the npm release to install. The check runs with Django's other system
+checks: in development (``runserver``), with ``manage.py check``, before the tests and before most
+other management commands. It is registered with the
+:data:`~alliance_platform.frontend.checks.FRONTEND_BUILD_CHECK_TAG` tag, so
+:djmanage:`extract_frontend_resources <alliance-platform-frontend:extract_frontend_resources>` runs
+it as well, even with ``--skip-checks``, and a production build fails before it starts.
+
+The check is skipped when the directory in the ``NODE_MODULES_DIR`` frontend setting does not
+exist, as in a production image after the build, whose run of the check verified the packages, and
+while the bundler is not in development mode, as assets then come from the build output.
+
+To silence an error, add its id to Django's ``SILENCED_SYSTEM_CHECKS`` setting. A silenced error
+does not fail ``extract_frontend_resources`` either.
+
+.. code-block:: python
+
+    SILENCED_SYSTEM_CHECKS = ["alliance_platform_ui.E002"]
+
 Migration from Alliance Platform Frontend
 -----------------------------------------
 
