@@ -112,9 +112,9 @@ handler props (``on*``) are always dropped.
     subclass with a new name.
 ``has_apui_marker``
     Whether the component marks its element with ``data-apui="<apui_name>"``, ``True`` by default.
-    It documents the markup for generated documentation; the renderer writes the marker itself.
-    Set it to ``False`` for a component without one, as the built-in ``icon`` and ``pagination``
-    are.
+    It documents the markup (see `Documenting a component`_); the renderer writes the marker
+    itself. Set it to ``False`` for a component without one, as the built-in ``icon`` and
+    ``pagination`` are.
 ``slot_name``
     The slot this component reads parent-provided defaults from (see `Slot defaults`_).
 ``has_children``
@@ -148,9 +148,9 @@ handler props (``on*``) are always dropped.
     One sentence of reStructuredText for each prop that the component adds to its React component
     or treats differently, keyed by the canonical prop name, for example
     ``{"sortHref": "The URL of the header's sort link, ..."}``. The keys ``data-*`` and ``aria-*``
-    describe the open-ended attributes. Generated documentation shows the sentences next to the
-    props and leaves the other props to the React docs, so for a component without a React
-    equivalent, describe every prop.
+    describe the open-ended attributes. Generated documentation (see `Documenting a component`_)
+    shows the sentences next to the props and leaves the other props to the React docs, so for a
+    component without a React equivalent, describe every prop.
 ``forwarded_props``
     Plain attributes, such as ``id`` and ``title``, that ``collect_forwarded_props()`` copies to
     the root element. They count as supported.
@@ -418,3 +418,44 @@ mistake raises.
 
 For tests that need the database, combine the base with Django's ``TestCase``:
 ``class StatTestCase(StaticComponentTestCase, TestCase)``.
+
+Documenting a component
+-----------------------
+
+The ``ui-component`` Sphinx directive writes a component's reference from its renderer, as the
+:ttag:`ui` tag's documentation does for the built-ins: the tag, its ``data-apui`` marker, slot,
+required parent, runtime token and React tag, a table of its props with the values their
+``prop_rules`` allow, the value that replaces an invalid one and notes, then the attributes it
+forwards and the props it refuses, with the reasons its reports give. It renders nothing, so the
+docs build needs no database or Django settings:
+
+.. code-block:: rst
+
+    .. ui-component:: stat
+        :registry: myapp.static_components.docs_registry
+
+Without ``:registry:``, the directive looks the name up in ``built_in_registry``, which holds your
+components too when your Sphinx ``conf.py`` runs ``django.setup()``, as your ``AppConfig.ready()``
+registers them there. Otherwise give it a registry your docs build can import:
+
+.. code-block:: python
+
+    # myapp/static_components.py
+    docs_registry = HtmlUIComponentRegistry()
+    docs_registry.register_renderer("stat", StatRenderer)
+
+The props are those ``documented_props()`` returns, without the ``forwarded_props``, which are
+listed with the attributes. Their notes come from ``prop_aliases``, ``deprecated_prop_aliases``,
+``non_scalar_props``, the inputs' ``rich_content_props`` and ``prop_docs``. A prop without a
+``prop_docs`` entry is noted "see React docs" when the renderer has a ``react_tag`` and has no
+description otherwise, so describe the props of a component without a React equivalent in
+``prop_docs``. An unknown component name fails the build.
+
+The directive is not part of the ``alliance-platform-ui`` package. It lives in this repository's
+``docs/_doc_utils``: ``ap_ui_components.py`` is the Sphinx extension, which uses
+``ap_ui_component_reference.py`` and adds the stylesheet in ``ap_ui_components_static`` so the
+table cells wrap in the Read the Docs theme. To use it, copy those files into your docs or depend
+on a checkout of this repository, put their directory on ``sys.path`` in ``conf.py`` and add
+``"ap_ui_components"`` to ``extensions``. Where your docs register the ``templatetag`` object type
+with the ``ttag`` role, as this repository's ``conf.py`` does, a named React tag links to its
+section.

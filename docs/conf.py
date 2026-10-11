@@ -42,6 +42,8 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx_rtd_theme",
     "sphinx.ext.linkcode",
+    # The ui-component directive in _doc_utils
+    "ap_ui_components",
 ]
 
 templates_path = ["_templates"]

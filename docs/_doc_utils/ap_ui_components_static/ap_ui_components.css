@@ -1,0 +1,5 @@
+/* The Read the Docs theme keeps each table cell on one line; let the cells of the ui-component
+   prop tables wrap, so their notes do not push the table off the page */
+.wy-table-responsive table.apui-component-props td {
+    white-space: normal;
+}

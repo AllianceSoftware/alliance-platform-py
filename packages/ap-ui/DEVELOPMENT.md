@@ -127,6 +127,20 @@ it too, and the JS repo's `packages/ui/tests/static-contract.test.ts` compares t
 (part-class keys, attribute selectors, runtime tokens, static SVG styles) with a committed snapshot
 and fails when it changes without a version bump.
 
+## Component reference docs
+
+The `ui-component` Sphinx directive writes a component's reference from its renderer, without
+rendering it. `docs/_doc_utils/ap_ui_component_reference.py` at the repository root reads the
+declarations (`documented_props()`, `prop_rules`, the aliases, `prop_docs`, `has_apui_marker`,
+`runtime_token`, `react_tag`, and `requires_table`/`requires_menubar` for the parent) and writes
+reStructuredText; `docs/_doc_utils/ap_ui_components.py` is the extension `docs/conf.py` loads. The
+Storybook docs ids of the built-ins are in its `BUILT_IN_STORYBOOK_DOCS_IDS`, taken from the story
+titles in the JS repo (`title: 'form/LabeledInput'` is `form-labeledinput`); add one when a new
+component's React component has stories. The reference module imports neither Sphinx nor docutils,
+which the package's test environment does not install, so
+`tests/test_docs_ui_component_directive.py` tests it directly, and the docs builds test the
+directive.
+
 ## Input components (`text_input`, `number_input`, `text_area`, `labeled_input`)
 
 The input renderers live in
