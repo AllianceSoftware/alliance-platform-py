@@ -24,10 +24,21 @@ export async function loadComponents({ uiPackageDir, importDefault }) {
     TextInput: await importDefault(
       path.join(uiPackageDir, "components/text-input/TextInput.tsx")
     ),
+    // An icon the static tests copy to tests/fixtures/icons/static-svg
+    CheckOutlined: await importDefault(
+      path.join(uiPackageDir, "../icons/outlined/CheckOutlined.tsx")
+    ),
   };
 }
 
 export function normalize(root, testCase, helpers) {
+  // React's Icon only gets data-apui-slot from a parent's slot context, which an addon does not
+  // provide; the static icon an addon holds always marks its root (see icon.mjs)
+  for (const icon of root.querySelectorAll(
+    '[class*="TextInputBase_addon"] > [role="img"]'
+  )) {
+    icon.setAttribute("data-apui-slot", "icon");
+  }
   helpers.normalizeInputComponent(root, component);
 }
 
@@ -185,6 +196,20 @@ export const cases = [
         label: "Website",
         addonBefore: "https://",
         addonAfter: ".com",
+      });
+    },
+    meta: {},
+  },
+  {
+    // An addon renders rich content, such as a component captured with `as`
+    name: "addon_before_icon",
+    template:
+      '{% ui "icon" name="CheckOutlined" as icon %}{% ui "text_input" label="Email" addon_before=icon %}',
+    buildElement({ React, components }) {
+      const { TextInput, CheckOutlined } = components;
+      return React.createElement(TextInput, {
+        label: "Email",
+        addonBefore: React.createElement(CheckOutlined),
       });
     },
     meta: {},

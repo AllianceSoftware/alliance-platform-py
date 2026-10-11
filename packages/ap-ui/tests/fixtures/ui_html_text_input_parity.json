@@ -95,6 +95,13 @@
       "meta": {}
     },
     {
+      "name": "addon_before_icon",
+      "template": "{% ui \"icon\" name=\"CheckOutlined\" as icon %}{% ui \"text_input\" label=\"Email\" addon_before=icon %}",
+      "expected_html": "<div data-labeledinput=\"1\" data-apui=\"labeled-input\" data-label-position=\"top\" data-input-size=\"sm\" class=\"LabeledInput_labeledInput\"><label data-apui=\"label\" class=\"Label_label LabeledInput_label\" for=\"apui-text-input-1\">Email</label><div class=\"LabeledInput_input\"><div data-apui=\"text-input\" class=\"TextInputBase_inputContainer\" data-size=\"sm\" data-element=\"input\" data-has-addon-before=\"true\"><div class=\"TextInputBase_addonBefore\"><span role=\"img\" aria-hidden=\"true\" class=\"Icon_icon\" data-size=\"xs\" data-variant=\"plain\" data-apui-slot=\"icon\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" focusable=\"false\"><path d=\"M20 6L9 17L4 12\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path></svg></span></div><div class=\"TextInputBase_inputWrapper focusRing_base\"><input type=\"text\" id=\"apui-text-input-1\" class=\"TextInputBase_input\" value=\"\"/></div></div></div></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
       "name": "custom_class_names",
       "template": "{% ui \"text_input\" label=\"Email\" className=\"custom-root\" inputClassName=\"custom-input\" %}",
       "expected_html": "<div data-labeledinput=\"1\" data-apui=\"labeled-input\" data-label-position=\"top\" data-input-size=\"sm\" class=\"LabeledInput_labeledInput custom-root\"><label data-apui=\"label\" class=\"Label_label LabeledInput_label\" for=\"apui-text-input-1\">Email</label><div class=\"LabeledInput_input\"><div data-apui=\"text-input\" class=\"TextInputBase_inputContainer\" data-size=\"sm\" data-element=\"input\"><div class=\"TextInputBase_inputWrapper focusRing_base\"><input type=\"text\" id=\"apui-text-input-1\" class=\"TextInputBase_input custom-input\" value=\"\"/></div></div></div></div>",

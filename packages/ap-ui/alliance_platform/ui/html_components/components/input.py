@@ -128,7 +128,7 @@ class LabeledInputState:
 
     @property
     def error_rendered(self) -> bool:
-        return bool(self.error_message) and self.is_invalid
+        return has_renderable_content(self.error_message) and self.is_invalid
 
     @property
     def description_rendered(self) -> bool:
@@ -162,10 +162,11 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
     #: ``"start"``, but ``TextInputBase`` always passes it a ``labelAlign``, undefined when it has
     #: none, so the inputs have no fallback.
     default_label_align: str | None = None
-    #: Props that accept renderable rich content (``RenderableContent``, such as the help text
-    #: ``{% form_input %}`` passes, or a list of parts) as well as plain text, which is escaped.
-    #: errorMessage is deliberately plain text for now.
-    rich_content_props: frozenset[str] = frozenset({"description"})
+    #: Props that accept rich content as well as plain text, which is escaped: a safe string (such
+    #: as a component captured with ``{% ui ... as var %}``), ``RenderableContent`` (such as the
+    #: help text and safe error messages ``{% form_input %}`` passes) or a list of these. They
+    #: render through :func:`~alliance_platform.ui.html_components.content.render_content`.
+    rich_content_props: frozenset[str] = frozenset({"description", "errorMessage"})
 
     def allow_non_scalar_prop(self, key: str, value: Any) -> bool:
         return key in self.rich_content_props and is_rich_content_value(value)
@@ -305,8 +306,14 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
         help_text_class = self.get_style_class(labeled_input_styles, "helpText")
         if state.error_rendered:
             attrs = {"className": help_text_class, "id": state.error_id}
-            # errorMessage is deliberately plain text (see rich_content_props)
-            return self.render_tag("div", attrs, conditional_escape(state.error_message))
+            content = render_content(
+                state.error_message,
+                context,
+                prop_name="errorMessage",
+                origin=self.origin,
+                component=self.name,
+            )
+            return self.render_tag("div", attrs, content)
         if state.description_rendered:
             attrs = {"className": help_text_class, "id": state.description_id}
             content = render_content(
@@ -352,6 +359,8 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
     #: attrs that may pass through to the control element (plus data-*/aria-*); anything else
     #: not in ``handled_props`` is reported and dropped
     control_pass_through_props = _SHARED_CONTROL_PASS_THROUGH_PROPS
+    # The addons render rich content too, such as an icon captured with {% ui "icon" ... as icon %}
+    rich_content_props = UILabeledInputRendererMixin.rich_content_props | {"addonBefore", "addonAfter"}
     #: props consumed by the renderer itself; everything else is passed through or reported
     handled_props = frozenset(
         {
@@ -444,8 +453,8 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
             "div", input_wrapper_attrs, f"{control_html}{validation_icon_html}"
         )
 
-        addon_before_html = self.render_addon_before(props, state, text_input_base_styles)
-        addon_after_html = self.render_addon_after(props, state, text_input_base_styles)
+        addon_before_html = self.render_addon_before(context, props, state, text_input_base_styles)
+        addon_after_html = self.render_addon_after(context, props, state, text_input_base_styles)
 
         container_attrs: dict[str, Any] = {
             "data-apui": self.apui_name,
@@ -482,23 +491,30 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
     ) -> None:
         """Add any runtime-specific state to the container before it is rendered."""
 
+    def render_addon_content(self, context: Context, props: dict[str, Any], prop_name: str) -> str:
+        """Render the content of the ``addonBefore`` or ``addonAfter`` prop, ``""`` when there is none."""
+        addon = props.get(prop_name)
+        if not has_renderable_content(addon):
+            return ""
+        return render_content(addon, context, prop_name=prop_name, origin=self.origin, component=self.name)
+
     def render_addon_before(
-        self, props: dict[str, Any], state: LabeledInputState, text_input_base_styles: Any
+        self, context: Context, props: dict[str, Any], state: LabeledInputState, text_input_base_styles: Any
     ) -> str:
-        addon = props.get("addonBefore")
-        if not addon:
+        addon_content = self.render_addon_content(context, props, "addonBefore")
+        if not addon_content:
             return ""
         addon_class = self.get_style_class(text_input_base_styles, "addonBefore")
-        return f'<div class="{conditional_escape(addon_class)}">{conditional_escape(addon)}</div>'
+        return f'<div class="{conditional_escape(addon_class)}">{addon_content}</div>'
 
     def render_addon_after(
-        self, props: dict[str, Any], state: LabeledInputState, text_input_base_styles: Any
+        self, context: Context, props: dict[str, Any], state: LabeledInputState, text_input_base_styles: Any
     ) -> str:
-        addon = props.get("addonAfter")
-        if not addon:
+        addon_content = self.render_addon_content(context, props, "addonAfter")
+        if not addon_content:
             return ""
         addon_class = self.get_style_class(text_input_base_styles, "addonAfter")
-        return f'<div class="{conditional_escape(addon_class)}">{conditional_escape(addon)}</div>'
+        return f'<div class="{conditional_escape(addon_class)}">{addon_content}</div>'
 
     def get_base_control_attrs(
         self, props: dict[str, Any], state: LabeledInputState, text_input_base_styles: Any
@@ -740,12 +756,11 @@ class UINumberInputRenderer(UITextInputBaseRenderer):
         return mark_safe(f"<input{self.build_attrs_string(attrs)}/>")
 
     def render_addon_after(
-        self, props: dict[str, Any], state: LabeledInputState, text_input_base_styles: Any
+        self, context: Context, props: dict[str, Any], state: LabeledInputState, text_input_base_styles: Any
     ) -> str:
         # The addonAfter container holds the caller addon (if any) followed by the step buttons.
         # When both are absent React returns null so TextInputBase keeps its rounded trailing edge.
-        addon = props.get("addonAfter")
-        addon_content = conditional_escape(addon) if addon else ""
+        addon_content = self.render_addon_content(context, props, "addonAfter")
         step_buttons_html = "" if props.get("hideStepButtons") else self.render_step_buttons(props, state)
         if not addon_content and not step_buttons_html:
             return ""

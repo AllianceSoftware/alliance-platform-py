@@ -182,6 +182,16 @@ class UILabeledInputTestCase(HtmlUIParityTestCase):
         self.assertEqual(caught, [])
         self.assertIn('id="id_colour_helptext">Pick <strong>one</strong></div>', output)
 
+    def test_error_message_accepts_rich_content(self):
+        output, caught = self.render_with_warnings(
+            '{% ui "labeled_input" label="Colour" input_id="id_colour" is_invalid=True error_message=error %}'
+            '<select id="id_colour"></select>{% endui %}',
+            {"error": RenderableContent.from_html("Pick <strong>one</strong>", Origin("test"))},
+        )
+
+        self.assertEqual(caught, [])
+        self.assertIn('id="id_colour_error">Pick <strong>one</strong></div>', output)
+
     def test_props_of_the_control_are_accepted_but_not_rendered(self):
         # A widget template can pass extra_widget_props whole; {% form_input %} adds autoFocus
         output, caught = self.render_with_warnings(

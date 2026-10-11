@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from typing import TYPE_CHECKING
 import warnings
 
 from allianceutils.template import parse_tag_arguments
@@ -16,6 +17,8 @@ from django.template import Origin
 from django.template import TemplateSyntaxError
 from django.template.base import UNKNOWN_SOURCE
 from django.template.base import FilterExpression
+from django.utils.html import conditional_escape
+from django.utils.safestring import SafeString
 
 from alliance_platform.frontend.bundler.context import BundlerAsset
 from alliance_platform.frontend.renderable_content import RenderableContent
@@ -28,11 +31,33 @@ from ...forms.renderers import FormInputContextRenderer
 from .labeled_input import LabeledInputNode
 from .utils import get_module_import_source
 
+if TYPE_CHECKING:
+    from alliance_platform.frontend.html_parser import StrOrPromise
+
 register = template.Library()
 
 
 class _NOT_PROVIDED:
     pass
+
+
+def _content_from_html(
+    html: StrOrPromise, origin: Origin, *, what: str, fallback: str
+) -> str | RenderableContent:
+    """Parse a field's trusted HTML, its help text or an error message, for a widget prop.
+
+    RenderableContent keeps rich values backend neutral: the React {% component %} path converts it
+    to nested React elements, static {% ui %} widgets render it directly. Content that is only text
+    stays a str so widget templates that output the value directly keep working. Parsing ignores
+    invalid HTML, so the content can be empty for non-empty input: that warns, naming ``what``, and
+    returns ``fallback``.
+    """
+    content = RenderableContent.from_html(html, origin)
+    if content.is_empty():
+        warnings.warn(f"Bad {what} on field, likely invalid HTML: {html}")
+        return fallback
+    plain_text = content.as_plain_text()
+    return content if plain_text is None else plain_text
 
 
 class FormInputNode(template.Node, BundlerAsset):
@@ -82,27 +107,24 @@ class FormInputNode(template.Node, BundlerAsset):
                 resolve(self.help_text, context) if self.help_text is not _NOT_PROVIDED else field.help_text
             )
             if help_text:
-                # Help text can be HTML and django docs make it clear this value is not HTML-escaped.
-                # RenderableContent keeps rich values backend neutral: the React {% component %} path
-                # converts it to nested React elements, static {% ui %} widgets render it directly.
-                # Plain text stays a str so widget templates that output the description directly
-                # keep working.
-                original_help_text = help_text
-                content = RenderableContent.from_html(help_text, self.origin)
-                plain_text = content.as_plain_text()
-                if content.is_empty():
-                    # parsing ignores invalid HTML, so this can be empty for non-empty input
-                    help_text = ""
-                    warnings.warn(f"Bad help text on field, likely invalid HTML: {original_help_text}")
-                elif plain_text is not None:
-                    help_text = plain_text
-                else:
-                    help_text = content
+                # Help text can be HTML and django docs make it clear this value is not HTML-escaped
+                help_text = _content_from_html(help_text, self.origin, what="help text", fallback="")
+            errors = [str(error) for error in field.errors]
+            plain_error_message = ", ".join(errors)
+            error_message: str | RenderableContent = plain_error_message
+            if any(isinstance(error, SafeString) for error in errors):
+                # An error marked safe is HTML, as help text is; the others are escaped into it
+                error_message = _content_from_html(
+                    ", ".join(conditional_escape(error) for error in errors),
+                    self.origin,
+                    what="error message",
+                    fallback=plain_error_message,
+                )
             extra_attrs[field.form.renderer.form_input_context_key] = {
                 "raw_value": field.value(),
                 "extra_widget_props": {
                     "label": resolve(self.label, context) if self.label is not _NOT_PROVIDED else field.label,
-                    "errorMessage": ", ".join(str(e) for e in field.errors),
+                    "errorMessage": error_message,
                     "validationState": (
                         "invalid"
                         if field.errors
@@ -318,7 +340,9 @@ def form_input(parser: template.base.Parser, token: template.base.Token):
     HTML in ``help_text`` is supported for both React and static HTML widgets: it is parsed into a
     :class:`~alliance_platform.frontend.renderable_content.RenderableContent` value which the React
     ``{% component %}`` path converts to nested React elements and static ``{% ui %}`` inputs
-    render directly to HTML.
+    render directly to HTML. ``extra_widget_props.errorMessage`` is the field's errors joined with
+    ``", "``: a plain string, unless an error is marked safe (``mark_safe``), when the joined errors
+    are parsed the same way, the safe ones as HTML and the others as escaped text.
     """
     tag_name = token.split_contents()[0]
     args, kwargs, target_var = parse_tag_arguments(parser, token, supports_as=True)

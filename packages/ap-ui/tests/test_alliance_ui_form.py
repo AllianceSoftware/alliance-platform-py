@@ -15,6 +15,7 @@ from allianceutils.tests.util import warning_filter
 import django
 from django import forms
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.forms.renderers import TemplatesSetting
 from django.forms.renderers import get_default_renderer
 from django.template import Context
@@ -24,6 +25,7 @@ from django.template import TemplateDoesNotExist
 from django.test import TestCase
 from django.test import override_settings
 from django.urls import reverse
+from django.utils.safestring import mark_safe
 from test_alliance_platform_ui.factory import UserFactory
 from test_alliance_platform_ui.models import User
 
@@ -50,6 +52,13 @@ class ReactHelpTextForm(forms.Form):
         help_text="Use your <strong>work</strong> email",
         widget=ReactTextInputWidget,
     )
+
+
+class ReactSafeErrorForm(forms.Form):
+    code = forms.CharField(label="Code", widget=ReactTextInputWidget)
+
+    def clean_code(self):
+        raise ValidationError(mark_safe("Use <strong>letters</strong>"))
 
 
 STATIC_FORM_RENDERER = "alliance_platform.ui.forms.renderers.StaticFormRenderer"
@@ -187,6 +196,19 @@ class FormRenderingTestCase(TestCase):
     def test_form_input_html_help_text_react_widget(self):
         """HTML help_text should reach React widgets as nested elements (via RenderableContent)"""
         self.assert_react_help_text_widget()
+
+    def test_form_input_error_marked_safe_react_widget(self):
+        """An error marked safe reaches React widgets as nested elements (via RenderableContent)"""
+        output = run_prettier(
+            self._get_debug_tree(
+                """
+                {% load alliance_platform.form %}
+                {% form my_form %}{% form_input my_form.code %}{% endform %}""",
+                my_form=ReactSafeErrorForm(data={"code": "123"}),
+            )
+        )
+        self.assertIn('errorMessage={["Use ", <strong>letters</strong>]}', output)
+        self.assertIn('validationState="invalid"', output)
 
     @override_settings(FORM_RENDERER=STATIC_FORM_RENDERER)
     def test_static_form_renderer_keeps_a_widget_template_of_its_own(self):

@@ -10,6 +10,7 @@ rendering: text and attribute values are escaped and event handler attributes ar
 from __future__ import annotations
 
 from dataclasses import dataclass
+from decimal import Decimal
 import re
 from typing import Any
 
@@ -65,15 +66,18 @@ def render_content(
 ) -> SafeString:
     """Render a renderable-content prop value to static HTML.
 
-    Accepts ``None``, plain/lazy strings (escaped; ``SafeString`` preserved),
-    :class:`RenderableContent`, and lists/tuples of any of these. Anything unsupported is reported as
-    a ``contract`` diagnostic (see :mod:`~alliance_platform.ui.html_components.diagnostics`) for
-    ``component`` in ``origin`` and renders nothing.
+    Accepts ``None``, plain/lazy strings (escaped; ``SafeString`` preserved), numbers (rendered as
+    text, as React renders them), :class:`RenderableContent`, and lists/tuples of any of these.
+    Anything unsupported is reported as a ``contract`` diagnostic (see
+    :mod:`~alliance_platform.ui.html_components.diagnostics`) for ``component`` in ``origin`` and
+    renders nothing.
     """
     if value is None:
         return mark_safe("")
     if isinstance(value, (str, Promise)):
         # str() evaluates lazy strings; SafeString.__str__ returns itself so safeness is preserved
+        return conditional_escape(str(value))
+    if isinstance(value, (int, float, Decimal)) and not isinstance(value, bool):
         return conditional_escape(str(value))
     prop = _ContentProp(prop_name, component, origin)
     if isinstance(value, RenderableContent):
