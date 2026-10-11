@@ -129,113 +129,8 @@ that names the React tag, for example ``Prop 'selectionMode' will be ignored: ro
 supported by static table components; use {% Table %} instead``. Event handler props (``on_click``
 and other ``on_*`` props) are refused by every static component.
 
-.. list-table::
-    :header-rows: 1
-    :widths: 18 37 10 35
-
-    * - ``{% ui %}`` component
-      - React tag
-      - Children
-      - React-only behaviour
-    * - ``button``
-      - ``{% Button %}``
-      - Yes
-      - Press callbacks (``on_press``)
-    * - ``button_group``
-      - ``{% ButtonGroup %}``
-      - Yes
-      - Event handlers only
-    * - ``icon``
-      - ``{% Icon %}``
-      - No
-      - Event handlers only
-    * - ``inline_alert``
-      - ``{% InlineAlert %}``
-      - Yes
-      - Dismissal (``is_dismissable``, ``on_dismiss``)
-    * - ``pagination``
-      - ``{% Pagination %}``
-      - No
-      - Page-size selection, ``on_page_change`` and other callbacks, client-managed page state,
-        custom item rendering and custom ``breakpoints``
-    * - ``table``
-      - ``{% Table %}``
-      - Yes
-      - Row selection, client-side sorting (``on_sort_change``, ``sort_function``,
-        ``default_sort_order``), ``items`` and ``columns`` collections, keyboard grid and edit
-        mode, ``column_header_element_type``
-    * - ``table_header``
-      - ``{% TableHeader %}``
-      - Yes
-      - ``columns`` collection
-    * - ``table_body``
-      - ``{% TableBody %}``
-      - Yes
-      - ``items`` collection
-    * - ``table_column``
-      - ``{% Column %}``
-      - Yes
-      - Nested columns (``child_columns``)
-    * - ``table_row``
-      - ``{% Row %}``
-      - Yes
-      - Row selection state (``is_selected``, ``is_disabled``)
-    * - ``table_cell``
-      - ``{% Cell %}``
-      - Yes
-      - Event handlers only
-    * - ``menubar``
-      - ``{% Menubar %}``
-      - Yes
-      - ``on_action`` and other callbacks, selection, ``items`` collections, controlled
-        ``expanded_keys``, ``disabled_keys``, ``item_element_type``, overflow into a "More" menu,
-        ``close_on_select``
-    * - ``menubar_item``
-      - ``{% Menubar.Item %}``
-      - Yes
-      - ``on_action``, ``child_items`` collections
-    * - ``menubar_submenu``
-      - ``{% Menubar.SubMenu %}``
-      - Yes
-      - ``on_action``, ``child_items`` collections
-    * - ``menubar_section``
-      - ``{% Menubar.Section %}``
-      - Yes
-      - ``items`` collection
-    * - ``text_input``
-      - ``{% component "@alliancesoftware/ui" "TextInput" %}``
-      - No
-      - Render props (``render_input``), element props and refs (``input_props``,
-        ``input_ref``), client-side validation (``validate``)
-    * - ``number_input``
-      - ``{% component "@alliancesoftware/ui" "NumberInput" %}``
-      - No
-      - As ``text_input``
-    * - ``text_area``
-      - ``{% component "@alliancesoftware/ui" "TextArea" %}``
-      - No
-      - As ``text_input``
-    * - ``labeled_input``
-      - ``{% LabeledInput %}``
-      - Yes
-      - Element props and refs (``label_props``, ``description_props``, ``error_message_props``),
-        a custom label element (``element_type``)
-    * - ``content``
-      - ``{% component "@alliancesoftware/ui" "Content" %}``
-      - Yes
-      - Event handlers only
-    * - ``heading``
-      - ``{% component "@alliancesoftware/ui" "Heading" %}``
-      - Yes
-      - Event handlers only
-    * - ``header``
-      - ``{% component "@alliancesoftware/ui" "Header" %}``
-      - Yes
-      - Event handlers only
-    * - ``footer``
-      - ``{% component "@alliancesoftware/ui" "Footer" %}``
-      - Yes
-      - Event handlers only
+Each component's reference below names its React tag and lists the props it refuses, with the
+reason a report of each gives.
 
 .. _static-component-runtimes:
 
@@ -260,6 +155,11 @@ component's controller imports the component's attach function, such as ``attach
 ``@alliancesoftware/ui/components/menu-bar/Menubar.attach``; it returns the controller the runtime
 created for that root.
 
+Static icons
+~~~~~~~~~~~~
+
+.. ui-component:: icon
+
 Static buttons
 ~~~~~~~~~~~~~~
 
@@ -283,14 +183,17 @@ Nested static icons inherit the same default size as React: ``sm`` and ``md`` bu
 ``size`` overrides the button default. This also applies when a Button inherits its size from a
 ``button_group``.
 
-Static text areas
-~~~~~~~~~~~~~~~~~
+.. ui-component:: button
 
-Static ``text_area`` components match React's compact initial height and grow with their content
-once the static runtime (see :ref:`static-component-runtimes`) has attached. Django widget
-``rows`` and ``cols`` attributes are accepted but omitted so they cannot create a tall first paint.
-Pass an explicit ``height`` for a fixed-height text area; fixed-height instances are not marked for
-the auto-grow runtime.
+Static button groups
+~~~~~~~~~~~~~~~~~~~~
+
+.. ui-component:: button_group
+
+Static text inputs
+~~~~~~~~~~~~~~~~~~
+
+.. ui-component:: text_input
 
 Static number inputs
 ~~~~~~~~~~~~~~~~~~~~
@@ -313,6 +216,19 @@ static Django number widget template can use it without loading the React templa
 A Django ``NumberInput`` widget sets the native ``min`` and ``max`` attributes for a field's
 ``min_value`` and ``max_value``; ``number_input`` takes them as ``min_value`` and ``max_value``, so
 ``props=widget.attrs`` carries them over.
+
+.. ui-component:: number_input
+
+Static text areas
+~~~~~~~~~~~~~~~~~
+
+Static ``text_area`` components match React's compact initial height and grow with their content
+once the static runtime (see :ref:`static-component-runtimes`) has attached. Django widget
+``rows`` and ``cols`` attributes are accepted but omitted so they cannot create a tall first paint.
+Pass an explicit ``height`` for a fixed-height text area; fixed-height instances are not marked for
+the auto-grow runtime.
+
+.. ui-component:: text_area
 
 .. _static-labeled-inputs:
 
@@ -366,6 +282,36 @@ them on the control. For example, the template of a widget class of your own,
       {% include "django/forms/widgets/select.html" %}
     {% endui %}
 
+.. ui-component:: labeled_input
+
+Static inline alerts
+~~~~~~~~~~~~~~~~~~~~
+
+.. ui-component:: inline_alert
+
+Static layout components
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+``{% ui "content" %}``
+^^^^^^^^^^^^^^^^^^^^^^
+
+.. ui-component:: content
+
+``{% ui "heading" %}``
+^^^^^^^^^^^^^^^^^^^^^^
+
+.. ui-component:: heading
+
+``{% ui "header" %}``
+^^^^^^^^^^^^^^^^^^^^^
+
+.. ui-component:: header
+
+``{% ui "footer" %}``
+^^^^^^^^^^^^^^^^^^^^^
+
+.. ui-component:: footer
+
 Static pagination
 ~~~~~~~~~~~~~~~~~
 
@@ -405,6 +351,8 @@ Page-size selection and React callback/state/custom-render APIs are intentionall
 ``default_page``, ``default_page_size``, ``state``, ``render_item``, ``render_item_props`` and
 ``breakpoints`` are reported as :ref:`contract diagnostics <static-component-diagnostics>` and
 ignored. Use a normal GET form beside the pagination when users need to choose a page size.
+
+.. ui-component:: pagination
 
 Static HTML table components
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -472,6 +420,36 @@ Other notable behaviour:
 * Unsupported interactive props (selection, ``on*`` callbacks, ``items``/``columns`` collections)
   are reported as :ref:`contract diagnostics <static-component-diagnostics>` and ignored rather
   than rendering broken interactivity.
+
+``{% ui "table" %}``
+^^^^^^^^^^^^^^^^^^^^
+
+.. ui-component:: table
+
+``{% ui "table_header" %}``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. ui-component:: table_header
+
+``{% ui "table_body" %}``
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. ui-component:: table_body
+
+``{% ui "table_column" %}``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. ui-component:: table_column
+
+``{% ui "table_row" %}``
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. ui-component:: table_row
+
+``{% ui "table_cell" %}``
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. ui-component:: table_cell
 
 Static menubar components
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -605,6 +583,26 @@ Other notable behaviour:
 * A page that inserts menubar markup after it loaded attaches it with ``attachAll(root)``, or calls
   ``observe()`` once to attach inserted markup as it appears; both come from
   ``@alliancesoftware/ui/static-runtime`` (see :ref:`static-component-runtimes`).
+
+``{% ui "menubar" %}``
+^^^^^^^^^^^^^^^^^^^^^^
+
+.. ui-component:: menubar
+
+``{% ui "menubar_item" %}``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. ui-component:: menubar_item
+
+``{% ui "menubar_submenu" %}``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. ui-component:: menubar_submenu
+
+``{% ui "menubar_section" %}``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. ui-component:: menubar_section
 
 .. templatetag:: Button
 

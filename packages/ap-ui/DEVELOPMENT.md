@@ -39,6 +39,8 @@ and tested in `tests/test_static_component_example.py`.
    fixture markup needs the same treatment, then list each difference under the component's
    "Deliberate static-render differences from React" in this file. Unit tests for behaviour the
    fixtures cannot show use the same base, which renders with the real class mappings.
+6. Add a subsection for the component to `docs/templatetags.rst`: prose on its behaviour, if any,
+   then `.. ui-component:: <name>` (see "Component reference docs" below).
 
 ## Diagnostics
 
@@ -129,12 +131,16 @@ and fails when it changes without a version bump.
 
 ## Component reference docs
 
-The `ui-component` Sphinx directive writes a component's reference from its renderer, without
-rendering it. `docs/_doc_utils/ap_ui_component_reference.py` at the repository root reads the
-declarations (`documented_props()`, `prop_rules`, the aliases, `prop_docs`, `has_apui_marker`,
-`runtime_token`, `react_tag`, and `requires_table`/`requires_menubar` for the parent) and writes
-reStructuredText; `docs/_doc_utils/ap_ui_components.py` is the extension `docs/conf.py` loads. The
-Storybook docs ids of the built-ins are in its `BUILT_IN_STORYBOOK_DOCS_IDS`, taken from the story
+The component sections of `docs/templatetags.rst` ("Static icons" to "Static menubar components",
+one per component or family) are the components' reference: each starts with prose on the
+component's behaviour and ends with a `.. ui-component:: <name>` directive per component. The
+directive writes a component's reference from its renderer, without rendering it, so a change to a
+renderer's contract shows there without editing the page.
+`docs/_doc_utils/ap_ui_component_reference.py` at the repository root reads the declarations
+(`documented_props()`, `prop_rules`, the aliases, `prop_docs`, `has_apui_marker`, `runtime_token`,
+`react_tag`, and `requires_table`/`requires_menubar` for the parent) and writes reStructuredText;
+`docs/_doc_utils/ap_ui_components.py` is the extension `docs/conf.py` loads. The Storybook docs ids
+of the built-ins are in the reference module's `BUILT_IN_STORYBOOK_DOCS_IDS`, taken from the story
 titles in the JS repo (`title: 'form/LabeledInput'` is `form-labeledinput`); add one when a new
 component's React component has stories. The reference module imports neither Sphinx nor docutils,
 which the package's test environment does not install, so

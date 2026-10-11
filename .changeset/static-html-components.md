@@ -38,6 +38,9 @@ Static components log template mistakes through the `alliance_platform.ui` logge
 `STATIC_COMPONENT_STRICT` UI setting, which defaults to `DEBUG`, makes them raise
 `StaticComponentContractError` instead.
 
+The `{% ui %}` docs generate each component's reference from its renderer: its props with their
+allowed values and what differs from React, its forwarded attributes and the props it refuses.
+
 A system check reports an installed `@alliancesoftware/ui` or `@alliancesoftware/icons` whose
 `static-contract.json` does not hold the static contract version the renderers support, a missing
 static SVG icon directory and a missing static runtime entry. `extract_frontend_resources` runs the
