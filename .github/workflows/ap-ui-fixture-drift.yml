@@ -8,6 +8,11 @@ on:
       - "packages/ap-ui/scripts/**"
       - ".github/alliance-platform-js-ref"
       - ".github/workflows/ap-ui-fixture-drift.yml"
+  # Nightly against alliance-platform-js main, to catch JS changes that drift from the fixtures.
+  # 18:23 UTC, away from the start of the hour when GitHub delays scheduled runs: 05:23 in
+  # Melbourne during daylight saving (AEDT), 04:23 otherwise (AEST).
+  schedule:
+    - cron: "23 18 * * *"
   workflow_dispatch:
     inputs:
       js_ref:
@@ -29,14 +34,19 @@ jobs:
         uses: actions/checkout@v4
 
       # Cross-repo changes can be tested before the alliance-platform-js side merges by pinning
-      # the ref in .github/alliance-platform-js-ref (reset it to "main" once the JS branch
-      # merges), or by passing the js_ref input on manual runs.
+      # the ref in .github/alliance-platform-js-ref, or by passing the js_ref input on manual
+      # runs. The pin is for pull requests of cross-repo work and is reset to "main" once the JS
+      # branch merges; the nightly run ignores it and always uses main.
       - name: Resolve alliance-platform-js ref
         id: js-ref
         run: |
-          ref="${{ inputs.js_ref }}"
-          if [[ -z "$ref" && -f .github/alliance-platform-js-ref ]]; then
-            ref="$(head -n1 .github/alliance-platform-js-ref | tr -d '[:space:]')"
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            ref="main"
+          else
+            ref="${{ inputs.js_ref }}"
+            if [[ -z "$ref" && -f .github/alliance-platform-js-ref ]]; then
+              ref="$(head -n1 .github/alliance-platform-js-ref | tr -d '[:space:]')"
+            fi
           fi
           ref="${ref:-main}"
           echo "Using alliance-platform-js ref: $ref"
