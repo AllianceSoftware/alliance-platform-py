@@ -614,6 +614,9 @@ class UITextAreaRenderer(UITextInputBaseRenderer):
 class UINumberInputRenderer(UITextInputBaseRenderer):
     name = "number_input"
     react_tag = 'component "@alliancesoftware/ui" "NumberInput"'
+    # Django's NumberInput widget sets the native min and max attributes for a field's min_value and
+    # max_value, as a number input expects them; NumberInput takes them as minValue and maxValue
+    prop_aliases = {"min": "minValue", "max": "maxValue"}
     handled_props = UITextInputBaseRenderer.handled_props | {
         "type",
         "minValue",

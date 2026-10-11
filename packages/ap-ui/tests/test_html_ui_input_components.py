@@ -402,6 +402,20 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         self.assertNotIn("name=", output_without_name)
         self.assertNotIn('type="hidden"', output_without_name)
 
+    def test_number_input_takes_django_min_and_max_attributes(self):
+        # Django's NumberInput widget sets min, max and step for a field's min_value, max_value and
+        # step_size
+        output, caught = self.render_with_warnings(
+            '{% ui "number_input" label="Qty" props=attrs %}',
+            {"attrs": {"min": 0, "max": 10, "step": 2}},
+        )
+        self.assertEqual(caught, [])
+        self.assertIn('data-apui-number-input-min-value="0"', output)
+        self.assertIn('data-apui-number-input-max-value="10"', output)
+        self.assertIn('data-apui-number-input-step="2"', output)
+        self.assertNotIn("min=", output)
+        self.assertNotIn("max=", output)
+
     def test_number_input_zero_value_renders(self):
         output, _ = self.render_with_warnings('{% ui "number_input" label="Qty" name="qty" value=0 %}')
         self.assertRegex(output, r'<input(?=[^>]*type="text")(?=[^>]*name="qty")(?=[^>]*value="0")[^>]*/>')
