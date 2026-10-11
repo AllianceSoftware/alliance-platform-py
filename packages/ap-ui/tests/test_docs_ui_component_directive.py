@@ -33,7 +33,7 @@ component_reference_rst = reference_module.component_reference_rst
 load_registry = reference_module.load_registry
 template_prop_name = reference_module.template_prop_name
 
-STORYBOOK = "https://main--64894ae38875dcf46367336f.chromatic.com/?path=/docs/"
+STORYBOOK = "https://ui.alliance.software/?path=/docs/"
 
 
 def built_in_renderers() -> dict[str, type[BaseHtmlUIComponentRenderer]]:

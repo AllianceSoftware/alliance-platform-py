@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from alliance_platform.ui.html_components.registry import HtmlUIComponentRegistry
 
 #: The React components' documentation, by Storybook docs id
-STORYBOOK_DOCS_URL = "https://main--64894ae38875dcf46367336f.chromatic.com/?path=/docs/{docs_id}--docs"
+STORYBOOK_DOCS_URL = "https://ui.alliance.software/?path=/docs/{docs_id}--docs"
 
 #: The Storybook docs id of the React component each built-in renders, from the story titles in
 #: alliance-platform-js ``apps/stories/src/stories/*.stories.tsx`` (``title: 'ui/Button'`` is

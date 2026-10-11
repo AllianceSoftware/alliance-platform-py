@@ -9,7 +9,7 @@ You can load the tags and filters with:
 
     {% load alliance_platform.ui %}
 
-You can see the main documentation for the Alliance UI components `here <https://main--64894ae38875dcf46367336f.chromatic.com/>`_.
+You can see the main documentation for the Alliance UI components `here <https://ui.alliance.software/>`_.
 Not all components have a tag; you can render them using the :ttag:`component` tag. See the linked documentation
 for the props each component accept as they aren't duplicated in this documentation.
 
@@ -609,7 +609,7 @@ Other notable behaviour:
 ``Button``
 ----------
 
-Render a `Button <https://main--64894ae38875dcf46367336f.chromatic.com/?path=/docs/ui-button--docs>`_ component from the
+Render a `Button <https://ui.alliance.software/?path=/docs/ui-button--docs>`_ component from the
 Alliance UI React library with the specified props.
 
 Usage:
@@ -633,7 +633,7 @@ use ``url`` or ``url_with_perm`` filters:
 ``ButtonGroup``
 ---------------
 
-Render a `ButtonGroup <https://main--64894ae38875dcf46367336f.chromatic.com/?path=/docs/ui-buttongroup--docs>`_ component
+Render a `ButtonGroup <https://ui.alliance.software/?path=/docs/ui-buttongroup--docs>`_ component
 from the Alliance UI React library with the specified props.
 
 The children of the tag should be :ttag:`Button` tags.
@@ -657,7 +657,7 @@ The children of the tag should be :ttag:`Button` tags.
 ``DatePicker``
 ---------------
 
-Render a `DatePicker <https://main--64894ae38875dcf46367336f.chromatic.com/?path=/docs/ui-datepicker--docs>`_ component
+Render a `DatePicker <https://ui.alliance.software/?path=/docs/ui-datepicker--docs>`_ component
 from the Alliance UI React library with the specified props.
 
 This can be used as date picker, or a datetime picker, depending on the specified ``granularity`` (default is "day").
@@ -677,9 +677,9 @@ should be a :class:`python:datetime.date` instance when ``granularity="day"``, o
 ``Icon``
 --------
 
-Render an icon from `@alliancesoftware/icons <https://main--64894ae38875dcf46367336f.chromatic.com/?path=/docs/icons-icons--docs>`_.
+Render an icon from `@alliancesoftware/icons <https://ui.alliance.software/?path=/docs/icons-icons--docs>`_.
 
-See the `list of icons here <https://main--64894ae38875dcf46367336f.chromatic.com/?path=/story/icons-icons--all-icons>`_.
+See the `list of icons here <https://ui.alliance.software/?path=/story/icons-icons--all-icons>`_.
 
 .. code-block:: html+django
 
@@ -698,7 +698,7 @@ It can be passed to other components props by using the ``as <var name>`` form
 ``InlineAlert``
 ---------------
 
-Render an `InlineAlert <https://main--64894ae38875dcf46367336f.chromatic.com/?path=/docs/ui-inlinealert--docs>`_ component
+Render an `InlineAlert <https://ui.alliance.software/?path=/docs/ui-inlinealert--docs>`_ component
 from the Alliance UI React library with the specified props.
 
 .. code-block:: html+django
@@ -711,7 +711,7 @@ from the Alliance UI React library with the specified props.
 ``LabeledInput``
 ----------------
 
-Render an `LabeledInput <https://main--64894ae38875dcf46367336f.chromatic.com/?path=/docs/form-labeledinput--docs>`_ component
+Render an `LabeledInput <https://ui.alliance.software/?path=/docs/form-labeledinput--docs>`_ component
 from the Alliance UI React library with the specified props.
 
 This can be useful with custom widgets that get rendered with :ttag:`form_input` where you want standard rendering
@@ -752,7 +752,7 @@ but wrap it in a ``LabeledInput`` component.
 ``Menubar``
 -----------
 
-Render an `Menubar <https://main--64894ae38875dcf46367336f.chromatic.com/?path=/docs/ui-menubar--docs>`_ component.
+Render an `Menubar <https://ui.alliance.software/?path=/docs/ui-menubar--docs>`_ component.
 
 You can use ``Menubar.Section``, ``Menubar.Item``, and `Menubar.SubMenu`` components to build the menu.
 
@@ -800,7 +800,7 @@ submenu with an icon for the current user's account management link and a logout
 ``Table``
 -----------
 
-Render an `Table <https://main--64894ae38875dcf46367336f.chromatic.com/?path=/docs/ui-table--docs>`_ component.
+Render an `Table <https://ui.alliance.software/?path=/docs/ui-table--docs>`_ component.
 
 You can use ``TableHeader``, ``TableBody``, ``Row``, ``Column`` and ``Cell`` components to build the menu.
 
@@ -880,7 +880,7 @@ See the :ttag:`Table` documentation for an example of how to use this tag.
 ``Pagination``
 --------------
 
-Render an `Pagination <https://main--64894ae38875dcf46367336f.chromatic.com/?path=/docs/ui-pagination--docs>`_ component.
+Render an `Pagination <https://ui.alliance.software/?path=/docs/ui-pagination--docs>`_ component.
 
 Usage:
 
@@ -896,7 +896,7 @@ static ``{% ui "pagination" %}`` renderer documented under the :ttag:`ui` tag.
 ``TimeInput``
 -------------
 
-Render an `TimeInput <https://main--64894ae38875dcf46367336f.chromatic.com/?path=/docs/ui-timeinput--docs>`_ component.
+Render an `TimeInput <https://ui.alliance.software/?path=/docs/ui-timeinput--docs>`_ component.
 
 The value passed to ``default_value`` can be a string, in which case it will be parsed using :func:`~django:django.utils.dateparse.parse_time`,
 otherwise it should be :class:`python:datetime.time` instance.
