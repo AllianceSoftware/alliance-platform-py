@@ -6,6 +6,7 @@ on:
       - "packages/ap-ui/tests/fixtures/ui_html_*_parity.json"
       - "packages/ap-ui/tests/fixtures/css-mappings.json"
       - "packages/ap-ui/scripts/**"
+      - "packages/ap-ui/alliance_platform/ui/html_components/contract.py"
       - ".github/alliance-platform-js-ref"
       - ".github/workflows/ap-ui-fixture-drift.yml"
   # Nightly against alliance-platform-js main, to catch JS changes that drift from the fixtures.
@@ -60,6 +61,35 @@ jobs:
           ref: ${{ steps.js-ref.outputs.ref }}
           ssh-key: ${{ secrets.ALLIANCE_PLATFORM_JS_DEPLOY_KEY }}
           persist-credentials: false
+
+      # The contract version alliance-platform-ui supports must be the one the JS checkout
+      # declares: a JS bump that Python has not followed fails here, nightly against main and on
+      # pull requests against the pinned ref.
+      - name: Check the static contract versions agree
+        run: |
+          python3 - <<'PYEOF'
+          import importlib.util
+          import json
+          import sys
+          from pathlib import Path
+
+          spec = importlib.util.spec_from_file_location(
+              "contract", "packages/ap-ui/alliance_platform/ui/html_components/contract.py"
+          )
+          contract = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(contract)
+          package_dirs = {"@alliancesoftware/ui": "packages/ui", "@alliancesoftware/icons": "packages/icons"}
+          failed = False
+          for package, supported in contract.SUPPORTED_STATIC_CONTRACT_VERSIONS.items():
+              path = Path("alliance-platform-js") / package_dirs[package] / contract.STATIC_CONTRACT_FILE
+              declared = json.loads(path.read_text())["version"]
+              status = "OK" if declared == supported else "MISMATCH"
+              print(f"{status}: {package} declares static contract version {declared}, alliance-platform-ui supports {supported}")
+              failed = failed or declared != supported
+          if failed:
+              print("Raise SUPPORTED_STATIC_CONTRACT_VERSIONS once the renderers match the new contract, or pin the JS ref the Python side supports.")
+              sys.exit(1)
+          PYEOF
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
