@@ -355,6 +355,19 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn("&lt;/textarea&gt;&lt;script&gt;alert(1)&lt;/script&gt;", output)
         self.assertNotIn("</textarea><script>", output)
 
+    def test_text_area_value_keeps_a_leading_line_break(self):
+        # The HTML parser drops a line break that starts a textarea's content
+        for value, content in [
+            ("\nSecond line", "\n\nSecond line"),
+            ("\r\nSecond line", "\n\r\nSecond line"),
+            ("First line\n", "First line\n"),
+        ]:
+            with self.subTest(value=value):
+                output, _ = self.render_with_warnings(
+                    '{% ui "text_area" label="Notes" defaultValue=value %}', {"value": value}
+                )
+                self.assertIn(f'class="TextInputBase_input">{content}</textarea>', output)
+
     def test_text_area_numeric_height_gets_px_suffix(self):
         output, _ = self.render_with_warnings('{% ui "text_area" label="Notes" height=120 %}')
         self.assertIn('style="height: 120px"', output)

@@ -608,6 +608,11 @@ class UITextAreaRenderer(UITextInputBaseRenderer):
         if value is None:
             value = props.get("defaultValue")
         content = conditional_escape(value) if value is not None else ""
+        # The HTML parser drops a line break right after <textarea>, so a value starting with one
+        # gets another in front, as React writes it. A submitted value's line breaks are CRLF, which
+        # the parser reads as one.
+        if content.startswith(("\n", "\r")):
+            content = f"\n{content}"
         return mark_safe(f"<textarea{self.build_attrs_string(attrs)}>{content}</textarea>")
 
 
