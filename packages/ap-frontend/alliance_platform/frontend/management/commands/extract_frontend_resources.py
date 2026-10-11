@@ -6,7 +6,9 @@ import sys
 from typing import Any
 from typing import Collection
 
+from django.core.checks import run_checks
 from django.core.management import BaseCommand
+from django.core.management import CommandError
 from django.core.management.base import OutputWrapper
 from django.template import TemplateSyntaxError
 from django.template.loader import get_template
@@ -14,7 +16,14 @@ from django.template.loader import get_template
 from ...bundler import get_bundler
 from ...bundler.context import BundlerAssetContext
 from ...bundler.context import get_all_templates_files
+from ...checks import FRONTEND_BUILD_CHECK_TAG
 from ...settings import ap_frontend_settings
+
+
+def _path_for_display(path: Path) -> Path:
+    """``path`` relative to the bundler root, or unchanged when it is outside the root"""
+    root_dir = get_bundler().root_dir
+    return path.relative_to(root_dir) if path.is_relative_to(root_dir) else path
 
 
 def extract_resources_from_templates() -> tuple[list[Any], dict[str, Collection[str]], list[str], list[str]]:
@@ -43,7 +52,7 @@ def extract_resources_from_templates() -> tuple[list[Any], dict[str, Collection[
                     breakdown_templates[str(file)] = sorted({str(p.path) for p in template_assets})
             except TemplateSyntaxError:
                 warnings.append(
-                    f"Failed to parse {file.relative_to(get_bundler().root_dir)} - any tags in that file will be ignored"
+                    f"Failed to parse {_path_for_display(file)} - any tags in that file will be ignored"
                 )
         all_resources.update(asset_context.get_resources_for_bundling())
         breakdown["templates"] = dict(sorted(breakdown_templates.items()))
@@ -73,6 +82,10 @@ class Command(BaseCommand):
 
     Outputs a valid JSON dump as an array of string paths to files.
 
+    Before extracting, runs the system checks registered with
+    :data:`~alliance_platform.frontend.checks.FRONTEND_BUILD_CHECK_TAG`, also when ``--skip-checks``
+    is passed, and fails if any reports an error that is not silenced.
+
     Usage::
 
         # Will write data to output.json
@@ -94,6 +107,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, quiet=False, output=None, **kwargs):
+        self.run_build_checks()
         stderr_warn = OutputWrapper(sys.stderr)
         stderr_warn.style_func = self.style.WARNING
         f = io.StringIO()
@@ -112,3 +126,20 @@ class Command(BaseCommand):
                 output_path.write_text(data)
             else:
                 self.stdout.write(data)
+
+    def run_build_checks(self):
+        """Run the system checks tagged :data:`~alliance_platform.frontend.checks.FRONTEND_BUILD_CHECK_TAG`
+
+        Writes the errors that are not silenced to stderr and raises ``CommandError`` if there are any.
+        Warnings and other messages below ``ERROR`` are ignored.
+        """
+        errors = [
+            message
+            for message in run_checks(tags=[FRONTEND_BUILD_CHECK_TAG])
+            if message.is_serious() and not message.is_silenced()
+        ]
+        if errors:
+            self.stderr.write("\n".join(str(message) for message in errors))
+            raise CommandError(
+                f"The system checks tagged '{FRONTEND_BUILD_CHECK_TAG}' reported {len(errors)} error(s)"
+            )

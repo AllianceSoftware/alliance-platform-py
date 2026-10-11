@@ -212,6 +212,23 @@ class TestViteBundlerTestCase(TestCase):
             self.assertEqual("http://localhost:5273/ssr/cancel", bundler.get_ssr_cancel_url())
 
     @override_settings(STATIC_URL="/test-static/")
+    def test_development_javascript_embed_uses_package_resolver_for_node_modules(self):
+        bundler = self.create_bundler(mode="development")
+        bundler.node_modules_dir = settings.PROJECT_DIR / "node_modules"
+        resource = JavascriptResource(
+            bundler.node_modules_dir / "@alliancesoftware/ui/static-runtime.auto.ts"
+        )
+
+        items = bundler.get_embed_items(resource)
+
+        self.assertEqual(len(items), 1)
+        self.assertEqual(
+            items[0].generate_code(html_target_browser),
+            '<script src="http://localhost:5273/redirect-package-url/'
+            '@alliancesoftware/ui/static-runtime.auto.ts" type="module"></script>',
+        )
+
+    @override_settings(STATIC_URL="/test-static/")
     def test_preview_url(self):
         bundler = self.create_bundler(mode="preview")
         self.assertEqual(
@@ -257,6 +274,17 @@ class TestViteBundlerTestCase(TestCase):
                 "http://mycdn.com/static/assets/Button-def456.js",
                 cdn_bundler.get_url(settings.PROJECT_DIR / "components/Button.tsx"),
             )
+
+    def test_production_resource_file_path_uses_manifest_output(self):
+        bundler = self.create_bundler()
+        source_path = settings.PROJECT_DIR / (
+            "node_modules/@alliancesoftware/icons/static-svg/outlined/Pencil01Outlined.svg"
+        )
+
+        self.assertEqual(
+            Path(dirname(__file__)) / "fixtures/build_test/assets/Pencil01Outlined-a1b2c3.svg",
+            bundler.get_resource_file_path(source_path),
+        )
 
     def test_resolve(self):
         root_dir = settings.BASE_DIR

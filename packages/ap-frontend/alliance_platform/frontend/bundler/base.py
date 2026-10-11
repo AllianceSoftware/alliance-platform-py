@@ -130,6 +130,18 @@ class BaseBundler:
         """Return the URL to load the specified asset at ``path``"""
         raise NotImplementedError
 
+    def get_resource_file_path(self, path: Path | str) -> Path:
+        """Return the filesystem path for reading a frontend resource.
+
+        Development bundlers usually return the resolved source file. Production bundlers that emit
+        hashed assets should override this to return the built output file from the manifest.
+        """
+        if not isinstance(path, Path):
+            path = Path(path)
+        if not path.is_absolute():
+            path = self.root_dir / path
+        return self.validate_path(path)
+
     def get_preamble_html(self) -> str:
         """Return preamble that is included in the HTML head
 

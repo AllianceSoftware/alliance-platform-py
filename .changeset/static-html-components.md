@@ -1,0 +1,35 @@
+---
+"alliance-platform-frontend": patch
+"alliance-platform-ui": patch
+---
+
+Add the server-rendered `{% ui %}` component system with parity renderers for icons, buttons, button
+groups, text and number inputs, text areas, inline alerts, Menubars, and tables. The `icon`,
+`pagination`, `text_input`, `number_input` and `text_area` components take no end tag. The
+components support Django-native links and form submission, permission-aware menu pruning,
+backend-driven table sorting, unique input associations, and one external runtime entry, embedded
+once per page, that loads the browser behaviour of Menubars, NumberInputs, text areas and button
+groups on demand. Inline Menubars can optionally persist expanded submenu paths
+in a server-readable cookie so the initial HTML renders without a state flash. Static table sort
+icons remain inline while their SVG files are tracked as build dependencies, avoiding duplicate
+document images.
+
+Static inline alerts wrap loose content automatically and compose with generic content, heading,
+header, and footer renderers for richer layouts. These layout primitives use the same parent-provided
+slot styling contract as their React equivalents. Dismissal callbacks remain a documented React-only
+behaviour.
+
+The dispatcher accepts bulk props through the reserved `props` argument and exports `merge_props` from
+the UI template library. New backend-neutral `RenderableContent` preserves trusted HTML form help text
+for both React and static renderers, while frontend resource resolution now supports reading source and
+production assets required by static icons and component runtimes.
+
+Static components log template mistakes through the `alliance_platform.ui` logger, and the
+`STATIC_COMPONENT_STRICT` UI setting, which defaults to `DEBUG`, makes them raise
+`StaticComponentContractError` instead.
+
+A system check reports an installed `@alliancesoftware/ui` or `@alliancesoftware/icons` whose
+`static-contract.json` does not hold the static contract version the renderers support, a missing
+static SVG icon directory and a missing static runtime entry. `extract_frontend_resources` runs the
+system checks tagged `alliance_platform_frontend_build`, this one included, and fails the build when
+one reports an error.

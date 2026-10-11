@@ -1,0 +1,4 @@
+{% load react %}
+
+{% component "@alliancesoftware/ui" "TextInput" props=widget.attrs|merge_props:extra_widget_props|html_attr_to_jsx type=widget.type name=widget.name default_value=widget.value %}
+{% endcomponent %}

@@ -22,6 +22,521 @@ The Alliance UI template tags serve as a convenient alternative to the :ttag:`co
 template tag, for easily embedding components from the Alliance UI library into Django templates. See the documentation for
 the component tag for instructions on passing arguments and filters.
 
+.. templatetag:: ui
+
+``ui``
+------
+
+Render built-in HTML-only Alliance UI components via a single dispatcher tag.
+
+Usage:
+
+.. code-block:: html+django
+
+    {% ui "button" variant="solid" color="primary" %}Save{% endui %}
+
+Props are written in snake_case, for example ``is_disabled=True`` or ``aria_label="Close"``, and the
+tag converts them to the component's React prop names. The React camelCase spelling
+(``isDisabled=True``) is accepted too, and neither spelling is reported as a diagnostic.
+
+``icon``, ``pagination``, ``text_input``, ``number_input`` and ``text_area`` are leaf components:
+they take no children and are written without ``{% endui %}``:
+
+.. code-block:: html+django
+
+    {% ui "text_input" name="email" label="Email" %}
+
+    {% ui "button" %}{% ui "icon" name="Pencil01Outlined" %}Edit{% endui %}
+
+Nothing after a leaf belongs to it, so an ``{% endui %}`` that follows one closes the enclosing
+component, and at the top level of a template it is a ``TemplateSyntaxError``. Every other built-in
+component takes children and an ``{% endui %}``.
+
+Dynamic component names are supported when you provide a compile-time literal
+whitelist via ``allowed_components``:
+
+.. code-block:: html+django
+
+    {% ui component_name allowed_components="button,button_group" %}
+      {{ label }}
+    {% endui %}
+
+The tag is parsed before the name resolves, so the allowed components must agree on children:
+either all take children, or all are leaves and the tag has no ``{% endui %}``. Mixing them, as in
+``allowed_components="button,icon"``, is a ``TemplateSyntaxError``.
+
+The dispatcher also supports ``as <var>``:
+
+.. code-block:: html+django
+
+    {% ui "button" as save_button_html %}Save{% endui %}
+    {{ save_button_html }}
+
+Projects can register their own components with the dispatcher; see :doc:`static_components`.
+
+Finding legacy component usages
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Run the opt-in migration checker to find React-rendered Alliance UI template components that can
+move to static ``{% ui %}`` renderers:
+
+.. code-block:: console
+
+    python manage.py ui_migration_check
+    python manage.py ui_migration_check templates/ app/templates/navigation.html
+    python manage.py ui_migration_check --strict
+
+With no paths it scans ``settings.BASE_DIR`` recursively for ``.html`` templates. Explicit file or
+directory paths narrow the scan. Virtual environments, ``node_modules``, static/generated build
+directories and common tool cache directories are skipped.
+
+Each finding includes a project-relative file and line number, the legacy source tag/component,
+the suggested static renderer (or native element), and one of these statuses:
+
+* ``READY`` — a static renderer exists and every explicit prop is accepted by its current
+  renderer contract.
+* ``REVIEW`` — migration is available but needs attention, for example because a prop is
+  unsupported, ``props=`` keys are unknowable, or an icon name is dynamic.
+* ``NATIVE`` — a generic intrinsic component such as ``{% component "a" %}`` should become native
+  HTML rather than a static UI renderer. Deferred ``url``/``url_with_perm`` values are marked
+  ``REVIEW`` because native markup does not preserve automatic component omission.
+* ``NO-STATIC-EQUIVALENT`` — the Alliance UI component is recognised but has no static renderer
+  yet.
+
+The suggested tag shows ``{% endui %}`` only for components with children: a button is suggested as
+``{% ui "button" %}...{% endui %}`` and an icon as ``{% ui "icon" %}``.
+
+Findings are informational and the command normally exits successfully. ``--strict`` makes any
+finding produce a nonzero exit status for an explicitly opted-in migration gate. Missing paths and
+template read failures always fail. Generic application component paths are ignored.
+
+React tags
+~~~~~~~~~~
+
+``{% ui %}`` is the default way to render these components. The React-rendered tags are the escape
+hatch: when a page needs a behaviour only React provides, write that component with its React tag
+instead, and a table or menubar together with its parts. ``{% ui %}`` never switches to React by
+itself; a refused prop is reported as a :ref:`contract diagnostic <static-component-diagnostics>`
+that names the React tag, for example ``Prop 'selectionMode' will be ignored: row selection is not
+supported by static table components; use {% Table %} instead``. Event handler props (``on_click``
+and other ``on_*`` props) are refused by every static component.
+
+.. list-table::
+    :header-rows: 1
+    :widths: 18 37 10 35
+
+    * - ``{% ui %}`` component
+      - React tag
+      - Children
+      - React-only behaviour
+    * - ``button``
+      - ``{% Button %}``
+      - Yes
+      - Press callbacks (``on_press``)
+    * - ``button_group``
+      - ``{% ButtonGroup %}``
+      - Yes
+      - Event handlers only
+    * - ``icon``
+      - ``{% Icon %}``
+      - No
+      - Event handlers only
+    * - ``inline_alert``
+      - ``{% InlineAlert %}``
+      - Yes
+      - Dismissal (``is_dismissable``, ``on_dismiss``)
+    * - ``pagination``
+      - ``{% Pagination %}``
+      - No
+      - Page-size selection, ``on_page_change`` and other callbacks, client-managed page state,
+        custom item rendering and custom ``breakpoints``
+    * - ``table``
+      - ``{% Table %}``
+      - Yes
+      - Row selection, client-side sorting (``on_sort_change``, ``sort_function``,
+        ``default_sort_order``), ``items`` and ``columns`` collections, keyboard grid and edit
+        mode, ``column_header_element_type``
+    * - ``table_header``
+      - ``{% TableHeader %}``
+      - Yes
+      - ``columns`` collection
+    * - ``table_body``
+      - ``{% TableBody %}``
+      - Yes
+      - ``items`` collection
+    * - ``table_column``
+      - ``{% Column %}``
+      - Yes
+      - Nested columns (``child_columns``)
+    * - ``table_row``
+      - ``{% Row %}``
+      - Yes
+      - Row selection state (``is_selected``, ``is_disabled``)
+    * - ``table_cell``
+      - ``{% Cell %}``
+      - Yes
+      - Event handlers only
+    * - ``menubar``
+      - ``{% Menubar %}``
+      - Yes
+      - ``on_action`` and other callbacks, selection, ``items`` collections, controlled
+        ``expanded_keys``, ``disabled_keys``, ``item_element_type``, overflow into a "More" menu,
+        ``close_on_select``
+    * - ``menubar_item``
+      - ``{% Menubar.Item %}``
+      - Yes
+      - ``on_action``, ``child_items`` collections
+    * - ``menubar_submenu``
+      - ``{% Menubar.SubMenu %}``
+      - Yes
+      - ``on_action``, ``child_items`` collections
+    * - ``menubar_section``
+      - ``{% Menubar.Section %}``
+      - Yes
+      - ``items`` collection
+    * - ``text_input``
+      - ``{% component "@alliancesoftware/ui" "TextInput" %}``
+      - No
+      - Render props (``render_input``), element props and refs (``input_props``,
+        ``input_ref``), client-side validation (``validate``)
+    * - ``number_input``
+      - ``{% component "@alliancesoftware/ui" "NumberInput" %}``
+      - No
+      - As ``text_input``
+    * - ``text_area``
+      - ``{% component "@alliancesoftware/ui" "TextArea" %}``
+      - No
+      - As ``text_input``
+    * - ``content``
+      - ``{% component "@alliancesoftware/ui" "Content" %}``
+      - Yes
+      - Event handlers only
+    * - ``heading``
+      - ``{% component "@alliancesoftware/ui" "Heading" %}``
+      - Yes
+      - Event handlers only
+    * - ``header``
+      - ``{% component "@alliancesoftware/ui" "Header" %}``
+      - Yes
+      - Event handlers only
+    * - ``footer``
+      - ``{% component "@alliancesoftware/ui" "Footer" %}``
+      - Yes
+      - Event handlers only
+
+.. _static-component-runtimes:
+
+Static component runtimes
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``menubar``, ``number_input``, ``text_area`` and ``button_group`` get their browser behaviour from
+small runtimes in ``@alliancesoftware/ui`` rather than React. Each marks its root with the token of
+its runtime in a ``data-apui-attach`` attribute and lists the static runtime entry,
+``@alliancesoftware/ui/static-runtime.auto.ts``, as a resource, so
+``{% bundler_embed_collected_assets %}`` embeds that one module once per page however many
+components the page has. No inline script is rendered. When the module loads it attaches the
+runtimes of the marked roots, downloading a component's runtime only when the page has that
+component, and dispatches a bubbling ``apui:attached`` event on each root it attached. The entry is
+required: if the installed ``@alliancesoftware/ui`` does not have it, rendering raises a
+``TemplateSyntaxError`` asking you to upgrade it.
+
+A page that inserts static markup after load, for example from a fetched fragment, attaches it
+with ``attachAll(root)`` from ``@alliancesoftware/ui/static-runtime``, or calls ``observe()`` from
+the same module once to attach inserted markup as it appears. Application code that needs a
+component's controller imports the component's attach function, such as ``attachMenubar`` from
+``@alliancesoftware/ui/components/menu-bar/Menubar.attach``; it returns the controller the runtime
+created for that root.
+
+Static buttons
+~~~~~~~~~~~~~~
+
+Static ``button`` components automatically emit ``data-icon-only="true"`` when their only direct
+child is an ``icon``. When the icon-only visual contains multiple wrappers (for example separate
+open and closed state icons), pass ``is_icon_only=True`` explicitly. This is the template-facing
+form of the Alliance UI ``isIconOnly`` prop. Icon-only buttons must have an accessible label:
+
+.. code-block:: html+django
+
+    {% ui "button" is_icon_only=True aria_label="Toggle navigation" %}
+      <span data-state="closed">{% ui "icon" name="Menu01Outlined" %}</span>
+      <span data-state="open">{% ui "icon" name="XCloseOutlined" %}</span>
+    {% endui %}
+
+A disabled button with ``href`` (``is_disabled=True``) renders without the ``href`` and with
+``aria-disabled="true"``, so the link cannot navigate even without JavaScript.
+
+Nested static icons inherit the same default size as React: ``sm`` and ``md`` buttons use ``xxs``
+(16px) icons, while ``lg``, ``xl`` and ``2xl`` buttons use ``xs`` (24px) icons. An explicit icon
+``size`` overrides the button default. This also applies when a Button inherits its size from a
+``button_group``.
+
+Static text areas
+~~~~~~~~~~~~~~~~~
+
+Static ``text_area`` components match React's compact initial height and grow with their content
+once the static runtime (see :ref:`static-component-runtimes`) has attached. Django widget
+``rows`` and ``cols`` attributes are accepted but omitted so they cannot create a tall first paint.
+Pass an explicit ``height`` for a fixed-height text area; fixed-height instances are not marked for
+the auto-grow runtime.
+
+Static number inputs
+~~~~~~~~~~~~~~~~~~~~
+
+Without JavaScript, a static ``number_input`` submits the unformatted number the user typed. Once
+the static runtime (see :ref:`static-component-runtimes`) has attached, the visible field shows
+locale formatting while a hidden field created by the runtime carries the numeric value.
+
+Static ``number_input`` components treat numeric NaN values as empty. This includes both Python
+``float`` and ``Decimal`` NaN values, so the ``none_as_nan`` compatibility value used by legacy
+Django number widgets does not appear as ``nan`` in the visible input or runtime initial value, and
+is never submitted. Zero and finite numeric values retain their normal string representation.
+The ``none_as_nan`` filter is available directly from ``{% load alliance_platform.ui %}``, so a
+static Django number widget template can use it without loading the React template library:
+
+.. code-block:: html+django
+
+    {% ui "number_input" name=widget.name default_value=widget.value|none_as_nan %}
+
+Static pagination
+~~~~~~~~~~~~~~~~~
+
+``{% ui "pagination" %}`` renders the Alliance UI pagination structure as static HTML links. It
+uses the current request path and preserves unrelated query parameters, so it is suitable for
+Django ``Paginator`` results without a client-side state layer:
+
+.. code-block:: html+django
+
+    {% ui "pagination" page=page_obj.number total=paginator.count page_size=paginator.per_page boundary_count=2 sibling_count=1 aria_label="Pagination" %}
+
+The default page query parameter is ``page``. Page 1 removes that parameter instead of rendering
+``?page=1``. Custom parameter names can be supplied with ``page_query_param`` and
+``page_size_query_param``. Because page-size selection is not available in the static renderer,
+the configured page-size parameter is removed from navigation links, matching
+``renderPaginationItemAsLink`` when ``isPageSizeSelectable`` is false.
+
+Both ``variant="default"`` and ``variant="compact"`` and the ``sm``/``md`` sizes use the React
+component's styles. Static pagination precomputes page ranges for the React defaults and uses
+container queries to select sibling/boundary counts of 1/1 at 620px and 1/0 at 450px, providing
+responsive behaviour without JavaScript. Custom ``breakpoints`` remain unsupported.
+Previous and next controls at the range limits, and every control when ``is_disabled=True``, omit
+``href`` and render ``aria-disabled="true"`` with ``tabindex="-1"`` so they are noninteractive
+without relying on React's event handling.
+
+The result can be captured and passed directly to a static table footer:
+
+.. code-block:: html+django
+
+    {% ui "pagination" page=page_obj.number total=paginator.count page_size=paginator.per_page aria_label="Pagination" as pagination %}
+    {% ui "table" aria_label="Users" footer=pagination %}
+      {# table header and body #}
+    {% endui %}
+
+Page-size selection and React callback/state/custom-render APIs are intentionally unsupported.
+``is_page_size_selectable``, ``page_sizes``, ``on_page_change``, ``on_page_size_change``,
+``default_page``, ``default_page_size``, ``state``, ``render_item``, ``render_item_props`` and
+``breakpoints`` are reported as :ref:`contract diagnostics <static-component-diagnostics>` and
+ignored. Use a normal GET form beside the pagination when users need to choose a page size.
+
+Static HTML table components
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``{% ui "table" %}`` and its child components render the Alliance UI table as static HTML — the
+same visual classes and state data attributes as the React ``Table``, but with no JavaScript
+runtime. Use it for read-only list views (the common CRUD case) where sorting happens on the
+backend through normal links. Row selection, client-side sorting and the interactive keyboard
+grid behaviour are **not** supported — use the React-backed :ttag:`Table` tag when you need
+those.
+
+The available components are ``table``, ``table_header``, ``table_body``, ``table_column``,
+``table_row`` and ``table_cell``. A CRUD list view with backend sorting looks like:
+
+.. code-block:: html+django
+
+    {% load alliance_platform.ui %}
+
+    {% ui "table" aria_label="User list" sort_order=request|table_sort_order:"order" sort_query_param="order" sort_mode="multiple" sort_behavior="toggle" %}
+      {% ui "table_header" %}
+        {% ui "table_column" key="name" allows_sorting=True %}Name{% endui %}
+        {% ui "table_column" key="email" allows_sorting=True %}Email{% endui %}
+        {% ui "table_column" key="active" align="center" %}Active{% endui %}
+        {% ui "table_column" hide_header=True width=96 %}Actions{% endui %}
+      {% endui %}
+      {% ui "table_body" %}
+        {% for obj in object_list %}
+          {% ui "table_row" key=obj.pk %}
+            {% ui "table_cell" %}{{ obj.name }}{% endui %}
+            {% ui "table_cell" %}{{ obj.email }}{% endui %}
+            {% ui "table_cell" %}{{ obj.is_active }}{% endui %}
+            {% ui "table_cell" %}{# action buttons #}{% endui %}
+          {% endui %}
+        {% endfor %}
+      {% endui %}
+    {% endui %}
+
+Sortable columns (``allows_sorting=True`` with a ``key``) render their header content as a link
+that updates the table's sort query parameter (``sort_query_param``, default ``"ordering"``),
+preserving all other query parameters. :tfilter:`table_sort_order` extracts the current order
+from the request in the format ``sort_order`` expects. Each click cycles the column through
+ascending → descending → unsorted. With ``sort_mode="single"`` (the default) sorting by a column
+replaces any other sorting; with ``sort_mode="multiple"`` and ``sort_behavior="toggle"`` other
+columns are preserved, while ``sort_behavior="replace"`` replaces them (the React ctrl/cmd-click
+multi-sort has no static equivalent). ``request`` must be available in the template context for
+link generation; alternatively pass an explicit URL when it is computed elsewhere:
+
+.. code-block:: html+django
+
+    {% ui "table_column" allows_sorting=True sort_href="?order=-created_at" sort_direction="descending" %}
+      Created
+    {% endui %}
+
+Other notable behaviour:
+
+* The first column is treated as the row header for accessibility: its cells render as
+  ``<th scope="row">``, styled like the other cells of their row. Set ``is_row_header=True`` on one
+  or more columns to override this.
+* ``table_cell`` inherits alignment and row-header status from the ``table_column`` at the same
+  position, so alignment is set once on the column.
+* An empty ``table_body`` renders a "No results" empty state spanning all columns. Customise it
+  with ``empty_state="..."`` or disable it with ``empty_state=False``.
+* ``header``/``footer`` content (e.g. a heading or pagination) can be passed to ``table`` and is
+  rendered above/below the scrollable table area.
+* Unsupported interactive props (selection, ``on*`` callbacks, ``items``/``columns`` collections)
+  are reported as :ref:`contract diagnostics <static-component-diagnostics>` and ignored rather
+  than rendering broken interactivity.
+
+Static menubar components
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``{% ui "menubar" %}`` and its child components render the Alliance UI ``Menubar`` as static
+HTML with the same visual classes, layout and state data attributes as the React component.
+Links are real ``<a href>`` elements and form actions are real ``<button>`` elements, so
+top-level navigation works even with JavaScript disabled; a small standalone runtime (attached by
+the static runtime entry, see :ref:`static-component-runtimes`; no inline script and no React) adds
+the dropdown behaviour: opening/closing submenus, keyboard navigation with roving tabindex,
+Escape/outside-click handling, typeahead and viewport-aware flyout positioning.
+
+Use it for server-rendered navigation menus. Use the React-backed :ttag:`Menubar` tag instead
+when you need client-side callbacks (``on_action``), selection state, dynamic ``items``
+collections or automatic width overflow into a "More" menu — none of those are supported by the
+static path.
+
+The available components are ``menubar``, ``menubar_item``, ``menubar_submenu`` and
+``menubar_section``. A primary navigation menu with permission-based links looks like:
+
+.. code-block:: html+django
+
+    {% load alliance_platform.ui %}
+
+    {# Logout should occur via POST: submitted by the button item below #}
+    <form method="post" action="{% url 'logout' %}" id="logout-form">
+      {% csrf_token %}
+    </form>
+
+    {% ui "menubar" aria_label="Primary navigation" layout="horizontal" %}
+      {% ui "menubar_item" href="my_app:dashboard"|url_with_perm %}Dashboard{% endui %}
+
+      {% ui "menubar_submenu" key="users" title="Users" %}
+        {% ui "menubar_item" href="my_app:adminprofile_list"|url_with_perm %}Admin{% endui %}
+        {% ui "menubar_item" href="my_app:client_list"|url_with_perm %}Clients{% endui %}
+      {% endui %}
+
+      {% ui "menubar_item" href="my_app:audit_logs"|url_with_perm %}Audit{% endui %}
+
+      {% ui "menubar_section" %}
+        {% ui "menubar_submenu" key="manage" title="Manage" %}
+          {% ui "menubar_item" href="my_app:personal-account"|url_with_perm %}My Account{% endui %}
+          {% ui "menubar_item" element_type="button" type="submit" form="logout-form" %}Logout{% endui %}
+        {% endui %}
+      {% endui %}
+    {% endui %}
+
+Permission pruning happens automatically: a link whose :tfilter:`url_with_perm` check fails
+renders nothing, a submenu or section whose visible children were all denied is hidden too
+(pass ``hide_when_empty=False`` to keep it), and a menubar with no visible children renders
+nothing at all (pass ``render_when_empty=True`` to keep it). In the example above the whole
+Users menu disappears for users who can access neither list, without any extra template logic.
+
+Menubar children compose across normal Django includes, including ``include ... only``. This is
+the supported way to reuse groups of navigation items without duplicating their markup:
+
+.. code-block:: html+django
+
+    {% ui "menubar" aria_label="Primary navigation" %}
+      {% include "navigation/account_items.html" only %}
+    {% endui %}
+
+``account_items.html`` can contain ``menubar_item``, ``menubar_submenu`` and
+``menubar_section`` components directly; they retain the enclosing menu's pruning, current-item,
+nesting and keyboard state.
+
+Use the first-class ``icon`` prop for safe icon-plus-text submenu or section titles. Icon names
+must be static string literals so their SVGs can be discovered for production builds:
+
+.. code-block:: html+django
+
+    {% ui "menubar_submenu" key="manage" title="Manage" icon="Settings01Outlined" %}
+      {% ui "menubar_item" href="my_app:settings"|url_with_perm %}Settings{% endui %}
+    {% endui %}
+
+    {% ui "menubar_section" title="Account" icon="User01Outlined" heading_id="account-heading" %}
+      {% ui "menubar_item" href="my_app:profile"|url_with_perm %}Profile{% endui %}
+    {% endui %}
+
+``heading_id`` is optional; generated heading and submenu popup IDs are document-unique even when
+the same partial is included more than once. Submenu popup IDs are derived from the slugified
+``key`` (``key="Waste Streams"`` gives ``apui-menu-waste-streams``), falling back to a generated
+ID when the key has no slug.
+
+Other notable behaviour:
+
+* ``layout`` can be ``"horizontal"`` (default), ``"vertical"`` or ``"inline"``. Horizontal and
+  vertical menus open submenus in viewport-aware flyout popovers; inline menus expand submenus in
+  place. Application code that changes the layout gets the menu's controller from the public,
+  idempotent ``attachMenubar(root)`` in ``Menubar.attach.ts``, which returns the controller the
+  runtime created without duplicating listeners.
+* ``root_item_display`` can be ``"icon-and-label"`` (default) or ``"icon-only"``. Icon-only
+  presentation applies only to icon-bearing root items: their label remains in the DOM for
+  accessibility and typeahead, and the renderer adds an ``aria-hidden`` visual tooltip. Root
+  items without a leading icon keep their visible label. The runtime controller's
+  ``setRootItemDisplay()`` method can switch the same rendered menu between these modes.
+* Set ``is_current=True`` on the item for the current page: it renders ``aria-current="page"``
+  (override with ``aria_current``) plus a ``data-current="true"`` attribute that also propagates
+  to ancestor submenu triggers and sections for styling active trails.
+* ``default_expanded_keys`` (list or comma-separated string of submenu ``key`` values) renders
+  those submenus open initially — also useful as a no-JS fallback for inline menus.
+* ``expanded_keys_storage_key`` opts an inline menu into saving its expanded submenu keys in
+  a cookie. When ``request`` is available in the template context, the renderer applies that cookie
+  to the original HTML response so reloads do not flash the default state before attachment. Stored
+  state takes precedence over ``default_expanded_keys``. Stale keys are removed automatically,
+  nested stored keys reopen their ancestor path, and an application can temporarily switch the
+  runtime controller to a flyout layout without losing the saved inline state. Use a distinct,
+  valid cookie name for each independently persisted menu (letters, numbers, hyphens and
+  underscores are recommended). The cookie is available across the site, lasts one year and uses
+  ``SameSite=Lax``; HTTPS pages also mark it ``Secure``.
+* Submenu ``title`` accepts plain text; pass ``text_value`` whenever the title or an item's
+  content is not plain text so the item has an accessible label (and typeahead works).
+  Prefer the ``icon`` prop above for the common icon-plus-text title rather than concatenating
+  marked-safe HTML.
+* Disabled items (``is_disabled=True``) render with ``aria-disabled="true"`` (anchors become
+  non-navigable ``<div>`` elements, matching React) and are skipped by keyboard navigation.
+* Unsupported interactive props (``on_action`` and other callbacks, selection props, ``items``
+  collections, overflow props) are reported as :ref:`contract diagnostics
+  <static-component-diagnostics>` and ignored rather than rendering broken interactivity.
+* JavaScript is required for the dropdown interactivity only; closed submenu contents are
+  rendered hidden in the page and links inside them still work once opened.
+* The renderer emits one menu tree whose root can be passed directly to ``attachMenubar(root)``
+  from ``@alliancesoftware/ui/components/menu-bar/Menubar.attach``. The returned controller
+  supports ``setLayout("horizontal" | "vertical" | "inline")`` for responsive layout changes
+  without rendering a second menu. The runtime updates ``data-layout``, ``data-orientation`` and
+  ``aria-orientation`` in place. Submenus keep one stable popover/inner/menu subtree in every
+  layout; inline CSS presents that subtree in place, while a later vertical or horizontal layout
+  can position the same submenu as a flyout.
+  ``setRootItemDisplay("icon-and-label" | "icon-only")`` independently changes root-item
+  presentation on that same tree.
+* A page that inserts menubar markup after it loaded attaches it with ``attachAll(root)``, or calls
+  ``observe()`` once to attach inserted markup as it appears; both come from
+  ``@alliancesoftware/ui/static-runtime`` (see :ref:`static-component-runtimes`).
+
 .. templatetag:: Button
 
 ``Button``
@@ -173,6 +688,10 @@ Render an `Menubar <https://main--64894ae38875dcf46367336f.chromatic.com/?path=/
 
 You can use ``Menubar.Section``, ``Menubar.Item``, and `Menubar.SubMenu`` components to build the menu.
 
+For navigation menus that don't need client-side callbacks, selection or overflow handling,
+consider the static ``{% ui "menubar" %}`` components instead (see
+`Static menubar components`_) — they render the same markup server-side without React.
+
 Here is a fully featured example that renders a Users section, followed by a link to an Audit logs page, and finally a
 submenu with an icon for the current user's account management link and a logout button that submits a logout form.
 
@@ -216,6 +735,13 @@ submenu with an icon for the current user's account management link and a logout
 Render an `Table <https://main--64894ae38875dcf46367336f.chromatic.com/?path=/docs/ui-table--docs>`_ component.
 
 You can use ``TableHeader``, ``TableBody``, ``Row``, ``Column`` and ``Cell`` components to build the menu.
+
+.. note::
+
+    For read-only list views that only need backend sort links there is also a static HTML
+    implementation with no JavaScript runtime — see `Static HTML table components`_ under the
+    :ttag:`ui` tag. Use this React-backed tag when you need row selection or the interactive
+    keyboard grid behaviour.
 
 This example renders a list of records, and allows sorting of columns by clicking on the column headers. This makes
 use of the :tfilter:`table_sort_order` filter to determine the current sort order of the column and pass it through
@@ -293,6 +819,9 @@ Usage:
 .. code-block:: html+django
 
     {% Pagination page=1 total=100 page_size=10 boundary_count=2 sibling_count=1 aria-label="Pagination" is_page_size_selectable=True %}{% endPagination %}
+
+For request-driven pagination that does not need React callbacks or page-size selection, prefer the
+static ``{% ui "pagination" %}`` renderer documented under the :ttag:`ui` tag.
 
 .. templatetag:: TimeInput
 
@@ -385,7 +914,12 @@ This tag set's two extra template variables to be used by the widget template:
   as defined on ``field.errors``.
 - ``validationState`` - ``"invalid"`` where there is an error, otherwise ``"valid"`` depending on the value of ``show_valid_state`` option
 - ``is_required`` - whether the field is required. This is based on the ``required`` attribute on the form field unless overridden with the ``is_required`` option to this tag.
-- ``description`` - the help text for the field. You can explicitly specify this with the ``help_text`` option, otherwise the ``field.help_text`` value will be used.
+- ``description`` - renderable content generated from the help text for the field. You can explicitly specify this with
+  the ``help_text`` option, otherwise the ``field.help_text`` value will be used. Plain text help is passed through as a
+  string; help text containing HTML becomes a ``RenderableContent`` value
+  (``alliance_platform.frontend.renderable_content``) which both the React ``{% component %}`` path and static
+  ``{% ui %}`` input widgets know how to render. Widget templates should pass it through as a prop rather than
+  outputting it directly.
 - ``autoFocus`` - whether the field should be focused on page load. This is set based on the ``auto_focus`` option to the parent ``form`` tag.
 
 The following options can be passed to the tag to override defaults:
@@ -403,7 +937,7 @@ addon for an ``alliance_platform.ui`` ``TextInput`` you could do the following:
 
 .. code-block:: html+django
 
-    {% form_input field addonBefore="$" %}
+    {% form_input field addon_before="$" %}
 
 Note that the attributes supported here depend entirely on the widget. If the widget is a React component, you
 can also pass react components to the tag:
@@ -411,15 +945,25 @@ can also pass react components to the tag:
 .. code-block:: html+django
 
     {% Icon "SearchOutlined" as search_icon %}
-    {% form_input field addonBefore=search_icon %}
+    {% form_input field addon_before=search_icon %}
 
 The additional props are added to the key ``extra_widget_props`` - so the relevant widget template needs to include
-this for the props to be passed through:
+this for the props to be passed through. For a React component widget:
 
 .. code-block:: html+django
 
     {% component "@alliancesoftware/ui" "TextInput" props=widget.attrs|merge_props:extra_widget_props|html_attr_to_jsx type=widget.type name=widget.name default_value=widget.value %}
     {% endcomponent %}
+
+or for a static HTML widget rendered with the ``{% ui %}`` dispatcher (which converts HTML attribute names itself,
+so ``html_attr_to_jsx`` is not needed):
+
+.. code-block:: html+django
+
+    {% ui "text_input" props=widget.attrs|merge_props:extra_widget_props type=widget.type name=widget.name default_value=widget.value %}
+
+HTML in ``help_text`` is supported by both widget styles - the React path receives it as nested React elements while
+static ``{% ui %}`` inputs render it directly as HTML (dropping any inline event handler attributes).
 
 .. note::
 

@@ -9,7 +9,9 @@ from alliance_platform.frontend.templatetags.react import ComponentSourceCodeGen
 from alliance_platform.ui.forms.renderers import form_input_context_key
 from allianceutils.auth.permission import AmbiguousGlobalPermissionWarning
 from allianceutils.tests.util import warning_filter
+import django
 from django import forms
+from django.forms.renderers import get_default_renderer
 from django.template import Context
 from django.template import Template
 from django.test import TestCase
@@ -30,10 +32,32 @@ class TestForm(forms.Form):
     second_name = forms.CharField(label="Last name", max_length=100)
 
 
+class ReactTextInputWidget(forms.TextInput):
+    template_name = "test_widgets/react_text_input.html"
+
+
+class ReactHelpTextForm(forms.Form):
+    email = forms.EmailField(
+        label="Email",
+        help_text="Use your <strong>work</strong> email",
+        widget=ReactTextInputWidget,
+    )
+
+
 test_development_bundler = TestViteBundler(
     **bundler_kwargs,  # type: ignore[arg-type]
     mode="development",
 )
+
+
+def clear_default_renderer_cache() -> None:
+    """Clear the ``lru_cache`` on ``get_default_renderer()``.
+
+    Django 4.2 does not clear it when ``FORM_RENDERER`` is overridden (5.0+ does), so a renderer
+    cached by an earlier test would leak into tests that override ``FORM_RENDERER``.
+    """
+    # django-stubs types get_default_renderer without its lru_cache wrapper
+    get_default_renderer.cache_clear()  # type: ignore[attr-defined]
 
 
 @override_ap_frontend_settings(
@@ -47,6 +71,8 @@ class FormRenderingTestCase(TestCase):
     PERM = "test_utils.link_is_allowed"
 
     def setUp(self) -> None:
+        # Cleared on both sides of each test so no test sees a renderer cached by another
+        clear_default_renderer_cache()
         self.bundler_context = BundlerAssetContext(
             frontend_resource_registry=bypass_frontend_resource_registry, skip_checks=True
         )
@@ -64,6 +90,7 @@ class FormRenderingTestCase(TestCase):
 
     def tearDown(self):
         self.bundler_context.__exit__(None, None, None)
+        clear_default_renderer_cache()
 
     def _get_debug_tree(self, template_contents: str, **kwargs: dict):
         def patch_debug_tree(self, props: ComponentProps, include_template_origin=True):
@@ -113,12 +140,6 @@ class FormRenderingTestCase(TestCase):
                 ):
                     self.client.get(reverse("update_user", kwargs={"pk": user.pk}), follow=True)
 
-        # IMPORTANT: Clear the form renderer cache after overriding settings
-        # Django 4.2+ caches the renderer with @lru_cache which persists across tests
-        from django.forms.renderers import get_default_renderer
-
-        get_default_renderer.cache_clear()
-
     def test_renderer_handles_context_key(self):
         user = self.get_user()
         response = self.client.get(reverse("update_user", kwargs={"pk": user.pk}), follow=True)
@@ -129,6 +150,32 @@ class FormRenderingTestCase(TestCase):
                 self.assertFalse(form_input_context_key in context_dict["widget"]["attrs"])
                 # check that context information has been added to top level context
                 self.assertTrue("extra_widget_props" in context_dict)
+
+    def test_form_input_html_help_text_react_widget(self):
+        """HTML help_text should reach React widgets as nested elements (via RenderableContent)"""
+        # Django only links help text to the widget through aria-describedby from 5.0
+        help_text_attrs = 'aria-describedby="id_email_helptext"' if django.VERSION >= (5, 0) else ""
+        self.assertComponentEqual(
+            """
+            {% load alliance_platform.form %}
+            {% form my_form %}{% form_input my_form.email %}{% endform %}""",
+            """<TextInput
+              type="text"
+              name="email"
+              defaultValue={null}
+              maxLength="320"
+              required={true}
+              %(help_text_attrs)s
+              id="id_email"
+              label="Email"
+              errorMessage=""
+              validationState={null}
+              description={["Use your ", <strong>work</strong>, " email"]}
+              isRequired={true}
+            />"""
+            % {"help_text_attrs": help_text_attrs},
+            my_form=ReactHelpTextForm(),
+        )
 
     def test_html_form_nested_components(self):
         """Test that everything in a {% form %} tag is rendered as expected when nested within a component"""
