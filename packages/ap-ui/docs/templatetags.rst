@@ -711,7 +711,7 @@ from the Alliance UI React library with the specified props.
 ``LabeledInput``
 ----------------
 
-Render an `LabeledInput <https://main--64894ae38875dcf46367336f.chromatic.com/?path=/docs/ui-labeledinput--docs>`_ component
+Render an `LabeledInput <https://main--64894ae38875dcf46367336f.chromatic.com/?path=/docs/form-labeledinput--docs>`_ component
 from the Alliance UI React library with the specified props.
 
 This can be useful with custom widgets that get rendered with :ttag:`form_input` where you want standard rendering
