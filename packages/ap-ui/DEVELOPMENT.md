@@ -115,7 +115,12 @@ the npm version (the rule is in the header comments of `packages/ui/static-runti
 supported version. The fixture drift workflow also runs nightly against alliance-platform-js
 `main`, ignoring the `.github/alliance-platform-js-ref` pin, so a merged JS change that alters the
 markup or class mappings without the matching change here fails it within a day. Pull requests of
-cross-repo work pin the JS branch in that file until it merges (see "CI fixture drift check").
+cross-repo work pin the JS branch in that file until it merges (see "CI fixture drift check"). The same
+workflow compares the JS checkout's `static-contract.json` versions with
+`SUPPORTED_STATIC_CONTRACT_VERSIONS` on every run, so a JS bump that Python has not followed fails
+it too, and the JS repo's `packages/ui/tests/static-contract.test.ts` compares the contract surface
+(part-class keys, attribute selectors, runtime tokens, static SVG styles) with a committed snapshot
+and fails when it changes without a version bump.
 
 ## Input components (`text_input`, `number_input`, `text_area`)
 
