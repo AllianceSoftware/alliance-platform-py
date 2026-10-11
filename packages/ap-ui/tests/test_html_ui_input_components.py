@@ -231,6 +231,35 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn('for="custom-id"', output)
         self.assertNotIn("apui-text-input", output)
 
+    def test_given_id_names_the_help_text_and_error_message_after_it(self):
+        # As Django names a form field's, so the aria-describedby Django 5.0+ gives a widget
+        # points at them
+        for component in ("text_input", "number_input", "text_area"):
+            with self.subTest(component=component):
+                described, caught = self.render_with_warnings(
+                    f'{{% ui "{component}" label="Field" id="id_field" description="Help" %}}'
+                )
+                invalid, _ = self.render_with_warnings(
+                    f'{{% ui "{component}" label="Field" id="id_field" description="Help" '
+                    'error_message="Required" is_invalid=True %}'
+                )
+                self.assertEqual(caught, [])
+                self.assertIn('id="id_field_helptext">Help</div>', described)
+                self.assertIn('aria-describedby="id_field_helptext"', described)
+                self.assertIn('id="id_field_error">Required</div>', invalid)
+                self.assertIn('aria-describedby="id_field_error"', invalid)
+                self.assertNotIn('"apui-', described + invalid)
+
+    def test_aria_describedby_lists_each_id_once(self):
+        # Django 5.0+ gives a form widget aria-describedby="<id>_helptext" when it has help text
+        output, caught = self.render_with_warnings(
+            '{% ui "text_input" props=attrs description="Help" %}',
+            {"attrs": {"id": "id_email", "aria-describedby": "id_email_helptext  other", "label": "Email"}},
+        )
+        self.assertEqual(caught, [])
+        self.assertIn('aria-describedby="id_email_helptext other"', output)
+        self.assertIn('id="id_email_helptext">Help</div>', output)
+
     def test_disabled_alias_warns_and_disables(self):
         output, caught = self.render_with_warnings('{% ui "text_input" label="Email" disabled=True %}')
         self.assertIn("You passed 'disabled' - use 'isDisabled' instead", caught)

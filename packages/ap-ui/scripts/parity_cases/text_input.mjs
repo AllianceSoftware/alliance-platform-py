@@ -218,4 +218,21 @@ export const cases = [
     },
     meta: {},
   },
+  {
+    // The error message is named after the given id, as Django names a form field's
+    name: "caller_id_with_error_message",
+    template:
+      '{% ui "text_input" label="Email" id="id_email" validation_state="invalid" error_message="Enter a valid email" description="Your work email" %}',
+    buildElement({ React, components }) {
+      const { TextInput } = components;
+      return React.createElement(TextInput, {
+        label: "Email",
+        id: "id_email",
+        validationState: "invalid",
+        errorMessage: "Enter a valid email",
+        description: "Your work email",
+      });
+    },
+    meta: {},
+  },
 ];

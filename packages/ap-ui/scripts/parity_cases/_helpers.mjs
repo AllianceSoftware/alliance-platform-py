@@ -204,11 +204,58 @@ export function remapReactAriaIds(root, component) {
   }
 }
 
+// A static input given an `id` names its help text `<id>_helptext` and its error message
+// `<id>_error`, as Django names a form field's; react-aria generates those ids. A field's
+// aria-describedby lists react-aria's description slot id, then its error message slot id (both
+// reserved during SSR whether or not they render), then the caller's value, so rename the slot ids
+// that render on a control with a given id to the static names.
+export function nameHelpTextAfterControlId(root) {
+  const presentIds = new Set(
+    elements(root)
+      .map((element) => element.getAttribute("id"))
+      .filter(Boolean)
+  );
+  const renames = new Map();
+  for (const element of elements(root)) {
+    const id = element.getAttribute("id");
+    const describedBy = element.getAttribute("aria-describedby");
+    if (!id || id.startsWith("react-aria-") || describedBy === null) {
+      continue;
+    }
+    const [descriptionId, errorMessageId] = describedBy
+      .split(/\s+/)
+      .filter((token) => token.startsWith("react-aria-"));
+    for (const [slotId, suffix] of [
+      [descriptionId, "helptext"],
+      [errorMessageId, "error"],
+    ]) {
+      if (slotId && presentIds.has(slotId)) {
+        renames.set(slotId, `${id}_${suffix}`);
+      }
+    }
+  }
+  if (!renames.size) {
+    return;
+  }
+  for (const element of elements(root)) {
+    for (const attribute of Array.from(element.attributes)) {
+      const value = attribute.value.replace(
+        /react-aria-[^"'\s]+/g,
+        (token) => renames.get(token) ?? token
+      );
+      if (value !== attribute.value) {
+        element.setAttribute(attribute.name, value);
+      }
+    }
+  }
+}
+
 // react-aria labels fields with both `<label for>` and an `aria-labelledby` id pair and reserves
 // description/error ids that may not render. The static renderers rely on `<label for>` and only
 // reference help text that renders, so drop the generated references and remap the ids that are
 // still referenced. Used by the input components and the table.
 export function normalizeInputComponent(root, component) {
+  nameHelpTextAfterControlId(root);
   for (const element of elements(root)) {
     const labelledBy = element.getAttribute("aria-labelledby");
     if (labelledBy !== null) {

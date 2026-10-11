@@ -110,11 +110,12 @@ class LabeledInputState:
     is_loading: bool
     description: Any
     error_message: Any
-    #: id used on the control; caller supplied or generated when a label is present
+    #: id of the control: the given one, or a generated one when a label needs it
     input_id: str | None = None
     description_id: str | None = None
     error_id: str | None = None
-    #: full aria-describedby value for the control (generated ids plus any caller supplied value)
+    #: full aria-describedby value for the control (the help text and error ids plus any caller
+    #: supplied value, without duplicates)
     described_by: str | None = None
 
     @property
@@ -133,6 +134,10 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
     Mirrors ``LabeledInput.tsx`` (plus the default ``FormSection`` layout it renders through) from
     ``@alliancesoftware/ui``: an outer wrapper containing the label, the input slot and the help
     text/error message, with state expressed through data attributes.
+
+    A given control id names the help text ``<id>_helptext`` and the error message ``<id>_error``,
+    as Django names a form field's, so the ``aria-describedby`` Django 5.0+ gives a widget points at
+    them. Without one they get generated ids.
     """
 
     def generate_html_id(self, context: Context) -> str:
@@ -167,19 +172,26 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
             error_message=props.get("errorMessage"),
         )
 
-        input_id = props.get("id")
-        if input_id is None and state.label:
-            input_id = self.generate_html_id(context)
-        state.input_id = str(input_id) if input_id is not None else None
+        given_input_id = props.get("id")
+        if given_input_id is not None:
+            state.input_id = str(given_input_id)
+        elif state.label:
+            state.input_id = self.generate_html_id(context)
 
         if state.description_rendered:
-            state.description_id = self.generate_html_id(context)
+            state.description_id = (
+                f"{given_input_id}_helptext" if given_input_id is not None else self.generate_html_id(context)
+            )
         if state.error_rendered:
-            state.error_id = self.generate_html_id(context)
+            state.error_id = (
+                f"{given_input_id}_error" if given_input_id is not None else self.generate_html_id(context)
+            )
 
-        described_by_parts = [state.description_id, state.error_id, props.get("aria-describedby")]
-        described_by = " ".join(str(part) for part in described_by_parts if part)
-        state.described_by = described_by or None
+        # The aria-describedby Django 5.0+ gives a form widget names the same help text and error
+        # ids, so each id is listed once
+        parts = (state.description_id, state.error_id, props.get("aria-describedby"))
+        described_by = dict.fromkeys(token for part in parts if part for token in str(part).split())
+        state.described_by = " ".join(described_by) or None
         return state
 
     def render_labeled_input(
