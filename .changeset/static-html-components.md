@@ -23,6 +23,8 @@ The dispatcher accepts bulk props through the reserved `props` argument and expo
 the UI template library. New backend-neutral `RenderableContent` preserves trusted HTML form help text,
 and form errors marked safe, for both React and static renderers, while frontend resource resolution
 now supports reading source and production assets required by static icons and component runtimes.
+`VanillaExtractClassMapping.get_mapping()` returns a stylesheet's class mapping without logging the
+missing-class warning, which the static renderers use to report a missing style key.
 Input addons and error messages take rich content too, such as an icon captured with
 `{% ui "icon" ... as icon %}`.
 
