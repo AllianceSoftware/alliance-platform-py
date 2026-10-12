@@ -23,6 +23,18 @@ from alliance_platform.dev.install_project import update_launcher
 from rich.console import Console
 
 
+def uv_cache_bucket(cache: Path, prefix: str) -> Path:
+    """Return the one ``<prefix>-v<N>`` bucket uv created under ``cache``.
+
+    uv renumbers its cache buckets between releases (0.13 moved ``wheels-v6`` to ``wheels-v7`` and
+    ``simple-v20`` to ``simple-v26``), so the fixture must not hard-code the number.
+    """
+    buckets = sorted(cache.glob(f"{prefix}-v*"))
+    if len(buckets) != 1:
+        raise AssertionError(f"expected one {prefix}-v* bucket under {cache}, found {buckets}")
+    return buckets[0]
+
+
 class QuietSimpleHTTPRequestHandler(SimpleHTTPRequestHandler):
     def log_message(self, format: str, *args: object) -> None:
         pass
@@ -434,26 +446,27 @@ class ProjectInstallationTests(unittest.TestCase):
             )
             self.assertEqual(seeded.returncode, 0, seeded.stderr)
 
-            environment_links = [path for path in (cache / "environments-v2").rglob("*") if path.is_symlink()]
+            archive = uv_cache_bucket(cache, "archive")
+            environment_links = [
+                path for path in uv_cache_bucket(cache, "environments").rglob("*") if path.is_symlink()
+            ]
             self.assertTrue(environment_links)
             # uv uses absolute environment links on macOS and may use relative
             # links on Linux. Normalize the fixture to the absolute-link cache
             # shape from the reported failure before removing archive files.
             for path in environment_links:
                 target = path.resolve(strict=True)
-                self.assertTrue(target.is_relative_to(cache / "archive-v0"))
+                self.assertTrue(target.is_relative_to(archive))
                 path.unlink()
                 path.symlink_to(target, target_is_directory=True)
             self.assertTrue(all(Path(os.readlink(path)).is_absolute() for path in environment_links))
-            archive_files = [
-                path for path in (cache / "archive-v0").rglob("*") if path.is_file() and not path.is_symlink()
-            ]
+            archive_files = [path for path in archive.rglob("*") if path.is_file() and not path.is_symlink()]
             self.assertTrue(archive_files)
             for path in archive_files:
                 path.unlink()
             package_links = [
                 path
-                for path in (cache / "wheels-v6").rglob("*")
+                for path in uv_cache_bucket(cache, "wheels").rglob("*")
                 if path.is_symlink() and "alliance-platform-dev" in str(path)
             ]
             self.assertTrue(package_links)
@@ -461,9 +474,9 @@ class ProjectInstallationTests(unittest.TestCase):
                 path.unlink()
             # A local test index retains enough HTTP data to reconstruct a wheel
             # offline. Remove those regular files while retaining the directory
-            # shells and environments-v2 symlink from the damaged cache.
-            for cache_section in ("wheels-v6", "simple-v20"):
-                for path in (cache / cache_section).rglob("*"):
+            # shells and environments symlink from the damaged cache.
+            for cache_section in (uv_cache_bucket(cache, "wheels"), uv_cache_bucket(cache, "simple")):
+                for path in cache_section.rglob("*"):
                     if path.is_file() and not path.is_symlink():
                         path.unlink()
 
@@ -501,7 +514,7 @@ class ProjectInstallationTests(unittest.TestCase):
             rotated_caches = list(repo.glob("launcher-cache.broken-*-*"))
             self.assertEqual(len(rotated_caches), 1)
             rebuilt_archive_files = [
-                path for path in (cache / "archive-v0").rglob("*") if path.is_file() and not path.is_symlink()
+                path for path in archive.rglob("*") if path.is_file() and not path.is_symlink()
             ]
             self.assertTrue(rebuilt_archive_files)
 
