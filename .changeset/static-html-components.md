@@ -3,48 +3,29 @@
 "alliance-platform-ui": patch
 ---
 
-Add the server-rendered `{% ui %}` component system with parity renderers for icons, buttons, button
-groups, text and number inputs, text areas, labeled inputs, inline alerts, Menubars, and tables. The `icon`,
-`pagination`, `text_input`, `number_input` and `text_area` components take no end tag. The
-components support Django-native links and form submission, permission-aware menu pruning,
-backend-driven table sorting, unique input associations, and one external runtime entry, embedded
-once per page, that loads the browser behaviour of Menubars, NumberInputs, text areas and button
-groups on demand. Inline Menubars can optionally persist expanded submenu paths
-in a server-readable cookie so the initial HTML renders without a state flash. Static table sort
-icons remain inline while their SVG files are tracked as build dependencies, avoiding duplicate
-document images.
+Add the `{% ui %}` template tag, which renders Alliance UI components as static HTML with no React on
+the page: icons, buttons and button groups, text, number and text area inputs, labeled inputs, inline
+alerts, menubars, pagination, tables, and the content, heading, header and footer layout parts.
+Components take snake_case props, the leaf components take no end tag, and the React tags remain for
+everything the static components do not cover. The
+[`{% ui %}` reference](https://alliance-platform.readthedocs.io/projects/ui/latest/templatetags.html#ui)
+documents every component and its props, and
+[Writing a static component](https://alliance-platform.readthedocs.io/projects/ui/latest/static_components.html)
+covers adding your own.
 
-Static inline alerts wrap loose content automatically and compose with generic content, heading,
-header, and footer renderers for richer layouts. These layout primitives use the same parent-provided
-slot styling contract as their React equivalents. Dismissal callbacks remain a documented React-only
-behaviour.
-
-The dispatcher accepts bulk props through the reserved `props` argument and exports `merge_props` from
-the UI template library. New backend-neutral `RenderableContent` preserves trusted HTML form help text,
-and form errors marked safe, for both React and static renderers, while frontend resource resolution
-now supports reading source and production assets required by static icons and component runtimes.
-`VanillaExtractClassMapping.get_mapping()` returns a stylesheet's class mapping without logging the
-missing-class warning, which the static renderers use to report a missing style key.
-Input addons and error messages take rich content too, such as an icon captured with
-`{% ui "icon" ... as icon %}`.
-
-`{% ui "labeled_input" %}` wraps a control of your own, such as a native select or a Django widget, in
-the label, help text and error message of the inputs; given the control's id, it and the inputs name
-the help text and error message as Django names a form field's, so Django's `aria-describedby` points
-at them. ap-ui ships static templates for Django's text, number and text area widgets, and the opt-in
-`StaticFormRenderer` (`FORM_RENDERER = "alliance_platform.ui.forms.renderers.StaticFormRenderer"`)
-renders them where Django's own widget templates would render; a project's own widget templates,
-React or static, still render as before.
-
-Static components log template mistakes through the `alliance_platform.ui` logger, and the
-`STATIC_COMPONENT_STRICT` UI setting, which defaults to `DEBUG`, makes them raise
-`StaticComponentContractError` instead.
-
-The `{% ui %}` docs generate each component's reference from its renderer: its props with their
-allowed values and what differs from React, its forwarded attributes and the props it refuses.
-
-A system check reports an installed `@alliancesoftware/ui` or `@alliancesoftware/icons` whose
-`static-contract.json` does not hold the static contract version the renderers support, a missing
-static SVG icon directory and a missing static runtime entry. `extract_frontend_resources` runs the
-system checks tagged `alliance_platform_frontend_build`, this one included, and fails the build when
-one reports an error.
+-   Forms: the opt-in
+    [`StaticFormRenderer`](https://alliance-platform.readthedocs.io/projects/ui/latest/installation.html#static-form-widgets)
+    renders Django's text, number and text area widgets with the static components, and
+    `{% ui "labeled_input" %}` wraps any other control in the inputs' label, help text and error
+    message. Form help text and errors marked safe keep their HTML in both the React and static
+    widgets.
+-   The `alliance_platform.ui` template library now provides the `merge_props` and `none_as_nan`
+    filters.
+-   Template mistakes are logged to the `alliance_platform.ui` logger; the
+    [`STATIC_COMPONENT_STRICT`](https://alliance-platform.readthedocs.io/projects/ui/latest/installation.html#settings)
+    setting, which defaults to `DEBUG`, raises them instead.
+-   Requires builds of `@alliancesoftware/ui` and `@alliancesoftware/icons` that ship a
+    `static-contract.json`. A
+    [system check](https://alliance-platform.readthedocs.io/projects/ui/latest/installation.html#system-checks)
+    reports an installed version the renderers do not support, and `extract_frontend_resources` now
+    runs the system checks tagged `alliance_platform_frontend_build` and fails the build on an error.
