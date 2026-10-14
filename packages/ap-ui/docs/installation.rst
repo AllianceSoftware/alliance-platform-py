@@ -83,6 +83,33 @@ Like ``FormInputContextRenderer`` it loads templates through the ``TEMPLATES`` s
 directories that hold Django's form templates (``django.forms`` in ``INSTALLED_APPS``) and ap-ui's must
 be searched.
 
+The ap-ui templates pass a widget's ``attrs`` to the component as props, as the React widget
+templates do, so a form sets component props on its widgets. A key takes either spelling, and a
+value may be a dict where the component takes one: the ``format_options`` of ``number_input`` render
+a Django ``NumberInput`` as a currency input:
+
+.. code-block:: python
+
+    from django import forms
+
+
+    class ProductForm(forms.ModelForm):
+        class Meta:
+            model = Product
+            fields = ["name", "price"]
+            widgets = {
+                "price": forms.NumberInput(
+                    attrs={"format_options": {"style": "currency", "currency": "AUD"}}
+                ),
+            }
+
+The number input's runtime formats the value in the browser with those options, and the field still
+submits the plain number. Leave ``localize`` off such a field: Django would format the value on the
+server in the active locale, which the runtime then parses in its own. The dict must be JSON
+serialisable; a value that is not, such as a ``Decimal``, is reported as a contract diagnostic and the
+prop is dropped. A prop for one render of a field goes on the :ttag:`form_input` tag instead, such as
+``{% form_input form.price addon_before="$" %}``.
+
 Settings
 ~~~~~~~~
 

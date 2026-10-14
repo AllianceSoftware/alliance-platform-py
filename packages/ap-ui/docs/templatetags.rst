@@ -220,7 +220,16 @@ static Django number widget template can use it without loading the React templa
 
 A Django ``NumberInput`` widget sets the native ``min`` and ``max`` attributes for a field's
 ``min_value`` and ``max_value``; ``number_input`` takes them as ``min_value`` and ``max_value``, so
-``props=widget.attrs`` carries them over.
+``props=widget.attrs`` carries them over. The other props travel the same way, so a form declares
+a currency input on its widget, formatted by the runtime once it attaches (see
+:ref:`static-form-widgets`):
+
+.. code-block:: python
+
+    price = forms.DecimalField(
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={"format_options": {"style": "currency", "currency": "AUD"}}),
+    )
 
 .. ui-component:: number_input
 
