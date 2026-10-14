@@ -24,6 +24,8 @@ export async function loadComponents({ uiPackageDir, importDefault }) {
     TextInput: await importDefault(
       path.join(uiPackageDir, "components/text-input/TextInput.tsx")
     ),
+    // The wrapper React gives a text addon; the static renderer gives a string the same span
+    Text: await importDefault(path.join(uiPackageDir, "components/layout/Text.tsx")),
     // An icon the static tests copy to tests/fixtures/icons/static-svg
     CheckOutlined: await importDefault(
       path.join(uiPackageDir, "../icons/outlined/CheckOutlined.tsx")
@@ -191,11 +193,11 @@ export const cases = [
     template:
       '{% ui "text_input" label="Website" addonBefore="https://" addonAfter=".com" %}',
     buildElement({ React, components }) {
-      const { TextInput } = components;
+      const { TextInput, Text } = components;
       return React.createElement(TextInput, {
         label: "Website",
-        addonBefore: "https://",
-        addonAfter: ".com",
+        addonBefore: React.createElement(Text, null, "https://"),
+        addonAfter: React.createElement(Text, null, ".com"),
       });
     },
     meta: {},

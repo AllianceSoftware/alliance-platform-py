@@ -20,6 +20,7 @@ from ..base import enum_prop_rule
 from ..base import is_event_handler_attr
 from ..content import has_renderable_content
 from ..content import is_rich_content_value
+from ..content import is_text_content_value
 from ..content import render_content
 from ..render_context import generate_html_id
 from ..runtime import add_auto_attach_marker
@@ -37,6 +38,11 @@ VALID_LABEL_POSITIONS = ("top", "side")
 VALID_LABEL_ALIGNS = ("start", "end")
 VALID_INPUT_SIZES = ("sm", "md")
 VALID_VALIDATION_STATES = ("valid", "invalid")
+
+_ADDON_PROP_DOC = (
+    "Text, a string without markup or a number, renders inside the span React gives a ``<Text>`` addon, so "
+    "it takes the addon padding; a captured component or other markup renders as it is."
+)
 
 _TEXT_INPUT_BASE_STYLE_PATH = "@alliancesoftware/ui/components/text-input/TextInputBase.css.ts"
 _LABELED_INPUT_STYLE_PATH = "@alliancesoftware/ui/components/form/LabeledInput.css.ts"
@@ -345,6 +351,8 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
         ),
         "readOnly": "Same as ``is_read_only``, in the HTML attribute's spelling.",
         "required": "Same as ``is_required``, in the HTML attribute's spelling.",
+        "addonBefore": _ADDON_PROP_DOC,
+        "addonAfter": _ADDON_PROP_DOC,
     }
 
     @classmethod
@@ -507,17 +515,28 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
     ) -> None:
         """Add any runtime-specific state to the container before it is rendered."""
 
-    def render_addon_content(self, context: Context, props: dict[str, Any], prop_name: str) -> str:
-        """Render the content of the ``addonBefore`` or ``addonAfter`` prop, ``""`` when there is none."""
+    def render_addon_content(
+        self, context: Context, props: dict[str, Any], prop_name: str, text_input_base_styles: Any
+    ) -> str:
+        """Render the content of the ``addonBefore`` or ``addonAfter`` prop, ``""`` when there is none.
+
+        Text, a string without markup or a number, renders inside the span React gives a ``<Text>``
+        addon, which carries the addon padding. A captured component or other markup renders as it
+        is, as React renders any other addon element.
+        """
         addon = props.get(prop_name)
         if not has_renderable_content(addon):
             return ""
-        return render_content(addon, context, prop_name=prop_name, origin=self.origin, component=self.name)
+        content = render_content(addon, context, prop_name=prop_name, origin=self.origin, component=self.name)
+        if is_text_content_value(addon):
+            text_class = self.get_style_class(text_input_base_styles, "addonText")
+            return f'<span class="{conditional_escape(text_class)}">{content}</span>'
+        return content
 
     def render_addon_before(
         self, context: Context, props: dict[str, Any], state: LabeledInputState, text_input_base_styles: Any
     ) -> str:
-        addon_content = self.render_addon_content(context, props, "addonBefore")
+        addon_content = self.render_addon_content(context, props, "addonBefore", text_input_base_styles)
         if not addon_content:
             return ""
         addon_class = self.get_style_class(text_input_base_styles, "addonBefore")
@@ -526,7 +545,7 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
     def render_addon_after(
         self, context: Context, props: dict[str, Any], state: LabeledInputState, text_input_base_styles: Any
     ) -> str:
-        addon_content = self.render_addon_content(context, props, "addonAfter")
+        addon_content = self.render_addon_content(context, props, "addonAfter", text_input_base_styles)
         if not addon_content:
             return ""
         addon_class = self.get_style_class(text_input_base_styles, "addonAfter")
@@ -800,7 +819,7 @@ class UINumberInputRenderer(UITextInputBaseRenderer):
     ) -> str:
         # The addonAfter container holds the caller addon (if any) followed by the step buttons.
         # When both are absent React returns null so TextInputBase keeps its rounded trailing edge.
-        addon_content = self.render_addon_content(context, props, "addonAfter")
+        addon_content = self.render_addon_content(context, props, "addonAfter", text_input_base_styles)
         step_buttons_html = "" if props.get("hideStepButtons") else self.render_step_buttons(props, state)
         if not addon_content and not step_buttons_html:
             return ""

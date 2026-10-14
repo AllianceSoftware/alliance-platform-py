@@ -40,6 +40,22 @@ def is_rich_content_value(value: Any) -> bool:
     return isinstance(value, (RenderableContent, list, tuple))
 
 
+def is_text_content_value(value: Any) -> bool:
+    """Whether a prop value is text rather than markup: a number, or a string holding no tags.
+
+    A string literal in a template arrives marked safe, so safety alone does not separate text from
+    markup: a safe string is text when it holds no ``<``. Rich content values and lists are never
+    text.
+    """
+    if value is None or isinstance(value, bool) or is_rich_content_value(value):
+        return False
+    if isinstance(value, (int, float, Decimal)):
+        return True
+    if isinstance(value, (str, Promise)):
+        return "<" not in str(value) if isinstance(value, SafeString) else True
+    return False
+
+
 def has_renderable_content(value: Any) -> bool:
     """Whether a content value would render anything.
 

@@ -26,6 +26,8 @@ export async function loadComponents({ uiPackageDir, importDefault }) {
     NumberInput: await importDefault(
       path.join(uiPackageDir, "components/number-input/NumberInput.tsx")
     ),
+    // The wrapper React gives a text addon; the static renderer gives a string the same span
+    Text: await importDefault(path.join(uiPackageDir, "components/layout/Text.tsx")),
   };
 }
 
@@ -127,10 +129,10 @@ export const cases = [
     template:
       '{% ui "number_input" label="Price" addonAfter="AUD" defaultValue=12.5 %}',
     buildElement({ React, components }) {
-      const { NumberInput } = components;
+      const { NumberInput, Text } = components;
       return React.createElement(NumberInput, {
         label: "Price",
-        addonAfter: "AUD",
+        addonAfter: React.createElement(Text, null, "AUD"),
         defaultValue: 12.5,
       });
     },

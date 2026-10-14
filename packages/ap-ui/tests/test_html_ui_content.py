@@ -206,7 +206,45 @@ class StaticInputRichContentTestCase(HtmlUIParityTestCase):
             '{% ui "text_input" label="Weight" addon_after=max_weight %}', {"max_weight": 100}
         )
         self.assertEqual(diagnostics, [])
-        self.assertIn('<div class="TextInputBase_addonAfter">100</div>', output)
+        self.assertIn(
+            '<div class="TextInputBase_addonAfter"><span class="TextInputBase_addonText">100</span></div>',
+            output,
+        )
+
+    def test_text_addons_take_the_text_span(self):
+        # A template string literal arrives marked safe; without markup it is still text, and gets the
+        # span React gives a `<Text>` addon
+        output, diagnostics = self.render_with_diagnostics(
+            '{% ui "text_input" label="Website" addon_before="https://" addon_after=suffix %}',
+            {"suffix": mark_safe(".com")},
+        )
+        self.assertEqual(diagnostics, [])
+        self.assertIn(
+            '<div class="TextInputBase_addonBefore"><span class="TextInputBase_addonText">https://</span></div>',
+            output,
+        )
+        self.assertIn(
+            '<div class="TextInputBase_addonAfter"><span class="TextInputBase_addonText">.com</span></div>',
+            output,
+        )
+
+    def test_number_input_text_addon_takes_the_text_span(self):
+        output, diagnostics = self.render_with_diagnostics(
+            '{% ui "number_input" label="Price" addon_after="AUD" %}', {}
+        )
+        self.assertEqual(diagnostics, [])
+        self.assertIn(
+            '<div class="TextInputBase_addonAfter"><span class="TextInputBase_addonText">AUD</span>'
+            '<div class="NumberInput_stepButtonContainer">',
+            output,
+        )
+
+    def test_marked_safe_markup_addons_render_as_given(self):
+        output, diagnostics = self.render_with_diagnostics(
+            '{% ui "text_input" label="Price" addon_before=addon %}', {"addon": mark_safe("<b>$</b>")}
+        )
+        self.assertEqual(diagnostics, [])
+        self.assertIn('<div class="TextInputBase_addonBefore"><b>$</b></div>', output)
 
     def test_plain_addons_and_error_messages_are_escaped(self):
         # Through variables: Django marks string literals in a template safe
@@ -215,7 +253,10 @@ class StaticInputRichContentTestCase(HtmlUIParityTestCase):
             {"addon": "<b>$</b>", "error": "<b>Bad</b>"},
         )
         self.assertEqual(diagnostics, [])
-        self.assertIn('<div class="TextInputBase_addonBefore">&lt;b&gt;$&lt;/b&gt;</div>', output)
+        self.assertIn(
+            '<div class="TextInputBase_addonBefore"><span class="TextInputBase_addonText">&lt;b&gt;$&lt;/b&gt;</span></div>',
+            output,
+        )
         self.assertIn(">&lt;b&gt;Bad&lt;/b&gt;</div>", output)
 
     def test_rich_addon_event_attributes_dropped(self):
