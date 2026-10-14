@@ -44,6 +44,7 @@ from ..base import style_dict_to_string
 from ..content import render_content
 from ..render_context import RenderFrame
 from ..render_context import find_render_payload
+from ..slots import push_slot_scope
 from ..static_icon import ICON_STYLE_PATH
 
 _TABLE_STYLE_PATH = "@alliancesoftware/ui/components/table/Table.css.ts"
@@ -320,12 +321,20 @@ class UITableRenderer(UITableComponentRendererBase):
     def render_component(self, context: Context, props: dict[str, Any], children_html: str) -> str:
         table_styles = self.resolve_table_styles()
 
-        header_html = render_content(
-            props.get("header"), context, prop_name="header", origin=self.origin, component=self.name
-        )
-        footer_html = render_content(
-            props.get("footer"), context, prop_name="footer", origin=self.origin, component=self.name
-        )
+        # React renders header and footer inside the table's slot provider, so a heading, header,
+        # footer or pagination passed to them takes the table's slot class. A captured component
+        # renders again inside this scope (see CapturedHtml).
+        table_slots = {
+            slot: {"className": self.get_style_class(table_styles, slot)}
+            for slot in ("heading", "header", "footer", "pagination")
+        }
+        with push_slot_scope(context, table_slots):
+            header_html = render_content(
+                props.get("header"), context, prop_name="header", origin=self.origin, component=self.name
+            )
+            footer_html = render_content(
+                props.get("footer"), context, prop_name="footer", origin=self.origin, component=self.name
+            )
         has_header = bool(header_html)
         has_footer = bool(footer_html)
 

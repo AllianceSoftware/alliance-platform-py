@@ -53,6 +53,32 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
                 output = self.render_ui_template(template_body, context_kwargs)
         return output, diagnostics
 
+    def test_captured_header_and_footer_take_the_table_slots(self):
+        # React renders `header` and `footer` inside the table's slot provider, so a Heading or a
+        # Pagination passed to them gets the table's slot class. A captured component renders again
+        # inside the table for the same effect.
+        output, diagnostics = self.render_with_warnings(
+            '{% ui "heading" level=3 as heading %}Users{% endui %}'
+            '{% ui "pagination" page=2 total=35 page_size=10 aria_label="Pagination" as pagination %}'
+            '{% ui "table" aria_label="User list" header=heading footer=pagination %}'
+            '{% ui "table_header" %}{% ui "table_column" key="name" %}Name{% endui %}{% endui %}'
+            '{% ui "table_body" %}{% ui "table_row" %}{% ui "table_cell" %}Jane{% endui %}{% endui %}{% endui %}'
+            "{% endui %}",
+            {"request": self.request_factory.get("/users/?page=2")},
+        )
+        self.assertEqual(diagnostics, [])
+        self.assertIn('<h3 class="Table_heading">Users</h3>', output)
+        self.assertRegex(output, r'<nav[^>]*class="[^"]*Table_pagination[^"]*"')
+        self.assertIn('data-has-header="true" data-has-footer="true"', output)
+
+    def test_captured_component_output_outside_a_consumer_is_unchanged(self):
+        output, diagnostics = self.render_with_warnings(
+            '{% ui "heading" level=3 as heading %}Users{% endui %}{{ heading }}'
+        )
+        self.assertEqual(diagnostics, [])
+        self.assertIn("<h3>Users</h3>", output)
+        self.assertNotIn("Table_heading", output)
+
     def test_table_renders_full_structure(self):
         output, caught = self.render_with_warnings(BASIC_TABLE_TEMPLATE)
         self.assertEqual(caught, [])

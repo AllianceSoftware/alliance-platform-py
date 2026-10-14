@@ -94,6 +94,13 @@
       "expected_html": "<div data-apui=\"table\" data-mode=\"default\" data-has-header=\"true\" data-has-footer=\"true\" class=\"Table_tableWrapper\">Showing 1 user<div><table aria-label=\"User list\"><thead><tr><th scope=\"col\"><div class=\"Table_headerCellWrapper\"><div class=\"Table_headerCellContent\">Name</div></div></th></tr></thead><tbody><tr><th scope=\"row\">Jane</th></tr></tbody></table></div>Page 1 of 1</div>",
       "expected_warnings": [],
       "meta": {}
+    },
+    {
+      "name": "header_heading",
+      "template": "{% ui \"heading\" level=3 as heading %}Users{% endui %}{% ui \"table\" aria_label=\"User list\" header=heading %}{% ui \"table_header\" %}{% ui \"table_column\" key=\"name\" %}Name{% endui %}{% endui %}{% ui \"table_body\" %}{% ui \"table_row\" %}{% ui \"table_cell\" %}Jane{% endui %}{% endui %}{% endui %}{% endui %}",
+      "expected_html": "<div data-apui=\"table\" data-mode=\"default\" data-has-header=\"true\" class=\"Table_tableWrapper\"><h3 class=\"Table_heading\">Users</h3><div><table aria-label=\"User list\"><thead><tr><th scope=\"col\"><div class=\"Table_headerCellWrapper\"><div class=\"Table_headerCellContent\">Name</div></div></th></tr></thead><tbody><tr><th scope=\"row\">Jane</th></tr></tbody></table></div></div>",
+      "expected_warnings": [],
+      "meta": {}
     }
   ]
 }

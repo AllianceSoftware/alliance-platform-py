@@ -23,6 +23,11 @@ export async function loadComponents({
     ColumnHeaderLink: await importDefault(
       path.join(uiPackageDir, "components/table/ColumnHeaderLink.tsx")
     ),
+    // A Heading passed as `header` takes the table's heading slot class, as a captured static
+    // heading does
+    Heading: await importDefault(
+      path.join(uiPackageDir, "components/layout/Heading.tsx")
+    ),
     TableHeader: reactStately.TableHeader,
     TableBody: reactStately.TableBody,
     Column: reactStately.Column,
@@ -474,6 +479,34 @@ export const cases = [
           "aria-label": "User list",
           header: "Showing 1 user",
           footer: "Page 1 of 1",
+        },
+        [["name", null, "Name"]],
+        [["Jane"]]
+      );
+    },
+    meta: {},
+  },
+  {
+    // A captured component renders again inside the table, so the table's slots apply to it as
+    // React's slot provider applies them to an element passed as a prop
+    name: "header_heading",
+    template:
+      '{% ui "heading" level=3 as heading %}Users{% endui %}' +
+      '{% ui "table" aria_label="User list" header=heading %}' +
+      '{% ui "table_header" %}' +
+      '{% ui "table_column" key="name" %}Name{% endui %}' +
+      "{% endui %}" +
+      '{% ui "table_body" %}' +
+      '{% ui "table_row" %}{% ui "table_cell" %}Jane{% endui %}{% endui %}' +
+      "{% endui %}" +
+      "{% endui %}",
+    buildElement(runtime) {
+      const { React, components } = runtime;
+      return buildTable(
+        runtime,
+        {
+          "aria-label": "User list",
+          header: React.createElement(components.Heading, { level: 3 }, "Users"),
         },
         [["name", null, "Name"]],
         [["Jane"]]

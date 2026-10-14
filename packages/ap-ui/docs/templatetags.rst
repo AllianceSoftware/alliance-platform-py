@@ -80,6 +80,11 @@ input's ``addon_before``, ``addon_after``, ``description`` or ``error_message``:
     {% ui "icon" name="SearchMdOutlined" as search_icon %}
     {% ui "text_input" name="q" label="Search" addon_before=search_icon %}
 
+A component that takes captured markup as content renders the captured component again inside
+its own slot scope, so a heading captured for a table's ``header`` takes the table's heading
+styling, as a ``Heading`` passed to the React ``Table`` does. ``{{ var }}`` outputs the markup as
+captured.
+
 Projects can register their own components with the dispatcher; see :doc:`static_components`.
 
 Finding legacy component usages
@@ -345,6 +350,9 @@ The result can be captured and passed directly to a static table footer:
     {% ui "table" aria_label="Users" footer=pagination %}
       {# table header and body #}
     {% endui %}
+
+The table renders the captured pagination inside its slot scope, so it takes the table's
+pagination spacing as in React.
 
 Page-size selection and React callback/state/custom-render APIs are intentionally unsupported.
 ``is_page_size_selectable``, ``page_sizes``, ``on_page_change``, ``on_page_size_change``,

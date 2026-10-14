@@ -59,6 +59,7 @@ from django.template.base import FilterExpression
 from django.template.base import NodeList
 from django.utils.functional import Promise
 from django.utils.html import conditional_escape
+from django.utils.safestring import SafeString
 from django.utils.safestring import mark_safe
 
 from . import diagnostics
@@ -220,6 +221,27 @@ def build_attrs_string(attrs: dict[str, Any]) -> str:
     return "".join(rendered_attrs)
 
 
+class CapturedHtml(SafeString):
+    """The HTML of a component captured with ``as``, which renders again where a component uses it.
+
+    ``{{ var }}`` outputs the HTML rendered at the capture. A component that takes the value as
+    content, such as a table's ``header``, renders the component again through :meth:`render_in`
+    inside its own slot scope, so the consumer's slots apply as React's do when an element passed
+    as a prop renders inside the component's slot provider.
+    """
+
+    renderer: BaseHtmlUIComponentRenderer
+
+    def __new__(cls, html: str, renderer: BaseHtmlUIComponentRenderer) -> CapturedHtml:
+        captured = super().__new__(cls, html)
+        captured.renderer = renderer
+        return captured
+
+    def render_in(self, context: Context) -> SafeString:
+        """Render the captured component in ``context``, for example inside a consumer's slot scope."""
+        return mark_safe(self.renderer.render_markup(context))
+
+
 class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
     """Base node for HTML-only UI components dispatched by ``{% ui %}``."""
 
@@ -314,6 +336,23 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
         return self.get_resources_for_bundling()
 
     def render(self, context: Context) -> str:
+        rendered, report = self._render_markup(context)
+        if self.target_var:
+            context[self.target_var] = CapturedHtml(rendered, self)
+            return ""
+        if rendered and report is not None:
+            report_child(context, report)
+        return rendered
+
+    def render_markup(self, context: Context) -> str:
+        """Render the component's HTML in ``context``, neither capturing it nor reporting to a parent.
+
+        A component captured with ``as`` renders through this when another component takes its
+        HTML as content, so it renders inside that consumer's slot scope.
+        """
+        return self._render_markup(context)[0]
+
+    def _render_markup(self, context: Context) -> tuple[str, ChildReport | None]:
         if not self._register_asset:
             raise RuntimeError(
                 "Cannot render a renderer initialised with register_asset=False. "
@@ -335,12 +374,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
             # component should not render (e.g. a denied ``url_with_perm`` href). This is expected
             # behaviour so nothing is reported.
             rendered = ""
-        if self.target_var:
-            context[self.target_var] = rendered
-            return ""
-        if rendered and report is not None:
-            report_child(context, report)
-        return rendered
+        return rendered, report
 
     def build_child_report(
         self,

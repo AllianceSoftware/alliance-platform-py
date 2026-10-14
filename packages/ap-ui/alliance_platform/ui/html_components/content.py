@@ -29,6 +29,7 @@ from django.utils.safestring import SafeString
 from django.utils.safestring import mark_safe
 
 from . import diagnostics
+from .base import CapturedHtml
 from .base import build_attrs_string
 from .base import is_event_handler_attr
 
@@ -90,6 +91,9 @@ def render_content(
     """
     if value is None:
         return mark_safe("")
+    if isinstance(value, CapturedHtml):
+        # A captured component renders again here, inside the consumer's slot scope
+        return value.render_in(context)
     if isinstance(value, (str, Promise)):
         # str() evaluates lazy strings; SafeString.__str__ returns itself so safeness is preserved
         return conditional_escape(str(value))
