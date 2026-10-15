@@ -5,7 +5,6 @@ from typing import Any
 
 from alliance_platform.frontend.bundler.frontend_resource import FrontendResource
 from django.template import Context
-from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
 
 from ..base import BaseHtmlUIComponentRenderer
@@ -173,7 +172,8 @@ class UIButtonRenderer(BaseHtmlUIComponentRenderer):
         if not stripped:
             return ""
         if "<" not in stripped and ">" not in stripped:
-            return str(mark_safe(f"<span>{conditional_escape(stripped)}</span>"))
+            # The child nodelist has already applied Django's escaping policy.
+            return str(mark_safe(f"<span>{stripped}</span>"))
         leading_icon = find_leading_child_report(
             children_html,
             child_reports,

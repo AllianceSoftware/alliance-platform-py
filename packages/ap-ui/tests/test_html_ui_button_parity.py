@@ -18,6 +18,19 @@ class UIButtonParityTestCase(HtmlUIParityTestCase):
             with self.subTest(case=case["name"]):
                 self.assert_parity_case(case)
 
+    def test_variable_text_is_escaped_once(self):
+        for text, expected in (
+            ("Save & close", "Save &amp; close"),
+            ('<img src=x onerror="alert(1)">', "&lt;img src=x onerror=&quot;alert(1)&quot;&gt;"),
+        ):
+            with self.subTest(text=text):
+                output, diagnostics = self.render_with_warnings(
+                    '{% ui "button" %}{{ label }}{% endui %}', {"label": text}
+                )
+                self.assertEqual(diagnostics, [])
+                self.assertIn(f"<span>{expected}</span>", output)
+                self.assertNotIn("<img", output)
+
     def test_resources_are_registered(self):
         with self.setup_render_context() as asset_context:
             self.render_ui_template('{% ui "button" %}Save{% endui %}')
