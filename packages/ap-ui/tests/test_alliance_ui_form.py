@@ -12,6 +12,7 @@ from alliance_platform.ui.forms.renderers import StaticFormRenderer
 from alliance_platform.ui.forms.renderers import form_input_context_key
 from allianceutils.auth.permission import AmbiguousGlobalPermissionWarning
 from allianceutils.tests.util import warning_filter
+from bs4 import BeautifulSoup
 import django
 from django import forms
 from django.conf import settings
@@ -329,6 +330,18 @@ class StaticFormRendererTestCase(HtmlUIParityTestCase):
         self.assertRegex(output, r'<input(?=[^>]* id="id_email")(?=[^>]* aria-describedby="id_email_error")')
         # Django's template still renders a hidden input
         self.assertIn('<input type="hidden" name="token" value="abc" id="id_token">', output)
+
+    def test_widgets_without_django_auto_ids_share_the_document_allocator(self):
+        output = self.render_form(StaticWidgetForm(auto_id=False))
+        soup = BeautifulSoup(output, "html.parser")
+        ids = [element["id"] for element in soup.select("[id]")]
+        self.assertEqual(len(ids), len(set(ids)))
+        controls = soup.select("input:not([type=hidden]), textarea")
+        for control in controls:
+            self.assertTrue(control.get("id"))
+            self.assertIsNotNone(soup.find("label", attrs={"for": control["id"]}))
+            for described_by in control.get("aria-describedby", "").split():
+                self.assertIsNotNone(soup.find(id=described_by))
 
     def test_maps_each_django_widget_template_to_a_static_template(self):
         renderer = StaticFormRenderer()

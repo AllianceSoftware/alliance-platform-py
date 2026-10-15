@@ -28,6 +28,8 @@ from alliance_platform.frontend.templatetags.react import NestedComponentPropAcc
 from alliance_platform.frontend.templatetags.react import convert_html_string
 
 from ...forms.renderers import FormInputContextRenderer
+from ...html_components.render_context import ID_ALLOCATOR_CONTEXT_KEY
+from ...html_components.render_context import get_document_render_state
 from .labeled_input import LabeledInputNode
 from .utils import get_module_import_source
 
@@ -121,6 +123,9 @@ class FormInputNode(template.Node, BundlerAsset):
                     fallback=plain_error_message,
                 )
             extra_attrs[field.form.renderer.form_input_context_key] = {
+                # Widget templates get fresh Django contexts. Share only ID allocation with
+                # the document; component frames and slot scopes remain local to each render.
+                ID_ALLOCATOR_CONTEXT_KEY: get_document_render_state(context).ids,
                 "raw_value": field.value(),
                 "extra_widget_props": {
                     "label": resolve(self.label, context) if self.label is not _NOT_PROVIDED else field.label,

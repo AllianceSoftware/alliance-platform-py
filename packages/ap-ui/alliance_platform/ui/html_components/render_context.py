@@ -11,6 +11,7 @@ from typing import cast
 from django.template import Context
 
 _RENDER_STATE_KEY = "alliance_platform_ui_render_state"
+ID_ALLOCATOR_CONTEXT_KEY = "_alliance_platform_ui_id_allocator"
 
 T = TypeVar("T")
 
@@ -37,10 +38,15 @@ class RenderFrame:
 
 
 @dataclass
-class DocumentRenderState:
-    frames: list[RenderFrame] = field(default_factory=list)
+class HtmlIdAllocator:
     id_counter: int = 0
     id_claims: dict[str, int] = field(default_factory=dict)
+
+
+@dataclass
+class DocumentRenderState:
+    frames: list[RenderFrame] = field(default_factory=list)
+    ids: HtmlIdAllocator = field(default_factory=HtmlIdAllocator)
 
 
 def get_document_render_context(context: Context) -> dict[str, Any]:
@@ -53,7 +59,12 @@ def get_document_render_state(context: Context) -> DocumentRenderState:
     document_context = get_document_render_context(context)
     state = document_context.get(_RENDER_STATE_KEY)
     if state is None:
-        state = DocumentRenderState()
+        allocator = context.get(ID_ALLOCATOR_CONTEXT_KEY)
+        state = (
+            DocumentRenderState(ids=allocator)
+            if isinstance(allocator, HtmlIdAllocator)
+            else DocumentRenderState()
+        )
         document_context[_RENDER_STATE_KEY] = state
     return cast(DocumentRenderState, state)
 
@@ -135,13 +146,13 @@ def find_leading_child_report(
 
 
 def generate_html_id(context: Context, prefix: str) -> str:
-    state = get_document_render_state(context)
+    state = get_document_render_state(context).ids
     state.id_counter += 1
     return f"{prefix}-{state.id_counter}"
 
 
 def claim_html_id(context: Context, preferred_id: str) -> str:
-    state = get_document_render_state(context)
+    state = get_document_render_state(context).ids
     count = state.id_claims.get(preferred_id, 0) + 1
     state.id_claims[preferred_id] = count
     return preferred_id if count == 1 else f"{preferred_id}-{count}"
