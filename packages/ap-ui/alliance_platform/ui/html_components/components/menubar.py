@@ -83,6 +83,7 @@ _CHEVRON_RIGHT_ICON = "ChevronRightOutlined"
 _CHEVRON_UP_ICON = "ChevronUpOutlined"
 
 _COOKIE_NAME_RE = re.compile(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$")
+_MAX_EXPANDED_KEYS_COOKIE_LENGTH = 4096
 
 _EVENT_HANDLER_REASON = "event handlers are not supported by static menubar components"
 _CALLBACK_REASON = "client-side action callbacks are not supported by static menubar components"
@@ -582,10 +583,12 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
         raw_cookie = cookies.get(storage_key)
         if raw_cookie is None:
             return default_expanded_keys
+        if not isinstance(raw_cookie, str) or len(raw_cookie) > _MAX_EXPANDED_KEYS_COOKIE_LENGTH:
+            return default_expanded_keys
 
         try:
             value = json.loads(unquote(raw_cookie))
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, RecursionError):
             return default_expanded_keys
         if not isinstance(value, list):
             return default_expanded_keys
@@ -594,7 +597,13 @@ class UIMenubarRenderer(UIMenubarComponentRendererBase):
         for key in value:
             if isinstance(key, str):
                 keys.append(key)
-            elif isinstance(key, (int, float)) and not isinstance(key, bool) and math.isfinite(key):
+            elif isinstance(key, (int, float)) and not isinstance(key, bool):
+                try:
+                    if not math.isfinite(key):
+                        return default_expanded_keys
+                except OverflowError:
+                    # JSON numbers outside the browser's finite number range are unusable.
+                    return default_expanded_keys
                 keys.append(str(key))
             else:
                 return default_expanded_keys
