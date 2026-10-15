@@ -999,10 +999,11 @@ class UIMenubarSubMenuRenderer(UIMenubarComponentRendererBase):
         # Keys are arbitrary text (e.g. "Waste Streams"), so derive a valid single-token id from
         # them; data-key keeps the raw key
         key_slug = slugify(key) if key is not None else ""
-        preferred_popup_id = (
-            f"apui-menu-{key_slug}" if key_slug else self.generate_html_id(context, "apui-menu")
+        popup_id = (
+            self.claim_html_id(context, f"apui-menu-{key_slug}")
+            if key_slug
+            else self.generate_html_id(context, "apui-menu")
         )
-        popup_id = self.claim_html_id(context, preferred_popup_id)
 
         chevron_direction = self.resolve_chevron_direction(state, level, is_open)
         chevron_icon_name = {

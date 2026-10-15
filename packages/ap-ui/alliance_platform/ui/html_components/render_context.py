@@ -41,6 +41,7 @@ class RenderFrame:
 class HtmlIdAllocator:
     id_counter: int = 0
     id_claims: dict[str, int] = field(default_factory=dict)
+    used_ids: set[str] = field(default_factory=set)
 
 
 @dataclass
@@ -148,11 +149,21 @@ def find_leading_child_report(
 def generate_html_id(context: Context, prefix: str) -> str:
     state = get_document_render_state(context).ids
     state.id_counter += 1
-    return f"{prefix}-{state.id_counter}"
+    candidate = f"{prefix}-{state.id_counter}"
+    while candidate in state.used_ids:
+        state.id_counter += 1
+        candidate = f"{prefix}-{state.id_counter}"
+    state.used_ids.add(candidate)
+    return candidate
 
 
 def claim_html_id(context: Context, preferred_id: str) -> str:
     state = get_document_render_state(context).ids
     count = state.id_claims.get(preferred_id, 0) + 1
+    candidate = preferred_id if count == 1 else f"{preferred_id}-{count}"
+    while candidate in state.used_ids:
+        count += 1
+        candidate = f"{preferred_id}-{count}"
     state.id_claims[preferred_id] = count
-    return preferred_id if count == 1 else f"{preferred_id}-{count}"
+    state.used_ids.add(candidate)
+    return candidate

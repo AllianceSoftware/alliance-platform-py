@@ -303,6 +303,22 @@ class UIMenubarComponentsTestCase(HtmlUIParityTestCase):
         self.assertEqual(caught, [])
         self.assertIn('aria-label="Users" aria-haspopup="true" aria-expanded="true"', output)
 
+    def test_slug_collisions_cannot_duplicate_popup_ids(self):
+        template = (
+            '{% ui "menubar" aria_label="Nav" %}'
+            "{% for key in keys %}"
+            '{% ui "menubar_submenu" key=key title=key %}'
+            '{% ui "menubar_item" href="/item/" %}Item{% endui %}'
+            "{% endui %}{% endfor %}{% endui %}"
+        )
+        output, diagnostics = self.render_with_warnings(template, {"keys": ["A B", "A-B", "A-B-2"]})
+        self.assertEqual(diagnostics, [])
+        ids = re.findall(r'<ul[^>]* id="([^"]+)"', output)
+        controls = re.findall(r'aria-controls="([^"]+)"', output)
+        self.assertEqual(len(ids), 3)
+        self.assertEqual(len(set(ids)), 3)
+        self.assertEqual(controls, ids)
+
     def test_invalid_expanded_keys_cookie_name_is_ignored(self):
         template = (
             '{% ui "menubar" aria_label="Nav" layout="inline" '

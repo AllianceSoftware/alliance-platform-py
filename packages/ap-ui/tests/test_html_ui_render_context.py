@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from alliance_platform.ui.html_components.render_context import ChildReport
 from alliance_platform.ui.html_components.render_context import RenderFrame
+from alliance_platform.ui.html_components.render_context import claim_html_id
 from alliance_platform.ui.html_components.render_context import collect_child_reports
 from alliance_platform.ui.html_components.render_context import find_leading_child_report
 from alliance_platform.ui.html_components.render_context import find_render_payload
+from alliance_platform.ui.html_components.render_context import generate_html_id
 from alliance_platform.ui.html_components.render_context import push_render_frame
 from alliance_platform.ui.html_components.render_context import report_child
 from django.template import Context
@@ -12,6 +14,17 @@ from django.test import SimpleTestCase
 
 
 class HtmlUIRenderContextTestCase(SimpleTestCase):
+    def test_claimed_suffixes_are_reserved_against_other_preferred_ids(self):
+        context = Context()
+        ids = [claim_html_id(context, key) for key in ("menu-a", "menu-a", "menu-a-2", "menu-a")]
+        self.assertEqual(ids, ["menu-a", "menu-a-2", "menu-a-2-2", "menu-a-3"])
+
+    def test_generated_and_claimed_ids_share_reservations(self):
+        context = Context()
+        self.assertEqual(claim_html_id(context, "menu-1"), "menu-1")
+        self.assertEqual(generate_html_id(context, "menu"), "menu-2")
+        self.assertEqual(claim_html_id(context, "menu-2"), "menu-2-2")
+
     def test_leading_child_report_must_anchor_at_the_start(self):
         report = ChildReport(component="icon", slot="icon", html="<i>icon</i>")
 
