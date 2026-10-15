@@ -32,6 +32,7 @@ Names starting with an underscore are internal.
 
 from __future__ import annotations
 
+from copy import copy
 from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
@@ -236,15 +237,26 @@ class CapturedHtml(SafeString):
     """
 
     renderer: BaseHtmlUIComponentRenderer
+    captured_context: Context
 
-    def __new__(cls, html: str, renderer: BaseHtmlUIComponentRenderer) -> CapturedHtml:
+    def __new__(cls, html: str, renderer: BaseHtmlUIComponentRenderer, context: Context) -> CapturedHtml:
         captured = super().__new__(cls, html)
         captured.renderer = renderer
+        captured.captured_context = copy(context)
+        # Context.__copy__ shares its variable dictionaries. Freeze their bindings so later
+        # assignments and include-only boundaries cannot change the captured invocation.
+        captured.captured_context.dicts = [layer.copy() for layer in context.dicts]
         return captured
 
     def render_in(self, context: Context) -> SafeString:
         """Render the captured component in ``context``, for example inside a consumer's slot scope."""
-        return mark_safe(self.renderer.render_markup(context))
+        if not self:
+            return self
+        captured_context = copy(self.captured_context)
+        captured_context.dicts = [layer.copy() for layer in self.captured_context.dicts]
+        # Data comes from the capture; slots, frames and IDs come from the current document.
+        captured_context.render_context = context.render_context
+        return mark_safe(self.renderer.render_markup(captured_context))
 
 
 class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
@@ -343,7 +355,7 @@ class BaseHtmlUIComponentRenderer(template.Node, BundlerAsset):
     def render(self, context: Context) -> str:
         rendered, report = self._render_markup(context)
         if self.target_var:
-            context[self.target_var] = CapturedHtml(rendered, self)
+            context[self.target_var] = CapturedHtml(rendered, self, context)
             return ""
         if rendered and report is not None:
             report_child(context, report)

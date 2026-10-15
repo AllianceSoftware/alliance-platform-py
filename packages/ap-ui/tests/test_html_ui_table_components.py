@@ -79,6 +79,47 @@ class UITableComponentsTestCase(HtmlUIParityTestCase):
         self.assertIn("<h3>Users</h3>", output)
         self.assertNotIn("Table_heading", output)
 
+    def test_captured_heading_keeps_its_data_while_taking_consumer_slots(self):
+        output, diagnostics = self.render_with_warnings(
+            '{% ui "heading" as heading %}{{ title }}{% endui %}'
+            '{% with title="Changed" %}{% ui "table" header=heading %}{% endui %}{% endwith %}',
+            {"title": "Original"},
+        )
+        self.assertEqual(diagnostics, [])
+        self.assertIn('<h3 class="Table_heading">Original</h3>', output)
+        self.assertNotIn("Changed", output)
+
+    def test_captured_permission_url_survives_an_isolated_include(self):
+        request = self.request_factory.get("/original/")
+        with self.setup_render_context():
+            child = Template('{% load alliance_platform.ui %}{% ui "table" header=action %}{% endui %}')
+            with mock.patch(
+                "alliance_platform.ui.templatetags.alliance_platform.ui.reverse_if_probably_allowed",
+                return_value="/allowed/",
+            ) as reverse:
+                output = self.render_ui_template(
+                    '{% ui "button" href="profile"|url_with_perm as action %}Open{% endui %}'
+                    "{% include child with action=action only %}",
+                    {"request": request, "child": child},
+                )
+        self.assertIn('href="/allowed/"', output)
+        self.assertTrue(all(call.args[0] is request for call in reverse.call_args_list))
+
+    def test_denied_capture_is_not_revived_when_consumed(self):
+        request = self.request_factory.get("/original/")
+        with self.setup_render_context():
+            with mock.patch(
+                "alliance_platform.ui.templatetags.alliance_platform.ui.reverse_if_probably_allowed",
+                side_effect=[None, "/allowed/"],
+            ) as reverse:
+                output = self.render_ui_template(
+                    '{% ui "button" href="profile"|url_with_perm as action %}Secret{% endui %}'
+                    '{% ui "table" header=action %}{% endui %}',
+                    {"request": request},
+                )
+        self.assertEqual(reverse.call_count, 1)
+        self.assertNotIn("Secret", output)
+
     def test_table_renders_full_structure(self):
         output, caught = self.render_with_warnings(BASIC_TABLE_TEMPLATE)
         self.assertEqual(caught, [])
