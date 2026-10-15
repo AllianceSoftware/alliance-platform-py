@@ -101,6 +101,22 @@ class UIInputComponentsTestCase(HtmlUIParityTestCase):
         self.assertNotIn("oninput", output.lower())
         self.assertNotIn("alert", output)
 
+    def test_bulk_attribute_names_cannot_inject_other_attributes(self):
+        for name in (
+            "data-note onmouseover",
+            "aria-label\tautofocus onfocus",
+            'data-note"',
+            "data-note/onclick",
+            "data-note\x00onfocus",
+        ):
+            with self.subTest(name=name):
+                output, _ = self.render_with_warnings(
+                    '{% ui "text_input" props=attrs %}',
+                    {"attrs": {name: "alert(1)", "data-valid": "kept"}},
+                )
+                self.assertNotIn("alert", output)
+                self.assertIn('data-valid="kept"', output)
+
     def test_unknown_props_warn_and_are_ignored(self):
         output, caught = self.render_with_warnings('{% ui "text_input" label="Email" unknownAttr="nope" %}')
         self.assertIn(

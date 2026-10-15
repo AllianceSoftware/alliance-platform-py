@@ -94,6 +94,7 @@ _REACT_ATTR_TO_HTML_ATTR = {
 }
 
 _CAMEL_CASE_SPLIT_RE = re.compile(r"([a-z0-9])([A-Z])")
+_HTML_ATTRIBUTE_NAME_RE = re.compile(r"[^\s\x00-\x1f\x7f\"'<>/=]+")
 _OMIT_INVALID_PROP = object()
 
 # Extra key adaptations applied to bulk ``props`` dicts (after the standard HTML -> React attribute
@@ -212,6 +213,10 @@ def build_attrs_string(attrs: dict[str, Any]) -> str:
         if value is None or value is False:
             continue
         attr_name = _to_html_attr_name(name)
+        # Escaping a name cannot prevent whitespace from introducing a second attribute.
+        # Bulk data/aria props can supply names, so validate the complete HTML name here.
+        if not _HTML_ATTRIBUTE_NAME_RE.fullmatch(attr_name):
+            continue
         if name == "style" and isinstance(value, dict):
             value = style_dict_to_string(value)
         if value is True:
