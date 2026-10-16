@@ -125,6 +125,17 @@ class VanillaExtractClassMapping:
 
         self._last_request = CurrentRequestMiddleware.get_request()
 
+    def get_mapping(self) -> dict[str, str | Any] | None:
+        """Return the class data, or ``None`` while the mapping file is unavailable.
+
+        This is the way to read the mapping data without triggering the warning that reading a
+        missing class as an attribute logs, for example to check whether a class exists. Like
+        reading a class, it first reloads data the dev server may have rewritten since an earlier
+        request; the ``mapping`` attribute can still hold that earlier data.
+        """
+        self._check_mapping()
+        return self.mapping
+
     def __getattr__(self, name):
         self._check_mapping()
         if self.mapping is None:

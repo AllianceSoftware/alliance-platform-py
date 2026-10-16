@@ -5,7 +5,7 @@ authors = [
 license = {text = "BSD-2-Clause"}
 requires-python = "<4.0,>=3.11"
 dependencies = [
-    "alliance-platform-frontend",
+    "alliance-platform-frontend>=0.0.24",
     "alliance-platform-codegen",
     "alliance-platform-core",
     "Django>=4.2.11",
@@ -92,4 +92,5 @@ dev = [
     "types-factory-boy",
     "pytest-django>=4.8.0",
     "pytest-benchmark>=4.0.0",
+    "beautifulsoup4<5.0,>=4.11",
 ]

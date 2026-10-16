@@ -9,6 +9,7 @@ from alliance_platform.frontend.bundler import get_bundler
 from alliance_platform.frontend.bundler.base import ResolveContext
 from alliance_platform.frontend.templatetags.react import ImportComponentSource
 from alliance_platform.frontend.templatetags.react import parse_component_tag
+from alliance_platform.ui.icons import resolve_icon_style_dir
 
 
 def icon(parser: template.base.Parser, token: template.base.Token):
@@ -37,13 +38,7 @@ def icon(parser: template.base.Parser, token: template.base.Token):
     resolver_context = ResolveContext(bundler.root_dir, origin.name if origin else None)
     # Avoid imports from barrel file which causes worse performance in dev. Import direct
     # icon file instead.
-    sub_dir = "outlined"
-    if icon_name.endswith("Solid"):
-        sub_dir = "solid"
-    elif icon_name.endswith("DuoTone"):
-        sub_dir = "duotone"
-    elif icon_name.endswith("DuoColor"):
-        sub_dir = "duocolor"
+    sub_dir = resolve_icon_style_dir(icon_name)
     source_path = get_bundler().resolve_path(
         f"@alliancesoftware/icons/{sub_dir}/{icon_name}",
         resolver_context,

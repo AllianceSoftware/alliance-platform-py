@@ -1,0 +1,138 @@
+import path from "node:path";
+
+export const component = "text_area";
+export const class_prefixes = [
+  "LabeledInput",
+  "TextInputBase",
+  "focusRing",
+  "Label",
+  "FormSection",
+  "Icon",
+];
+
+export const stylesheets = [
+  "@alliancesoftware/ui/components/text-input/TextInputBase.css.ts",
+  "@alliancesoftware/ui/components/form/LabeledInput.css.ts",
+  "@alliancesoftware/ui/components/form/Label.css.ts",
+  "@alliancesoftware/ui/components/form/FormSection.css.ts",
+  "@alliancesoftware/ui/styles/base/focusRing.css.ts",
+  "@alliancesoftware/icons/Icon.css.ts",
+];
+
+export async function loadComponents({ uiPackageDir, importDefault }) {
+  return {
+    TextArea: await importDefault(
+      path.join(uiPackageDir, "components/text-input/TextArea.tsx")
+    ),
+  };
+}
+
+export function normalize(root, testCase, helpers) {
+  helpers.normalizeInputComponent(root, component);
+}
+
+export const cases = [
+  {
+    name: "default",
+    template: '{% ui "text_area" label="Notes" %}',
+    buildElement({ React, components }) {
+      const { TextArea } = components;
+      return React.createElement(TextArea, { label: "Notes" });
+    },
+    meta: {},
+  },
+  {
+    // `rows`/`cols` are deliberately not covered here: the React TextArea drops them (it
+    // relies on runtime autosizing instead), while the Django renderer passes them through
+    // as a static-render extension. That behaviour is covered by unit tests.
+    name: "name_placeholder_default_value",
+    template:
+      '{% ui "text_area" label="Notes" name="notes" placeholder="Write here" defaultValue="Initial text" %}',
+    buildElement({ React, components }) {
+      const { TextArea } = components;
+      return React.createElement(TextArea, {
+        label: "Notes",
+        name: "notes",
+        placeholder: "Write here",
+        defaultValue: "Initial text",
+      });
+    },
+    meta: {},
+  },
+  {
+    name: "height",
+    template: '{% ui "text_area" label="Notes" height="120px" %}',
+    buildElement({ React, components }) {
+      const { TextArea } = components;
+      return React.createElement(TextArea, { label: "Notes", height: "120px" });
+    },
+    meta: {},
+  },
+  {
+    name: "description",
+    template:
+      '{% ui "text_area" label="Notes" description="Internal notes only" %}',
+    buildElement({ React, components }) {
+      const { TextArea } = components;
+      return React.createElement(TextArea, {
+        label: "Notes",
+        description: "Internal notes only",
+      });
+    },
+    meta: {},
+  },
+  {
+    name: "invalid_with_error_message",
+    template:
+      '{% ui "text_area" label="Notes" validationState="invalid" errorMessage="Notes are required" %}',
+    buildElement({ React, components }) {
+      const { TextArea } = components;
+      return React.createElement(TextArea, {
+        label: "Notes",
+        validationState: "invalid",
+        errorMessage: "Notes are required",
+      });
+    },
+    meta: {},
+  },
+  {
+    name: "disabled",
+    template: '{% ui "text_area" label="Notes" isDisabled=True %}',
+    buildElement({ React, components }) {
+      const { TextArea } = components;
+      return React.createElement(TextArea, {
+        label: "Notes",
+        isDisabled: true,
+      });
+    },
+    meta: {},
+  },
+  {
+    name: "readonly",
+    template:
+      '{% ui "text_area" label="Notes" defaultValue="Locked" isReadOnly=True %}',
+    buildElement({ React, components }) {
+      const { TextArea } = components;
+      return React.createElement(TextArea, {
+        label: "Notes",
+        defaultValue: "Locked",
+        isReadOnly: true,
+      });
+    },
+    meta: {},
+  },
+  {
+    name: "custom_class_names",
+    template:
+      '{% ui "text_area" label="Notes" className="custom-root" inputClassName="custom-input" %}',
+    buildElement({ React, components }) {
+      const { TextArea } = components;
+      return React.createElement(TextArea, {
+        label: "Notes",
+        className: "custom-root",
+        inputClassName: "custom-input",
+      });
+    },
+    meta: {},
+  },
+];

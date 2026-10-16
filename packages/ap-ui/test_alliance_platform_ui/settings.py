@@ -9,6 +9,7 @@ from alliance_platform.codegen.settings import AlliancePlatformCodegenSettingsTy
 from alliance_platform.core.settings import AlliancePlatformCoreSettingsType
 from alliance_platform.frontend.bundler.resource_registry import FrontendResourceRegistry
 from alliance_platform.frontend.settings import AlliancePlatformFrontendSettingsType
+from alliance_platform.ui.settings import AlliancePlatformUISettingsType
 
 is_ci = os.environ.get("CI_SERVER", "no") == "yes"
 
@@ -23,6 +24,7 @@ class AlliancePlatformSettings(TypedDict):
     CORE: AlliancePlatformCoreSettingsType
     FRONTEND: AlliancePlatformFrontendSettingsType
     CODEGEN: AlliancePlatformCodegenSettingsType
+    UI: AlliancePlatformUISettingsType
 
 
 frontend_registry = FrontendResourceRegistry()
@@ -46,9 +48,27 @@ ALLIANCE_PLATFORM: AlliancePlatformSettings = {
         "SSR_GLOBAL_CONTEXT_RESOLVER": None,
         "NODE_MODULES_DIR": os.environ.get("NODE_MODULES_DIR", BASE_DIR.parent.parent / "node_modules"),
     },
+    "UI": {
+        # Log contract diagnostics instead of raising, so tests and fixture expected_warnings can
+        # assert them. The default follows DEBUG, which the test runner turns off; this makes it explicit.
+        "STATIC_COMPONENT_STRICT": False,
+    },
 }
 
 VITE_BUNDLER_MODE = "development"
+
+# The test project's npm packages are stand-ins: its bundler maps @alliancesoftware/ui and
+# @alliancesoftware/icons to packages/ap-ui/node_modules, where nothing is installed, and the tests
+# render with fixtures. The static contract check would report both packages missing, so its errors
+# are silenced here; tests/test_static_contract_check.py tests the check directly.
+SILENCED_SYSTEM_CHECKS = [
+    "alliance_platform_ui.E001",
+    "alliance_platform_ui.E002",
+    "alliance_platform_ui.E003",
+    "alliance_platform_ui.E004",
+    "alliance_platform_ui.E005",
+    "alliance_platform_ui.E006",
+]
 
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 

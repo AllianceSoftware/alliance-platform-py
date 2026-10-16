@@ -11,9 +11,11 @@ build:
       # Install uv
       - pip install -U uv
     post_install:
-      # Export dependencies and install into ReadTheDocs virtualenv
+      # Export dependencies and install into ReadTheDocs virtualenv. The export is the complete
+      # locked set, so nothing is resolved: a workspace package may require a sibling's next
+      # release (one that a pending changeset will produce) before that version is published.
       - uv export --frozen --all-groups --no-hashes -o requirements.txt
-      - pip install -r requirements.txt
+      - pip install --no-deps -r requirements.txt
     post_build:
       # Build and publish the agent skill bundle into the rendered docs output.
       - USE_UV_RUN=0 ./scripts/publish-skill-well-known.sh

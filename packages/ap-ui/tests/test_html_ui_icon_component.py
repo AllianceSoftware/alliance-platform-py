@@ -1,0 +1,206 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest import mock
+
+from alliance_platform.ui.icons import reset_static_icon_cache
+from django.conf import settings
+from django.template import TemplateSyntaxError
+
+from tests.parity.base import HtmlUIParityTestCase
+from tests.test_utils.bundler import TestViteBundler
+from tests.test_utils.bundler import bundler_kwargs
+
+
+class UIIconComponentTestCase(HtmlUIParityTestCase):
+    def setUp(self):
+        reset_static_icon_cache()
+
+    def render_with_warnings(self, template_body: str, context_kwargs=None):
+        with self.setup_render_context() as asset_context:
+            with self.capture_diagnostics() as diagnostics:
+                output = self.render_ui_template(template_body, context_kwargs)
+        return output, diagnostics, asset_context
+
+    def test_renders_default_outlined_icon(self):
+        output, caught, _ = self.render_with_warnings('{% ui "icon" name="Pencil01Outlined" %}')
+
+        self.assertEqual(caught, [])
+        self.assertIn('<span role="img" aria-hidden="true" data-apui-slot="icon"', output)
+        # A plain icon without a color has no data-color
+        self.assertIn('class="Icon_icon" data-size="xs" data-variant="plain">', output)
+        self.assertIn("<svg", output)
+        self.assertIn('focusable="false"', output)
+        self.assertIn('stroke-width="2"', output)
+
+    def test_collected_assets_document_emits_only_one_inline_icon(self):
+        with self.setup_render_context():
+            output = self.render_ui_document('{% ui "icon" name="Pencil01Outlined" size="sm" %}')
+
+        self.assertEqual(output.count("<svg"), 1)
+        self.assertNotIn("<img", output)
+        self.assertIn('class="Icon_icon" data-size="sm" data-variant="plain"', output)
+        self.assertIn('<svg width="24" height="24"', output)
+
+    def test_collected_assets_document_does_not_embed_distinct_icon_images(self):
+        with self.setup_render_context():
+            output = self.render_ui_document(
+                '{% ui "icon" name="Pencil01Outlined" %}'
+                '{% ui "icon" name="CheckCircleSolid" %}'
+                '{% ui "icon" name="AlertCircleDuoTone" %}'
+            )
+
+        self.assertEqual(output.count("<svg"), 3)
+        self.assertNotIn("<img", output)
+
+    def test_collected_assets_document_does_not_embed_repeated_icon_images(self):
+        with self.setup_render_context():
+            output = self.render_ui_document('{% ui "icon" name="Pencil01Outlined" %}' * 3)
+
+        self.assertEqual(output.count("<svg"), 3)
+        self.assertNotIn("<img", output)
+
+    def test_renders_solid_duotone_and_duocolor_icons(self):
+        output, caught, _ = self.render_with_warnings(
+            '{% ui "icon" name="CheckCircleSolid" %}'
+            '{% ui "icon" name="AlertCircleDuoTone" %}'
+            '{% ui "icon" name="Pencil01DuoColor" %}'
+        )
+
+        self.assertEqual(caught, [])
+        self.assertIn('fill-rule="evenodd"', output)
+        self.assertIn('opacity="0.12"', output)
+        self.assertIn('opacity="0.4"', output)
+
+    def test_applies_wrapper_props_and_accessible_label(self):
+        output, caught, _ = self.render_with_warnings(
+            '{% ui "icon" name="Pencil01Outlined" size="sm" variant="circle" color="destructive" '
+            'class="extra" id="edit-icon" title="Edit" data_testid="edit" aria_label="Edit" %}'
+        )
+
+        self.assertEqual(caught, [])
+        self.assertIn(
+            'class="Icon_icon extra" id="edit-icon" title="Edit" data-testid="edit" data-size="sm" '
+            'data-variant="circle" data-color="destructive"',
+            output,
+        )
+        self.assertIn('id="edit-icon"', output)
+        self.assertIn('title="Edit"', output)
+        self.assertIn('data-testid="edit"', output)
+        self.assertIn('aria-label="Edit"', output)
+        self.assertNotIn('aria-hidden="true"', output)
+
+    def test_circle_variants_default_to_the_secondary_color(self):
+        output, caught, _ = self.render_with_warnings(
+            '{% ui "icon" name="Pencil01Outlined" variant="circle-outlined" %}'
+        )
+
+        self.assertEqual(caught, [])
+        self.assertIn('data-variant="circle-outlined" data-color="secondary"', output)
+
+    def test_size_variant_and_color_replace_passed_data_attributes(self):
+        # As in Icon.tsx, which sets them after the props it passes through
+        output, caught, _ = self.render_with_warnings(
+            '{% ui "icon" name="Pencil01Outlined" data_size="xl" data_variant="circle" data_color="primary" %}'
+        )
+
+        self.assertEqual(caught, [])
+        self.assertIn('data-size="xs"', output)
+        self.assertIn('data-variant="plain"', output)
+        self.assertNotIn("data-color", output)
+        self.assertNotIn('data-size="xl"', output)
+
+    def test_warns_and_drops_event_handlers(self):
+        output, caught, _ = self.render_with_warnings(
+            '{% ui "icon" name="Pencil01Outlined" onClick="alert(1)" %}'
+        )
+
+        self.assertEqual(
+            caught,
+            [
+                "Prop 'onClick' will be ignored: event handlers are not supported by static icon components; "
+                "use {% Icon %} instead"
+            ],
+        )
+        self.assertNotIn("alert", output)
+
+    def test_dynamic_name_fails_during_resource_resolution(self):
+        with self.setup_render_context():
+            with self.assertRaisesMessage(TemplateSyntaxError, "static string literal"):
+                self.render_ui_template('{% ui "icon" name=icon_name %}', {"icon_name": "Pencil"})
+
+    def test_resource_discovery_includes_css_and_specific_icon(self):
+        with self.setup_render_context() as asset_context:
+            with self.capture_diagnostics() as diagnostics:
+                self.render_ui_template('{% ui "icon" name="Pencil01Outlined" %}')
+            resource_paths = [str(resource.path) for resource in asset_context.get_resources_for_bundling()]
+
+        self.assertEqual(diagnostics, [])
+        self.assertTrue(any(path.endswith("@alliancesoftware/icons/Icon.css.ts") for path in resource_paths))
+        self.assertTrue(
+            any(path.endswith("static-svg/outlined/Pencil01Outlined.svg") for path in resource_paths)
+        )
+        self.assertFalse(
+            any(path.endswith("static-svg/solid/CheckCircleSolid.svg") for path in resource_paths)
+        )
+
+    def test_render_loads_only_requested_icon_file(self):
+        read_icon_paths: list[Path] = []
+        original_read_text = Path.read_text
+
+        def spy_read_text(path: Path, *args, **kwargs):
+            if "static-svg" in str(path):
+                read_icon_paths.append(path)
+            return original_read_text(path, *args, **kwargs)
+
+        with mock.patch("pathlib.Path.read_text", autospec=True, side_effect=spy_read_text):
+            output, caught, _ = self.render_with_warnings('{% ui "icon" name="Pencil01Outlined" %}')
+
+        self.assertEqual(caught, [])
+        self.assertIn("Pencil01Outlined", str(read_icon_paths[0]))
+        self.assertEqual(len(read_icon_paths), 1)
+        self.assertIn("<svg", output)
+
+    def test_collected_assets_in_production_resolve_svg_without_embedding_an_image(self):
+        icon_source = (
+            Path(__file__).resolve().parent / "fixtures/icons/static-svg/outlined/Pencil01Outlined.svg"
+        )
+        icon_manifest_path = str(icon_source.relative_to(settings.PROJECT_DIR))
+        style_manifest_path = "@alliancesoftware/icons/Icon.css.ts"
+
+        with TemporaryDirectory() as temp_dir:
+            build_dir = Path(temp_dir)
+            icon_output = build_dir / "assets/Pencil01Outlined-built.svg"
+            icon_output.parent.mkdir(parents=True)
+            icon_output.write_text(icon_source.read_text())
+            (build_dir / "manifest.json").write_text(
+                json.dumps(
+                    {
+                        icon_manifest_path: {
+                            "file": "assets/Pencil01Outlined-built.svg",
+                            "src": icon_manifest_path,
+                        },
+                        style_manifest_path: {
+                            "file": "assets/Icon-built.js",
+                            "src": style_manifest_path,
+                            "css": ["assets/Icon-built.css"],
+                        },
+                    }
+                )
+            )
+            production_bundler = TestViteBundler(
+                **{**bundler_kwargs, "build_dir": build_dir, "mode": "production"}
+            )
+
+            with self.setup_render_context(bundler=production_bundler) as asset_context:
+                output = self.render_ui_document('{% ui "icon" name="Pencil01Outlined" %}')
+                resource_paths = [
+                    str(resource.path) for resource in asset_context.get_resources_for_bundling()
+                ]
+
+        self.assertEqual(output.count("<svg"), 1)
+        self.assertNotIn("<img", output)
+        self.assertIn("/static/assets/Icon-built.css", output)
+        self.assertTrue(any(path.endswith("Pencil01Outlined.svg") for path in resource_paths))

@@ -1,0 +1,114 @@
+name: ap-ui Fixture Drift
+
+on:
+  pull_request:
+    paths:
+      - "packages/ap-ui/tests/fixtures/ui_html_*_parity.json"
+      - "packages/ap-ui/tests/fixtures/css-mappings.json"
+      - "packages/ap-ui/scripts/**"
+      - "packages/ap-ui/alliance_platform/ui/html_components/contract.py"
+      - ".github/alliance-platform-js-ref"
+      - ".github/workflows/ap-ui-fixture-drift.yml"
+  # Nightly against alliance-platform-js main, to catch JS changes that drift from the fixtures.
+  # 18:23 UTC, away from the start of the hour when GitHub delays scheduled runs: 05:23 in
+  # Melbourne during daylight saving (AEDT), 04:23 otherwise (AEST).
+  schedule:
+    - cron: "23 18 * * *"
+  workflow_dispatch:
+    inputs:
+      js_ref:
+        description: "alliance-platform-js ref to regenerate fixtures against (overrides .github/alliance-platform-js-ref)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  fixture-drift:
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout alliance-platform-py
+        uses: actions/checkout@v4
+
+      # Cross-repo changes can be tested before the alliance-platform-js side merges by pinning
+      # the ref in .github/alliance-platform-js-ref, or by passing the js_ref input on manual
+      # runs. The pin is for pull requests of cross-repo work and is reset to "main" once the JS
+      # branch merges; the nightly run ignores it and always uses main.
+      - name: Resolve alliance-platform-js ref
+        id: js-ref
+        run: |
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            ref="main"
+          else
+            ref="${{ inputs.js_ref }}"
+            if [[ -z "$ref" && -f .github/alliance-platform-js-ref ]]; then
+              ref="$(head -n1 .github/alliance-platform-js-ref | tr -d '[:space:]')"
+            fi
+          fi
+          ref="${ref:-main}"
+          echo "Using alliance-platform-js ref: $ref"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout alliance-platform-js
+        uses: actions/checkout@v4
+        with:
+          repository: AllianceSoftware/alliance-platform-js
+          path: alliance-platform-js
+          ref: ${{ steps.js-ref.outputs.ref }}
+          ssh-key: ${{ secrets.ALLIANCE_PLATFORM_JS_DEPLOY_KEY }}
+          persist-credentials: false
+
+      # The contract version alliance-platform-ui supports must be the one the JS checkout
+      # declares: a JS bump that Python has not followed fails here, nightly against main and on
+      # pull requests against the pinned ref.
+      - name: Check the static contract versions agree
+        run: |
+          python3 - <<'PYEOF'
+          import importlib.util
+          import json
+          import sys
+          from pathlib import Path
+
+          spec = importlib.util.spec_from_file_location(
+              "contract", "packages/ap-ui/alliance_platform/ui/html_components/contract.py"
+          )
+          contract = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(contract)
+          package_dirs = {"@alliancesoftware/ui": "packages/ui", "@alliancesoftware/icons": "packages/icons"}
+          failed = False
+          for package, supported in contract.SUPPORTED_STATIC_CONTRACT_VERSIONS.items():
+              path = Path("alliance-platform-js") / package_dirs[package] / contract.STATIC_CONTRACT_FILE
+              declared = json.loads(path.read_text())["version"]
+              status = "OK" if declared == supported else "MISMATCH"
+              print(f"{status}: {package} declares static contract version {declared}, alliance-platform-ui supports {supported}")
+              failed = failed or declared != supported
+          if failed:
+              print("Raise SUPPORTED_STATIC_CONTRACT_VERSIONS once the renderers match the new contract, or pin the JS ref the Python side supports.")
+              sys.exit(1)
+          PYEOF
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+          cache-dependency-path: alliance-platform-js/yarn.lock
+
+      - name: Install JS dependencies
+        working-directory: alliance-platform-js
+        run: yarn install --frozen-lockfile
+
+      - name: Regenerate ap-ui parity fixtures and class mappings
+        run: |
+          ./packages/ap-ui/scripts/syncHtmlUiParityFixtures.sh \
+            --js-repo "$GITHUB_WORKSPACE/alliance-platform-js"
+
+      - name: Check fixture drift
+        run: |
+          git diff --exit-code -- \
+            packages/ap-ui/tests/fixtures/ui_html_*_parity.json \
+            packages/ap-ui/tests/fixtures/css-mappings.json

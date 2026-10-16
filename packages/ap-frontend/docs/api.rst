@@ -10,6 +10,11 @@ Utils
 
 .. autofunction:: alliance_platform.frontend.util.get_node_ver
 
+Checks
+------
+
+.. autodata:: alliance_platform.frontend.checks.FRONTEND_BUILD_CHECK_TAG
+
 Bundler
 -------
 

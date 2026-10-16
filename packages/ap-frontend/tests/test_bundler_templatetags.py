@@ -1,10 +1,13 @@
 from contextlib import ExitStack
 import datetime
 import json
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 from typing import cast
 from unittest import mock
 from urllib.parse import urljoin
+import warnings
 
 from alliance_platform.codegen.printer import TypescriptPrinter
 from alliance_platform.frontend.bundler.base import HtmlGenerationTarget
@@ -14,6 +17,7 @@ from alliance_platform.frontend.bundler.ssr import SSRSerializerContext
 from alliance_platform.frontend.bundler.vanilla_extract import VanillaExtractClassMapping
 from alliance_platform.frontend.bundler.vite import ViteCssEmbed
 from alliance_platform.frontend.html_parser import convert_html_string
+from alliance_platform.frontend.renderable_content import RenderableContent
 from alliance_platform.frontend.templatetags.react import ComponentNode
 from alliance_platform.frontend.templatetags.react import ComponentProps
 from alliance_platform.frontend.templatetags.react import ComponentSourceCodeGenerator
@@ -402,6 +406,57 @@ class TestVanillaExtractTemplateTag(SimpleTestCase):
             self.assertFalse(mapping._should_log_mapping_warning())
             self.assertTrue(mapping._should_log_mapping_warning())
             self.assertFalse(mapping._should_log_mapping_warning())
+
+
+class TestVanillaExtractClassMappingData(SimpleTestCase):
+    def setUp(self) -> None:
+        self.test_development_bundler = TestViteBundler(
+            **bundler_kwargs,  # type: ignore[arg-type]
+            mode="development",
+        )
+        temp_dir = TemporaryDirectory()
+        self.addCleanup(temp_dir.cleanup)
+        self.cache_file = Path(temp_dir.name) / "login_css_ts.json"
+
+    def make_mapping(self) -> VanillaExtractClassMapping:
+        filename = Path("login.css.ts")
+        with mock.patch(
+            "alliance_platform.frontend.bundler.vanilla_extract.resolve_vanilla_extract_cache_names",
+            return_value=(self.cache_file, filename),
+        ):
+            return VanillaExtractClassMapping(self.test_development_bundler, filename)
+
+    def test_get_mapping_reloads_data_rewritten_since_an_earlier_request(self):
+        self.cache_file.write_text(json.dumps({"LoginView": "LoginView__abc123"}))
+        mapping = self.make_mapping()
+        self.cache_file.write_text(json.dumps({"LoginView": "LoginView__abc123", "Title": "Title__def456"}))
+
+        with mock.patch(
+            "alliance_platform.frontend.bundler.vanilla_extract.CurrentRequestMiddleware.get_request",
+            return_value=object(),
+        ):
+            data = mapping.get_mapping()
+
+        self.assertEqual(data, {"LoginView": "LoginView__abc123", "Title": "Title__def456"})
+        self.assertIs(mapping.mapping, data)
+
+    def test_get_mapping_does_not_warn_about_missing_classes(self):
+        self.cache_file.write_text(json.dumps({"LoginView": "LoginView__abc123"}))
+        mapping = self.make_mapping()
+
+        with mock.patch.object(VanillaExtractClassMapping, "_should_log_mapping_warning", return_value=True):
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                self.assertNotIn("Title", mapping.get_mapping() or {})
+            self.assertEqual(caught, [])
+            # Reading the missing class as an attribute is what warns
+            with self.assertWarnsMessage(UserWarning, "Requested class name 'Title'"):
+                self.assertEqual(mapping.Title, "")
+
+    def test_get_mapping_is_none_while_the_mapping_file_is_unavailable(self):
+        mapping = self.make_mapping()
+
+        self.assertIsNone(mapping.get_mapping())
 
 
 @override_ap_frontend_settings(DEBUG_COMPONENT_OUTPUT=False)
@@ -1148,6 +1203,32 @@ class TestComponentTemplateTagOutput(SimpleTestCase):
             {% component "Input" description=help_text %}{% endcomponent %}""",
             """<Input description={<span>Help</span>} />""",
             help_text=convert_html_string("<span>Help</span>", Origin("UNKNOWN"))[0],
+        )
+
+    def test_renderable_content_as_prop(self):
+        """RenderableContent props should resolve like the equivalent convert_html_string output"""
+        self.assertComponentEqual(
+            """
+            {% component "Input" description=help_text %}{% endcomponent %}""",
+            """<Input description={<span>Help</span>} />""",
+            help_text=RenderableContent.from_html("<span>Help</span>", Origin("UNKNOWN")),
+        )
+
+    def test_renderable_content_mixed_as_prop(self):
+        """Mixed text/element content should preserve text around tags"""
+        self.assertComponentEqual(
+            """
+            {% component "Input" description=help_text %}{% endcomponent %}""",
+            """<Input description={["Use ", <strong>bold</strong>, " text"]} />""",
+            help_text=RenderableContent.from_html("Use <strong>bold</strong> text", Origin("UNKNOWN")),
+        )
+
+    def test_renderable_content_plain_text_as_prop(self):
+        self.assertComponentEqual(
+            """
+            {% component "Input" description=help_text %}{% endcomponent %}""",
+            """<Input description="Just text" />""",
+            help_text=RenderableContent.from_text("Just text"),
         )
 
     def test_void_tags(self):
