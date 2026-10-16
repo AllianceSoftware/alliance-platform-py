@@ -317,8 +317,13 @@ the visible input has a `name`, the runtime creates a hidden input with that nam
 visible input, so the visible input can show locale formatting while the hidden input carries the
 numeric value. It synchronizes on `input`, `change`, and form `submit` (the last also covers a
 script assigning the visible value without dispatching an input event), formats on attach/blur,
-handles the rendered step buttons and arrow keys, and keeps cleanup state in a `WeakMap` so
-repeated attachment does not duplicate listeners or hidden inputs. `disconnect()` writes the
+and synchronizes native form resets in a microtask. Application code must call the controller's
+`sync()` before constructing `FormData` or calling `form.submit()` after programmatic value or
+disabled changes, an immediate reset, or edits made after the capturing submit listener. This
+applies to every affected field, including disabled fields and inputs associated through `form`
+outside the form's subtree; see the "Static number inputs" template tag documentation for an
+example. The runtime handles the rendered step buttons and arrow keys, and keeps cleanup state in
+a `WeakMap` so repeated attachment does not duplicate listeners or hidden inputs. `disconnect()` writes the
 numeric value back into the visible input, moves `name` back to it and removes the hidden input, so
 a later native submit sends a plain number. The runtime tests live in the JS repo:
 `packages/ui/components/number-input/tests/NumberInput.attach.test.ts`.

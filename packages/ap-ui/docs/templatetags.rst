@@ -207,6 +207,38 @@ Without JavaScript, a static ``number_input`` submits the unformatted number the
 the static runtime (see :ref:`static-component-runtimes`) has attached, the visible field shows
 locale formatting while a hidden field created by the runtime carries the numeric value.
 
+Application code is responsible for synchronizing programmatic changes before serializing the
+form. The runtime synchronizes on ``input``, ``change`` and ``blur``, and in a capturing ``submit``
+listener, so typing and normal submission (including ``form.requestSubmit()``) update the hidden
+field. Assigning the visible input's ``value`` or ``disabled`` property does not dispatch those
+events. Neither ``new FormData(form)`` nor ``form.submit()`` dispatches ``submit``.
+
+Import ``attachNumberInput`` to obtain the controller; calling it for an already attached root
+returns the existing controller. Call its ``sync()`` after programmatic changes and before
+constructing ``FormData`` or calling ``form.submit()``. For a number input associated with a form:
+
+.. code-block:: javascript
+
+    import { attachNumberInput } from '@alliancesoftware/ui/components/number-input/NumberInput.attach';
+
+    const root = document.querySelector('[data-apui="number-input"]');
+    const input = root.querySelector('input[type="text"]');
+    const controller = attachNumberInput(root);
+
+    input.value = '99';
+    controller.sync();
+    const data = new FormData(input.form); // Submits 99, rather than the previous hidden value.
+
+The same rule applies when disabling a field: call ``sync()`` before serialization so the hidden
+field is also disabled and omitted. Call it when serializing immediately after ``form.reset()``
+as well, since the runtime otherwise synchronizes the reset value in a microtask. If a submit
+listener changes the input after the runtime's capturing listener has run, that listener must
+synchronize its changes before serializing or allowing submission to continue.
+
+Synchronize every affected number input controller, including fields that were just disabled.
+Inputs associated through the HTML ``form`` attribute may be outside the form's DOM subtree.
+Call ``sync()`` before constructing ``FormData``; it does not update an existing ``FormData`` object.
+
 Static ``number_input`` components treat numeric NaN values as empty. This includes both Python
 ``float`` and ``Decimal`` NaN values, so the ``none_as_nan`` compatibility value used by legacy
 Django number widgets does not appear as ``nan`` in the visible input or runtime initial value, and
