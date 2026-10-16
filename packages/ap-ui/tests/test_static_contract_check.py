@@ -6,6 +6,7 @@ from unittest import mock
 from alliance_platform.frontend.bundler.vite import ViteBundler
 from alliance_platform.frontend.checks import FRONTEND_BUILD_CHECK_TAG
 from alliance_platform.ui.checks import check_static_contract
+from alliance_platform.ui.html_components.contract import STATIC_CONTRACT_RELEASES
 from alliance_platform.ui.html_components.contract import SUPPORTED_STATIC_CONTRACT_VERSIONS
 from django.core.checks import CheckMessage
 from django.core.checks import run_checks
@@ -71,7 +72,8 @@ class StaticContractCheckTestCase(SimpleTestCase):
         self.assertIn("Cannot resolve '@alliancesoftware/ui/static-contract.json'", error.msg)
         self.assertIn(f"'{self.ui_dir / 'static-contract.json'}' does not exist", error.msg)
         self.assertEqual(
-            error.hint, "Install the @alliancesoftware/ui release that ships static contract version 1."
+            error.hint,
+            "Install @alliancesoftware/ui@0.0.67 or a later release that ships static contract version 1.",
         )
 
     def test_invalid_json(self):
@@ -79,7 +81,8 @@ class StaticContractCheckTestCase(SimpleTestCase):
         error = self.assert_one_error(check_static_contract(), "alliance_platform_ui.E003")
         self.assertIn(f"'{self.icons_dir / 'static-contract.json'}' is not valid JSON", error.msg)
         self.assertEqual(
-            error.hint, "Install the @alliancesoftware/icons release that ships static contract version 1."
+            error.hint,
+            "Install @alliancesoftware/icons@0.0.14 or a later release that ships static contract version 1.",
         )
 
     def test_no_integer_version(self):
@@ -106,12 +109,15 @@ class StaticContractCheckTestCase(SimpleTestCase):
         )
         self.assertEqual(
             error.hint,
-            "Downgrade @alliancesoftware/ui to the release that ships static contract version 1, or "
-            "upgrade alliance-platform-ui to a release that supports version 2.",
+            "Downgrade to @alliancesoftware/ui@0.0.67 or a later release that ships static contract "
+            "version 1, or upgrade alliance-platform-ui to a release that supports version 2.",
         )
 
     def test_older_icons_contract(self):
-        with mock.patch.dict(SUPPORTED_STATIC_CONTRACT_VERSIONS, {"@alliancesoftware/icons": 2}):
+        with (
+            mock.patch.dict(SUPPORTED_STATIC_CONTRACT_VERSIONS, {"@alliancesoftware/icons": 2}),
+            mock.patch.dict(STATIC_CONTRACT_RELEASES["@alliancesoftware/icons"], {2: "0.0.20"}),
+        ):
             error = self.assert_one_error(check_static_contract(), "alliance_platform_ui.E004")
         self.assertEqual(
             error.msg,
@@ -120,8 +126,22 @@ class StaticContractCheckTestCase(SimpleTestCase):
         )
         self.assertEqual(
             error.hint,
-            "Upgrade @alliancesoftware/icons to the release that ships static contract version 2.",
+            "Upgrade to @alliancesoftware/icons@0.0.20 or a later release that ships static contract "
+            "version 2.",
         )
+
+    def test_hint_without_a_recorded_release(self):
+        with mock.patch.dict(SUPPORTED_STATIC_CONTRACT_VERSIONS, {"@alliancesoftware/icons": 2}):
+            error = self.assert_one_error(check_static_contract(), "alliance_platform_ui.E004")
+        self.assertEqual(
+            error.hint,
+            "Upgrade to the @alliancesoftware/icons release that ships static contract version 2.",
+        )
+
+    def test_every_supported_version_has_a_recorded_release(self):
+        for package, version in SUPPORTED_STATIC_CONTRACT_VERSIONS.items():
+            with self.subTest(package):
+                self.assertIn(version, STATIC_CONTRACT_RELEASES[package])
 
     def test_static_svg_directory(self):
         static_svg_dir = self.icons_dir / "static-svg"
@@ -131,7 +151,8 @@ class StaticContractCheckTestCase(SimpleTestCase):
             "Cannot resolve the static SVG icon directory '@alliancesoftware/icons/static-svg'", error.msg
         )
         self.assertEqual(
-            error.hint, "Install the @alliancesoftware/icons release that ships static contract version 1."
+            error.hint,
+            "Install @alliancesoftware/icons@0.0.14 or a later release that ships static contract version 1.",
         )
 
         static_svg_dir.write_text("")
@@ -150,7 +171,8 @@ class StaticContractCheckTestCase(SimpleTestCase):
             error.msg,
         )
         self.assertEqual(
-            error.hint, "Install the @alliancesoftware/ui release that ships static contract version 1."
+            error.hint,
+            "Install @alliancesoftware/ui@0.0.67 or a later release that ships static contract version 1.",
         )
 
     def test_resolution_failures_are_reported(self):

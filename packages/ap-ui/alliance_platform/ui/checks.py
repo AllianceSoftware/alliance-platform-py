@@ -14,6 +14,7 @@ from django.core.checks import Error
 from django.core.exceptions import ImproperlyConfigured
 
 from .html_components.contract import STATIC_CONTRACT_FILE
+from .html_components.contract import STATIC_CONTRACT_RELEASES
 from .html_components.contract import SUPPORTED_STATIC_CONTRACT_VERSIONS
 from .html_components.runtime import STATIC_RUNTIME_MODULE_PATH
 from .html_components.runtime import STATIC_RUNTIME_RESOLVE_EXTENSIONS
@@ -100,9 +101,16 @@ def _resolve(request_path: str, resolve_extensions: list[str] | None = None) -> 
     )
 
 
+def _releases(package: str, version: int) -> str:
+    """The releases of ``package`` that ship static contract ``version``, as the hints name them"""
+    release = STATIC_CONTRACT_RELEASES.get(package, {}).get(version)
+    if release is None:
+        return f"the {package} release that ships static contract version {version}"
+    return f"{package}@{release} or a later release that ships static contract version {version}"
+
+
 def _install_hint(package: str) -> str:
-    version = SUPPORTED_STATIC_CONTRACT_VERSIONS[package]
-    return f"Install the {package} release that ships static contract version {version}."
+    return f"Install {_releases(package, SUPPORTED_STATIC_CONTRACT_VERSIONS[package])}."
 
 
 def _check_contract_file(package: str) -> list[CheckMessage]:
@@ -134,11 +142,11 @@ def _check_contract_file(package: str) -> list[CheckMessage]:
     if version == supported:
         return []
     if version < supported:
-        hint = f"Upgrade {package} to the release that ships static contract version {supported}."
+        hint = f"Upgrade to {_releases(package, supported)}."
     else:
         hint = (
-            f"Downgrade {package} to the release that ships static contract version {supported}, or "
-            f"upgrade alliance-platform-ui to a release that supports version {version}."
+            f"Downgrade to {_releases(package, supported)}, or upgrade alliance-platform-ui to a "
+            f"release that supports version {version}."
         )
     return [
         Error(

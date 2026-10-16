@@ -109,7 +109,9 @@ classes the styles and runtimes key off, the runtime tokens and the static SVG i
 alliance-platform-js, `packages/ui/static-contract.json` and `packages/icons/static-contract.json`
 hold the version of each package's side as an integer `version`; here,
 `SUPPORTED_STATIC_CONTRACT_VERSIONS` in `html_components/contract.py` holds the version of each that
-the renderers are written for. `check_static_contract` in `alliance_platform/ui/checks.py` (ids
+the renderers are written for, and `STATIC_CONTRACT_RELEASES` the first npm release of each package
+that ships each version, which the check's hints name (a test fails when a supported version has no
+release recorded). `check_static_contract` in `alliance_platform/ui/checks.py` (ids
 `alliance_platform_ui.E001` to `E006`, documented in `docs/installation.rst`) compares them and
 checks for `static-svg` and the runtime entry, wherever `NODE_MODULES_DIR` exists and the bundler
 is in development mode. It is registered with ap-frontend's `FRONTEND_BUILD_CHECK_TAG`, so
@@ -119,7 +121,9 @@ as its packages are stand-ins; `tests/test_static_contract_check.py` tests the c
 A JS change that alters a package's contract bumps its `version`, and nothing else does: it is not
 the npm version (the rule is in the header comments of `packages/ui/static-runtime.ts` and
 `packages/icons/create-icons-from-svgs.ts`). The PY change that adapts the renderers raises the
-supported version. The fixture drift workflow also runs nightly against alliance-platform-js
+supported version, records the npm release that ships it in `STATIC_CONTRACT_RELEASES` and updates
+the versions in the "System checks" section of `docs/installation.rst`. The fixture drift workflow
+also runs nightly against alliance-platform-js
 `main`, ignoring the `.github/alliance-platform-js-ref` pin, so a merged JS change that alters the
 markup or class mappings without the matching change here fails it within a day. Pull requests of
 cross-repo work pin the JS branch in that file until it merges (see "CI fixture drift check"). The same

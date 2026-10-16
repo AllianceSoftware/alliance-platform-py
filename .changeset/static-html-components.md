@@ -24,8 +24,8 @@ covers adding your own.
 - Template mistakes are logged to the `alliance_platform.ui` logger; the
   [`STATIC_COMPONENT_STRICT`](https://alliance-platform.readthedocs.io/projects/ui/latest/installation.html#settings)
   setting, which defaults to `DEBUG`, raises them instead.
-- Requires `alliance-platform-frontend>=0.0.24` and builds of `@alliancesoftware/ui` and
-  `@alliancesoftware/icons` that ship a `static-contract.json`. A
+- Requires `alliance-platform-frontend>=0.0.24`, `@alliancesoftware/ui@0.0.67` and
+  `@alliancesoftware/icons@0.0.14`, the first releases that ship a `static-contract.json`. A
   [system check](https://alliance-platform.readthedocs.io/projects/ui/latest/installation.html#system-checks)
   reports an installed version the renderers do not support, and `extract_frontend_resources` now
   runs the system checks tagged `alliance_platform_frontend_build` and fails the build on an error.

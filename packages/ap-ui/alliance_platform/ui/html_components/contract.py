@@ -6,7 +6,8 @@ the runtime tokens and the layout of the static SVG icons. Each package records 
 side of the contract as an integer ``version`` in ``static-contract.json`` at its root, bumped only
 when that contract changes; it is not the npm version.
 :func:`~alliance_platform.ui.checks.check_static_contract` compares the installed packages' versions
-with :data:`SUPPORTED_STATIC_CONTRACT_VERSIONS`.
+with :data:`SUPPORTED_STATIC_CONTRACT_VERSIONS`, and its hints name the npm releases recorded in
+:data:`STATIC_CONTRACT_RELEASES`.
 """
 
 #: The file at the root of each package that holds its static contract version
@@ -14,3 +15,10 @@ STATIC_CONTRACT_FILE = "static-contract.json"
 
 #: The static contract version of each npm package that the static renderers are written for
 SUPPORTED_STATIC_CONTRACT_VERSIONS = {"@alliancesoftware/ui": 1, "@alliancesoftware/icons": 1}
+
+#: The first npm release of each package that ships each static contract version, which the hints of
+#: the system check name. Record the release when raising a package's supported version.
+STATIC_CONTRACT_RELEASES: dict[str, dict[int, str]] = {
+    "@alliancesoftware/ui": {1: "0.0.67"},
+    "@alliancesoftware/icons": {1: "0.0.14"},
+}

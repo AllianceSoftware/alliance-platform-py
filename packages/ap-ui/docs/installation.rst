@@ -144,8 +144,10 @@ System checks
 The static ``{% ui %}`` components emit markup for a DOM and CSS contract defined by the
 ``@alliancesoftware/ui`` and ``@alliancesoftware/icons`` npm packages. Each package records the
 version of its side of the contract as an integer ``version`` in a ``static-contract.json`` file at
-its root, and each release of ``alliance_platform_ui`` supports one version of each. A system check
-verifies the installed packages, resolving their files through the bundler as the components do:
+its root, and each release of ``alliance_platform_ui`` supports one version of each: this release
+supports version 1, which ``@alliancesoftware/ui`` ships from 0.0.67 and ``@alliancesoftware/icons``
+from 0.0.14. A system check verifies the installed packages, resolving their files through the
+bundler as the components do:
 
 .. list-table::
     :header-rows: 1
@@ -170,7 +172,8 @@ verifies the installed packages, resolving their files through the bundler as th
       - ``@alliancesoftware/ui/static-runtime.auto.ts``, the static runtime entry, does not resolve
         to a file.
 
-The hint of each error names the npm release to install. The check runs with Django's other system
+The hint of each error names the first release of the package that ships the supported contract
+version. The check runs with Django's other system
 checks: in development (``runserver``), with ``manage.py check``, before the tests and before most
 other management commands. It is registered with the
 :data:`~alliance_platform.frontend.checks.FRONTEND_BUILD_CHECK_TAG` tag, so
