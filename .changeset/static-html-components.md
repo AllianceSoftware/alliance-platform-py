@@ -13,19 +13,19 @@ documents every component and its props, and
 [Writing a static component](https://alliance-platform.readthedocs.io/projects/ui/latest/static_components.html)
 covers adding your own.
 
--   Forms: the opt-in
-    [`StaticFormRenderer`](https://alliance-platform.readthedocs.io/projects/ui/latest/installation.html#static-form-widgets)
-    renders Django's text, number and text area widgets with the static components, and
-    `{% ui "labeled_input" %}` wraps any other control in the inputs' label, help text and error
-    message. Form help text and errors marked safe keep their HTML in both the React and static
-    widgets.
--   The `alliance_platform.ui` template library now provides the `merge_props` and `none_as_nan`
-    filters.
--   Template mistakes are logged to the `alliance_platform.ui` logger; the
-    [`STATIC_COMPONENT_STRICT`](https://alliance-platform.readthedocs.io/projects/ui/latest/installation.html#settings)
-    setting, which defaults to `DEBUG`, raises them instead.
--   Requires builds of `@alliancesoftware/ui` and `@alliancesoftware/icons` that ship a
-    `static-contract.json`. A
-    [system check](https://alliance-platform.readthedocs.io/projects/ui/latest/installation.html#system-checks)
-    reports an installed version the renderers do not support, and `extract_frontend_resources` now
-    runs the system checks tagged `alliance_platform_frontend_build` and fails the build on an error.
+- Forms: the opt-in
+  [`StaticFormRenderer`](https://alliance-platform.readthedocs.io/projects/ui/latest/installation.html#static-form-widgets)
+  renders Django's text, number and text area widgets with the static components, and
+  `{% ui "labeled_input" %}` wraps any other control in the inputs' label, help text and error
+  message. Form help text and errors marked safe keep their HTML in both the React and static
+  widgets.
+- The `alliance_platform.ui` template library now provides the `merge_props` and `none_as_nan`
+  filters.
+- Template mistakes are logged to the `alliance_platform.ui` logger; the
+  [`STATIC_COMPONENT_STRICT`](https://alliance-platform.readthedocs.io/projects/ui/latest/installation.html#settings)
+  setting, which defaults to `DEBUG`, raises them instead.
+- Requires `alliance-platform-frontend>=0.0.24` and builds of `@alliancesoftware/ui` and
+  `@alliancesoftware/icons` that ship a `static-contract.json`. A
+  [system check](https://alliance-platform.readthedocs.io/projects/ui/latest/installation.html#system-checks)
+  reports an installed version the renderers do not support, and `extract_frontend_resources` now
+  runs the system checks tagged `alliance_platform_frontend_build` and fails the build on an error.
