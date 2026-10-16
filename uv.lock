@@ -444,6 +444,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "beautifulsoup4" },
     { name = "psycopg2" },
     { name = "pytest-benchmark" },
     { name = "pytest-django" },
@@ -463,6 +464,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "beautifulsoup4", specifier = ">=4.11,<5.0" },
     { name = "psycopg2" },
     { name = "pytest-benchmark", specifier = ">=4.0.0" },
     { name = "pytest-django", specifier = ">=4.8.0" },

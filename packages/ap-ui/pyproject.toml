@@ -92,4 +92,5 @@ dev = [
     "types-factory-boy",
     "pytest-django>=4.8.0",
     "pytest-benchmark>=4.0.0",
+    "beautifulsoup4<5.0,>=4.11",
 ]
