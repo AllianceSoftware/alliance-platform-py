@@ -34,6 +34,15 @@ def make_bundler(root_dir: Path, mode: str = "development") -> ViteBundler:
     )
 
 
+UI_PACKAGE = "@alliancesoftware/ui"
+#: The ui contract version the renderers support and the first release that ships it
+UI_VERSION = SUPPORTED_STATIC_CONTRACT_VERSIONS[UI_PACKAGE]
+UI_RELEASE = STATIC_CONTRACT_RELEASES[UI_PACKAGE][UI_VERSION]
+UI_INSTALL_HINT = (
+    f"Install {UI_PACKAGE}@{UI_RELEASE} or a later release that ships static contract version {UI_VERSION}."
+)
+
+
 class StaticContractCheckTestCase(SimpleTestCase):
     def setUp(self):
         temp_dir = TemporaryDirectory()
@@ -45,7 +54,7 @@ class StaticContractCheckTestCase(SimpleTestCase):
         self.icons_dir = self.node_modules_dir / "@alliancesoftware/icons"
         self.ui_dir.mkdir(parents=True)
         (self.icons_dir / "static-svg/outlined").mkdir(parents=True)
-        self.write_contract(self.ui_dir, '{ "version": 1 }')
+        self.write_contract(self.ui_dir, f'{{ "version": {UI_VERSION} }}')
         self.write_contract(self.icons_dir, '{ "version": 1 }')
         (self.ui_dir / "static-runtime.auto.ts").write_text("export {};\n")
         self.bundler = make_bundler(self.root_dir)
@@ -71,10 +80,7 @@ class StaticContractCheckTestCase(SimpleTestCase):
         error = self.assert_one_error(check_static_contract(), "alliance_platform_ui.E001")
         self.assertIn("Cannot resolve '@alliancesoftware/ui/static-contract.json'", error.msg)
         self.assertIn(f"'{self.ui_dir / 'static-contract.json'}' does not exist", error.msg)
-        self.assertEqual(
-            error.hint,
-            "Install @alliancesoftware/ui@0.0.67 or a later release that ships static contract version 1.",
-        )
+        self.assertEqual(error.hint, UI_INSTALL_HINT)
 
     def test_invalid_json(self):
         self.write_contract(self.icons_dir, '{ "version": 1')
@@ -100,17 +106,33 @@ class StaticContractCheckTestCase(SimpleTestCase):
                 self.assertEqual(error.msg, f"'{contract_path}' {problem}.")
 
     def test_newer_ui_contract(self):
-        self.write_contract(self.ui_dir, '{ "version": 2 }')
+        newer = UI_VERSION + 1
+        self.write_contract(self.ui_dir, f'{{ "version": {newer} }}')
         error = self.assert_one_error(check_static_contract(), "alliance_platform_ui.E002")
         self.assertEqual(
             error.msg,
-            "Static contract mismatch for @alliancesoftware/ui: installed version 2, "
-            f"alliance-platform-ui supports 1 (read from '{self.ui_dir / 'static-contract.json'}').",
+            f"Static contract mismatch for @alliancesoftware/ui: installed version {newer}, "
+            f"alliance-platform-ui supports {UI_VERSION} (read from '{self.ui_dir / 'static-contract.json'}').",
         )
         self.assertEqual(
             error.hint,
-            "Downgrade to @alliancesoftware/ui@0.0.67 or a later release that ships static contract "
-            "version 1, or upgrade alliance-platform-ui to a release that supports version 2.",
+            f"Downgrade to @alliancesoftware/ui@{UI_RELEASE} or a later release that ships static contract "
+            f"version {UI_VERSION}, or upgrade alliance-platform-ui to a release that supports version {newer}.",
+        )
+
+    def test_older_ui_contract(self):
+        # Release 1 of the static components shipped contract version 1
+        self.write_contract(self.ui_dir, '{ "version": 1 }')
+        error = self.assert_one_error(check_static_contract(), "alliance_platform_ui.E002")
+        self.assertEqual(
+            error.msg,
+            f"Static contract mismatch for @alliancesoftware/ui: installed version 1, "
+            f"alliance-platform-ui supports {UI_VERSION} (read from '{self.ui_dir / 'static-contract.json'}').",
+        )
+        self.assertEqual(
+            error.hint,
+            f"Upgrade to @alliancesoftware/ui@{UI_RELEASE} or a later release that ships static contract "
+            f"version {UI_VERSION}.",
         )
 
     def test_older_icons_contract(self):
@@ -170,10 +192,7 @@ class StaticContractCheckTestCase(SimpleTestCase):
             "Cannot resolve the static runtime entry '@alliancesoftware/ui/static-runtime.auto.ts'",
             error.msg,
         )
-        self.assertEqual(
-            error.hint,
-            "Install @alliancesoftware/ui@0.0.67 or a later release that ships static contract version 1.",
-        )
+        self.assertEqual(error.hint, UI_INSTALL_HINT)
 
     def test_resolution_failures_are_reported(self):
         with mock.patch.object(self.bundler, "resolve_path", side_effect=RuntimeError("Resolver failed")):
@@ -200,6 +219,6 @@ class StaticContractCheckTestCase(SimpleTestCase):
             self.assertEqual(check_static_contract(), [])
 
     def test_runs_with_the_frontend_build_checks(self):
-        self.write_contract(self.ui_dir, '{ "version": 2 }')
+        self.write_contract(self.ui_dir, f'{{ "version": {UI_VERSION + 1} }}')
         messages = run_checks(tags=[FRONTEND_BUILD_CHECK_TAG])
         self.assertIn("alliance_platform_ui.E002", [message.id for message in messages])
