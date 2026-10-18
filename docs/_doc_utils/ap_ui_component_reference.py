@@ -52,6 +52,7 @@ BUILT_IN_STORYBOOK_DOCS_IDS = {
     "checkbox_group": "ui-checkboxgroup",
     "radio_group": "ui-radiogroup",
     "radio": "ui-radiogroup",
+    "native_select": "form-nativeselect",
 }
 
 #: The parent each built-in part requires, by the class attribute that declares the requirement

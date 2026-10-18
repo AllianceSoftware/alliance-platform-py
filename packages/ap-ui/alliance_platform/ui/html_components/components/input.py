@@ -460,19 +460,7 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
         focus_ring_styles = self.resolve_vanilla_extract_mapping(_FOCUS_RING_STYLE_PATH)
 
         control_html = self.render_control(context, props, state, text_input_base_styles)
-
-        validation_icon_html = ""
-        if self.should_render_validation_icon(props, state):
-            icon_name = _CHECK_ICON if state.validation_state == "valid" else _ALERT_CIRCLE_ICON
-            validation_icon_html = self.render_icon(
-                icon_name,
-                "xs",
-                [
-                    self.get_style_class(text_input_base_styles, "adornmentIcon"),
-                    self.get_style_class(text_input_base_styles, "validationIcon"),
-                ],
-                slot=False,
-            )
+        adornments_html = self.render_adornments(props, state, text_input_base_styles)
 
         input_wrapper_attrs: dict[str, Any] = {
             "aria-busy": "true" if state.is_loading else None,
@@ -485,9 +473,7 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
             "data-disabled": "true" if state.is_disabled else None,
             "data-loading": "true" if state.is_loading and not state.is_disabled else None,
         }
-        input_wrapper_html = self.render_tag(
-            "div", input_wrapper_attrs, f"{control_html}{validation_icon_html}"
-        )
+        input_wrapper_html = self.render_tag("div", input_wrapper_attrs, f"{control_html}{adornments_html}")
 
         addon_before_html = self.render_addon_before(context, props, state, text_input_base_styles)
         addon_after_html = self.render_addon_after(context, props, state, text_input_base_styles)
@@ -497,7 +483,8 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
             **self.get_container_extra_attrs(props, state),
             "className": self.get_style_class(text_input_base_styles, "inputContainer"),
             "data-size": state.input_size,
-            "data-element": "textarea" if self.control_tag == "textarea" else "input",
+            # As TextInputBase marks its container from its elementType
+            "data-element": self.control_tag if self.control_tag in ("input", "select") else "textarea",
             "data-has-addon-before": "true" if addon_before_html else None,
             "data-has-addon-after": "true" if addon_after_html else None,
         }
@@ -517,6 +504,24 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
 
     def should_render_validation_icon(self, props: dict[str, Any], state: LabeledInputState) -> bool:
         return bool(state.validation_state) and not state.is_disabled
+
+    def render_validation_icon(self, state: LabeledInputState, class_names: list[str]) -> str:
+        icon_name = _CHECK_ICON if state.validation_state == "valid" else _ALERT_CIRCLE_ICON
+        return self.render_icon(icon_name, "xs", class_names, slot=False)
+
+    def render_adornments(
+        self, props: dict[str, Any], state: LabeledInputState, text_input_base_styles: Any
+    ) -> str:
+        """Render what follows the control in the input wrapper: the validation icon, if any."""
+        if not self.should_render_validation_icon(props, state):
+            return ""
+        return self.render_validation_icon(
+            state,
+            [
+                self.get_style_class(text_input_base_styles, "adornmentIcon"),
+                self.get_style_class(text_input_base_styles, "validationIcon"),
+            ],
+        )
 
     def configure_container_runtime(
         self,
