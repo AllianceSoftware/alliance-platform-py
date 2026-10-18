@@ -114,7 +114,8 @@ the suggested static renderer (or native element), and one of these statuses:
   HTML rather than a static UI renderer. Deferred ``url``/``url_with_perm`` values are marked
   ``REVIEW`` because native markup does not preserve automatic component omission.
 * ``NO-STATIC-EQUIVALENT`` — the Alliance UI component is recognised but has no static renderer
-  yet.
+  yet. For ``Select`` and ``MultipleSelect`` the finding suggests ``native_select`` instead, a
+  native select without their search, asynchronous loading or rendered options.
 
 The suggested tag shows ``{% endui %}`` only for components with children: a button is suggested as
 ``{% ui "button" %}...{% endui %}`` and an icon as ``{% ui "icon" %}``.
@@ -276,6 +277,38 @@ the auto-grow runtime.
 
 .. ui-component:: text_area
 
+Static native selects
+~~~~~~~~~~~~~~~~~~~~~
+
+``native_select`` renders a native ``<select>`` with the label, help text, error message, sizes and
+states of the static text input, and a chevron. Its children are the ``<option>`` and
+``<optgroup>`` elements, which render as written:
+
+.. code-block:: html+django
+
+    {% ui "native_select" name="colour" label="Colour" value=profile.colour %}
+      <option value="">Choose a colour</option>
+      {% for value, label in colours %}
+        <option value="{{ value }}">{{ label }}</option>
+      {% endfor %}
+    {% endui %}
+
+``value`` (or ``default_value``) selects the options it names and no others, as React's ``value``
+does: the value of an option is its ``value`` attribute, or its text when it has none, and a value
+is compared with it as text. Without ``value`` the options keep their own ``selected`` attributes. A
+select has no placeholder: give it an option with an empty value, as above, which ``value=""``
+selects.
+
+``is_multiple=True``, or ``multiple=True`` as Django's ``SelectMultiple`` widget writes it, makes a
+multiple select, whose ``value`` is a list. It shows as a list box, without the chevron, as does a
+select whose ``size`` is more than one. For search, options loaded asynchronously or options
+rendered by components, use the React ``Select``.
+
+:ref:`StaticFormRenderer <static-form-widgets>` renders Django's ``Select``, ``SelectMultiple`` and
+``NullBooleanSelect`` widgets as ``native_select``.
+
+.. ui-component:: native_select
+
 .. _static-labeled-inputs:
 
 Static labeled inputs
@@ -283,15 +316,12 @@ Static labeled inputs
 
 ``{% ui "labeled_input" %}`` renders the label, help text and error message an input renders around
 a control you write yourself, as :ttag:`LabeledInput` does, for a control with no static component
-of its own, such as a native ``<select>``:
+of its own, such as a range input:
 
 .. code-block:: html+django
 
-    {% ui "labeled_input" label="Colour" input_id="colour" description="Shown on your profile" %}
-      <select id="colour" name="colour" aria-describedby="colour_helptext">
-        <option value="red">Red</option>
-        <option value="blue">Blue</option>
-      </select>
+    {% ui "labeled_input" label="Volume" input_id="volume" description="Applies to every alert" %}
+      <input type="range" id="volume" name="volume" min="0" max="10" aria-describedby="volume_helptext">
     {% endui %}
 
 ``input_id`` is the id of the control inside. It is the label's ``for``, and the help text and the
@@ -302,8 +332,8 @@ text from Django 5.0, for the errors from Django 5.2), so a widget renders insid
 
 .. code-block:: html+django
 
-    {% ui "labeled_input" label=form.colour.label input_id=form.colour.auto_id description=form.colour.help_text %}
-      {{ form.colour }}
+    {% ui "labeled_input" label=form.volume.label input_id=form.volume.auto_id description=form.volume.help_text %}
+      {{ form.volume }}
     {% endui %}
 
 A label without an ``input_id`` is reported as a :ref:`contract diagnostic
@@ -318,14 +348,14 @@ get generated ids.
 its control, such as ``auto_focus`` and ``data-*`` and ``aria-*`` attributes, so a widget template
 can pass it the ``extra_widget_props`` of :ttag:`form_input` whole, but does not render them: write
 them on the control. For example, the template of a widget class of your own,
-``template_name = "my_app/widgets/labeled_select.html"``, can wrap Django's select markup:
+``template_name = "my_app/widgets/labeled_file.html"``, can wrap Django's file input markup:
 
 .. code-block:: html+django
 
     {% load alliance_platform.ui %}
 
     {% ui "labeled_input" props=extra_widget_props input_id=widget.attrs.id %}
-      {% include "django/forms/widgets/select.html" %}
+      {% include "django/forms/widgets/clearable_file_input.html" %}
     {% endui %}
 
 .. ui-component:: labeled_input
