@@ -202,6 +202,11 @@
     "input": "Checkbox_input__s8y9v1c",
     "radioGroup": "RadioGroup_radioGroup__1ntuqk83"
   },
+  "@alliancesoftware/ui/components/select/NativeSelect.css.ts": {
+    "adornments": "NativeSelect_adornments__1mzg31n0",
+    "chevron": "NativeSelect_chevron__1mzg31n2",
+    "select": "NativeSelect_select__1mzg31n1"
+  },
   "@alliancesoftware/ui/components/table/Table.css.ts": {
     "footer": "Table_footer__165xtj0c",
     "header": "Table_header__165xtj0a",
@@ -249,6 +254,7 @@
     "inputContainer": "TextInputBase_inputContainer__10cw8bfi",
     "vars": {
       "paddingRight": "var(--paddingRight__10cw8bf0)",
+      "paddingTop": "var(--paddingTop__10cw8bf1)",
       "borderColor": "var(--borderColor__10cw8bf4)",
       "borderColorHover": "var(--borderColorHover__10cw8bf5)",
       "borderRadius": "var(--components-textInput-borderRadius__1n87t70u1)",
