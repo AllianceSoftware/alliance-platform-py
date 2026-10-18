@@ -674,11 +674,20 @@ of the check; the input's own indeterminate state needs a script, so until one s
 
 On its own a checkbox renders in the row React's form layout gives it: a ``<div>`` marked with its
 ``label_position``, which in the top layout pushes the checkbox down to line up with the inputs
-beside it, and ``label_position="side"`` puts an empty label cell before it. As React's ``Checkbox``,
-it renders no label, help text or error message of its own: ``label``, ``description`` and
-``error_message`` are accepted, as :ttag:`form_input` passes them, and not rendered. Inside a
-``checkbox_group`` it renders no row and takes its state from the group (see
-:ref:`static-checkbox-groups`).
+beside it, and ``label_position="side"`` puts an empty label cell before it. Its ``description``
+renders below it, and its ``error_message`` in place of the description while it is invalid, both in
+the help text style of the other inputs and coloured as invalid while it is:
+
+.. code-block:: html+django
+
+    {% ui "checkbox" id="id_terms" name="terms" is_required=True is_invalid=True error_message="This field is required." %}
+      I accept the terms
+    {% endui %}
+
+A given ``id`` names them ``<id>_helptext`` and ``<id>_error``, the ids Django gives a form field's,
+and the input is described by the one that renders. ``label`` is accepted, as :ttag:`form_input`
+passes it, and not rendered: a checkbox's label is its children. Inside a ``checkbox_group`` it
+renders no row or help text and takes its state from the group (see :ref:`static-checkbox-groups`).
 
 .. ui-component:: checkbox
 

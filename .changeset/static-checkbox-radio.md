@@ -17,8 +17,7 @@ references document their props.
   them. A template of your own for the widget still renders it, as does your own version of a
   template Django's renders through: `input.html`, and for the radio and checkbox select
   `multiple_input.html`, `input_option.html` and the option templates. As in the React widget, the
-  field's label sits beside a checkbox, and a checkbox shows neither the field's help text nor its
-  errors.
+  field's label sits beside a checkbox, with the field's help text, or its errors, below it.
 - Requires `@alliancesoftware/ui@0.0.68`, the first release with version 2 of the static contract;
   the [system check](https://alliance-platform.readthedocs.io/projects/ui/latest/installation.html#system-checks)
   reports an earlier release.

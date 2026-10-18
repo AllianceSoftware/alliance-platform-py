@@ -634,7 +634,12 @@ server-rendered markup and check the cascade.
 
 A checkbox on its own renders in the row `FormLayout.renderLabeledInput` gives it: a `<div>` with
 `data-label-position="top"`, which `Checkbox.css` pushes the checkbox down in, or the side layout row
-with a `sideLabelPlaceholder` cell. Inside a `checkbox_group` it renders no row.
+with a `sideLabelPlaceholder` cell. After the checkbox comes its description, or its error message
+while it is invalid, as `LabeledInput` renders them (`LabeledInput.css`'s `helpText`), named
+`<id>_helptext` and `<id>_error` after a given `id` and referenced from the input's
+`aria-describedby` before any ids the caller gives. The row carries `data-invalid` while the checkbox
+is invalid, from which `LabeledInput.css` colours the help text of any form layout row. Inside a
+`checkbox_group` it renders no row and no help text.
 
 The groups render through `UILabeledInputRendererMixin` with `label_element = "span"`: the label is a
 `<span>` whose id (`label_id` in `LabeledInputState`) the group element lists in `aria-labelledby`, as
@@ -673,14 +678,11 @@ not render. `checkbox.mjs` uses `normalizeChoiceControls()`, which the group nor
   group's id; the static groups name them after a given id (see above), which `normalizeChoiceGroup()`
   renames to match.
 - **Props a widget template passes**: `checked`, the attribute Django's `CheckboxInput` sets, is an
-  alias of `default_selected`, and the checkbox accepts `label`, `description` and `error_message`
-  (what `{% form_input %}` passes) without rendering them, as React's Checkbox ignores them. The
-  groups accept the `auto_focus` `{% form_input %}` passes in a `{% form %}` with `auto_focus`
-  without rendering it, as React's groups ignore it. A checkbox group's `value` may be one string;
-  React's takes a list only. These are unit tested.
-- **No help text or error message for a checkbox**: neither React's Checkbox nor the static one
-  renders one, so a `CheckboxInput` field's help text and errors do not show, and the
-  `aria-describedby` Django 5.0+ gives the input points at ids that do not render.
+  alias of `default_selected`, and the checkbox accepts the `label` `{% form_input %}` passes without
+  rendering it, as React's Checkbox ignores it. The groups accept the `auto_focus`
+  `{% form_input %}` passes in a `{% form %}` with `auto_focus` without rendering it, as React's
+  groups ignore it. A checkbox group's `value` may be one string; React's takes a list only. These
+  are unit tested.
 
 ## HTML parity fixture workflow
 
