@@ -19,6 +19,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.forms.renderers import TemplatesSetting
 from django.forms.renderers import get_default_renderer
+from django.http import QueryDict
 from django.template import Context
 from django.template import Origin
 from django.template import Template
@@ -75,6 +76,22 @@ class StaticWidgetForm(forms.Form):
     age = forms.IntegerField(label="Age", min_value=0)
     notes = forms.CharField(label="Notes", widget=forms.Textarea, required=False)
     token = forms.CharField(widget=forms.HiddenInput, required=False)
+
+
+class StaticChoiceWidgetForm(forms.Form):
+    subscribe = forms.BooleanField(label="Subscribe", help_text="One email a month", required=False)
+    colour = forms.ChoiceField(
+        label="Colour",
+        help_text="Pick one",
+        choices=[("red", "Red"), ("green", "Green"), ("blue", "Blue")],
+        widget=forms.RadioSelect,
+    )
+    pets = forms.MultipleChoiceField(
+        label="Pets",
+        choices=[("Mammals", [("cat", "Cat"), ("dog", "Dog")]), ("fish", "Fish")],
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+    )
 
 
 class RawDescriptionWidget(forms.TextInput):
@@ -331,6 +348,84 @@ class StaticFormRendererTestCase(HtmlUIParityTestCase):
         # Django's template still renders a hidden input
         self.assertIn('<input type="hidden" name="token" value="abc" id="id_token">', output)
 
+    def test_renders_checkbox_radio_and_checkbox_select_widgets_as_static_components(self):
+        form = StaticChoiceWidgetForm(data={"subscribe": "on", "colour": "green", "pets": ["dog", "fish"]})
+        soup = BeautifulSoup(self.render_form(form), "html.parser")
+
+        # The checkbox's label is the field's, beside the box
+        checkbox = soup.select_one('[data-apui="checkbox"]:not([data-apui="checkbox-group"] *)')
+        assert checkbox is not None
+        self.assertEqual(checkbox.get_text(), "Subscribe")
+        checkbox_input = checkbox.select_one("input")
+        assert checkbox_input is not None
+        self.assertEqual(checkbox_input["type"], "checkbox")
+        self.assertEqual(checkbox_input["name"], "subscribe")
+        self.assertEqual(checkbox_input["id"], "id_subscribe")
+        self.assertTrue(checkbox_input.has_attr("checked"))
+        self.assertFalse(checkbox_input.has_attr("value"))
+        # As React's Checkbox, the checkbox renders neither its help text nor an error message
+        self.assertIsNone(soup.find(id="id_subscribe_helptext"))
+
+        # The groups are labelled by their labels and described by their help text
+        radio_group = soup.select_one('[role="radiogroup"]')
+        assert radio_group is not None
+        self.assertEqual(radio_group["id"], "id_colour")
+        self.assertEqual(radio_group["aria-labelledby"], "id_colour_label")
+        self.assertEqual(soup.find(id="id_colour_label").get_text(), "Colour*")
+        self.assertEqual(radio_group["aria-describedby"], "id_colour_helptext")
+        self.assertEqual(soup.find(id="id_colour_helptext").get_text(), "Pick one")
+        radios = radio_group.select('input[type="radio"]')
+        self.assertEqual([radio["id"] for radio in radios], ["id_colour_0", "id_colour_1", "id_colour_2"])
+        self.assertEqual({radio["name"] for radio in radios}, {"colour"})
+        self.assertEqual([radio["value"] for radio in radios if radio.has_attr("checked")], ["green"])
+        for radio in radios:
+            self.assertEqual(radio["aria-describedby"], "id_colour_helptext")
+
+        checkbox_group = soup.select_one('[role="group"][data-apui="checkbox-group"]')
+        assert checkbox_group is not None
+        self.assertEqual(checkbox_group["aria-labelledby"], "id_pets_label")
+        pets = checkbox_group.select('input[type="checkbox"]')
+        # The options of an optgroup render in the one group
+        self.assertEqual([pet["id"] for pet in pets], ["id_pets_0_0", "id_pets_0_1", "id_pets_1"])
+        self.assertEqual([pet["value"] for pet in pets], ["cat", "dog", "fish"])
+        self.assertEqual([pet["value"] for pet in pets if pet.has_attr("checked")], ["dog", "fish"])
+
+    def test_choice_widget_errors_take_the_ids_django_gives_them(self):
+        form = StaticChoiceWidgetForm(data={"subscribe": "on"})
+        soup = BeautifulSoup(self.render_form(form), "html.parser")
+
+        radio_group = soup.select_one('[role="radiogroup"]')
+        assert radio_group is not None
+        self.assertEqual(radio_group["aria-invalid"], "true")
+        self.assertEqual(radio_group["data-invalid"], "true")
+        # The error message replaces the help text
+        self.assertEqual(radio_group["aria-describedby"], "id_colour_error")
+        self.assertEqual(soup.find(id="id_colour_error").get_text(), "This field is required.")
+        self.assertIsNone(soup.find(id="id_colour_helptext"))
+        for radio in radio_group.select("input"):
+            self.assertEqual(radio["aria-describedby"], "id_colour_error")
+
+    def test_choice_widgets_submit_the_values_django_reads(self):
+        initial = {"subscribe": True, "colour": "blue", "pets": ["cat", "fish"]}
+        soup = BeautifulSoup(self.render_form(StaticChoiceWidgetForm(initial=initial)), "html.parser")
+
+        # What a browser submits: the name and value of each checked checkbox and radio
+        submitted = QueryDict(mutable=True)
+        for control in soup.select("input[checked]"):
+            submitted.appendlist(control["name"], control.get("value", "on"))
+        form = StaticChoiceWidgetForm(data=submitted)
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data, initial)
+
+        # An unchecked checkbox submits nothing, which Django reads as False
+        unchecked = BeautifulSoup(
+            self.render_form(StaticChoiceWidgetForm(initial={"colour": "red"})), "html.parser"
+        )
+        self.assertEqual(
+            [(control["name"], control.get("value", "on")) for control in unchecked.select("input[checked]")],
+            [("colour", "red")],
+        )
+
     def test_widgets_without_django_auto_ids_share_the_document_allocator(self):
         output = self.render_form(StaticWidgetForm(auto_id=False))
         soup = BeautifulSoup(output, "html.parser")
@@ -342,6 +437,21 @@ class StaticFormRendererTestCase(HtmlUIParityTestCase):
             self.assertIsNotNone(soup.find("label", attrs={"for": control["id"]}))
             for described_by in control.get("aria-describedby", "").split():
                 self.assertIsNotNone(soup.find(id=described_by))
+
+    def test_choice_widgets_without_django_auto_ids_reference_ids_that_render(self):
+        output = self.render_form(StaticChoiceWidgetForm(data={}, auto_id=False))
+        soup = BeautifulSoup(output, "html.parser")
+        ids = [element["id"] for element in soup.select("[id]")]
+        self.assertEqual(len(ids), len(set(ids)))
+        for element in soup.select("[aria-labelledby], [aria-describedby]"):
+            for attribute in ("aria-labelledby", "aria-describedby"):
+                for referenced_id in element.get(attribute, "").split():
+                    self.assertIsNotNone(soup.find(id=referenced_id), referenced_id)
+        # The radio group's label and error message get generated ids
+        radio_group = soup.select_one('[role="radiogroup"]')
+        assert radio_group is not None
+        self.assertRegex(radio_group["aria-labelledby"], r"^apui-radio-group-\d+$")
+        self.assertRegex(radio_group["aria-describedby"], r"^apui-radio-group-\d+$")
 
     def test_maps_each_django_widget_template_to_a_static_template(self):
         renderer = StaticFormRenderer()
@@ -385,6 +495,28 @@ class StaticFormRendererTestCase(HtmlUIParityTestCase):
         self.assertNotIn('data-apui="number-input"', output)
         # Django's textarea.html does not include input.html
         self.assertEqual(output.count('data-apui="text-area"'), 1)
+
+    def test_a_project_input_template_wins_for_the_checkbox_and_option_widgets(self):
+        with self.project_widget_templates("input"):
+            output = self.render_form(StaticChoiceWidgetForm())
+
+        # Django's checkbox template includes input.html, and its radio and checkbox select templates
+        # render each option through it
+        self.assertIn('<input type="checkbox" name="subscribe" data-project-widget="input.html">', output)
+        self.assertEqual(
+            output.count('<input type="radio" name="colour" data-project-widget="input.html">'), 3
+        )
+        self.assertNotIn("data-apui=", output)
+
+    def test_a_project_option_template_wins_for_the_radio_and_checkbox_select_widgets(self):
+        with self.project_widget_templates("option"):
+            output = self.render_form(StaticChoiceWidgetForm())
+
+        self.assertEqual(output.count('data-project-widget="input_option.html"'), 6)
+        self.assertNotIn('data-apui="radio-group"', output)
+        self.assertNotIn('data-apui="checkbox-group"', output)
+        # The checkbox does not render through input_option.html
+        self.assertEqual(output.count('data-apui="checkbox"'), 1)
 
     def test_widget_template_of_its_own_gets_extra_widget_props(self):
         output = self.render_form(RawDescriptionForm())
