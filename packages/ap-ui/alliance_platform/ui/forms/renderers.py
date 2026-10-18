@@ -37,11 +37,14 @@ _DJANGO_INPUT_INCLUDING_TEMPLATES = frozenset(
 #: Django's widget templates that render each option through these templates of Django's, so that a
 #: project's version of any of them renders their widgets
 _DJANGO_OPTION_RENDERING_TEMPLATES: Mapping[str, tuple[str, ...]] = {
-    f"django/forms/widgets/{name}.html": tuple(
-        f"django/forms/widgets/{included}.html"
-        for included in ("multiple_input", option_template, "input_option", "input")
-    )
-    for name, option_template in (("radio", "radio_option"), ("checkbox_select", "checkbox_option"))
+    "django/forms/widgets/select.html": ("django/forms/widgets/select_option.html",),
+    **{
+        f"django/forms/widgets/{name}.html": tuple(
+            f"django/forms/widgets/{included}.html"
+            for included in ("multiple_input", option_template, "input_option", "input")
+        )
+        for name, option_template in (("radio", "radio_option"), ("checkbox_select", "checkbox_option"))
+    },
 }
 
 
@@ -107,21 +110,23 @@ def _is_django_form_template(template: Any) -> bool:
 
 
 class StaticFormRenderer(FormInputContextRenderer):
-    """:class:`FormInputContextRenderer` that renders text, number, text area, checkbox, radio and
-    checkbox select multiple widgets as static ``{% ui %}`` components.
+    """:class:`FormInputContextRenderer` that renders text, number, text area, select, checkbox,
+    radio and checkbox select multiple widgets as static ``{% ui %}`` components.
 
     Where Django's own template would render one of the widgets in
     :attr:`static_widget_templates`, this renders the ap-ui template it maps to instead: a
-    ``text_input``, ``number_input``, ``text_area``, ``checkbox``, ``radio_group`` or
-    ``checkbox_group`` that takes the label, help text and error message :ttag:`form_input` passes
-    in ``extra_widget_props``. A template for the widget that the project provides anywhere in
-    ``TEMPLATES``, React or static, renders as it would without this renderer, as does a template
-    from a backend other than Django's. Django's templates for the input widgets, the checkbox
-    among them, are an ``{% include %}`` of ``django/forms/widgets/input.html``, so a project's
-    ``input.html`` counts as a template for each of them. Django's radio and checkbox select
-    templates render each option through ``multiple_input.html``, the option template,
-    ``input_option.html`` and ``input.html``, so a project's version of any of those counts as a
-    template for them. Every other widget renders as it would with :class:`FormInputContextRenderer`.
+    ``text_input``, ``number_input``, ``text_area``, ``native_select``, ``checkbox``,
+    ``radio_group`` or ``checkbox_group`` that takes the label, help text and error message
+    :ttag:`form_input` passes in ``extra_widget_props``. A template for the widget that the project
+    provides anywhere in ``TEMPLATES``, React or static, renders as it would without this renderer,
+    as does a template from a backend other than Django's. Django's templates for the input widgets,
+    the checkbox among them, are an ``{% include %}`` of ``django/forms/widgets/input.html``, so a
+    project's ``input.html`` counts as a template for each of them. Django's select template renders
+    each option with ``select_option.html``, and its radio and checkbox select templates render each
+    option through ``multiple_input.html``, the option template, ``input_option.html`` and
+    ``input.html``, so a project's version of any of those counts as a template for the widgets
+    that render through it. Every other widget renders as it would with
+    :class:`FormInputContextRenderer`.
 
     Enable it in place of :class:`FormInputContextRenderer`::
 
@@ -142,6 +147,7 @@ class StaticFormRenderer(FormInputContextRenderer):
         "django/forms/widgets/checkbox.html": "alliance_platform/ui/widgets/checkbox.html",
         "django/forms/widgets/radio.html": "alliance_platform/ui/widgets/radio.html",
         "django/forms/widgets/checkbox_select.html": "alliance_platform/ui/widgets/checkbox_select.html",
+        "django/forms/widgets/select.html": "alliance_platform/ui/widgets/select.html",
     }
 
     def get_template(self, template_name: str) -> Any:
