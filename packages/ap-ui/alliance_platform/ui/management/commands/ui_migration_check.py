@@ -28,6 +28,9 @@ class LegacyComponentMigration:
     named_tag: bool = False
     literal_props: frozenset[str] = frozenset()
     positional_icon_name: bool = False
+    #: For a component without a static renderer, the static renderer of a simpler component that
+    #: can replace it and how the two differ, which its findings suggest
+    alternative: tuple[str, str] | None = None
 
 
 # This is the single extension point for legacy component coverage. ``named_tag`` identifies tags
@@ -73,6 +76,23 @@ LEGACY_COMPONENT_MIGRATIONS: dict[str, LegacyComponentMigration] = {
     "CheckboxGroup": LegacyComponentMigration("checkbox_group"),
     "RadioGroup": LegacyComponentMigration("radio_group"),
     "Radio": LegacyComponentMigration("radio"),
+    "NativeSelect": LegacyComponentMigration("native_select"),
+    "Select": LegacyComponentMigration(
+        None,
+        alternative=(
+            "native_select",
+            "native_select is a native <select>: no search, asynchronous loading or options rendered "
+            "by components",
+        ),
+    ),
+    "MultipleSelect": LegacyComponentMigration(
+        None,
+        alternative=(
+            "native_select",
+            "native_select with is_multiple=True is a native <select multiple>: a list box, with no "
+            "search, asynchronous loading or options rendered by components",
+        ),
+    ),
 }
 
 DEFAULT_EXCLUDED_DIRECTORY_NAMES = frozenset(
@@ -144,6 +164,14 @@ def _renderer_for(spec: LegacyComponentMigration) -> type[BaseHtmlUIComponentRen
     return built_in_registry.get(spec.static_renderer)
 
 
+def _ui_tag(renderer_name: str, renderer: type[BaseHtmlUIComponentRenderer] | None) -> str:
+    # Leaf components take no end tag
+    tag = f'{{% ui "{renderer_name}" %}}'
+    if renderer is not None and renderer.has_children:
+        tag += "...{% endui %}"
+    return tag
+
+
 def _static_finding(
     *,
     path: Path,
@@ -155,13 +183,22 @@ def _static_finding(
     props: dict[str, str],
 ) -> MigrationFinding:
     if spec.static_renderer is None:
+        suggestion = "no static equivalent yet"
+        alternative_notes: tuple[str, ...] = ()
+        if spec.alternative is not None:
+            alternative, difference = spec.alternative
+            suggestion = (
+                f"no static equivalent; consider {_ui_tag(alternative, built_in_registry.get(alternative))}"
+            )
+            alternative_notes = (difference,)
         return MigrationFinding(
             path=path,
             line=line,
             component=component,
             source=source,
             status="no-static-equivalent",
-            suggestion="no static equivalent yet",
+            suggestion=suggestion,
+            notes=alternative_notes,
         )
 
     renderer = _renderer_for(spec)
@@ -213,18 +250,13 @@ def _static_finding(
         if raw_value is not None and _static_string(raw_value) is None:
             notes.append(f"{literal_prop} must be a static string literal")
 
-    # Leaf components take no end tag
-    suggestion = f'{{% ui "{spec.static_renderer}" %}}'
-    if renderer.has_children:
-        suggestion += "...{% endui %}"
-
     return MigrationFinding(
         path=path,
         line=line,
         component=component,
         source=source,
         status="review" if notes else "ready",
-        suggestion=suggestion,
+        suggestion=_ui_tag(spec.static_renderer, renderer),
         notes=tuple(notes),
     )
 

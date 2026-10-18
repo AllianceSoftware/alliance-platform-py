@@ -100,6 +100,7 @@ from .components import UIMenubarItemRenderer  # noqa: E402
 from .components import UIMenubarRenderer  # noqa: E402
 from .components import UIMenubarSectionRenderer  # noqa: E402
 from .components import UIMenubarSubMenuRenderer  # noqa: E402
+from .components import UINativeSelectRenderer  # noqa: E402
 from .components import UINumberInputRenderer  # noqa: E402
 from .components import UIPaginationRenderer  # noqa: E402
 from .components import UIRadioGroupRenderer  # noqa: E402
@@ -140,3 +141,4 @@ register_component("checkbox", UICheckboxRenderer)
 register_component("checkbox_group", UICheckboxGroupRenderer)
 register_component("radio_group", UIRadioGroupRenderer)
 register_component("radio", UIRadioRenderer)
+register_component("native_select", UINativeSelectRenderer)
