@@ -12,7 +12,11 @@ from django.template import Context
 
 from ..base import BaseHtmlUIComponentRenderer
 from ..base import enum_prop_rule
+from ..content import has_renderable_content
+from ..content import is_rich_content_value
+from ..content import render_content
 from ..render_context import find_render_payload
+from ..render_context import generate_html_id
 from .choice import CHECKBOX_GROUP_STYLE_PATH
 from .choice import CHECKBOX_STYLE_PATH
 from .choice import GROUP_NOT_RENDERED_PROP_DOCS
@@ -25,6 +29,7 @@ from .choice import render_box
 from .choice import render_choice_label
 from .choice import render_mark_path
 from .input import _FORM_SECTION_STYLE_PATH
+from .input import _LABELED_INPUT_STYLE_PATH
 from .input import VALID_LABEL_POSITIONS
 from .input import VALID_VALIDATION_STATES
 
@@ -33,9 +38,9 @@ VALID_CHECKBOX_SIZES = ("sm", "md")
 _CHECK_MARK_PATH = "M12 5L6.5 10.5L4 8"
 _INDETERMINATE_MARK_PATH = "M4.5 8H11.5"
 
-_NOT_RENDERED_PROP_DOC = (
-    "Accepted, as ``{% form_input %}`` passes it, and not rendered: React's ``Checkbox`` renders no "
-    "label, help text or error message of its own; its label is its children."
+_LABEL_PROP_DOC = (
+    "Accepted, as ``{% form_input %}`` passes it, and not rendered: a checkbox's label is its children, "
+    "as in React."
 )
 
 
@@ -48,9 +53,12 @@ class UICheckboxRenderer(BaseHtmlUIComponentRenderer):
     ``<label>`` holding the children as the label.
 
     On its own the checkbox renders in the row ``FormLayout`` gives it: a ``<div>`` marked with the
-    label position, holding an empty label cell in the side layout. Inside a ``checkbox_group`` it
-    takes its name, checked state and the group's disabled, read only and invalid states from the
-    group, as React's ``useCheckboxGroupItem`` does, and renders no row.
+    label position and the invalid state, holding an empty label cell in the side layout, and the
+    description after the checkbox, or the error message in its place while it is invalid, as
+    ``LabeledInput`` renders them. A given ``id`` names them ``<id>_helptext`` and ``<id>_error``, as
+    Django names a form field's. Inside a ``checkbox_group`` it takes its name, checked state and the
+    group's disabled, read only and invalid states from the group, as React's
+    ``useCheckboxGroupItem`` does, and renders no row or help text: the group renders its own.
     """
 
     name = "checkbox"
@@ -92,8 +100,9 @@ class UICheckboxRenderer(BaseHtmlUIComponentRenderer):
         key: "React-only props are not supported by static checkboxes"
         for key in ("inputRef", "labelRef", "ref", "parentIsHovered", "validationBehavior", "validate")
     }
-    # {% form_input %} passes help text and errors as rich content
-    non_scalar_props = frozenset({"label", "description", "errorMessage"})
+    # As the inputs', the help text and error message render rich content, such as the help text and
+    # safe error messages {% form_input %} passes
+    rich_content_props = frozenset({"description", "errorMessage"})
     allow_data_props = True
     allow_aria_props = True
     prop_filter_context = "static checkboxes"
@@ -114,16 +123,18 @@ class UICheckboxRenderer(BaseHtmlUIComponentRenderer):
             "before it, as React does in a side ``FormSection``."
         ),
         "validationState": '``"invalid"`` sets ``is_invalid``, as react-aria reads it.',
-        "label": _NOT_RENDERED_PROP_DOC,
-        "description": _NOT_RENDERED_PROP_DOC,
-        "errorMessage": _NOT_RENDERED_PROP_DOC,
+        "label": _LABEL_PROP_DOC,
     }
 
     def resolve_component_resources(self) -> list[FrontendResource]:
         return [
             self.resolve_frontend_resource(CHECKBOX_STYLE_PATH),
             self.resolve_frontend_resource(_FORM_SECTION_STYLE_PATH),
+            self.resolve_frontend_resource(_LABELED_INPUT_STYLE_PATH),
         ]
+
+    def allow_non_scalar_prop(self, key: str, value: Any) -> bool:
+        return key in self.rich_content_props and is_rich_content_value(value)
 
     def report_group_misuse(self, props: dict[str, Any]) -> None:
         # The warnings React's Checkbox gives inside a CheckboxGroup
@@ -148,11 +159,15 @@ class UICheckboxRenderer(BaseHtmlUIComponentRenderer):
         is_disabled = bool(props.get("isDisabled"))
         is_read_only = bool(props.get("isReadOnly"))
         is_invalid = bool(props.get("isInvalid")) or props.get("validationState") == "invalid"
+        help_text_html = ""
         if group is None:
             name = props.get("name")
             selected = props["isSelected"] if "isSelected" in props else props.get("defaultSelected")
             is_checked = bool(selected)
-            described_by = props.get("aria-describedby")
+            help_text_html, help_text_id = self.render_help_text(context, props, is_invalid)
+            # The help text that renders, before any ids the caller gives, each once: the
+            # aria-describedby Django 5.0+ gives a form widget names the same ids
+            described_by = joined_ids(help_text_id, props.get("aria-describedby"))
         else:
             self.report_group_misuse(props)
             name = props.get("name") or group.name
@@ -212,12 +227,44 @@ class UICheckboxRenderer(BaseHtmlUIComponentRenderer):
         )
         if group is not None:
             return checkbox_html
-        return self.render_layout_row(props, checkbox_html)
+        return self.render_layout_row(props, f"{checkbox_html}{help_text_html}", is_invalid)
 
-    def render_layout_row(self, props: dict[str, Any], checkbox_html: str) -> str:
-        """Render the row ``FormLayout.renderLabeledInput`` gives a checkbox with no label of its own."""
+    def render_help_text(
+        self, context: Context, props: dict[str, Any], is_invalid: bool
+    ) -> tuple[str, str | None]:
+        """Render the error message while the checkbox is invalid, or else the description, as
+        ``LabeledInput`` renders them, and return it with its id; ``("", None)`` when neither renders."""
+        error_message = props.get("errorMessage")
+        if is_invalid and has_renderable_content(error_message):
+            prop_name, content, suffix = "errorMessage", error_message, "error"
+        elif has_renderable_content(props.get("description")):
+            prop_name, content, suffix = "description", props["description"], "helptext"
+        else:
+            return "", None
+        # An empty id, as a template variable for a form without auto ids gives, is no id
+        given_id = props.get("id") or None
+        help_text_id = (
+            f"{given_id}_{suffix}"
+            if given_id is not None
+            else generate_html_id(context, f"apui-{self.apui_name}")
+        )
+        labeled_input_styles = self.resolve_vanilla_extract_mapping(_LABELED_INPUT_STYLE_PATH)
+        html = self.render_tag(
+            "div",
+            {"className": self.get_style_class(labeled_input_styles, "helpText"), "id": help_text_id},
+            render_content(content, context, prop_name=prop_name, origin=self.origin, component=self.name),
+        )
+        return html, help_text_id
+
+    def render_layout_row(self, props: dict[str, Any], row_content_html: str, is_invalid: bool) -> str:
+        """Render the row ``FormLayout.renderLabeledInput`` gives a checkbox with no label of its own.
+
+        The row carries ``data-invalid`` while the checkbox is invalid, which colours its help text as a
+        ``LabeledInput`` root's does.
+        """
+        row_attrs: dict[str, Any] = {"data-invalid": "true" if is_invalid else None}
         if props.get("labelPosition", "top") != "side":
-            return self.render_tag("div", {"data-label-position": "top"}, checkbox_html)
+            return self.render_tag("div", {"data-label-position": "top", **row_attrs}, row_content_html)
         form_section_styles = self.resolve_vanilla_extract_mapping(_FORM_SECTION_STYLE_PATH)
         placeholder_html = self.render_tag(
             "div", {"className": self.get_style_class(form_section_styles, "sideLabelPlaceholder")}
@@ -225,9 +272,11 @@ class UICheckboxRenderer(BaseHtmlUIComponentRenderer):
         input_cell_html = self.render_tag(
             "div",
             {"className": self.get_style_class(form_section_styles, "inputHelpSideWrapper")},
-            checkbox_html,
+            row_content_html,
         )
-        return self.render_tag("div", {"data-label-position": "side"}, f"{placeholder_html}{input_cell_html}")
+        return self.render_tag(
+            "div", {"data-label-position": "side", **row_attrs}, f"{placeholder_html}{input_cell_html}"
+        )
 
 
 class UICheckboxGroupRenderer(UIChoiceGroupRendererBase):

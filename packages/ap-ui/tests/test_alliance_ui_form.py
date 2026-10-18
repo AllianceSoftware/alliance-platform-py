@@ -94,6 +94,10 @@ class StaticChoiceWidgetForm(forms.Form):
     )
 
 
+class TermsForm(forms.Form):
+    accept = forms.BooleanField(label="I accept the terms")
+
+
 class ConsentForm(forms.Form):
     colour = forms.ChoiceField(label="Colour", choices=[("red", "Red")], widget=forms.RadioSelect)
     consent = forms.BooleanField(
@@ -370,8 +374,11 @@ class StaticFormRendererTestCase(HtmlUIParityTestCase):
         self.assertEqual(checkbox_input["id"], "id_subscribe")
         self.assertTrue(checkbox_input.has_attr("checked"))
         self.assertFalse(checkbox_input.has_attr("value"))
-        # As React's Checkbox, the checkbox renders neither its help text nor an error message
-        self.assertIsNone(soup.find(id="id_subscribe_helptext"))
+        # Its help text renders below it, with the id Django gives it
+        help_text = soup.find(id="id_subscribe_helptext")
+        assert help_text is not None
+        self.assertEqual(help_text.get_text(), "One email a month")
+        self.assertEqual(checkbox_input["aria-describedby"], "id_subscribe_helptext")
 
         # The groups are labelled by their labels and described by their help text
         radio_group = soup.select_one('[role="radiogroup"]')
@@ -444,6 +451,23 @@ class StaticFormRendererTestCase(HtmlUIParityTestCase):
             self.assertIsNotNone(soup.find("label", attrs={"for": control["id"]}))
             for described_by in control.get("aria-describedby", "").split():
                 self.assertIsNotNone(soup.find(id=described_by))
+
+    def test_required_checkbox_shows_the_field_error(self):
+        form = TermsForm(data={})
+        soup = BeautifulSoup(self.render_form(form), "html.parser")
+
+        checkbox_input = soup.select_one('input[name="accept"]')
+        assert checkbox_input is not None
+        self.assertEqual(checkbox_input["aria-invalid"], "true")
+        self.assertEqual(checkbox_input["aria-required"], "true")
+        error = soup.find(id="id_accept_error")
+        assert error is not None
+        self.assertEqual(error.get_text(), "This field is required.")
+        # Every id the input is described by renders
+        self.assertEqual(checkbox_input["aria-describedby"], "id_accept_error")
+        root = soup.select_one('[data-apui="checkbox"]')
+        assert root is not None
+        self.assertEqual(root["data-invalid"], "true")
 
     def test_choice_widgets_in_a_form_with_auto_focus(self):
         template = (
