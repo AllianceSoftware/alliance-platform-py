@@ -653,6 +653,93 @@ Other notable behaviour:
 
 .. ui-component:: menubar_section
 
+.. _static-checkboxes:
+
+Static checkboxes
+~~~~~~~~~~~~~~~~~
+
+``{% ui "checkbox" %}`` renders a native checkbox and the box Alliance UI draws over it, with its
+children as the label beside the box:
+
+.. code-block:: html+django
+
+    {% ui "checkbox" name="terms" is_required=True %}I accept the terms{% endui %}
+
+The browser checks and unchecks the input, and the stylesheet styles the box from the input's state,
+so the checkbox needs no script. ``is_selected`` and ``default_selected`` both render the input
+checked. ``is_indeterminate`` marks the root with ``data-indeterminate``, which shows a dash in place
+of the check; the input's own indeterminate state needs a script, so until one sets
+``input.indeterminate`` assistive technology announces the checkbox as checked or not checked.
+``is_invalid``, or ``validation_state="invalid"``, colours the box and the label.
+
+On its own a checkbox renders in the row React's form layout gives it: a ``<div>`` marked with its
+``label_position``, which in the top layout pushes the checkbox down to line up with the inputs
+beside it, and ``label_position="side"`` puts an empty label cell before it. As React's ``Checkbox``,
+it renders no label, help text or error message of its own: ``label``, ``description`` and
+``error_message`` are accepted, as :ttag:`form_input` passes them, and not rendered. Inside a
+``checkbox_group`` it renders no row and takes its state from the group (see
+:ref:`static-checkbox-groups`).
+
+.. ui-component:: checkbox
+
+.. _static-checkbox-groups:
+
+Static checkbox groups
+~~~~~~~~~~~~~~~~~~~~~~
+
+``{% ui "checkbox_group" %}`` renders the label, help text and error message of
+:ttag:`LabeledInput` around a ``role="group"`` element holding ``checkbox`` components. Each checkbox
+takes the group's ``name``, is checked while its ``value`` is one of the group's ``value`` (or
+``default_value``), and takes the group's disabled, read only and invalid states:
+
+.. code-block:: html+django
+
+    {% ui "checkbox_group" label="Pets" name="pets" default_value=pets description="Choose any" %}
+      {% ui "checkbox" value="cat" %}Cat{% endui %}
+      {% ui "checkbox" value="dog" %}Dog{% endui %}
+    {% endui %}
+
+``value`` is a list of values; a string checks that one value. The label is a ``<span>`` that labels
+the group element through ``aria-labelledby``, and the help text or the error message describes the
+group and each checkbox. A given ``id`` is the group element's, and names the label ``<id>_label``,
+the help text ``<id>_helptext`` and the error message ``<id>_error``; without one they get generated
+ids. ``has_invalid_children=True`` shows the error message while the group and its checkboxes stay
+valid. A checkbox in a group without a ``value``, or with an ``is_selected`` or ``default_selected``
+of its own, is reported as a :ref:`contract diagnostic <static-component-diagnostics>` with the
+warning React's ``Checkbox`` gives.
+
+.. ui-component:: checkbox_group
+
+Static radio groups
+~~~~~~~~~~~~~~~~~~~
+
+``{% ui "radio_group" %}`` renders the same chrome around a ``role="radiogroup"`` element holding
+``radio`` components:
+
+.. code-block:: html+django
+
+    {% ui "radio_group" label="Colour" name="colour" default_value="green" %}
+      {% ui "radio" value="red" %}Red{% endui %}
+      {% ui "radio" value="green" %}Green{% endui %}
+    {% endui %}
+
+Each radio takes the group's ``name``, generated when there is none, so the browser checks one radio
+at a time and moves between them with the arrow keys. The radio whose ``value`` is the group's
+``value`` (or ``default_value``) is checked, and ``value=None`` checks none. The group's
+``input_size`` sizes the radios, and its ``id``, label, help text and error message work as a
+checkbox group's. A ``radio`` outside a ``radio_group`` is reported as a :ref:`contract diagnostic
+<static-component-diagnostics>` and renders nothing.
+
+``{% ui "radio_group" %}``
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. ui-component:: radio_group
+
+``{% ui "radio" %}``
+^^^^^^^^^^^^^^^^^^^^
+
+.. ui-component:: radio
+
 .. templatetag:: Button
 
 ``Button``
