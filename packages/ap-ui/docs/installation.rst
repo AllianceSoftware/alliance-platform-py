@@ -145,9 +145,9 @@ The static ``{% ui %}`` components emit markup for a DOM and CSS contract define
 ``@alliancesoftware/ui`` and ``@alliancesoftware/icons`` npm packages. Each package records the
 version of its side of the contract as an integer ``version`` in a ``static-contract.json`` file at
 its root, and each release of ``alliance_platform_ui`` supports one version of each: this release
-supports version 1, which ``@alliancesoftware/ui`` ships from 0.0.67 and ``@alliancesoftware/icons``
-from 0.0.14. A system check verifies the installed packages, resolving their files through the
-bundler as the components do:
+supports version 2 for ``@alliancesoftware/ui``, which ships it from 0.0.68, and version 1 for
+``@alliancesoftware/icons``, which ships it from 0.0.14. A system check verifies the installed
+packages, resolving their files through the bundler as the components do:
 
 .. list-table::
     :header-rows: 1
