@@ -189,7 +189,7 @@ class UICheckboxRenderer(BaseHtmlUIComponentRenderer):
             self.join_classes(border_class, self.get_style_class(styles, "indeterminateMark")),
         )
         box_html = render_box(
-            self, self.get_style_class(styles, "checkbox"), self.get_style_class(styles, "icon"), marks
+            self.get_style_class(styles, "checkbox"), self.get_style_class(styles, "icon"), marks
         )
         # The stylesheet styles the box, its marks and the label from the input and these attributes
         root_attrs: dict[str, Any] = {

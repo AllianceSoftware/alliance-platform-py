@@ -59,12 +59,7 @@ _GROUP_REACT_ONLY_PROPS = frozenset(
 )
 
 
-def render_box(
-    renderer: BaseHtmlUIComponentRenderer,
-    box_class: str,
-    icon_class: str,
-    svg_children: str,
-) -> str:
+def render_box(box_class: str, icon_class: str, svg_children: str) -> str:
     """Render the box a checkbox or radio draws in place of the native input, hidden from AT."""
     return (
         f'<span class="{conditional_escape(box_class)}" aria-hidden="true">'
@@ -142,8 +137,6 @@ class UIChoiceGroupRendererBase(UILabeledInputRendererMixin, BaseHtmlUIComponent
     render_state_class: ClassVar[type[ChoiceGroupRenderState]] = ChoiceGroupRenderState
     #: The stylesheet of the group element
     group_style_path: ClassVar[str]
-    #: Props of the group element that the other props cannot give it
-    group_attr_props: ClassVar[frozenset[str]] = frozenset({"aria-labelledby", "aria-describedby"})
 
     def resolve_component_resources(self) -> list[FrontendResource]:
         return [
@@ -206,7 +199,7 @@ class UIChoiceGroupRendererBase(UILabeledInputRendererMixin, BaseHtmlUIComponent
             "aria-describedby": labeled_input.described_by,
         }
         for key, value in props.items():
-            if key.startswith(("data-", "aria-")) and key not in self.group_attr_props:
+            if key.startswith(("data-", "aria-")) and key not in attrs:
                 attrs[key] = value
         return attrs
 

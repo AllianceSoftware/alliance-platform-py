@@ -142,7 +142,6 @@ class UIRadioRenderer(BaseHtmlUIComponentRenderer):
         input_attrs["className"] = self.get_style_class(styles, "input")
 
         box_html = render_box(
-            self,
             self.get_style_class(styles, "radio"),
             self.get_style_class(styles, "icon"),
             f'<circle cx="8" cy="8" r="3" '
