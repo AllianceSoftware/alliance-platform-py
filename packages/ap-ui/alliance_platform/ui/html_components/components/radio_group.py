@@ -15,6 +15,7 @@ from django.utils.html import conditional_escape
 from ..base import BaseHtmlUIComponentRenderer
 from ..render_context import find_render_payload
 from .choice import CHECKBOX_STYLE_PATH
+from .choice import GROUP_NOT_RENDERED_PROP_DOCS
 from .choice import RADIO_GROUP_STYLE_PATH
 from .choice import ChoiceGroupRenderState
 from .choice import UIChoiceGroupRendererBase
@@ -55,6 +56,7 @@ class UIRadioGroupRenderer(UIChoiceGroupRendererBase):
         "name": "Generated when absent, as React generates one, so the radios form one group.",
         "defaultValue": "Same as ``value``: the browser changes the checked radio from there.",
         "validationState": '``"invalid"`` sets ``is_invalid``, as react-aria reads it.',
+        **GROUP_NOT_RENDERED_PROP_DOCS,
     }
 
     def resolve_name(self, context: Context, props: dict[str, Any]) -> str | None:

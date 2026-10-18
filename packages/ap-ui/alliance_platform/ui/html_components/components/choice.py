@@ -209,10 +209,20 @@ class UIChoiceGroupRendererBase(UILabeledInputRendererMixin, BaseHtmlUIComponent
         return mark_safe(self.render_labeled_input(context, props, state.labeled_input, group_html))
 
 
+#: The ``prop_docs`` of the props both groups accept and do not render
+GROUP_NOT_RENDERED_PROP_DOCS = {
+    "autoFocus": (
+        "Accepted, as ``{% form_input %}`` passes it in a ``{% form %}`` with ``auto_focus``, and not "
+        "rendered, as React's group ignores it."
+    ),
+}
+
+
 def group_props_supported(*extra: str) -> frozenset[str]:
     """The props both groups take, with ``extra``."""
     return frozenset(
         {
+            *GROUP_NOT_RENDERED_PROP_DOCS,
             "label",
             "labelPosition",
             "labelAlign",

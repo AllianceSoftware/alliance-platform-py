@@ -81,6 +81,13 @@
       "meta": {}
     },
     {
+      "name": "class_name",
+      "template": "{% ui \"checkbox\" class=\"consent\" %}Accept the terms{% endui %}",
+      "expected_html": "<div data-label-position=\"top\"><label class=\"Checkbox_wrapper consent\" data-apui=\"checkbox\" data-size=\"sm\"><input type=\"checkbox\" class=\"Checkbox_input\"/><span class=\"Checkbox_checkbox focusRing_base\" aria-hidden=\"true\"><svg viewBox=\"0 0 16 16\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" class=\"Checkbox_icon\"><path d=\"M12 5L6.5 10.5L4 8\" stroke-width=\"1.6666\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"Checkbox_border Checkbox_checkMark\"></path><path d=\"M4.5 8H11.5\" stroke-width=\"1.6666\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"Checkbox_border Checkbox_indeterminateMark\"></path></svg></span><span class=\"Checkbox_label\">Accept the terms</span></label></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
       "name": "label_position_side",
       "template": "{% ui \"checkbox\" label_position=\"side\" %}Accept the terms{% endui %}",
       "expected_html": "<div data-label-position=\"side\"><div class=\"FormSection_sideLabelPlaceholder\"></div><div class=\"FormSection_inputHelpSideWrapper\"><label class=\"Checkbox_wrapper\" data-apui=\"checkbox\" data-size=\"sm\"><input type=\"checkbox\" class=\"Checkbox_input\"/><span class=\"Checkbox_checkbox focusRing_base\" aria-hidden=\"true\"><svg viewBox=\"0 0 16 16\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" class=\"Checkbox_icon\"><path d=\"M12 5L6.5 10.5L4 8\" stroke-width=\"1.6666\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"Checkbox_border Checkbox_checkMark\"></path><path d=\"M4.5 8H11.5\" stroke-width=\"1.6666\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"Checkbox_border Checkbox_indeterminateMark\"></path></svg></span><span class=\"Checkbox_label\">Accept the terms</span></label></div></div>",

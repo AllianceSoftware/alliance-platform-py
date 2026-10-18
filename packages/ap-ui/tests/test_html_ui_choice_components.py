@@ -185,6 +185,18 @@ class UIChoiceComponentsTestCase(HtmlUIParityTestCase):
         self.assertEqual(group["data-testid"], "colours")
         self.assertIsNone(soup.select_one('[data-apui="label"]'))
 
+    def test_groups_accept_auto_focus_without_rendering_it(self):
+        for template in [
+            '{% ui "radio_group" label="Colour" name="colour" auto_focus=True %}'
+            '{% ui "radio" value="red" %}Red{% endui %}{% endui %}',
+            '{% ui "checkbox_group" label="Pets" name="pets" auto_focus=True %}'
+            '{% ui "checkbox" value="cat" %}Cat{% endui %}{% endui %}',
+        ]:
+            with self.subTest(template=template):
+                soup, diagnostics = self.render_with_diagnostics(template)
+                self.assertEqual(diagnostics, [])
+                self.assertEqual(soup.select("[autofocus]"), [])
+
     def test_group_help_text_takes_rich_content(self):
         soup, diagnostics = self.render_with_diagnostics(
             '{% ui "checkbox_group" label="Pets" name="pets" description=help %}'

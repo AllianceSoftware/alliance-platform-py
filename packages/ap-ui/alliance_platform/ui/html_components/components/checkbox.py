@@ -15,6 +15,7 @@ from ..base import enum_prop_rule
 from ..render_context import find_render_payload
 from .choice import CHECKBOX_GROUP_STYLE_PATH
 from .choice import CHECKBOX_STYLE_PATH
+from .choice import GROUP_NOT_RENDERED_PROP_DOCS
 from .choice import ChoiceGroupRenderState
 from .choice import UIChoiceGroupRendererBase
 from .choice import group_props_supported
@@ -57,6 +58,7 @@ class UICheckboxRenderer(BaseHtmlUIComponentRenderer):
     supported_props = frozenset(
         {
             "children",
+            "className",
             "name",
             "value",
             "isSelected",
@@ -193,7 +195,7 @@ class UICheckboxRenderer(BaseHtmlUIComponentRenderer):
         )
         # The stylesheet styles the box, its marks and the label from the input and these attributes
         root_attrs: dict[str, Any] = {
-            "className": self.get_style_class(styles, "wrapper"),
+            "className": self.join_classes(self.get_style_class(styles, "wrapper"), props.get("className")),
             "data-apui": self.apui_name,
             "data-size": str(props.get("size", "sm")),
             "data-invalid": "true" if is_invalid else None,
@@ -251,6 +253,7 @@ class UICheckboxGroupRenderer(UIChoiceGroupRendererBase):
         ),
         "defaultValue": "Same as ``value``: the browser toggles the checkboxes from there.",
         "validationState": '``"invalid"`` sets ``is_invalid``, as react-aria reads it.',
+        **GROUP_NOT_RENDERED_PROP_DOCS,
     }
 
     def allow_non_scalar_prop(self, key: str, value: Any) -> bool:
