@@ -34,6 +34,15 @@ _DJANGO_INPUT_INCLUDING_TEMPLATES = frozenset(
         "url",
     )
 )
+#: Django's widget templates that render each option through these templates of Django's, so that a
+#: project's version of any of them renders their widgets
+_DJANGO_OPTION_RENDERING_TEMPLATES: Mapping[str, tuple[str, ...]] = {
+    f"django/forms/widgets/{name}.html": tuple(
+        f"django/forms/widgets/{included}.html"
+        for included in ("multiple_input", option_template, "input_option", "input")
+    )
+    for name, option_template in (("radio", "radio_option"), ("checkbox_select", "checkbox_option"))
+}
 
 
 class form_input_context_key(SSRExclusionMarker):
@@ -98,18 +107,21 @@ def _is_django_form_template(template: Any) -> bool:
 
 
 class StaticFormRenderer(FormInputContextRenderer):
-    """:class:`FormInputContextRenderer` that renders text, number and text area widgets as static
-    ``{% ui %}`` components.
+    """:class:`FormInputContextRenderer` that renders text, number, text area, checkbox, radio and
+    checkbox select multiple widgets as static ``{% ui %}`` components.
 
     Where Django's own template would render one of the widgets in
     :attr:`static_widget_templates`, this renders the ap-ui template it maps to instead: a
-    ``text_input``, ``number_input`` or ``text_area`` that takes the label, help text and error
-    message :ttag:`form_input` passes in ``extra_widget_props``. A template for the widget that the
-    project provides anywhere in ``TEMPLATES``, React or static, renders as it would without this
-    renderer, as does a template from a backend other than Django's. Django's templates for all of
-    these widgets but the text area are an ``{% include %}`` of ``django/forms/widgets/input.html``,
-    so a project's ``input.html`` counts as a template for each of them. Every other widget renders
-    as it would with :class:`FormInputContextRenderer`.
+    ``text_input``, ``number_input``, ``text_area``, ``checkbox``, ``radio_group`` or
+    ``checkbox_group`` that takes the label, help text and error message :ttag:`form_input` passes
+    in ``extra_widget_props``. A template for the widget that the project provides anywhere in
+    ``TEMPLATES``, React or static, renders as it would without this renderer, as does a template
+    from a backend other than Django's. Django's templates for the input widgets, the checkbox
+    among them, are an ``{% include %}`` of ``django/forms/widgets/input.html``, so a project's
+    ``input.html`` counts as a template for each of them. Django's radio and checkbox select
+    templates render each option through ``multiple_input.html``, the option template,
+    ``input_option.html`` and ``input.html``, so a project's version of any of those counts as a
+    template for them. Every other widget renders as it would with :class:`FormInputContextRenderer`.
 
     Enable it in place of :class:`FormInputContextRenderer`::
 
@@ -127,6 +139,9 @@ class StaticFormRenderer(FormInputContextRenderer):
         "django/forms/widgets/search.html": "alliance_platform/ui/widgets/input.html",
         "django/forms/widgets/number.html": "alliance_platform/ui/widgets/number.html",
         "django/forms/widgets/textarea.html": "alliance_platform/ui/widgets/textarea.html",
+        "django/forms/widgets/checkbox.html": "alliance_platform/ui/widgets/checkbox.html",
+        "django/forms/widgets/radio.html": "alliance_platform/ui/widgets/radio.html",
+        "django/forms/widgets/checkbox_select.html": "alliance_platform/ui/widgets/checkbox_select.html",
     }
 
     def get_template(self, template_name: str) -> Any:
@@ -141,4 +156,8 @@ class StaticFormRenderer(FormInputContextRenderer):
             return False
         if template_name in _DJANGO_INPUT_INCLUDING_TEMPLATES:
             return _is_django_form_template(super().get_template(_DJANGO_INPUT_TEMPLATE))
-        return True
+        get_template = super().get_template
+        return all(
+            _is_django_form_template(get_template(included))
+            for included in _DJANGO_OPTION_RENDERING_TEMPLATES.get(template_name, ())
+        )

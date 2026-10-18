@@ -1,0 +1,3 @@
+{% load alliance_platform.ui %}
+{# StaticFormRenderer renders this in place of Django's checkbox select multiple widget template: a checkbox per option, the options of every optgroup in the one group #}
+{% ui "checkbox_group" props=widget.attrs|merge_props:extra_widget_props name=widget.name default_value=widget.value %}{% for group_name, options, index in widget.optgroups %}{% for option in options %}{% ui "checkbox" value=option.value|stringformat:'s' id=option.attrs.id %}{{ option.label }}{% endui %}{% endfor %}{% endfor %}{% endui %}
