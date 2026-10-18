@@ -1,23 +1,36 @@
 import path from "node:path";
 
 export const component = "checkbox";
-export const class_prefixes = ["Checkbox", "FormSection", "focusRing"];
+export const class_prefixes = [
+  "Checkbox",
+  "FormSection",
+  "LabeledInput",
+  "focusRing",
+];
 
 export const stylesheets = [
   "@alliancesoftware/ui/components/checkbox/Checkbox.css.ts",
   "@alliancesoftware/ui/components/form/FormSection.css.ts",
+  "@alliancesoftware/ui/components/form/LabeledInput.css.ts",
 ];
 
 export async function loadComponents({ uiPackageDir, importDefault }) {
   return {
     Checkbox: await importDefault(
-      path.join(uiPackageDir, "components/checkbox/Checkbox.tsx")
+      path.join(uiPackageDir, "components/checkbox/Checkbox.tsx"),
     ),
   };
 }
 
+// Without an id the help text gets a react-aria id, which the input references; the static
+// checkbox generates its own
 export function normalize(root, testCase, helpers) {
   helpers.normalizeChoiceControls(root);
+  helpers.removeUnreferencedReactAriaIds(
+    root,
+    helpers.collectReferencedReactAriaIds(root, ["aria-describedby"]),
+  );
+  helpers.remapReactAriaIds(root, component);
   helpers.normalizeInlineStyles(root);
 }
 
@@ -99,6 +112,80 @@ export const cases = [
     templateProps: ' class="consent"',
     props: { className: "consent" },
     children: "Accept the terms",
+  }),
+  checkboxCase({
+    name: "description",
+    templateProps: ' description="One email a month"',
+    props: { description: "One email a month" },
+    children: "Subscribe",
+  }),
+  checkboxCase({
+    // The error message replaces the description while the checkbox is invalid
+    name: "error_message_replaces_description",
+    templateProps:
+      ' description="One email a month" error_message="Choose whether to subscribe" is_invalid=True',
+    props: {
+      description: "One email a month",
+      errorMessage: "Choose whether to subscribe",
+      isInvalid: true,
+    },
+    children: "Subscribe",
+  }),
+  checkboxCase({
+    name: "error_message_while_valid",
+    templateProps:
+      ' description="One email a month" error_message="Choose whether to subscribe"',
+    props: {
+      description: "One email a month",
+      errorMessage: "Choose whether to subscribe",
+    },
+    children: "Subscribe",
+  }),
+  checkboxCase({
+    name: "required_invalid",
+    templateProps:
+      ' is_required=True validation_state="invalid" error_message="This field is required."',
+    props: {
+      isRequired: true,
+      validationState: "invalid",
+      errorMessage: "This field is required.",
+    },
+    children: "I accept the terms",
+  }),
+  checkboxCase({
+    // The help text is named after the id, as Django names a form field's, and listed once in the
+    // aria-describedby Django 5.0+ gives the widget
+    name: "id_with_description",
+    templateProps:
+      ' id="id_subscribe" aria_describedby="id_subscribe_helptext" description="One email a month"',
+    props: {
+      id: "id_subscribe",
+      "aria-describedby": "id_subscribe_helptext",
+      description: "One email a month",
+    },
+    children: "Subscribe",
+  }),
+  checkboxCase({
+    name: "id_with_error_message",
+    templateProps:
+      ' id="id_terms" is_invalid=True error_message="This field is required."',
+    props: {
+      id: "id_terms",
+      isInvalid: true,
+      errorMessage: "This field is required.",
+    },
+    children: "I accept the terms",
+  }),
+  checkboxCase({
+    name: "label_position_side_with_description",
+    templateProps:
+      ' label_position="side" description="One email a month" is_invalid=True',
+    props: {
+      labelPosition: "side",
+      description: "One email a month",
+      isInvalid: true,
+    },
+    children: "Subscribe",
   }),
   checkboxCase({
     // Outside a FormSection the prop lays out the row

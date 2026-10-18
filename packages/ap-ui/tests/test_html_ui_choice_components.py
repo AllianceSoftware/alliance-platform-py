@@ -39,16 +39,76 @@ class UIChoiceComponentsTestCase(HtmlUIParityTestCase):
         assert checkbox is not None
         self.assertFalse(checkbox.has_attr("checked"))
 
-    def test_checkbox_accepts_the_form_input_props_it_does_not_render(self):
+    def test_checkbox_accepts_the_label_form_input_passes_without_rendering_it(self):
         soup, diagnostics = self.render_with_diagnostics(
-            '{% ui "checkbox" label="Accept" description="Read them first" error_message="Required" '
-            'validation_state="invalid" %}Accept the terms{% endui %}'
+            '{% ui "checkbox" label="Accept" %}Accept the terms{% endui %}'
         )
         self.assertEqual(diagnostics, [])
         self.assertEqual(soup.get_text(), "Accept the terms")
-        root = soup.select_one('[data-apui="checkbox"]')
-        assert root is not None
-        self.assertEqual(root["data-invalid"], "true")
+
+    def test_checkbox_help_text_gets_a_generated_id_without_one_given(self):
+        soup, diagnostics = self.render_with_diagnostics(
+            '{% ui "checkbox" description="One email a month" %}Subscribe{% endui %}'
+            '{% ui "checkbox" is_invalid=True error_message="Choose one" %}Agree{% endui %}'
+        )
+        self.assertEqual(diagnostics, [])
+        inputs = soup.select("input")
+        help_texts = soup.select(".LabeledInput_helpText")
+        self.assertEqual(
+            [help_text.get_text() for help_text in help_texts], ["One email a month", "Choose one"]
+        )
+        for control, help_text in zip(inputs, help_texts):
+            self.assertRegex(help_text["id"], r"^apui-checkbox-\d+$")
+            self.assertEqual(control["aria-describedby"], help_text["id"])
+        self.assertNotEqual(help_texts[0]["id"], help_texts[1]["id"])
+
+    def test_checkbox_help_text_is_named_after_its_id_and_listed_once(self):
+        soup, diagnostics = self.render_with_diagnostics(
+            '{% ui "checkbox" id="id_terms" aria_describedby="id_terms_helptext id_terms_error id_extra" '
+            'description="Read them first" error_message="This field is required." is_invalid=True %}'
+            "I accept the terms{% endui %}"
+        )
+        self.assertEqual(diagnostics, [])
+        error = soup.find(id="id_terms_error")
+        assert error is not None
+        self.assertEqual(error.get_text(), "This field is required.")
+        # The error message replaces the help text while the checkbox is invalid
+        self.assertIsNone(soup.find(id="id_terms_helptext"))
+        self.assertEqual(
+            soup.select_one("input")["aria-describedby"], "id_terms_error id_terms_helptext id_extra"
+        )
+        row = error.parent
+        assert row is not None
+        self.assertEqual(row["data-invalid"], "true")
+        self.assertEqual(row["data-label-position"], "top")
+
+    def test_checkbox_error_message_waits_for_the_invalid_state(self):
+        soup, _ = self.render_with_diagnostics(
+            '{% ui "checkbox" id="id_terms" error_message="This field is required." %}Agree{% endui %}'
+        )
+        self.assertIsNone(soup.find(id="id_terms_error"))
+        self.assertFalse(soup.select_one("input").has_attr("aria-describedby"))
+        self.assertFalse(soup.select_one('[data-label-position="top"]').has_attr("data-invalid"))
+
+    def test_checkbox_help_text_takes_rich_content(self):
+        soup, diagnostics = self.render_with_diagnostics(
+            '{% ui "checkbox" id="id_terms" description=help %}Agree{% endui %}',
+            {"help": mark_safe('Read the <a href="/terms/">terms</a>')},
+        )
+        self.assertEqual(diagnostics, [])
+        help_text = soup.find(id="id_terms_helptext")
+        assert help_text is not None
+        self.assertEqual(help_text.decode_contents(), 'Read the <a href="/terms/">terms</a>')
+
+    def test_checkbox_in_a_group_renders_no_help_text_of_its_own(self):
+        soup, diagnostics = self.render_with_diagnostics(
+            '{% ui "checkbox_group" label="Pets" name="pets" %}'
+            '{% ui "checkbox" value="cat" description="Cats only" is_invalid=True error_message="Bad" %}'
+            "Cat{% endui %}{% endui %}"
+        )
+        self.assertEqual(diagnostics, [])
+        self.assertEqual(soup.select(".LabeledInput_helpText"), [])
+        self.assertFalse(soup.select_one("input").has_attr("aria-describedby"))
 
     def test_checkbox_input_attributes(self):
         soup, diagnostics = self.render_with_diagnostics(
