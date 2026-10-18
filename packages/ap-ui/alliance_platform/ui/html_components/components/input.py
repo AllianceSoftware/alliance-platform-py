@@ -131,6 +131,8 @@ class LabeledInputState:
     #: full aria-describedby value for the control (the help text and error ids plus any caller
     #: supplied value, without duplicates)
     described_by: str | None = None
+    #: id of a label that is not a ``<label>`` (see ``label_element``), which its control references
+    label_id: str | None = None
 
     @property
     def error_rendered(self) -> bool:
@@ -168,6 +170,10 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
     #: ``"start"``, but ``TextInputBase`` always passes it a ``labelAlign``, undefined when it has
     #: none, so the inputs have no fallback.
     default_label_align: str | None = None
+    #: The label's element. A ``<label>`` labels the control by its id (``for``); any other element,
+    #: such as the ``<span>`` that labels a checkbox or radio group, gets an id of its own, named
+    #: ``<id>_label`` after a given control id, for the control's ``aria-labelledby``.
+    label_element = "label"
     #: Props that accept rich content as well as plain text, which is escaped: a safe string (such
     #: as a component captured with ``{% ui ... as var %}``), ``RenderableContent`` (such as the
     #: help text and safe error messages ``{% form_input %}`` passes) or a list of these. They
@@ -215,6 +221,10 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
             state.input_id = str(given_input_id)
         elif state.label and self.generate_input_id:
             state.input_id = self.generate_html_id(context)
+        if state.label and self.label_element != "label":
+            state.label_id = (
+                f"{given_input_id}_label" if given_input_id is not None else self.generate_html_id(context)
+            )
 
         if state.description_rendered:
             state.description_id = (
@@ -290,6 +300,7 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
             return ""
         label_styles = self.resolve_vanilla_extract_mapping(_LABEL_STYLE_PATH)
         attrs: dict[str, Any] = {
+            "id": state.label_id,
             "data-apui": "label",
             # Label.css aligns the label to the end from this attribute
             "data-label-align": state.label_align,
@@ -297,7 +308,8 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
                 self.get_style_class(label_styles, "label"),
                 self.get_style_class(labeled_input_styles, "label"),
             ),
-            "htmlFor": state.input_id,
+            # As in React's Label, only a <label> takes for
+            "htmlFor": state.input_id if self.label_element == "label" else None,
         }
         children = conditional_escape(state.label)
         if state.is_required:
@@ -305,7 +317,7 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
             children += mark_safe(
                 f'<span aria-hidden="true" class="{conditional_escape(indicator_class)}">*</span>'
             )
-        return self.render_tag("label", attrs, children)
+        return self.render_tag(self.label_element, attrs, children)
 
     def render_help_text(self, context: Context, state: LabeledInputState, labeled_input_styles: Any) -> str:
         # The root's data-invalid, set whenever state.is_invalid is, colours the error message and

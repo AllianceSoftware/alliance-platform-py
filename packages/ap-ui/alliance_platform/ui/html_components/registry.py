@@ -87,6 +87,8 @@ def register_component(
 # Keep the default built-ins close to registry construction so parsing validation can rely on them.
 from .components import UIButtonGroupRenderer  # noqa: E402
 from .components import UIButtonRenderer  # noqa: E402
+from .components import UICheckboxGroupRenderer  # noqa: E402
+from .components import UICheckboxRenderer  # noqa: E402
 from .components import UIContentRenderer  # noqa: E402
 from .components import UIFooterRenderer  # noqa: E402
 from .components import UIHeaderRenderer  # noqa: E402
@@ -100,6 +102,8 @@ from .components import UIMenubarSectionRenderer  # noqa: E402
 from .components import UIMenubarSubMenuRenderer  # noqa: E402
 from .components import UINumberInputRenderer  # noqa: E402
 from .components import UIPaginationRenderer  # noqa: E402
+from .components import UIRadioGroupRenderer  # noqa: E402
+from .components import UIRadioRenderer  # noqa: E402
 from .components import UITableBodyRenderer  # noqa: E402
 from .components import UITableCellRenderer  # noqa: E402
 from .components import UITableColumnRenderer  # noqa: E402
@@ -132,3 +136,7 @@ register_component("menubar", UIMenubarRenderer)
 register_component("menubar_item", UIMenubarItemRenderer)
 register_component("menubar_submenu", UIMenubarSubMenuRenderer)
 register_component("menubar_section", UIMenubarSectionRenderer)
+register_component("checkbox", UICheckboxRenderer)
+register_component("checkbox_group", UICheckboxGroupRenderer)
+register_component("radio_group", UIRadioGroupRenderer)
+register_component("radio", UIRadioRenderer)

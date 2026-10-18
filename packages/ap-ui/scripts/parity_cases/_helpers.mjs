@@ -319,3 +319,97 @@ export function serializeHtml(root) {
     "<$1$2/>"
   );
 }
+
+// The state of a checkbox or radio lives on its input, which the stylesheets read, so the static
+// renderers leave out the attributes React derives from it: `data-state` and `data-selected` on a
+// checkbox root, which would go stale once the box is toggled without a script, and the roving
+// `tabindex` react-aria gives radios, as the browser moves between native radios itself.
+export function normalizeChoiceControls(root) {
+  for (const element of root.querySelectorAll('[data-apui="checkbox"]')) {
+    element.removeAttribute("data-state");
+    element.removeAttribute("data-selected");
+  }
+  for (const element of root.querySelectorAll('input[type="radio"]')) {
+    element.removeAttribute("tabindex");
+  }
+}
+
+// Normalisation for checkbox and radio groups. The group is labelled by its label's id and
+// described by its help text, so unlike the inputs' those references survive: a group with a
+// given id names its label `<id>_label`, its help text `<id>_helptext` and its error message
+// `<id>_error`, react-aria's reserved description and error ids that do not render are dropped
+// from `aria-describedby`, and the other referenced ids are remapped to the static
+// `apui-<component>-<n>` scheme, as is a name react-aria generates for radios.
+export function normalizeChoiceGroup(root, component) {
+  normalizeChoiceControls(root);
+  const presentIds = new Set(
+    elements(root)
+      .map((element) => element.getAttribute("id"))
+      .filter(Boolean)
+  );
+  const renames = new Map();
+  for (const group of root.querySelectorAll(
+    '[role="group"], [role="radiogroup"]'
+  )) {
+    const id = group.getAttribute("id");
+    if (!id || id.startsWith("react-aria-")) {
+      continue;
+    }
+    const [labelId] = (group.getAttribute("aria-labelledby") ?? "")
+      .split(/\s+/)
+      .filter((token) => token.startsWith("react-aria-"));
+    if (labelId) {
+      renames.set(labelId, `${id}_label`);
+    }
+    // react-aria lists the description slot, then the error message slot, on the group
+    const [descriptionId, errorMessageId] = (
+      group.getAttribute("aria-describedby") ?? ""
+    )
+      .split(/\s+/)
+      .filter((token) => token.startsWith("react-aria-"));
+    for (const [slotId, suffix] of [
+      [descriptionId, "helptext"],
+      [errorMessageId, "error"],
+    ]) {
+      if (slotId && presentIds.has(slotId)) {
+        renames.set(slotId, `${id}_${suffix}`);
+      }
+    }
+  }
+  for (const element of elements(root)) {
+    for (const attribute of Array.from(element.attributes)) {
+      let value = attribute.value.replace(
+        /react-aria-[^"'\s]+/g,
+        (token) => renames.get(token) ?? token
+      );
+      if (attribute.name === "aria-describedby") {
+        value = value
+          .split(/\s+/)
+          .filter(
+            (token) =>
+              token &&
+              (!token.startsWith("react-aria-") || presentIds.has(token))
+          )
+          .join(" ");
+      }
+      if (value === attribute.value) {
+        continue;
+      }
+      if (value) {
+        element.setAttribute(attribute.name, value);
+      } else {
+        element.removeAttribute(attribute.name);
+      }
+    }
+  }
+  const referenced = collectReferencedReactAriaIds(root, [
+    "for",
+    "aria-labelledby",
+    "aria-describedby",
+    "aria-controls",
+    "aria-errormessage",
+  ]);
+  removeUnreferencedReactAriaIds(root, referenced);
+  remapReactAriaIds(root, component);
+  normalizeInlineStyles(root);
+}

@@ -1,0 +1,91 @@
+{
+  "component": "checkbox",
+  "class_prefixes": ["Checkbox", "FormSection", "focusRing"],
+  "keep_class_tokens": [],
+  "cases": [
+    {
+      "name": "default",
+      "template": "{% ui \"checkbox\" %}Accept the terms{% endui %}",
+      "expected_html": "<div data-label-position=\"top\"><label class=\"Checkbox_wrapper\" data-apui=\"checkbox\" data-size=\"sm\"><input type=\"checkbox\" class=\"Checkbox_input\"/><span class=\"Checkbox_checkbox focusRing_base\" aria-hidden=\"true\"><svg viewBox=\"0 0 16 16\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" class=\"Checkbox_icon\"><path d=\"M12 5L6.5 10.5L4 8\" stroke-width=\"1.6666\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"Checkbox_border Checkbox_checkMark\"></path><path d=\"M4.5 8H11.5\" stroke-width=\"1.6666\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"Checkbox_border Checkbox_indeterminateMark\"></path></svg></span><span class=\"Checkbox_label\">Accept the terms</span></label></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "name_and_value",
+      "template": "{% ui \"checkbox\" name=\"terms\" value=\"yes\" %}Accept the terms{% endui %}",
+      "expected_html": "<div data-label-position=\"top\"><label class=\"Checkbox_wrapper\" data-apui=\"checkbox\" data-size=\"sm\"><input name=\"terms\" type=\"checkbox\" class=\"Checkbox_input\" value=\"yes\"/><span class=\"Checkbox_checkbox focusRing_base\" aria-hidden=\"true\"><svg viewBox=\"0 0 16 16\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" class=\"Checkbox_icon\"><path d=\"M12 5L6.5 10.5L4 8\" stroke-width=\"1.6666\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"Checkbox_border Checkbox_checkMark\"></path><path d=\"M4.5 8H11.5\" stroke-width=\"1.6666\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"Checkbox_border Checkbox_indeterminateMark\"></path></svg></span><span class=\"Checkbox_label\">Accept the terms</span></label></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "default_selected",
+      "template": "{% ui \"checkbox\" default_selected=True %}Accept the terms{% endui %}",
+      "expected_html": "<div data-label-position=\"top\"><label class=\"Checkbox_wrapper\" data-apui=\"checkbox\" data-size=\"sm\"><input type=\"checkbox\" class=\"Checkbox_input\" checked=\"\"/><span class=\"Checkbox_checkbox focusRing_base\" aria-hidden=\"true\"><svg viewBox=\"0 0 16 16\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" class=\"Checkbox_icon\"><path d=\"M12 5L6.5 10.5L4 8\" stroke-width=\"1.6666\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"Checkbox_border Checkbox_checkMark\"></path><path d=\"M4.5 8H11.5\" stroke-width=\"1.6666\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"Checkbox_border Checkbox_indeterminateMark\"></path></svg></span><span class=\"Checkbox_label\">Accept the terms</span></label></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "selected",
+      "template": "{% ui \"checkbox\" is_selected=True %}Accept the terms{% endui %}",
+      "expected_html": "<div data-label-position=\"top\"><label class=\"Checkbox_wrapper\" data-apui=\"checkbox\" data-size=\"sm\"><input type=\"checkbox\" class=\"Checkbox_input\" checked=\"\"/><span class=\"Checkbox_checkbox focusRing_base\" aria-hidden=\"true\"><svg viewBox=\"0 0 16 16\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" class=\"Checkbox_icon\"><path d=\"M12 5L6.5 10.5L4 8\" stroke-width=\"1.6666\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"Checkbox_border Checkbox_checkMark\"></path><path d=\"M4.5 8H11.5\" stroke-width=\"1.6666\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"Checkbox_border Checkbox_indeterminateMark\"></path></svg></span><span class=\"Checkbox_label\">Accept the terms</span></label></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "indeterminate",
+      "template": "{% ui \"checkbox\" is_indeterminate=True %}Select all{% endui %}",
+      "expected_html": "<div data-label-position=\"top\"><label class=\"Checkbox_wrapper\" data-apui=\"checkbox\" data-size=\"sm\" data-indeterminate=\"true\"><input type=\"checkbox\" class=\"Checkbox_input\"/><span class=\"Checkbox_checkbox focusRing_base\" aria-hidden=\"true\"><svg viewBox=\"0 0 16 16\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" class=\"Checkbox_icon\"><path d=\"M12 5L6.5 10.5L4 8\" stroke-width=\"1.6666\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"Checkbox_border Checkbox_checkMark\"></path><path d=\"M4.5 8H11.5\" stroke-width=\"1.6666\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"Checkbox_border Checkbox_indeterminateMark\"></path></svg></span><span class=\"Checkbox_label\">Select all</span></label></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "disabled_and_read_only",
+      "template": "{% ui \"checkbox\" is_disabled=True is_read_only=True default_selected=True %}Accept the terms{% endui %}",
+      "expected_html": "<div data-label-position=\"top\"><label class=\"Checkbox_wrapper\" data-apui=\"checkbox\" data-size=\"sm\" data-disabled=\"true\" data-readonly=\"true\"><input aria-readonly=\"true\" disabled=\"\" type=\"checkbox\" class=\"Checkbox_input\" checked=\"\"/><span class=\"Checkbox_checkbox focusRing_base\" aria-hidden=\"true\"><svg viewBox=\"0 0 16 16\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" class=\"Checkbox_icon\"><path d=\"M12 5L6.5 10.5L4 8\" stroke-width=\"1.6666\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"Checkbox_border Checkbox_checkMark\"></path><path d=\"M4.5 8H11.5\" stroke-width=\"1.6666\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"Checkbox_border Checkbox_indeterminateMark\"></path></svg></span><span class=\"Checkbox_label\">Accept the terms</span></label></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "invalid_and_required",
+      "template": "{% ui \"checkbox\" is_invalid=True is_required=True %}Accept the terms{% endui %}",
+      "expected_html": "<div data-label-position=\"top\"><label class=\"Checkbox_wrapper\" data-apui=\"checkbox\" data-size=\"sm\" data-invalid=\"true\" data-required=\"true\"><input aria-invalid=\"true\" type=\"checkbox\" aria-required=\"true\" class=\"Checkbox_input\"/><span class=\"Checkbox_checkbox focusRing_base\" aria-hidden=\"true\"><svg viewBox=\"0 0 16 16\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" class=\"Checkbox_icon\"><path d=\"M12 5L6.5 10.5L4 8\" stroke-width=\"1.6666\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"Checkbox_border Checkbox_checkMark\"></path><path d=\"M4.5 8H11.5\" stroke-width=\"1.6666\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"Checkbox_border Checkbox_indeterminateMark\"></path></svg></span><span class=\"Checkbox_label\">Accept the terms</span></label></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "validation_state_invalid",
+      "template": "{% ui \"checkbox\" validation_state=\"invalid\" %}Accept the terms{% endui %}",
+      "expected_html": "<div data-label-position=\"top\"><label class=\"Checkbox_wrapper\" data-apui=\"checkbox\" data-size=\"sm\" data-invalid=\"true\"><input aria-invalid=\"true\" type=\"checkbox\" class=\"Checkbox_input\"/><span class=\"Checkbox_checkbox focusRing_base\" aria-hidden=\"true\"><svg viewBox=\"0 0 16 16\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" class=\"Checkbox_icon\"><path d=\"M12 5L6.5 10.5L4 8\" stroke-width=\"1.6666\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"Checkbox_border Checkbox_checkMark\"></path><path d=\"M4.5 8H11.5\" stroke-width=\"1.6666\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"Checkbox_border Checkbox_indeterminateMark\"></path></svg></span><span class=\"Checkbox_label\">Accept the terms</span></label></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "size_md",
+      "template": "{% ui \"checkbox\" size=\"md\" %}Accept the terms{% endui %}",
+      "expected_html": "<div data-label-position=\"top\"><label class=\"Checkbox_wrapper\" data-apui=\"checkbox\" data-size=\"md\"><input type=\"checkbox\" class=\"Checkbox_input\"/><span class=\"Checkbox_checkbox focusRing_base\" aria-hidden=\"true\"><svg viewBox=\"0 0 16 16\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" class=\"Checkbox_icon\"><path d=\"M12 5L6.5 10.5L4 8\" stroke-width=\"1.6666\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"Checkbox_border Checkbox_checkMark\"></path><path d=\"M4.5 8H11.5\" stroke-width=\"1.6666\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"Checkbox_border Checkbox_indeterminateMark\"></path></svg></span><span class=\"Checkbox_label\">Accept the terms</span></label></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "id_and_aria_describedby",
+      "template": "{% ui \"checkbox\" id=\"id_terms\" aria_describedby=\"id_terms_helptext\" %}Accept the terms{% endui %}",
+      "expected_html": "<div data-label-position=\"top\"><label class=\"Checkbox_wrapper\" data-apui=\"checkbox\" data-size=\"sm\"><input id=\"id_terms\" aria-describedby=\"id_terms_helptext\" type=\"checkbox\" class=\"Checkbox_input\"/><span class=\"Checkbox_checkbox focusRing_base\" aria-hidden=\"true\"><svg viewBox=\"0 0 16 16\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" class=\"Checkbox_icon\"><path d=\"M12 5L6.5 10.5L4 8\" stroke-width=\"1.6666\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"Checkbox_border Checkbox_checkMark\"></path><path d=\"M4.5 8H11.5\" stroke-width=\"1.6666\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"Checkbox_border Checkbox_indeterminateMark\"></path></svg></span><span class=\"Checkbox_label\">Accept the terms</span></label></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "aria_label_without_children",
+      "template": "{% ui \"checkbox\" aria_label=\"Accept the terms\" %}{% endui %}",
+      "expected_html": "<div data-label-position=\"top\"><label class=\"Checkbox_wrapper\" data-apui=\"checkbox\" data-size=\"sm\"><input aria-label=\"Accept the terms\" type=\"checkbox\" class=\"Checkbox_input\"/><span class=\"Checkbox_checkbox focusRing_base\" aria-hidden=\"true\"><svg viewBox=\"0 0 16 16\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" class=\"Checkbox_icon\"><path d=\"M12 5L6.5 10.5L4 8\" stroke-width=\"1.6666\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"Checkbox_border Checkbox_checkMark\"></path><path d=\"M4.5 8H11.5\" stroke-width=\"1.6666\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"Checkbox_border Checkbox_indeterminateMark\"></path></svg></span></label></div>",
+      "expected_warnings": [],
+      "meta": {}
+    },
+    {
+      "name": "label_position_side",
+      "template": "{% ui \"checkbox\" label_position=\"side\" %}Accept the terms{% endui %}",
+      "expected_html": "<div data-label-position=\"side\"><div class=\"FormSection_sideLabelPlaceholder\"></div><div class=\"FormSection_inputHelpSideWrapper\"><label class=\"Checkbox_wrapper\" data-apui=\"checkbox\" data-size=\"sm\"><input type=\"checkbox\" class=\"Checkbox_input\"/><span class=\"Checkbox_checkbox focusRing_base\" aria-hidden=\"true\"><svg viewBox=\"0 0 16 16\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" class=\"Checkbox_icon\"><path d=\"M12 5L6.5 10.5L4 8\" stroke-width=\"1.6666\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"Checkbox_border Checkbox_checkMark\"></path><path d=\"M4.5 8H11.5\" stroke-width=\"1.6666\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"Checkbox_border Checkbox_indeterminateMark\"></path></svg></span><span class=\"Checkbox_label\">Accept the terms</span></label></div></div>",
+      "expected_warnings": [],
+      "meta": {}
+    }
+  ]
+}

@@ -69,6 +69,10 @@ LEGACY_COMPONENT_MIGRATIONS: dict[str, LegacyComponentMigration] = {
     "LabeledInput": LegacyComponentMigration("labeled_input", named_tag=True),
     "Pagination": LegacyComponentMigration("pagination", named_tag=True),
     "TimeInput": LegacyComponentMigration(None, named_tag=True),
+    "Checkbox": LegacyComponentMigration("checkbox"),
+    "CheckboxGroup": LegacyComponentMigration("checkbox_group"),
+    "RadioGroup": LegacyComponentMigration("radio_group"),
+    "Radio": LegacyComponentMigration("radio"),
 }
 
 DEFAULT_EXCLUDED_DIRECTORY_NAMES = frozenset(

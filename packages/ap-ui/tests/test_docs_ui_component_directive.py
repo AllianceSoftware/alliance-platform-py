@@ -170,6 +170,14 @@ class ApuiMarkerTestCase(HtmlUIParityTestCase):
                 ("table", "table_header", "table_body", "table_column", "table_row", "table_cell"), table
             ),
             **dict.fromkeys(("menubar", "menubar_item", "menubar_submenu", "menubar_section"), menubar),
+            "checkbox": '{% ui "checkbox" %}Accept{% endui %}',
+            "checkbox_group": (
+                '{% ui "checkbox_group" label="Pets" %}{% ui "checkbox" value="cat" %}Cat{% endui %}{% endui %}'
+            ),
+            **dict.fromkeys(
+                ("radio_group", "radio"),
+                '{% ui "radio_group" label="Colour" %}{% ui "radio" value="red" %}Red{% endui %}{% endui %}',
+            ),
         }
         renderers = built_in_renderers()
         self.assertEqual(set(templates), set(renderers))
@@ -274,6 +282,12 @@ class DescribeComponentTestCase(SimpleTestCase):
         self.assertEqual(describe_component("menubar_item").parent, "menubar")
         self.assertIsNone(describe_component("table").parent)
         self.assertEqual(describe_component("table_header").props, ())
+        radio = describe_component("radio")
+        self.assertEqual(radio.parent, "radio_group")
+        self.assertEqual(radio.apui_marker, "radio")
+        self.assertEqual(radio.react_docs_url, f"{STORYBOOK}ui-radiogroup--docs")
+        # A checkbox renders inside a checkbox group or on its own
+        self.assertIsNone(describe_component("checkbox").parent)
 
     def test_runtime_token_prop_docs_and_unsupported_props(self):
         reference = describe_component("menubar")

@@ -48,10 +48,18 @@ BUILT_IN_STORYBOOK_DOCS_IDS = {
     "table_row": "ui-table",
     "text_area": "ui-textarea",
     "text_input": "ui-textinput",
+    "checkbox": "ui-checkbox",
+    "checkbox_group": "ui-checkboxgroup",
+    "radio_group": "ui-radiogroup",
+    "radio": "ui-radiogroup",
 }
 
 #: The parent each built-in part requires, by the class attribute that declares the requirement
-_PARENT_REQUIREMENTS = (("requires_table", "table"), ("requires_menubar", "menubar"))
+_PARENT_REQUIREMENTS = (
+    ("requires_table", "table"),
+    ("requires_menubar", "menubar"),
+    ("requires_radio_group", "radio_group"),
+)
 
 _CAMEL_CASE_BOUNDARY_RE = re.compile(r"([a-z0-9])([A-Z])")
 
