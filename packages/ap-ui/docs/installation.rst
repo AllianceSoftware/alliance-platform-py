@@ -78,10 +78,10 @@ error message :ttag:`form_input` passes:
       - ``alliance_platform/ui/widgets/checkbox_select.html``
       - ``checkbox_group`` and ``checkbox``
 
-The checkbox's label is the field's, beside the box, as in a React ``Checkbox`` widget; like it, the
-checkbox renders neither the field's help text nor its errors. The radio and checkbox select widgets
-render a radio or a checkbox per choice inside a group with the field's label, help text and error
-message, and the choices of a named group (an optgroup) render in the one group, without its name.
+The checkbox's label is the field's, beside the box, as in a React ``Checkbox`` widget, with the
+field's help text, or its errors, below it. The radio and checkbox select widgets render a radio or a
+checkbox per choice inside a group with the field's label, help text and error message, and the
+choices of a named group (an optgroup) render in the one group, without its name.
 
 It uses an ap-ui template only where Django's own template would render the widget. A template of
 your own for the widget, anywhere in ``TEMPLATES`` and whether it renders a React or a static
