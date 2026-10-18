@@ -95,6 +95,12 @@ export const cases = [
     props: { "aria-label": "Accept the terms" },
   }),
   checkboxCase({
+    name: "class_name",
+    templateProps: ' class="consent"',
+    props: { className: "consent" },
+    children: "Accept the terms",
+  }),
+  checkboxCase({
     // Outside a FormSection the prop lays out the row
     name: "label_position_side",
     templateProps: ' label_position="side"',

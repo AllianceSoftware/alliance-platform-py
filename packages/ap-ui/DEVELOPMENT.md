@@ -674,8 +674,10 @@ not render. `checkbox.mjs` uses `normalizeChoiceControls()`, which the group nor
   renames to match.
 - **Props a widget template passes**: `checked`, the attribute Django's `CheckboxInput` sets, is an
   alias of `default_selected`, and the checkbox accepts `label`, `description` and `error_message`
-  (what `{% form_input %}` passes) without rendering them, as React's Checkbox ignores them. A
-  checkbox group's `value` may be one string; React's takes a list only. These are unit tested.
+  (what `{% form_input %}` passes) without rendering them, as React's Checkbox ignores them. The
+  groups accept the `auto_focus` `{% form_input %}` passes in a `{% form %}` with `auto_focus`
+  without rendering it, as React's groups ignore it. A checkbox group's `value` may be one string;
+  React's takes a list only. These are unit tested.
 - **No help text or error message for a checkbox**: neither React's Checkbox nor the static one
   renders one, so a `CheckboxInput` field's help text and errors do not show, and the
   `aria-describedby` Django 5.0+ gives the input points at ids that do not render.

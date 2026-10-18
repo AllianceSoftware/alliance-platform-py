@@ -94,6 +94,13 @@ class StaticChoiceWidgetForm(forms.Form):
     )
 
 
+class ConsentForm(forms.Form):
+    colour = forms.ChoiceField(label="Colour", choices=[("red", "Red")], widget=forms.RadioSelect)
+    consent = forms.BooleanField(
+        label="I agree", widget=forms.CheckboxInput(attrs={"class": "consent"}), required=False
+    )
+
+
 class RawDescriptionWidget(forms.TextInput):
     """Widget template that outputs ``extra_widget_props.description`` directly."""
 
@@ -437,6 +444,26 @@ class StaticFormRendererTestCase(HtmlUIParityTestCase):
             self.assertIsNotNone(soup.find("label", attrs={"for": control["id"]}))
             for described_by in control.get("aria-describedby", "").split():
                 self.assertIsNotNone(soup.find(id=described_by))
+
+    def test_choice_widgets_in_a_form_with_auto_focus(self):
+        template = (
+            "{% load alliance_platform.form %}{% form my_form auto_focus=True %}"
+            "{% for field in my_form.visible_fields %}{% form_input field %}{% endfor %}{% endform %}"
+        )
+        for data in [None, {}, {"colour": "red"}]:
+            with self.subTest(data=data):
+                with self.setup_render_context():
+                    with self.capture_diagnostics() as diagnostics:
+                        output = self.render_ui_template(template, {"my_form": ConsentForm(data=data)})
+                # The groups accept the auto_focus {% form_input %} gives the first field, or the
+                # first with errors, and ignore it, as React's do
+                self.assertEqual(diagnostics, [])
+                soup = BeautifulSoup(output, "html.parser")
+                self.assertEqual(soup.select("[autofocus]"), [])
+                # A class in the widget's attrs goes on the checkbox's root
+                consent = soup.select_one('[data-apui="checkbox"]')
+                assert consent is not None
+                self.assertIn("consent", consent["class"])
 
     def test_choice_widgets_without_django_auto_ids_reference_ids_that_render(self):
         output = self.render_form(StaticChoiceWidgetForm(data={}, auto_id=False))
