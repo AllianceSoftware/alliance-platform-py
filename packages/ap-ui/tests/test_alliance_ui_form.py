@@ -13,6 +13,7 @@ from alliance_platform.ui.forms.renderers import form_input_context_key
 from allianceutils.auth.permission import AmbiguousGlobalPermissionWarning
 from allianceutils.tests.util import warning_filter
 from bs4 import BeautifulSoup
+from bs4 import Tag
 import django
 from django import forms
 from django.conf import settings
@@ -27,6 +28,7 @@ from django.template import TemplateDoesNotExist
 from django.test import TestCase
 from django.test import override_settings
 from django.urls import reverse
+from django.utils.datastructures import MultiValueDict
 from django.utils.safestring import mark_safe
 from test_alliance_platform_ui.factory import UserFactory
 from test_alliance_platform_ui.models import User
@@ -113,6 +115,32 @@ class RawDescriptionWidget(forms.TextInput):
 
 class RawDescriptionForm(forms.Form):
     plain = forms.CharField(label="Plain", help_text="No markup here", widget=RawDescriptionWidget)
+
+
+class StaticSelectForm(forms.Form):
+    colour = forms.ChoiceField(
+        label="Colour",
+        help_text="Your favourite",
+        choices=[("", "Choose a colour"), ("red", "Red"), ("green", "Green")],
+    )
+    colours = forms.MultipleChoiceField(
+        label="Colours", choices=[("red", "Red"), ("green", "Green"), ("blue", "Blue")], required=False
+    )
+    animal = forms.ChoiceField(
+        label="Animal",
+        choices=[("Mammals", [("kangaroo", "Kangaroo"), ("wombat", "Wombat")]), ("Birds", [("emu", "Emu")])],
+    )
+    likes_selects = forms.NullBooleanField(label="Likes selects", required=False)
+
+
+class OwnOptionSelect(forms.Select):
+    option_template_name = "test_widgets/own_option.html"
+
+
+class OwnOptionSelectForm(forms.Form):
+    colour = forms.ChoiceField(
+        label="Colour", choices=[("red", "Red"), ("green", "Green")], widget=OwnOptionSelect
+    )
 
 
 test_development_bundler = TestViteBundler(
@@ -587,3 +615,121 @@ class StaticFormRendererTestCase(HtmlUIParityTestCase):
 
         with mock.patch.object(TemplatesSetting, "get_template", side_effect=get_template):
             self.assertIs(StaticFormRenderer().get_template("django/forms/widgets/textarea.html"), template)
+
+    def selects(self, output: str) -> dict[str, Tag]:
+        return {
+            str(select["name"]): select for select in BeautifulSoup(output, "html.parser").select("select")
+        }
+
+    def submitted_values(self, output: str) -> dict[str, list[str]]:
+        """The values the selects in ``output`` submit, as a browser submits them."""
+        submitted: dict[str, list[str]] = {}
+        for name, select in self.selects(output).items():
+            options = select.select("option")
+            selected = [option for option in options if option.has_attr("selected")]
+            if not selected and not select.has_attr("multiple"):
+                # A drop-down without a selected option shows, and submits, its first option
+                selected = options[:1]
+            submitted[name] = [str(option.get("value", option.get_text())) for option in selected]
+        return submitted
+
+    def test_renders_select_widgets_as_native_selects(self):
+        form = StaticSelectForm(
+            data={"colour": "green", "colours": ["red", "blue"], "animal": "emu", "likes_selects": "true"}
+        )
+        output = self.render_form(form)
+        selects = self.selects(output)
+
+        self.assertEqual(output.count('data-apui="native-select"'), 4)
+        for field, label in [
+            ("colour", "Colour"),
+            ("colours", "Colours"),
+            ("animal", "Animal"),
+            ("likes_selects", "Likes selects"),
+        ]:
+            with self.subTest(field=field):
+                self.assertIn(f'for="id_{field}">{label}', output)
+                self.assertEqual(selects[field]["id"], f"id_{field}")
+        # Select, NullBooleanSelect and SelectMultiple, whose multiple attribute makes a list box
+        self.assertEqual(
+            {name: select.has_attr("multiple") for name, select in selects.items()},
+            {"colour": False, "colours": True, "animal": False, "likes_selects": False},
+        )
+        self.assertEqual(output.count("NativeSelect_chevron"), 3)
+        self.assertEqual(
+            [option.get_text() for option in selects["likes_selects"].select("option")],
+            ["Unknown", "Yes", "No"],
+        )
+        self.assertEqual(
+            [
+                (group["label"], [option["value"] for option in group.select("option")])
+                for group in selects["animal"].select("optgroup")
+            ],
+            [("Mammals", ["kangaroo", "wombat"]), ("Birds", ["emu"])],
+        )
+        # The options carry the selection Django's select widget gives them
+        self.assertEqual(
+            self.submitted_values(output),
+            {"colour": ["green"], "colours": ["red", "blue"], "animal": ["emu"], "likes_selects": ["true"]},
+        )
+
+    def test_select_help_text_and_errors_take_the_ids_django_gives_them(self):
+        unbound_output = self.render_form(StaticSelectForm())
+        bound_output = self.render_form(StaticSelectForm(data={"animal": "emu"}))
+
+        self.assertIn(
+            '<div class="LabeledInput_helpText" id="id_colour_helptext">Your favourite</div>', unbound_output
+        )
+        self.assertIn(
+            "id_colour_helptext", self.selects(unbound_output)["colour"]["aria-describedby"].split()
+        )
+        self.assertIn(
+            '<div class="LabeledInput_helpText" id="id_colour_error">This field is required.</div>',
+            bound_output,
+        )
+        colour = self.selects(bound_output)["colour"]
+        self.assertIn("id_colour_error", colour["aria-describedby"].split())
+        self.assertEqual(colour["aria-invalid"], "true")
+
+    def test_a_required_select_is_marked_required(self):
+        colour = self.selects(self.render_form(StaticSelectForm()))["colour"]
+
+        # Django sets required when the first option is empty; the static inputs mark it with
+        # aria-required, as React does
+        self.assertEqual(colour["aria-required"], "true")
+        self.assertFalse(colour.has_attr("required"))
+
+    def test_select_widgets_submit_the_values_of_their_selected_options(self):
+        for data in [
+            {"colour": "red", "colours": ["green", "blue"], "animal": "kangaroo", "likes_selects": "false"},
+            {"colour": "green", "colours": [], "animal": "emu", "likes_selects": "unknown"},
+        ]:
+            with self.subTest(data=data):
+                form = StaticSelectForm(data=data)
+                submitted = self.submitted_values(self.render_form(form))
+                resubmitted = StaticSelectForm(data=MultiValueDict(submitted))
+
+                self.assertTrue(resubmitted.is_valid(), resubmitted.errors)
+                self.assertEqual(resubmitted.cleaned_data, form.cleaned_data)
+
+    def test_select_widgets_submit_their_initial_values(self):
+        initial = {"colour": "green", "colours": ["blue"], "animal": "wombat", "likes_selects": True}
+        submitted = self.submitted_values(self.render_form(StaticSelectForm(initial=initial)))
+
+        self.assertEqual(
+            submitted,
+            {"colour": ["green"], "colours": ["blue"], "animal": ["wombat"], "likes_selects": ["true"]},
+        )
+
+    def test_a_widget_option_template_of_its_own_renders_its_options(self):
+        output = self.render_form(OwnOptionSelectForm(initial={"colour": "green"}))
+
+        self.assertIn('data-apui="native-select"', output)
+        self.assertIn('<option value="green" selected data-own-option="true">Green</option>', output)
+
+    def test_a_project_select_option_template_wins_for_the_select_widgets(self):
+        with self.project_widget_templates("select_option"):
+            output = self.render_form(StaticSelectForm())
+
+        self.assertNotIn('data-apui="native-select"', output)
+        self.assertIn('<option value="red" data-project-widget="select_option.html">Red</option>', output)
