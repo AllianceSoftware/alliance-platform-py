@@ -71,7 +71,7 @@ error message :ttag:`form_input` passes:
     * - ``django/forms/widgets/select.html``, which ``Select``, ``SelectMultiple`` and
         ``NullBooleanSelect`` use
       - ``alliance_platform/ui/widgets/select.html``
-      - ``native_select``
+      - ``select``
     * - ``django/forms/widgets/checkbox.html``
       - ``alliance_platform/ui/widgets/checkbox.html``
       - ``checkbox``

@@ -178,7 +178,7 @@ class ApuiMarkerTestCase(HtmlUIParityTestCase):
                 ("radio_group", "radio"),
                 '{% ui "radio_group" label="Colour" %}{% ui "radio" value="red" %}Red{% endui %}{% endui %}',
             ),
-            "native_select": '{% ui "native_select" name="c" %}<option>Red</option>{% endui %}',
+            "select": '{% ui "select" name="c" %}<option>Red</option>{% endui %}',
         }
         renderers = built_in_renderers()
         self.assertEqual(set(templates), set(renderers))

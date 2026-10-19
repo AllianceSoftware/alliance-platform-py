@@ -115,7 +115,7 @@ class StaticFormRenderer(FormInputContextRenderer):
 
     Where Django's own template would render one of the widgets in
     :attr:`static_widget_templates`, this renders the ap-ui template it maps to instead: a
-    ``text_input``, ``number_input``, ``text_area``, ``native_select``, ``checkbox``,
+    ``text_input``, ``number_input``, ``text_area``, ``select``, ``checkbox``,
     ``radio_group`` or ``checkbox_group`` that takes the label, help text and error message
     :ttag:`form_input` passes in ``extra_widget_props``. A template for the widget that the project
     provides anywhere in ``TEMPLATES``, React or static, renders as it would without this renderer,

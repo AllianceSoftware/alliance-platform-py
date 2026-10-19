@@ -19,7 +19,7 @@ from .menubar import UIMenubarSubMenuRenderer
 from .pagination import UIPaginationRenderer
 from .radio_group import UIRadioGroupRenderer
 from .radio_group import UIRadioRenderer
-from .select import UINativeSelectRenderer
+from .select import UISelectRenderer
 from .table import UITableBodyRenderer
 from .table import UITableCellRenderer
 from .table import UITableColumnRenderer
@@ -55,5 +55,5 @@ __all__ = [
     "UICheckboxGroupRenderer",
     "UIRadioGroupRenderer",
     "UIRadioRenderer",
-    "UINativeSelectRenderer",
+    "UISelectRenderer",
 ]

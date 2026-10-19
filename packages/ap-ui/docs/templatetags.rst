@@ -114,7 +114,7 @@ the suggested static renderer (or native element), and one of these statuses:
   HTML rather than a static UI renderer. Deferred ``url``/``url_with_perm`` values are marked
   ``REVIEW`` because native markup does not preserve automatic component omission.
 * ``NO-STATIC-EQUIVALENT`` — the Alliance UI component is recognised but has no static renderer
-  yet. For ``Select`` and ``MultipleSelect`` the finding suggests ``native_select`` instead, a
+  yet. For ``Select`` and ``MultipleSelect`` the finding suggests ``select`` instead, a
   native select without their search, asynchronous loading or rendered options.
 
 The suggested tag shows ``{% endui %}`` only for components with children: a button is suggested as
@@ -277,16 +277,16 @@ the auto-grow runtime.
 
 .. ui-component:: text_area
 
-Static native selects
+Static selects
 ~~~~~~~~~~~~~~~~~~~~~
 
-``native_select`` renders a native ``<select>`` with the label, help text, error message, sizes and
+``select`` renders a native ``<select>`` with the label, help text, error message, sizes and
 states of the static text input, and a chevron. Its children are the ``<option>`` and
 ``<optgroup>`` elements, which render as written:
 
 .. code-block:: html+django
 
-    {% ui "native_select" name="colour" label="Colour" value=profile.colour %}
+    {% ui "select" name="colour" label="Colour" value=profile.colour %}
       <option value="">Choose a colour</option>
       {% for value, label in colours %}
         <option value="{{ value }}">{{ label }}</option>
@@ -305,9 +305,9 @@ select whose ``size`` is more than one. For search, options loaded asynchronousl
 rendered by components, use the React ``Select``.
 
 :ref:`StaticFormRenderer <static-form-widgets>` renders Django's ``Select``, ``SelectMultiple`` and
-``NullBooleanSelect`` widgets as ``native_select``.
+``NullBooleanSelect`` widgets as ``select``.
 
-.. ui-component:: native_select
+.. ui-component:: select
 
 .. _static-labeled-inputs:
 

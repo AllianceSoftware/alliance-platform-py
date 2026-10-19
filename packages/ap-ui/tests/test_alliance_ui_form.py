@@ -633,14 +633,14 @@ class StaticFormRendererTestCase(HtmlUIParityTestCase):
             submitted[name] = [str(option.get("value", option.get_text())) for option in selected]
         return submitted
 
-    def test_renders_select_widgets_as_native_selects(self):
+    def test_renders_select_widgets_as_selects(self):
         form = StaticSelectForm(
             data={"colour": "green", "colours": ["red", "blue"], "animal": "emu", "likes_selects": "true"}
         )
         output = self.render_form(form)
         selects = self.selects(output)
 
-        self.assertEqual(output.count('data-apui="native-select"'), 4)
+        self.assertEqual(output.count('data-apui="select"'), 4)
         for field, label in [
             ("colour", "Colour"),
             ("colours", "Colours"),
@@ -724,12 +724,12 @@ class StaticFormRendererTestCase(HtmlUIParityTestCase):
     def test_a_widget_option_template_of_its_own_renders_its_options(self):
         output = self.render_form(OwnOptionSelectForm(initial={"colour": "green"}))
 
-        self.assertIn('data-apui="native-select"', output)
+        self.assertIn('data-apui="select"', output)
         self.assertIn('<option value="green" selected data-own-option="true">Green</option>', output)
 
     def test_a_project_select_option_template_wins_for_the_select_widgets(self):
         with self.project_widget_templates("select_option"):
             output = self.render_form(StaticSelectForm())
 
-        self.assertNotIn('data-apui="native-select"', output)
+        self.assertNotIn('data-apui="select"', output)
         self.assertIn('<option value="red" data-project-widget="select_option.html">Red</option>', output)

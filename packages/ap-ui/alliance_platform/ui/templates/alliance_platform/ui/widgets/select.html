@@ -1,6 +1,6 @@
 {% load alliance_platform.ui %}
 {# StaticFormRenderer renders this in place of Django's select widget template, which Select, SelectMultiple and NullBooleanSelect use. It writes the options as Django's select_option.html does, selected attribute included, unless the widget has an option template of its own #}
-{% ui "native_select" props=widget.attrs|merge_props:extra_widget_props name=widget.name %}{% for group_name, group_choices, group_index in widget.optgroups %}{% if group_name %}
+{% ui "select" props=widget.attrs|merge_props:extra_widget_props name=widget.name %}{% for group_name, group_choices, group_index in widget.optgroups %}{% if group_name %}
   <optgroup label="{{ group_name }}">{% endif %}{% for option in group_choices %}{% if option.template_name == "django/forms/widgets/select_option.html" %}
   <option value="{{ option.value|stringformat:'s' }}"{% for name, value in option.attrs.items %}{% if value is not False %} {{ name }}{% if value is not True %}="{{ value|stringformat:'s' }}"{% endif %}{% endif %}{% endfor %}>{{ option.label }}</option>{% else %}
   {% include option.template_name with widget=option %}{% endif %}{% endfor %}{% if group_name %}
