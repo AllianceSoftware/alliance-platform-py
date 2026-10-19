@@ -1,6 +1,6 @@
 import path from "node:path";
 
-export const component = "native_select";
+export const component = "select";
 export const class_prefixes = [
   "LabeledInput",
   "TextInputBase",
@@ -56,7 +56,7 @@ function nativeSelect(React, components, props, children) {
 export const cases = [
   {
     name: "default",
-    template: `{% ui "native_select" label="Colour" %}${COLOUR_OPTIONS}{% endui %}`,
+    template: `{% ui "select" label="Colour" %}${COLOUR_OPTIONS}{% endui %}`,
     buildElement({ React, components }) {
       return nativeSelect(
         React,
@@ -69,7 +69,7 @@ export const cases = [
   },
   {
     name: "name_and_value",
-    template: `{% ui "native_select" label="Colour" name="colour" value="green" %}${COLOUR_OPTIONS}{% endui %}`,
+    template: `{% ui "select" label="Colour" name="colour" value="green" %}${COLOUR_OPTIONS}{% endui %}`,
     buildElement({ React, components }) {
       return nativeSelect(
         React,
@@ -82,7 +82,7 @@ export const cases = [
   },
   {
     name: "default_value",
-    template: `{% ui "native_select" label="Colour" default_value="blue" %}${COLOUR_OPTIONS}{% endui %}`,
+    template: `{% ui "select" label="Colour" default_value="blue" %}${COLOUR_OPTIONS}{% endui %}`,
     buildElement({ React, components }) {
       return nativeSelect(
         React,
@@ -97,7 +97,7 @@ export const cases = [
     // An option without a value attribute has its text as its value
     name: "value_of_options_without_value_attributes",
     template:
-      '{% ui "native_select" label="Size" value="Medium" %}<option>Small</option><option>Medium</option>{% endui %}',
+      '{% ui "select" label="Size" value="Medium" %}<option>Small</option><option>Medium</option>{% endui %}',
     buildElement({ React, components }) {
       return nativeSelect(
         React,
@@ -115,7 +115,7 @@ export const cases = [
     // An empty value selects the option with an empty value, as a placeholder option
     name: "empty_value_selects_the_placeholder_option",
     template:
-      '{% ui "native_select" label="Colour" value="" is_required=True %}<option value="">Choose a colour</option>' +
+      '{% ui "select" label="Colour" value="" is_required=True %}<option value="">Choose a colour</option>' +
       `${COLOUR_OPTIONS}{% endui %}`,
     buildElement({ React, components }) {
       return nativeSelect(
@@ -136,7 +136,7 @@ export const cases = [
   },
   {
     name: "multiple_with_values",
-    template: `{% ui "native_select" label="Colours" name="colours" is_multiple=True value=colours %}${COLOUR_OPTIONS}{% endui %}`,
+    template: `{% ui "select" label="Colours" name="colours" is_multiple=True value=colours %}${COLOUR_OPTIONS}{% endui %}`,
     buildElement({ React, components }) {
       return nativeSelect(
         React,
@@ -157,7 +157,7 @@ export const cases = [
     // selected options
     name: "multiple_attribute_and_selected_options",
     template:
-      '{% ui "native_select" label="Colours" multiple=True %}<option value="red" selected>Red</option>' +
+      '{% ui "select" label="Colours" multiple=True %}<option value="red" selected>Red</option>' +
       '<option value="green">Green</option><option value="blue" selected>Blue</option>{% endui %}',
     buildElement({ React, components }) {
       return nativeSelect(
@@ -172,7 +172,7 @@ export const cases = [
   {
     name: "option_groups",
     template:
-      '{% ui "native_select" label="Animal" value="emu" %}' +
+      '{% ui "select" label="Animal" value="emu" %}' +
       '<optgroup label="Mammals"><option value="kangaroo">Kangaroo</option><option value="wombat">Wombat</option></optgroup>' +
       '<optgroup label="Birds"><option value="emu">Emu</option><option value="cassowary" disabled>Cassowary</option></optgroup>' +
       '<optgroup label="Reptiles" disabled><option value="goanna">Goanna</option></optgroup>' +
@@ -206,7 +206,7 @@ export const cases = [
   },
   {
     name: "input_size_md",
-    template: `{% ui "native_select" label="Colour" input_size="md" %}${COLOUR_OPTIONS}{% endui %}`,
+    template: `{% ui "select" label="Colour" input_size="md" %}${COLOUR_OPTIONS}{% endui %}`,
     buildElement({ React, components }) {
       return nativeSelect(
         React,
@@ -219,7 +219,7 @@ export const cases = [
   },
   {
     name: "disabled",
-    template: `{% ui "native_select" label="Colour" is_disabled=True %}${COLOUR_OPTIONS}{% endui %}`,
+    template: `{% ui "select" label="Colour" is_disabled=True %}${COLOUR_OPTIONS}{% endui %}`,
     buildElement({ React, components }) {
       return nativeSelect(
         React,
@@ -232,7 +232,7 @@ export const cases = [
   },
   {
     name: "required",
-    template: `{% ui "native_select" label="Colour" is_required=True %}${COLOUR_OPTIONS}{% endui %}`,
+    template: `{% ui "select" label="Colour" is_required=True %}${COLOUR_OPTIONS}{% endui %}`,
     buildElement({ React, components }) {
       return nativeSelect(
         React,
@@ -245,7 +245,7 @@ export const cases = [
   },
   {
     name: "description",
-    template: `{% ui "native_select" label="Colour" description="Shown on your profile" %}${COLOUR_OPTIONS}{% endui %}`,
+    template: `{% ui "select" label="Colour" description="Shown on your profile" %}${COLOUR_OPTIONS}{% endui %}`,
     buildElement({ React, components }) {
       return nativeSelect(
         React,
@@ -258,7 +258,7 @@ export const cases = [
   },
   {
     name: "invalid_with_error_message",
-    template: `{% ui "native_select" label="Colour" validation_state="invalid" error_message="Choose a colour" description="Your favourite" %}${COLOUR_OPTIONS}{% endui %}`,
+    template: `{% ui "select" label="Colour" validation_state="invalid" error_message="Choose a colour" description="Your favourite" %}${COLOUR_OPTIONS}{% endui %}`,
     buildElement({ React, components }) {
       return nativeSelect(
         React,
@@ -276,7 +276,7 @@ export const cases = [
   },
   {
     name: "is_invalid",
-    template: `{% ui "native_select" label="Colour" is_invalid=True error_message="Choose a colour" %}${COLOUR_OPTIONS}{% endui %}`,
+    template: `{% ui "select" label="Colour" is_invalid=True error_message="Choose a colour" %}${COLOUR_OPTIONS}{% endui %}`,
     buildElement({ React, components }) {
       return nativeSelect(
         React,
@@ -289,7 +289,7 @@ export const cases = [
   },
   {
     name: "valid",
-    template: `{% ui "native_select" label="Colour" validation_state="valid" %}${COLOUR_OPTIONS}{% endui %}`,
+    template: `{% ui "select" label="Colour" validation_state="valid" %}${COLOUR_OPTIONS}{% endui %}`,
     buildElement({ React, components }) {
       return nativeSelect(
         React,
@@ -303,7 +303,7 @@ export const cases = [
   {
     // A list box has no chevron; its validation icon stays
     name: "multiple_invalid",
-    template: `{% ui "native_select" label="Colours" is_multiple=True validation_state="invalid" error_message="Choose a colour" %}${COLOUR_OPTIONS}{% endui %}`,
+    template: `{% ui "select" label="Colours" is_multiple=True validation_state="invalid" error_message="Choose a colour" %}${COLOUR_OPTIONS}{% endui %}`,
     buildElement({ React, components }) {
       return nativeSelect(
         React,
@@ -322,7 +322,7 @@ export const cases = [
   {
     // A select showing more than one row is a list box too
     name: "size_list_box",
-    template: `{% ui "native_select" label="Colour" size=3 %}${COLOUR_OPTIONS}{% endui %}`,
+    template: `{% ui "select" label="Colour" size=3 %}${COLOUR_OPTIONS}{% endui %}`,
     buildElement({ React, components }) {
       return nativeSelect(
         React,
@@ -335,7 +335,7 @@ export const cases = [
   },
   {
     name: "label_position_side_align_end",
-    template: `{% ui "native_select" label="Colour" label_position="side" label_align="end" %}${COLOUR_OPTIONS}{% endui %}`,
+    template: `{% ui "select" label="Colour" label_position="side" label_align="end" %}${COLOUR_OPTIONS}{% endui %}`,
     buildElement({ React, components }) {
       return nativeSelect(
         React,
@@ -348,7 +348,7 @@ export const cases = [
   },
   {
     name: "select_attributes",
-    template: `{% ui "native_select" label="Country" name="country" auto_complete="country" form="profile" title="Where you live" %}${COLOUR_OPTIONS}{% endui %}`,
+    template: `{% ui "select" label="Country" name="country" auto_complete="country" form="profile" title="Where you live" %}${COLOUR_OPTIONS}{% endui %}`,
     buildElement({ React, components }) {
       return nativeSelect(
         React,
@@ -367,7 +367,7 @@ export const cases = [
   },
   {
     name: "custom_class_names",
-    template: `{% ui "native_select" label="Colour" class="custom-root" input_class_name="custom-select" %}${COLOUR_OPTIONS}{% endui %}`,
+    template: `{% ui "select" label="Colour" class="custom-root" input_class_name="custom-select" %}${COLOUR_OPTIONS}{% endui %}`,
     buildElement({ React, components }) {
       return nativeSelect(
         React,
@@ -384,7 +384,7 @@ export const cases = [
   },
   {
     name: "caller_id_and_aria_describedby",
-    template: `{% ui "native_select" label="Colour" id="colour" aria_describedby="external-desc" description="Some description" %}${COLOUR_OPTIONS}{% endui %}`,
+    template: `{% ui "select" label="Colour" id="colour" aria_describedby="external-desc" description="Some description" %}${COLOUR_OPTIONS}{% endui %}`,
     buildElement({ React, components }) {
       return nativeSelect(
         React,
@@ -403,7 +403,7 @@ export const cases = [
   {
     // The error message is named after the given id, as Django names a form field's
     name: "caller_id_with_error_message",
-    template: `{% ui "native_select" label="Colour" id="id_colour" validation_state="invalid" error_message="Choose a colour" description="Your favourite" %}${COLOUR_OPTIONS}{% endui %}`,
+    template: `{% ui "select" label="Colour" id="id_colour" validation_state="invalid" error_message="Choose a colour" description="Your favourite" %}${COLOUR_OPTIONS}{% endui %}`,
     buildElement({ React, components }) {
       return nativeSelect(
         React,

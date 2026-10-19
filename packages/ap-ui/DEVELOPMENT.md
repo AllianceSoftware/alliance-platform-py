@@ -151,12 +151,12 @@ which the package's test environment does not install, so
 `tests/test_docs_ui_component_directive.py` tests it directly, and the docs builds test the
 directive.
 
-## Input components (`text_input`, `number_input`, `text_area`, `labeled_input`, `native_select`)
+## Input components (`text_input`, `number_input`, `text_area`, `labeled_input`, `select`)
 
 The input renderers live in
 `alliance_platform/ui/html_components/components/input.py` and share the
 `UILabeledInputRendererMixin` / `UITextInputBaseRenderer` rendering path, mirroring how the React
-components all render through `LabeledInput` + `TextInputBase`; `native_select` subclasses it from
+components all render through `LabeledInput` + `TextInputBase`; `select` subclasses it from
 `components/select.py` (see "Native select" below). Future input-like components (search input,
 date picker) should reuse the same base classes.
 
@@ -341,11 +341,11 @@ numeric value back into the visible input, moves `name` back to it and removes t
 a later native submit sends a plain number. The runtime tests live in the JS repo:
 `packages/ui/components/number-input/tests/NumberInput.attach.test.ts`.
 
-### Native select (`native_select`)
+### Native select (`select`)
 
-`UINativeSelectRenderer` in `alliance_platform/ui/html_components/components/select.py` mirrors
+`UISelectRenderer` in `alliance_platform/ui/html_components/components/select.py` mirrors
 `NativeSelect.tsx`: a `<select>` in the `TextInputBase` container and wrapper, inside the
-`LabeledInput` markup. The container carries `data-apui="native-select"` and
+`LabeledInput` markup. The container carries `data-apui="select"` and
 `data-element="select"`, which `TextInputBase` sets for a `select` element type. The select has the
 `input` class of `TextInputBase.css` and the `select` part class of `NativeSelect.css`. The
 validation icon (when shown) and the chevron (unless the select is a list box: `multiple`, or a

@@ -76,20 +76,19 @@ LEGACY_COMPONENT_MIGRATIONS: dict[str, LegacyComponentMigration] = {
     "CheckboxGroup": LegacyComponentMigration("checkbox_group"),
     "RadioGroup": LegacyComponentMigration("radio_group"),
     "Radio": LegacyComponentMigration("radio"),
-    "NativeSelect": LegacyComponentMigration("native_select"),
+    "NativeSelect": LegacyComponentMigration("select"),
     "Select": LegacyComponentMigration(
         None,
         alternative=(
-            "native_select",
-            "native_select is a native <select>: no search, asynchronous loading or options rendered "
-            "by components",
+            "select",
+            "a native <select>: no search, asynchronous loading or options rendered by components",
         ),
     ),
     "MultipleSelect": LegacyComponentMigration(
         None,
         alternative=(
-            "native_select",
-            "native_select with is_multiple=True is a native <select multiple>: a list box, with no "
+            "select",
+            "a native <select multiple> with is_multiple=True: a list box, with no "
             "search, asynchronous loading or options rendered by components",
         ),
     ),

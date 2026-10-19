@@ -10,7 +10,7 @@ COLOUR_OPTIONS = (
 
 
 class UINativeSelectTestCase(HtmlUIParityTestCase):
-    """Behaviour of ``native_select`` the parity fixtures do not show."""
+    """Behaviour of ``select`` the parity fixtures do not show."""
 
     def render_with_diagnostics(self, template_body: str, context_kwargs=None) -> tuple[str, list[str]]:
         with self.setup_render_context():
@@ -31,7 +31,7 @@ class UINativeSelectTestCase(HtmlUIParityTestCase):
             "<option value='blue'>Blue</option>"
         )
         output, diagnostics = self.render_with_diagnostics(
-            f'{{% ui "native_select" label="Colour" %}}{options}{{% endui %}}'
+            f'{{% ui "select" label="Colour" %}}{options}{{% endui %}}'
         )
 
         self.assertIn(f">{options}</select>", output)
@@ -40,7 +40,7 @@ class UINativeSelectTestCase(HtmlUIParityTestCase):
     def test_value_replaces_the_selected_attributes_of_the_options(self):
         # React marks the options of a select with a value and ignores their own selected
         output, diagnostics = self.render_with_diagnostics(
-            '{% ui "native_select" label="Colour" value="blue" %}'
+            '{% ui "select" label="Colour" value="blue" %}'
             '<option value="red" selected>Red</option><option value="green" selected="selected">Green</option>'
             '<option value="blue">Blue</option>{% endui %}'
         )
@@ -55,7 +55,7 @@ class UINativeSelectTestCase(HtmlUIParityTestCase):
 
     def test_value_leaves_the_other_options_as_written(self):
         output, _ = self.render_with_diagnostics(
-            '{% ui "native_select" label="Colour" value="green" %}'
+            '{% ui "select" label="Colour" value="green" %}'
             "<option value='red' data-x = \"1\">Red</option>"
             '<option   value="green"  title="Go">Green</option>{% endui %}'
         )
@@ -65,7 +65,7 @@ class UINativeSelectTestCase(HtmlUIParityTestCase):
 
     def test_value_matches_the_text_of_an_option_without_a_value(self):
         output, _ = self.render_with_diagnostics(
-            '{% ui "native_select" label="Size" value="Extra large" %}'
+            '{% ui "select" label="Size" value="Extra large" %}'
             "<option>Small</option><option>\n  Extra\n  large\n</option>{% endui %}"
         )
 
@@ -73,7 +73,7 @@ class UINativeSelectTestCase(HtmlUIParityTestCase):
 
     def test_value_matches_values_with_character_references(self):
         output, _ = self.render_with_diagnostics(
-            '{% ui "native_select" label="Pair" value=pair %}'
+            '{% ui "select" label="Pair" value=pair %}'
             '<option value="a&amp;b">A and B</option><option value="a">A</option>{% endui %}',
             {"pair": "a&b"},
         )
@@ -82,7 +82,7 @@ class UINativeSelectTestCase(HtmlUIParityTestCase):
 
     def test_value_is_compared_as_text(self):
         output, _ = self.render_with_diagnostics(
-            '{% ui "native_select" label="Count" value=2 %}'
+            '{% ui "select" label="Count" value=2 %}'
             '<option value="1">One</option><option value="2">Two</option>{% endui %}'
         )
 
@@ -90,14 +90,14 @@ class UINativeSelectTestCase(HtmlUIParityTestCase):
 
     def test_default_value_selects_like_value(self):
         output, _ = self.render_with_diagnostics(
-            f'{{% ui "native_select" label="Colour" default_value="green" %}}{COLOUR_OPTIONS}{{% endui %}}'
+            f'{{% ui "select" label="Colour" default_value="green" %}}{COLOUR_OPTIONS}{{% endui %}}'
         )
 
         self.assertEqual(self.selected_values(output), ["green"])
 
     def test_value_wins_over_default_value(self):
         output, _ = self.render_with_diagnostics(
-            '{% ui "native_select" label="Colour" value="red" default_value="green" %}'
+            '{% ui "select" label="Colour" value="red" default_value="green" %}'
             f"{COLOUR_OPTIONS}{{% endui %}}"
         )
 
@@ -113,7 +113,7 @@ class UINativeSelectTestCase(HtmlUIParityTestCase):
         ]:
             with self.subTest(values=values):
                 output, diagnostics = self.render_with_diagnostics(
-                    f'{{% ui "native_select" label="Colours" is_multiple=True value=values %}}{COLOUR_OPTIONS}'
+                    f'{{% ui "select" label="Colours" is_multiple=True value=values %}}{COLOUR_OPTIONS}'
                     "{% endui %}",
                     {"values": values},
                 )
@@ -123,7 +123,7 @@ class UINativeSelectTestCase(HtmlUIParityTestCase):
     def test_a_list_of_one_value_selects_an_option_of_a_single_select(self):
         # Django's select widgets give their value as a list
         output, diagnostics = self.render_with_diagnostics(
-            f'{{% ui "native_select" label="Colour" value=values %}}{COLOUR_OPTIONS}{{% endui %}}',
+            f'{{% ui "select" label="Colour" value=values %}}{COLOUR_OPTIONS}{{% endui %}}',
             {"values": ["green"]},
         )
 
@@ -132,7 +132,7 @@ class UINativeSelectTestCase(HtmlUIParityTestCase):
 
     def test_several_values_for_a_single_select_are_reported(self):
         output, diagnostics = self.render_with_diagnostics(
-            f'{{% ui "native_select" label="Colour" value=values %}}{COLOUR_OPTIONS}{{% endui %}}',
+            f'{{% ui "select" label="Colour" value=values %}}{COLOUR_OPTIONS}{{% endui %}}',
             {"values": ["red", "blue"]},
         )
 
@@ -142,7 +142,7 @@ class UINativeSelectTestCase(HtmlUIParityTestCase):
 
     def test_a_value_list_of_other_values_is_refused(self):
         output, diagnostics = self.render_with_diagnostics(
-            f'{{% ui "native_select" label="Colour" value=values %}}{COLOUR_OPTIONS}{{% endui %}}',
+            f'{{% ui "select" label="Colour" value=values %}}{COLOUR_OPTIONS}{{% endui %}}',
             {"values": [{"colour": "red"}]},
         )
 
@@ -157,7 +157,7 @@ class UINativeSelectTestCase(HtmlUIParityTestCase):
     def test_multiple_attribute_from_widget_attrs(self):
         # Django's SelectMultiple widget sets the native attribute in its attrs
         output, diagnostics = self.render_with_diagnostics(
-            f'{{% ui "native_select" props=attrs label="Colours" %}}{COLOUR_OPTIONS}{{% endui %}}',
+            f'{{% ui "select" props=attrs label="Colours" %}}{COLOUR_OPTIONS}{{% endui %}}',
             {"attrs": {"multiple": True, "id": "id_colours", "required": True}},
         )
 
@@ -174,7 +174,7 @@ class UINativeSelectTestCase(HtmlUIParityTestCase):
         for size, has_chevron in [(1, True), ("1", True), (4, False), ("2", False), ("rows", True)]:
             with self.subTest(size=size):
                 output, _ = self.render_with_diagnostics(
-                    f'{{% ui "native_select" label="Colour" size=size %}}{COLOUR_OPTIONS}{{% endui %}}',
+                    f'{{% ui "select" label="Colour" size=size %}}{COLOUR_OPTIONS}{{% endui %}}',
                     {"size": size},
                 )
                 self.assertIn(f'size="{size}"', output)
@@ -182,7 +182,7 @@ class UINativeSelectTestCase(HtmlUIParityTestCase):
 
     def test_placeholder_and_read_only_are_not_select_props(self):
         output, diagnostics = self.render_with_diagnostics(
-            '{% ui "native_select" label="Colour" placeholder="Choose" is_read_only=True read_only=True %}'
+            '{% ui "select" label="Colour" placeholder="Choose" is_read_only=True read_only=True %}'
             f"{COLOUR_OPTIONS}{{% endui %}}"
         )
 
@@ -191,14 +191,14 @@ class UINativeSelectTestCase(HtmlUIParityTestCase):
         self.assertEqual(
             diagnostics,
             [
-                f"Prop '{prop}' is not a supported 'native_select' attribute and will be ignored"
+                f"Prop '{prop}' is not a supported 'select' attribute and will be ignored"
                 for prop in ("placeholder", "isReadOnly", "readOnly")
             ],
         )
 
     def test_event_handlers_and_react_only_props_name_the_react_tag(self):
         output, diagnostics = self.render_with_diagnostics(
-            '{% ui "native_select" label="Colour" on_change="alert(1)" input_ref="ref" %}'
+            '{% ui "select" label="Colour" on_change="alert(1)" input_ref="ref" %}'
             f"{COLOUR_OPTIONS}{{% endui %}}"
         )
 
@@ -215,7 +215,7 @@ class UINativeSelectTestCase(HtmlUIParityTestCase):
 
     def test_select_attributes_pass_through(self):
         output, diagnostics = self.render_with_diagnostics(
-            '{% ui "native_select" label="Colour" auto_focus=True tab_index=2 lang="en" dir="ltr" '
+            '{% ui "select" label="Colour" auto_focus=True tab_index=2 lang="en" dir="ltr" '
             'data_testid="colour" aria_label="Colour choice" %}'
             f"{COLOUR_OPTIONS}{{% endui %}}"
         )
@@ -240,7 +240,7 @@ class UINativeSelectTestCase(HtmlUIParityTestCase):
 
     def test_options_from_template_variables_are_escaped(self):
         output, _ = self.render_with_diagnostics(
-            '{% ui "native_select" label="Colour" value=chosen %}'
+            '{% ui "select" label="Colour" value=chosen %}'
             '{% for value, label in choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}'
             "{% endui %}",
             {"choices": [("<b>", "<b>bold</b>"), ("plain", "Plain")], "chosen": "<b>"},

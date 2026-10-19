@@ -4,7 +4,7 @@ from tests.parity.base import HtmlUIParityTestCase
 
 
 class UINativeSelectParityTestCase(HtmlUIParityTestCase):
-    fixture_component = "native_select"
+    fixture_component = "select"
 
     def test_fixture_cases(self):
         fixture = self.load_fixture()
@@ -15,7 +15,7 @@ class UINativeSelectParityTestCase(HtmlUIParityTestCase):
 
     def test_resources_are_registered(self):
         with self.setup_render_context() as asset_context:
-            self.render_ui_template('{% ui "native_select" label="Colour" %}<option>Red</option>{% endui %}')
+            self.render_ui_template('{% ui "select" label="Colour" %}<option>Red</option>{% endui %}')
             resource_paths = [str(resource.path) for resource in asset_context.get_resources_for_bundling()]
 
         for expected_suffix in [

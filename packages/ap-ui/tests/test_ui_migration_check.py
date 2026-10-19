@@ -382,7 +382,7 @@ class UIMigrationCheckTestCase(SimpleTestCase):
 
         self.assertIn("No legacy Alliance UI template usages found.", output)
 
-    def test_selects_suggest_native_select_in_place_of_a_static_equivalent(self):
+    def test_selects_suggest_select_in_place_of_a_static_equivalent(self):
         with TemporaryDirectory() as temp_dir:
             base_dir = Path(temp_dir)
             self.write_template(
@@ -398,19 +398,19 @@ class UIMigrationCheckTestCase(SimpleTestCase):
 
         self.assertIn(
             'templates/selects.html:1: [NO-STATIC-EQUIVALENT] component "@alliancesoftware/ui" "Select" -> '
-            'no static equivalent; consider {% ui "native_select" %}...{% endui %}; native_select is a native '
+            'no static equivalent; consider {% ui "select" %}...{% endui %}; a native '
             "<select>: no search, asynchronous loading or options rendered by components\n",
             output,
         )
         self.assertIn(
             'templates/selects.html:2: [NO-STATIC-EQUIVALENT] component "@alliancesoftware/ui" "MultipleSelect" '
-            '-> no static equivalent; consider {% ui "native_select" %}...{% endui %}; native_select with '
-            "is_multiple=True is a native <select multiple>: a list box, with no search, asynchronous loading "
+            '-> no static equivalent; consider {% ui "select" %}...{% endui %}; a native '
+            "<select multiple> with is_multiple=True: a list box, with no search, asynchronous loading "
             "or options rendered by components\n",
             output,
         )
         self.assertIn(
             'templates/selects.html:3: [READY] component "@alliancesoftware/ui" "NativeSelect" -> '
-            '{% ui "native_select" %}...{% endui %}\n',
+            '{% ui "select" %}...{% endui %}\n',
             output,
         )

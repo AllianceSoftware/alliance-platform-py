@@ -2,7 +2,7 @@
 "alliance-platform-ui": patch
 ---
 
-Add the static [`native_select`](https://alliance-platform.readthedocs.io/projects/ui/latest/templatetags.html#static-native-selects)
+Add the static [`select`](https://alliance-platform.readthedocs.io/projects/ui/latest/templatetags.html#static-selects)
 component: a native `<select>` with the label, help text, error message, sizes and states of the
 static text input. Its children are the `<option>` and `<optgroup>` elements, `value` selects
 options and `is_multiple=True` makes a multiple select. The opt-in

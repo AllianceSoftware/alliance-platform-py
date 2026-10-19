@@ -125,7 +125,7 @@ def _option_value(value: Any) -> str:
     return "" if value is None else str(value)
 
 
-class UINativeSelectRenderer(UITextInputBaseRenderer):
+class UISelectRenderer(UITextInputBaseRenderer):
     """Renders a native ``<select>`` in the chrome of a text input, mirroring ``NativeSelect.tsx``.
 
     The children are the ``<option>`` and ``<optgroup>`` elements, rendered as written, as React
@@ -135,7 +135,7 @@ class UINativeSelectRenderer(UITextInputBaseRenderer):
     options' own ``selected`` attributes stand, as Django's select widget writes them.
     """
 
-    name = "native_select"
+    name = "select"
     react_tag = 'component "@alliancesoftware/ui" "NativeSelect"'
     # The options are the children
     has_children = True
@@ -204,13 +204,13 @@ class UINativeSelectRenderer(UITextInputBaseRenderer):
         state: LabeledInputState,
         text_input_base_styles: Any,
     ) -> str:
-        native_select_styles = self.resolve_vanilla_extract_mapping(_NATIVE_SELECT_STYLE_PATH)
+        select_styles = self.resolve_vanilla_extract_mapping(_NATIVE_SELECT_STYLE_PATH)
         attrs: dict[str, Any] = {
             **self.get_base_control_attrs(props, state, text_input_base_styles),
             "multiple": bool(props.get("isMultiple")),
             "className": self.join_classes(
                 self.get_style_class(text_input_base_styles, "input"),
-                self.get_style_class(native_select_styles, "select"),
+                self.get_style_class(select_styles, "select"),
                 props.get("inputClassName"),
             ),
         }
@@ -233,7 +233,7 @@ class UINativeSelectRenderer(UITextInputBaseRenderer):
         self, props: dict[str, Any], state: LabeledInputState, text_input_base_styles: Any
     ) -> str:
         # The icons sit together over the end of the select, out of the input wrapper's slots
-        native_select_styles = self.resolve_vanilla_extract_mapping(_NATIVE_SELECT_STYLE_PATH)
+        select_styles = self.resolve_vanilla_extract_mapping(_NATIVE_SELECT_STYLE_PATH)
         icons: list[str] = []
         if self.should_render_validation_icon(props, state):
             icons.append(
@@ -246,11 +246,11 @@ class UINativeSelectRenderer(UITextInputBaseRenderer):
                 self.render_icon(
                     _CHEVRON_DOWN_ICON,
                     "xs",
-                    [self.get_style_class(native_select_styles, "chevron")],
+                    [self.get_style_class(select_styles, "chevron")],
                     slot=False,
                 )
             )
         if not icons:
             return ""
-        adornments_class = self.get_style_class(native_select_styles, "adornments")
+        adornments_class = self.get_style_class(select_styles, "adornments")
         return f'<span class="{conditional_escape(adornments_class)}">{"".join(icons)}</span>'
