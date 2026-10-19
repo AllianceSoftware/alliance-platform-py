@@ -180,6 +180,12 @@ class HtmlUIParityTestCase(StaticComponentTestCase):
         return html
 
     def assert_parity_case(self, case: dict[str, Any], context_kwargs: dict[str, Any] | None = None):
+        """Render the case's template and compare it with the markup React rendered.
+
+        The template renders with ``context_kwargs``, by default the case's ``meta.context``.
+        """
+        if context_kwargs is None:
+            context_kwargs = case.get("meta", {}).get("context")
         fixture = self.load_fixture()
         with self.setup_render_context() as _asset_context:
             with self.capture_diagnostics() as diagnostics:

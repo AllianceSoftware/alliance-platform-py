@@ -131,6 +131,8 @@ class LabeledInputState:
     #: full aria-describedby value for the control (the help text and error ids plus any caller
     #: supplied value, without duplicates)
     described_by: str | None = None
+    #: id of a label that is not a ``<label>`` (see ``label_element``), which its control references
+    label_id: str | None = None
 
     @property
     def error_rendered(self) -> bool:
@@ -168,6 +170,10 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
     #: ``"start"``, but ``TextInputBase`` always passes it a ``labelAlign``, undefined when it has
     #: none, so the inputs have no fallback.
     default_label_align: str | None = None
+    #: The label's element. A ``<label>`` labels the control by its id (``for``); any other element,
+    #: such as the ``<span>`` that labels a checkbox or radio group, gets an id of its own, named
+    #: ``<id>_label`` after a given control id, for the control's ``aria-labelledby``.
+    label_element = "label"
     #: Props that accept rich content as well as plain text, which is escaped: a safe string (such
     #: as a component captured with ``{% ui ... as var %}``), ``RenderableContent`` (such as the
     #: help text and safe error messages ``{% form_input %}`` passes) or a list of these. They
@@ -215,6 +221,10 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
             state.input_id = str(given_input_id)
         elif state.label and self.generate_input_id:
             state.input_id = self.generate_html_id(context)
+        if state.label and self.label_element != "label":
+            state.label_id = (
+                f"{given_input_id}_label" if given_input_id is not None else self.generate_html_id(context)
+            )
 
         if state.description_rendered:
             state.description_id = (
@@ -290,6 +300,7 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
             return ""
         label_styles = self.resolve_vanilla_extract_mapping(_LABEL_STYLE_PATH)
         attrs: dict[str, Any] = {
+            "id": state.label_id,
             "data-apui": "label",
             # Label.css aligns the label to the end from this attribute
             "data-label-align": state.label_align,
@@ -297,7 +308,8 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
                 self.get_style_class(label_styles, "label"),
                 self.get_style_class(labeled_input_styles, "label"),
             ),
-            "htmlFor": state.input_id,
+            # As in React's Label, only a <label> takes for
+            "htmlFor": state.input_id if self.label_element == "label" else None,
         }
         children = conditional_escape(state.label)
         if state.is_required:
@@ -305,7 +317,7 @@ class UILabeledInputRendererMixin(_LabeledInputMixinBase):
             children += mark_safe(
                 f'<span aria-hidden="true" class="{conditional_escape(indicator_class)}">*</span>'
             )
-        return self.render_tag("label", attrs, children)
+        return self.render_tag(self.label_element, attrs, children)
 
     def render_help_text(self, context: Context, state: LabeledInputState, labeled_input_styles: Any) -> str:
         # The root's data-invalid, set whenever state.is_invalid is, colours the error message and
@@ -448,19 +460,7 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
         focus_ring_styles = self.resolve_vanilla_extract_mapping(_FOCUS_RING_STYLE_PATH)
 
         control_html = self.render_control(context, props, state, text_input_base_styles)
-
-        validation_icon_html = ""
-        if self.should_render_validation_icon(props, state):
-            icon_name = _CHECK_ICON if state.validation_state == "valid" else _ALERT_CIRCLE_ICON
-            validation_icon_html = self.render_icon(
-                icon_name,
-                "xs",
-                [
-                    self.get_style_class(text_input_base_styles, "adornmentIcon"),
-                    self.get_style_class(text_input_base_styles, "validationIcon"),
-                ],
-                slot=False,
-            )
+        adornments_html = self.render_adornments(props, state, text_input_base_styles)
 
         input_wrapper_attrs: dict[str, Any] = {
             "aria-busy": "true" if state.is_loading else None,
@@ -473,9 +473,7 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
             "data-disabled": "true" if state.is_disabled else None,
             "data-loading": "true" if state.is_loading and not state.is_disabled else None,
         }
-        input_wrapper_html = self.render_tag(
-            "div", input_wrapper_attrs, f"{control_html}{validation_icon_html}"
-        )
+        input_wrapper_html = self.render_tag("div", input_wrapper_attrs, f"{control_html}{adornments_html}")
 
         addon_before_html = self.render_addon_before(context, props, state, text_input_base_styles)
         addon_after_html = self.render_addon_after(context, props, state, text_input_base_styles)
@@ -485,7 +483,8 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
             **self.get_container_extra_attrs(props, state),
             "className": self.get_style_class(text_input_base_styles, "inputContainer"),
             "data-size": state.input_size,
-            "data-element": "textarea" if self.control_tag == "textarea" else "input",
+            # As TextInputBase marks its container from its elementType
+            "data-element": self.control_tag if self.control_tag in ("input", "select") else "textarea",
             "data-has-addon-before": "true" if addon_before_html else None,
             "data-has-addon-after": "true" if addon_after_html else None,
         }
@@ -505,6 +504,24 @@ class UITextInputBaseRenderer(UILabeledInputRendererMixin, BaseHtmlUIComponentRe
 
     def should_render_validation_icon(self, props: dict[str, Any], state: LabeledInputState) -> bool:
         return bool(state.validation_state) and not state.is_disabled
+
+    def render_validation_icon(self, state: LabeledInputState, class_names: list[str]) -> str:
+        icon_name = _CHECK_ICON if state.validation_state == "valid" else _ALERT_CIRCLE_ICON
+        return self.render_icon(icon_name, "xs", class_names, slot=False)
+
+    def render_adornments(
+        self, props: dict[str, Any], state: LabeledInputState, text_input_base_styles: Any
+    ) -> str:
+        """Render what follows the control in the input wrapper: the validation icon, if any."""
+        if not self.should_render_validation_icon(props, state):
+            return ""
+        return self.render_validation_icon(
+            state,
+            [
+                self.get_style_class(text_input_base_styles, "adornmentIcon"),
+                self.get_style_class(text_input_base_styles, "validationIcon"),
+            ],
+        )
 
     def configure_container_runtime(
         self,

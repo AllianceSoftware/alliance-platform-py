@@ -14,11 +14,11 @@ with :data:`SUPPORTED_STATIC_CONTRACT_VERSIONS`, and its hints name the npm rele
 STATIC_CONTRACT_FILE = "static-contract.json"
 
 #: The static contract version of each npm package that the static renderers are written for
-SUPPORTED_STATIC_CONTRACT_VERSIONS = {"@alliancesoftware/ui": 1, "@alliancesoftware/icons": 1}
+SUPPORTED_STATIC_CONTRACT_VERSIONS = {"@alliancesoftware/ui": 2, "@alliancesoftware/icons": 1}
 
 #: The first npm release of each package that ships each static contract version, which the hints of
 #: the system check name. Record the release when raising a package's supported version.
 STATIC_CONTRACT_RELEASES: dict[str, dict[int, str]] = {
-    "@alliancesoftware/ui": {1: "0.0.67"},
+    "@alliancesoftware/ui": {1: "0.0.67", 2: "0.0.68"},
     "@alliancesoftware/icons": {1: "0.0.14"},
 }

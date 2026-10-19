@@ -1,0 +1,2 @@
+{# The option template of a select widget class of its own #}
+<option value="{{ widget.value|stringformat:'s' }}"{% include "django/forms/widgets/attrs.html" %} data-own-option="true">{{ widget.label }}</option>

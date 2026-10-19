@@ -135,8 +135,8 @@ and fails when it changes without a version bump.
 
 ## Component reference docs
 
-The component sections of `docs/templatetags.rst` ("Static icons" to "Static menubar components",
-one per component or family) are the components' reference: each starts with prose on the
+The component sections of `docs/templatetags.rst` ("Static icons" to "Static radio groups", one
+per component or family) are the components' reference: each starts with prose on the
 component's behaviour and ends with a `.. ui-component:: <name>` directive per component. The
 directive writes a component's reference from its renderer, without rendering it, so a change to a
 renderer's contract shows there without editing the page.
@@ -151,13 +151,14 @@ which the package's test environment does not install, so
 `tests/test_docs_ui_component_directive.py` tests it directly, and the docs builds test the
 directive.
 
-## Input components (`text_input`, `number_input`, `text_area`, `labeled_input`)
+## Input components (`text_input`, `number_input`, `text_area`, `labeled_input`, `select`)
 
 The input renderers live in
 `alliance_platform/ui/html_components/components/input.py` and share the
 `UILabeledInputRendererMixin` / `UITextInputBaseRenderer` rendering path, mirroring how the React
-components all render through `LabeledInput` + `TextInputBase`. Future input-like components (search
-input, select, date picker) should reuse the same base classes.
+components all render through `LabeledInput` + `TextInputBase`; `select` subclasses it from
+`components/select.py` (see "Native select" below). Future input-like components (search input,
+date picker) should reuse the same base classes.
 
 `labeled_input` renders the mixin's `LabeledInput` markup around its children, a control it does not
 own, as `{% LabeledInput %}` does. The mixin's class attributes hold where it differs from the
@@ -233,14 +234,22 @@ values are reported and dropped unless the prop accepts rich content (see above)
 
 ### Static form widgets (`StaticFormRenderer`)
 
-ap-ui ships `alliance_platform/ui/widgets/input.html`, `number.html` and `textarea.html` (under
-`alliance_platform/ui/templates/`), static widget templates like those above. `StaticFormRenderer` in
+ap-ui ships `alliance_platform/ui/widgets/input.html`, `number.html`, `textarea.html`, `select.html`,
+`checkbox.html`, `radio.html` and `checkbox_select.html` (under `alliance_platform/ui/templates/`),
+static widget templates like those above. `StaticFormRenderer` in
 `alliance_platform/ui/forms/renderers.py` overrides `get_template`: for a name in
 `static_widget_templates` it loads the template the name resolves to and returns the ap-ui one only
 when that is Django's own, a Django backend template whose `origin.name` is under `django.forms`'
-`templates` directory. Django's input widget templates are an `{% include %}` of `input.html`, the
-template projects usually override, so for those it requires `input.html` to be Django's too. An
-`attrs.html` of a project's does not count: the static components render attributes themselves.
+`templates` directory. Django's input widget templates, the checkbox's among them, are an
+`{% include %}` of `input.html`, the template projects usually override, so for those it requires
+`input.html` to be Django's too. Django's `select.html` renders each option with `select_option.html`,
+and its radio and checkbox select templates render each option through `multiple_input.html`, the
+option template, `input_option.html` and `input.html`, which it requires to be Django's as well
+(`_DJANGO_OPTION_RENDERING_TEMPLATES`). An `attrs.html` of a project's does not count: the static
+components render attributes themselves, and `select.html` writes each option's attributes as
+Django's `attrs.html` does. It writes the options of a widget whose `option_template_name` is not
+Django's with that template instead. The radio and checkbox select templates pass option values
+through `stringformat:'s'`, as a `ModelChoiceIteratorValue` is not a scalar prop.
 `tests/test_alliance_ui_form.py` adds the project template directories in
 `test_alliance_platform_ui/form_widget_overrides/` with `override_settings(TEMPLATES=...)` for the
 tests that need one, so the other tests keep Django's widget templates.
@@ -331,6 +340,51 @@ a `WeakMap` so repeated attachment does not duplicate listeners or hidden inputs
 numeric value back into the visible input, moves `name` back to it and removes the hidden input, so
 a later native submit sends a plain number. The runtime tests live in the JS repo:
 `packages/ui/components/number-input/tests/NumberInput.attach.test.ts`.
+
+### Native select (`select`)
+
+`UISelectRenderer` in `alliance_platform/ui/html_components/components/select.py` mirrors
+`NativeSelect.tsx`: a `<select>` in the `TextInputBase` container and wrapper, inside the
+`LabeledInput` markup. The container carries `data-apui="select"` and
+`data-element="select"`, which `TextInputBase` sets for a `select` element type. The select has the
+`input` class of `TextInputBase.css` and the `select` part class of `NativeSelect.css`. The
+validation icon (when shown) and the chevron (unless the select is a list box: `multiple`, or a
+`size` above one) follow it in one `adornments` span, which `NativeSelect.css` lays over the end of
+the select so a click on the chevron opens it. The icons sit outside the input wrapper's slots in
+React, so they have no `adornmentIcon` class: the validation icon has `Icon` and `validationIcon`,
+the chevron `Icon` and `chevron`. The state rules of `TextInputBase.css` key off the attributes React
+and the renderer set on the wrapper (`data-disabled`, `data-invalid`, `data-valid`); what is new
+keys off the control: the list box layout off `select[multiple]` and `[size]`, the disabled chevron
+off `select:disabled` and the focus ring off `:has(> select:focus-visible)`, so a static select shows
+the focus ring React adds with `focusRingActive`.
+
+The children are the `<option>` and `<optgroup>` markup the template writes, rendered as written.
+`render_component` passes the rendered children to `render_control` as the `children` prop, as
+React passes them to the select.
+
+#### Deliberate static-render differences from React
+
+- **Selecting options**: React applies a select's `value` or `defaultValue` while rendering its
+  options. The static renderer rewrites the `<option>` start tags of the children markup whose
+  selection differs from the value (`_select_options()`, which parses the markup with
+  `html.parser`), leaving every other byte as written. Like React it then ignores the options' own
+  `selected` attributes; without a value they stand, as Django's `select.html` writes them, which
+  React honours during SSR while warning about them, so the parity cases give React a
+  `defaultValue` instead. Covered by unit tests.
+- **Option values**: the value of an option without a `value` attribute is its text with ASCII
+  whitespace stripped and collapsed, as a browser submits it; React compares the text as written.
+  Values are compared with the given value as `str()` text, as Django's select widget compares
+  them, so `True` is `"True"` where React would write `"true"`.
+- **Several values for a single select**: reported as a contract diagnostic; both React and the
+  renderer then select every option named, and the browser shows the last. A list of one value is
+  accepted silently, as Django's select widgets give their value as a list.
+- **`multiple`**: accepted as an alias of `isMultiple` (`prop_aliases`), as Django's
+  `SelectMultiple` widget sets it.
+- **`autoFocus`**: rendered as the `autofocus` attribute, as for the other inputs; React focuses the
+  select when it mounts and renders no attribute. No parity case uses it.
+- **`placeholder`, `isReadOnly` and `readOnly`**: neither `NativeSelect` nor a `<select>` has them;
+  the renderer reports them as unsupported attributes and drops them before the shared input
+  rendering reads them.
 
 ## Table components (`table`, `table_header`, `table_body`, `table_column`, `table_row`, `table_cell`)
 
@@ -611,6 +665,74 @@ supply that container interaction. Root-item presentation is independent: render
 `root_item_display="icon-only"` initially or call `controller.setRootItemDisplay(display)` after
 attachment; neither operation creates another menu tree.
 
+## Checkbox and radio components (`checkbox`, `checkbox_group`, `radio_group`, `radio`)
+
+The renderers live in `alliance_platform/ui/html_components/components/checkbox.py` and
+`radio_group.py`, with what they share in `choice.py`, and mirror `@alliancesoftware/ui`'s
+`Checkbox.tsx`, `CheckboxGroup.tsx` and `RadioGroup.tsx`. None has a runtime: a checkbox or radio
+is the native input inside its root `<label>` (class `wrapper`), followed by the box (`checkbox`, or
+`radio` for a radio) holding an SVG with both checkbox marks (`checkMark`, `indeterminateMark`) or the
+radio dot (`radioCheck`), then the label span when there are children. `Checkbox.css` and
+`RadioGroup.css` show the state of the box, its marks and the label from the input
+(`:has(input:checked)`, `:has(input:indeterminate)`, `:has(input:disabled)`,
+`:has(input:focus-visible)`) and `:hover` on the root, and the variants from the root's `data-size`,
+`data-invalid` and `data-indeterminate` and the group element's `data-orientation`, `data-invalid` and
+`data-disabled`. React renders the same markup and consumes the same rules; the CSS tests in the JS
+repo (`components/checkbox/tests/Checkbox.css.test.tsx` and the group ones) toggle the input of
+server-rendered markup and check the cascade.
+
+A checkbox on its own renders in the row `FormLayout.renderLabeledInput` gives it: a `<div>` with
+`data-label-position="top"`, which `Checkbox.css` pushes the checkbox down in, or the side layout row
+with a `sideLabelPlaceholder` cell. After the checkbox comes its description, or its error message
+while it is invalid, as `LabeledInput` renders them (`LabeledInput.css`'s `helpText`), named
+`<id>_helptext` and `<id>_error` after a given `id` and referenced from the input's
+`aria-describedby` before any ids the caller gives. The row carries `data-invalid` while the checkbox
+is invalid, from which `LabeledInput.css` colours the help text of any form layout row. Inside a
+`checkbox_group` it renders no row and no help text.
+
+The groups render through `UILabeledInputRendererMixin` with `label_element = "span"`: the label is a
+`<span>` whose id (`label_id` in `LabeledInputState`) the group element lists in `aria-labelledby`, as
+react-aria labels a group. A given `id` is the group element's and names the label `<id>_label`, the
+help text `<id>_helptext` and the error message `<id>_error`. `build_render_frame` allocates those
+ids, then a radio group's generated name, before the children render, in the order
+`remapReactAriaIds()` numbers React's, and pushes a `CheckboxGroupRenderState` or
+`RadioGroupRenderState` (`ChoiceGroupRenderState` in `choice.py`) with the name, the checked values,
+the disabled, read only and invalid states and the ids each control adds to its `aria-describedby`.
+The controls find it with `find_render_payload()`, so the state survives `{% include %}`. A `radio`
+outside a `radio_group` reports a contract diagnostic and renders nothing; a `checkbox` outside a
+`checkbox_group` renders on its own.
+
+`checkbox_group.mjs` and `radio_group.mjs` share `normalizeChoiceGroup()` in
+`scripts/parity_cases/_helpers.mjs`: it keeps the label and help text references `normalizeInputComponent()`
+drops, names them after a given group id and drops the reserved description and error ids that do
+not render. `checkbox.mjs` uses `normalizeChoiceControls()`, which the group normaliser runs too.
+
+### Deliberate static-render differences from React
+
+- **`data-state` and `data-selected`**: React's Checkbox derives them from its state for consumers'
+  styles. The stylesheet reads the input instead, and a server-rendered value would go stale once
+  the box is toggled without a script, so the static checkbox leaves them out.
+  `normalizeChoiceControls()` strips them from the fixtures.
+- **Radio `tabindex`**: react-aria gives the radios a roving tab stop (`tabindex="-1"` on all but
+  one). The static radios leave the tab order to the browser, which tabs to the checked radio of a
+  native group; the fixtures drop the attribute. Arrow keys move between the radios natively in both:
+  React's RadioGroup leaves react-aria's key handler off.
+- **Indeterminate**: a page cannot set the input's `indeterminate` state without a script, so the
+  static checkbox shows it through the `data-indeterminate` React also sets, and the stylesheet keys
+  the dash off either. Assistive technology announces the box as checked or not checked until a
+  script sets `input.indeterminate`.
+- **Hover**: React also sets `data-hovered` on the root, from react-aria's hover state and
+  `parentIsHovered`; the static markup relies on `:hover`, which the stylesheet matches as well.
+- **Group ids**: react-aria generates the group label, help text and error message ids whatever the
+  group's id; the static groups name them after a given id (see above), which `normalizeChoiceGroup()`
+  renames to match.
+- **Props a widget template passes**: `checked`, the attribute Django's `CheckboxInput` sets, is an
+  alias of `default_selected`, and the checkbox accepts the `label` `{% form_input %}` passes without
+  rendering it, as React's Checkbox ignores it. The groups accept the `auto_focus`
+  `{% form_input %}` passes in a `{% form %}` with `auto_focus` without rendering it, as React's
+  groups ignore it. A checkbox group's `value` may be one string; React's takes a list only. These
+  are unit tested.
+
 ## HTML parity fixture workflow
 
 Parity fixtures record what the React components render for a set of cases, so the Python tests
@@ -627,8 +749,10 @@ and writes `tests/fixtures/ui_html_<component>_parity.json` for each. A module e
 - `component`: the static component name, which names the fixture.
 - `cases`: objects with a `name`, the Django `template`, `buildElement({ React, components })`
   returning the equivalent React element, and `meta`. `meta.current_url` is the URL React's link
-  components see during SSR; the Python test builds a request for it. Other keys are flags the
-  module's `normalize` reads, such as `preserve_icon_only`.
+  components see during SSR; the Python test builds a request for it. `meta.context` is the context
+  `assert_parity_case()` renders the template with, for values a template literal cannot write,
+  such as the list of a checkbox group's checked values. Other keys are flags the module's
+  `normalize` reads, such as `preserve_icon_only`.
 - `loadComponents({ uiPackageDir, importDefault, importBareModule })`: the components the cases
   build with, passed to `buildElement` as `components`.
 - `normalize(root, testCase, helpers)`: React-side normalisation for the component family, applied

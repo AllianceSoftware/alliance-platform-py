@@ -39,8 +39,9 @@ This is used by the :ttag:`form` and :ttag:`form_input` tags.
 Static form widgets
 ~~~~~~~~~~~~~~~~~~~
 
-To render Django's text, number and text area widgets as static ``{% ui %}`` components, set
-``FORM_RENDERER`` to :class:`~alliance_platform.ui.forms.renderers.StaticFormRenderer` instead:
+To render Django's text, number, text area, select, checkbox, radio and checkbox select multiple
+widgets as static ``{% ui %}`` components, set ``FORM_RENDERER`` to
+:class:`~alliance_platform.ui.forms.renderers.StaticFormRenderer` instead:
 
 .. code-block:: python
 
@@ -67,16 +68,40 @@ error message :ttag:`form_input` passes:
     * - ``django/forms/widgets/textarea.html``
       - ``alliance_platform/ui/widgets/textarea.html``
       - ``text_area``
+    * - ``django/forms/widgets/select.html``, which ``Select``, ``SelectMultiple`` and
+        ``NullBooleanSelect`` use
+      - ``alliance_platform/ui/widgets/select.html``
+      - ``select``
+    * - ``django/forms/widgets/checkbox.html``
+      - ``alliance_platform/ui/widgets/checkbox.html``
+      - ``checkbox``
+    * - ``django/forms/widgets/radio.html``
+      - ``alliance_platform/ui/widgets/radio.html``
+      - ``radio_group`` and ``radio``
+    * - ``django/forms/widgets/checkbox_select.html``
+      - ``alliance_platform/ui/widgets/checkbox_select.html``
+      - ``checkbox_group`` and ``checkbox``
+
+The checkbox's label is the field's, beside the box, as in a React ``Checkbox`` widget, with the
+field's help text, or its errors, below it. The radio and checkbox select widgets render a radio or a
+checkbox per choice inside a group with the field's label, help text and error message, and the
+choices of a named group (an optgroup) render in the one group, without its name.
 
 It uses an ap-ui template only where Django's own template would render the widget. A template of
 your own for the widget, anywhere in ``TEMPLATES`` and whether it renders a React or a static
 component, renders as it would without this renderer, as does a template from a backend other than
-Django's. Django's templates for the input widgets above are an ``{% include %}`` of
-``django/forms/widgets/input.html``, so your own ``input.html`` counts as a template for each of them;
-a project that wrote its own static ``input.html``, ``number.html`` and ``textarea.html`` can delete
-them. Every other widget, including the hidden, date, time, checkbox, radio, select and file inputs,
-renders as it would with ``FormInputContextRenderer``, so keep your templates for those. To give a
-control without a static component the same label, help text and error message, wrap it in
+Django's. Django's templates for the input widgets above, the checkbox among them, are an
+``{% include %}`` of ``django/forms/widgets/input.html``, so your own ``input.html`` counts as a
+template for each of them; a project that wrote its own static ``input.html``, ``number.html`` and
+``textarea.html`` can delete them. Django's select template renders each option with
+``django/forms/widgets/select_option.html``, so your own ``select_option.html`` counts as a template
+for the select widgets; the ap-ui template writes the options itself, except those of a widget whose
+``option_template_name`` is a template of its own, which renders them. Django's radio and checkbox
+select templates render each choice through ``multiple_input.html``, ``radio_option.html`` or
+``checkbox_option.html``, ``input_option.html`` and ``input.html``, so your own version of any of
+these counts as a template for them. Every other widget, including the hidden, date, time and file
+inputs, renders as it would with ``FormInputContextRenderer``, so keep your templates for those. To
+give a control without a static component the same label, help text and error message, wrap it in
 ``{% ui "labeled_input" %}`` (see :ref:`static-labeled-inputs`).
 
 Like ``FormInputContextRenderer`` it loads templates through the ``TEMPLATES`` setting, so the app
@@ -145,9 +170,9 @@ The static ``{% ui %}`` components emit markup for a DOM and CSS contract define
 ``@alliancesoftware/ui`` and ``@alliancesoftware/icons`` npm packages. Each package records the
 version of its side of the contract as an integer ``version`` in a ``static-contract.json`` file at
 its root, and each release of ``alliance_platform_ui`` supports one version of each: this release
-supports version 1, which ``@alliancesoftware/ui`` ships from 0.0.67 and ``@alliancesoftware/icons``
-from 0.0.14. A system check verifies the installed packages, resolving their files through the
-bundler as the components do:
+supports version 2 for ``@alliancesoftware/ui``, which ships it from 0.0.68, and version 1 for
+``@alliancesoftware/icons``, which ships it from 0.0.14. A system check verifies the installed
+packages, resolving their files through the bundler as the components do:
 
 .. list-table::
     :header-rows: 1
