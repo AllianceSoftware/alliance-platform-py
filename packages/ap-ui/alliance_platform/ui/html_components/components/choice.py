@@ -10,7 +10,8 @@ invalid states and the ids of the help text and error message.
 The checkbox and radio controls render the real input inside the root ``<label>``, followed by the
 box. The stylesheets show the state of the box, its marks and its label from that input
 (``:has(input:checked)``, ``:disabled``, ``:focus-visible``) and from the root's data attributes, so
-the markup needs no script: the browser toggles the input and the styles follow.
+the markup needs no script: the browser toggles the input and the styles follow. A read only control
+holds its value with no script too: see :func:`lock_read_only_input`.
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
 
 from ..base import BaseHtmlUIComponentRenderer
+from ..base import build_attrs_string
 from ..base import enum_prop_rule
 from ..render_context import RenderFrame
 from ..render_context import get_current_component_frame
@@ -79,6 +81,34 @@ def render_choice_label(class_name: str, children_html: str) -> str:
     if not content:
         return ""
     return mark_safe(f'<span class="{conditional_escape(class_name)}">{content}</span>')
+
+
+def lock_read_only_input(input_attrs: dict[str, Any]) -> str:
+    """Disable the input of a read only checkbox or radio that is not disabled, and return the hidden
+    input that submits its value in its place, or ``""`` when it submits none.
+
+    HTML has no read only state for a checkbox or radio, and react-aria holds the value with a
+    script. Here the input renders ``disabled``, which stops the browser changing it. A disabled input
+    is left out of the form's submission, so a checked one with a name is followed by a hidden input
+    with its name, value and ``form``: the form submits what it would for an input nothing can
+    change. The value is ``on`` when the input has none, as the browser submits for it.
+
+    The root keeps ``data-readonly`` without ``data-disabled``, which ``Checkbox.css`` shows as React
+    shows a read only control, not as a disabled one.
+    """
+    input_attrs["disabled"] = True
+    name = input_attrs.get("name")
+    if not input_attrs.get("checked") or name in (None, ""):
+        return ""
+    value = input_attrs.get("value")
+    hidden_attrs = {
+        "type": "hidden",
+        "name": name,
+        # An input renders no value attribute for either
+        "value": "on" if value is None or value is False else value,
+        "form": input_attrs.get("form"),
+    }
+    return f"<input{build_attrs_string(hidden_attrs)}/>"
 
 
 def joined_ids(*parts: Any) -> str | None:

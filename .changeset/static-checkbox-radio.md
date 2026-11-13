@@ -18,6 +18,10 @@ references document their props.
   template Django's renders through: `input.html`, and for the radio and checkbox select
   `multiple_input.html`, `input_option.html` and the option templates. As in the React widget, the
   field's label sits beside a checkbox, with the field's help text, or its errors, below it.
+- Read only: `is_read_only`, or `readonly` in a form widget's attrs, stops a checkbox or radio
+  changing with no script. HTML has no read only state for them, so the input renders disabled with
+  the look of an enabled one, and a hidden input submits each checked value: the form submits what
+  the controls show.
 - Requires `@alliancesoftware/ui@0.0.68`, the first release with version 2 of the static contract;
   the [system check](https://alliance-platform.readthedocs.io/projects/ui/latest/installation.html#system-checks)
   reports an earlier release.

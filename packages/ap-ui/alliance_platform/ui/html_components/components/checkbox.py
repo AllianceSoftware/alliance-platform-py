@@ -25,6 +25,7 @@ from .choice import UIChoiceGroupRendererBase
 from .choice import group_props_supported
 from .choice import group_react_only_reasons
 from .choice import joined_ids
+from .choice import lock_read_only_input
 from .choice import render_box
 from .choice import render_choice_label
 from .choice import render_mark_path
@@ -59,6 +60,9 @@ class UICheckboxRenderer(BaseHtmlUIComponentRenderer):
     Django names a form field's. Inside a ``checkbox_group`` it takes its name, checked state and the
     group's disabled, read only and invalid states from the group, as React's
     ``useCheckboxGroupItem`` does, and renders no row or help text: the group renders its own.
+
+    A read only checkbox renders its input disabled, with a hidden input that submits a checked
+    one's value: see :func:`~.choice.lock_read_only_input`.
     """
 
     name = "checkbox"
@@ -117,6 +121,11 @@ class UICheckboxRenderer(BaseHtmlUIComponentRenderer):
             "Marks the root with ``data-indeterminate``, which shows the dash. The input's "
             "``indeterminate`` state needs a script, so assistive technology announces the checkbox as "
             "checked or not checked until one sets it."
+        ),
+        "isReadOnly": (
+            "Renders the input ``disabled``, as HTML has no read only state for a checkbox, and keeps "
+            "the look of an enabled checkbox. A checked one with a ``name`` renders a hidden input "
+            "that submits its value, which a disabled input does not."
         ),
         "labelPosition": (
             "The form layout the checkbox renders in on its own: ``side`` renders an empty label cell "
@@ -197,6 +206,7 @@ class UICheckboxRenderer(BaseHtmlUIComponentRenderer):
             if key.startswith(("data-", "aria-")) and key not in input_attrs:
                 input_attrs[key] = attr_value
         input_attrs["className"] = self.get_style_class(styles, "input")
+        read_only_value_html = lock_read_only_input(input_attrs) if is_read_only and not is_disabled else ""
 
         border_class = self.get_style_class(styles, "border")
         marks = render_mark_path(
@@ -222,7 +232,7 @@ class UICheckboxRenderer(BaseHtmlUIComponentRenderer):
         checkbox_html = self.render_tag(
             "label",
             root_attrs,
-            f"<input{self.build_attrs_string(input_attrs)}/>{box_html}"
+            f"<input{self.build_attrs_string(input_attrs)}/>{read_only_value_html}{box_html}"
             f"{render_choice_label(self.get_style_class(styles, 'label'), children_html)}",
         )
         if group is not None:
@@ -301,6 +311,10 @@ class UICheckboxGroupRenderer(UIChoiceGroupRendererBase):
             "The values of the checked checkboxes. A string checks that one value; React takes a list only."
         ),
         "defaultValue": "Same as ``value``: the browser toggles the checkboxes from there.",
+        "isReadOnly": (
+            "Makes each checkbox read only: its input renders ``disabled`` and keeps the look of an "
+            "enabled checkbox, and a hidden input submits each checked value."
+        ),
         "validationState": '``"invalid"`` sets ``is_invalid``, as react-aria reads it.',
         **GROUP_NOT_RENDERED_PROP_DOCS,
     }

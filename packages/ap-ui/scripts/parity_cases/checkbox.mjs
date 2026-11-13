@@ -78,6 +78,20 @@ export const cases = [
     children: "Accept the terms",
   }),
   checkboxCase({
+    // HTML has no read only state for a checkbox, so the static checkbox disables its input and a
+    // hidden input submits its value; the parity test strips both
+    name: "read_only",
+    templateProps:
+      ' name="terms" value="yes" is_read_only=True default_selected=True',
+    props: {
+      name: "terms",
+      value: "yes",
+      isReadOnly: true,
+      defaultSelected: true,
+    },
+    children: "Accept the terms",
+  }),
+  checkboxCase({
     name: "invalid_and_required",
     templateProps: " is_invalid=True is_required=True",
     props: { isInvalid: true, isRequired: true },

@@ -182,6 +182,141 @@ class UIChoiceComponentsTestCase(HtmlUIParityTestCase):
         self.assertEqual(checkbox["name"], "cats")
         self.assertTrue(checkbox.has_attr("disabled"))
 
+    def test_read_only_checkbox_disables_its_input_and_submits_its_value_from_a_hidden_input(self):
+        soup, diagnostics = self.render_with_diagnostics(
+            '{% ui "checkbox" name="terms" value="yes" form="signup" is_read_only=True '
+            "default_selected=True %}Accept{% endui %}"
+        )
+        self.assertEqual(diagnostics, [])
+        root = soup.select_one('[data-apui="checkbox"]')
+        assert root is not None
+        checkbox, hidden = root.select("input")
+        # HTML has no read only state for a checkbox, so disabling it is what stops it changing
+        self.assertEqual(checkbox["type"], "checkbox")
+        self.assertTrue(checkbox.has_attr("disabled"))
+        self.assertTrue(checkbox.has_attr("checked"))
+        self.assertEqual(checkbox["aria-readonly"], "true")
+        # The stylesheet keeps the enabled look of a root that is read only and not disabled
+        self.assertEqual(root["data-readonly"], "true")
+        self.assertFalse(root.has_attr("data-disabled"))
+        # A disabled input is not submitted, so a hidden input after it submits the value
+        self.assertIs(checkbox.next_sibling, hidden)
+        self.assertEqual(hidden.attrs, {"type": "hidden", "name": "terms", "value": "yes", "form": "signup"})
+
+    def test_read_only_checkbox_without_a_value_submits_on_as_the_browser_does(self):
+        for value_prop in ("", " value=None", " value=False"):
+            with self.subTest(value_prop=value_prop):
+                soup, _ = self.render_with_diagnostics(
+                    f'{{% ui "checkbox" name="terms"{value_prop} is_read_only=True is_selected=True %}}'
+                    "Accept{% endui %}"
+                )
+                checkbox, hidden = soup.select("input")
+                self.assertFalse(checkbox.has_attr("value"))
+                self.assertEqual(hidden.attrs, {"type": "hidden", "name": "terms", "value": "on"})
+
+    def test_read_only_checkbox_that_submits_nothing_renders_no_hidden_input(self):
+        for props, is_disabled in [
+            # Not checked
+            (' name="terms" is_read_only=True', False),
+            # No name
+            (" is_read_only=True default_selected=True", False),
+            (' name="" is_read_only=True default_selected=True', False),
+            # Disabled as well: it renders as a disabled checkbox, which submits nothing
+            (' name="terms" is_read_only=True is_disabled=True default_selected=True', True),
+        ]:
+            with self.subTest(props=props):
+                soup, diagnostics = self.render_with_diagnostics(
+                    f'{{% ui "checkbox"{props} %}}Accept{{% endui %}}'
+                )
+                self.assertEqual(diagnostics, [])
+                (checkbox,) = soup.select("input")
+                self.assertTrue(checkbox.has_attr("disabled"))
+                root = soup.select_one('[data-apui="checkbox"]')
+                assert root is not None
+                self.assertEqual(root["data-readonly"], "true")
+                self.assertEqual(root.has_attr("data-disabled"), is_disabled)
+
+    def test_read_only_checkbox_group_submits_each_checked_value(self):
+        soup, diagnostics = self.render_with_diagnostics(
+            '{% ui "checkbox_group" label="Pets" name="pets" value=checked is_read_only=True %}'
+            '{% ui "checkbox" value="cat" %}Cat{% endui %}'
+            '{% ui "checkbox" value="dog" %}Dog{% endui %}'
+            '{% ui "checkbox" value="fish" is_disabled=True %}Fish{% endui %}'
+            '{% ui "checkbox" value="bird" name="birds" %}Bird{% endui %}'
+            "{% endui %}",
+            {"checked": ["cat", "fish", "bird"]},
+        )
+        self.assertEqual(diagnostics, [])
+        checkboxes = soup.select('input[type="checkbox"]')
+        self.assertEqual([box["value"] for box in checkboxes], ["cat", "dog", "fish", "bird"])
+        for checkbox in checkboxes:
+            self.assertTrue(checkbox.has_attr("disabled"))
+            self.assertEqual(checkbox["aria-readonly"], "true")
+        # The checked checkboxes that are not disabled themselves, each under its own name
+        self.assertEqual(
+            [(hidden["name"], hidden["value"]) for hidden in soup.select('input[type="hidden"]')],
+            [("pets", "cat"), ("birds", "bird")],
+        )
+        self.assertEqual(
+            [root.has_attr("data-disabled") for root in soup.select('[data-apui="checkbox"]')],
+            [False, False, True, False],
+        )
+
+    def test_read_only_checkbox_in_a_group_is_locked_on_its_own(self):
+        soup, _ = self.render_with_diagnostics(
+            '{% ui "checkbox_group" label="Pets" name="pets" value="cat" %}'
+            '{% ui "checkbox" value="cat" is_read_only=True %}Cat{% endui %}'
+            '{% ui "checkbox" value="dog" %}Dog{% endui %}'
+            "{% endui %}"
+        )
+        cat, dog = soup.select('input[type="checkbox"]')
+        self.assertTrue(cat.has_attr("disabled"))
+        self.assertFalse(dog.has_attr("disabled"))
+        (hidden,) = soup.select('input[type="hidden"]')
+        self.assertEqual((hidden["name"], hidden["value"]), ("pets", "cat"))
+
+    def test_read_only_radio_group_disables_its_radios_and_submits_the_checked_value(self):
+        soup, diagnostics = self.render_with_diagnostics(
+            '{% ui "radio_group" label="Colour" name="colour" default_value="green" is_read_only=True %}'
+            '{% ui "radio" value="red" %}Red{% endui %}'
+            '{% ui "radio" value="green" %}Green{% endui %}'
+            "{% endui %}"
+        )
+        self.assertEqual(diagnostics, [])
+        red, green = soup.select('input[type="radio"]')
+        for radio in (red, green):
+            self.assertTrue(radio.has_attr("disabled"))
+        for root in soup.select('[data-apui="radio"]'):
+            self.assertEqual(root["data-readonly"], "true")
+            self.assertFalse(root.has_attr("data-disabled"))
+        group = soup.select_one('[role="radiogroup"]')
+        assert group is not None
+        self.assertEqual(group["aria-readonly"], "true")
+        self.assertFalse(group.has_attr("aria-disabled"))
+        (hidden,) = soup.select('input[type="hidden"]')
+        self.assertIs(green.next_sibling, hidden)
+        self.assertEqual(hidden.attrs, {"type": "hidden", "name": "colour", "value": "green"})
+
+    def test_read_only_radio_group_that_submits_nothing_renders_no_hidden_input(self):
+        for group_props, radio_props in [
+            # No radio is checked
+            (" is_read_only=True", ""),
+            # The checked radio is disabled, so it submits nothing, as in React
+            (' is_read_only=True default_value="red"', " is_disabled=True"),
+            # The group is disabled as well
+            (' is_read_only=True is_disabled=True default_value="red"', ""),
+        ]:
+            with self.subTest(group_props=group_props, radio_props=radio_props):
+                soup, diagnostics = self.render_with_diagnostics(
+                    f'{{% ui "radio_group" label="Colour" name="colour"{group_props} %}}'
+                    f'{{% ui "radio" value="red"{radio_props} %}}Red{{% endui %}}'
+                    "{% endui %}"
+                )
+                self.assertEqual(diagnostics, [])
+                (radio,) = soup.select("input")
+                self.assertEqual(radio["type"], "radio")
+                self.assertTrue(radio.has_attr("disabled"))
+
     def test_group_state_reaches_controls_in_an_include(self):
         soup, diagnostics = self.render_with_diagnostics(
             '{% ui "radio_group" label="Colour" name="colour" default_value="red" is_disabled=True %}'

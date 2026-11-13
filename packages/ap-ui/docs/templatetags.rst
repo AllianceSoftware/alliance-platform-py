@@ -702,6 +702,16 @@ of the check; the input's own indeterminate state needs a script, so until one s
 ``input.indeterminate`` assistive technology announces the checkbox as checked or not checked.
 ``is_invalid``, or ``validation_state="invalid"``, colours the box and the label.
 
+``is_read_only`` shows the checkbox and stops it changing. HTML has no read only state for a
+checkbox, so the input renders ``disabled`` while the box keeps the look of an enabled checkbox. A
+disabled input leaves the tab order, and assistive technology announces it as unavailable rather
+than read only. It is not submitted either, so a checked read only checkbox with a ``name`` renders
+a hidden input after it with the same name and value, and the form submits what the checkbox shows.
+With ``is_disabled`` as well it renders as a disabled checkbox, which submits nothing. Read only
+stops the user changing the checkbox in the page; it does not stop a request submitting another
+value. To have Django keep a field's initial value whatever is submitted, set ``disabled=True`` on
+the form field.
+
 On its own a checkbox renders in the row React's form layout gives it: a ``<div>`` marked with its
 ``label_position``, which in the top layout pushes the checkbox down to line up with the inputs
 beside it, and ``label_position="side"`` puts an empty label cell before it. Its ``description``
@@ -747,6 +757,10 @@ valid. A checkbox in a group without a ``value``, or with an ``is_selected`` or 
 of its own, is reported as a :ref:`contract diagnostic <static-component-diagnostics>` with the
 warning React's ``Checkbox`` gives.
 
+``is_read_only`` on the group makes each checkbox read only, as it does on a checkbox of its own
+(see :ref:`static-checkboxes`): the inputs render ``disabled`` with the look of enabled checkboxes,
+and a hidden input submits each checked value.
+
 .. ui-component:: checkbox_group
 
 Static radio groups
@@ -768,6 +782,10 @@ at a time and moves between them with the arrow keys. The radio whose ``value`` 
 ``input_size`` sizes the radios, and its ``id``, label, help text and error message work as a
 checkbox group's. A ``radio`` outside a ``radio_group`` is reported as a :ref:`contract diagnostic
 <static-component-diagnostics>` and renders nothing.
+
+``is_read_only`` stops the checked radio changing, as it does for a checkbox (see
+:ref:`static-checkboxes`): every radio's input renders ``disabled`` with the look of an enabled
+radio, and a hidden input submits the checked radio's value.
 
 ``{% ui "radio_group" %}``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^

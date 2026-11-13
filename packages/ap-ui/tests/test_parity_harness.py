@@ -10,6 +10,7 @@ from tests.parity.base import HtmlUIParityTestCase
 from tests.parity.normalizers import normalize_class_attributes
 from tests.parity.normalizers import normalize_class_tokens
 from tests.parity.normalizers import normalize_css_var_hashes
+from tests.parity.normalizers import strip_read_only_lock
 
 # Expected results come from running normalizeClassTokens in scripts/parity_cases/_helpers.mjs on
 # the same arguments: (class value, allowed prefixes, keep_class_tokens, expected tokens).
@@ -92,6 +93,34 @@ class NormalizeClassTokensTestCase(SimpleTestCase):
             ),
             '<th style="--components-table-columnWidth: 96px; color: red">--level__1a: 1</th>',
         )
+
+
+class StripReadOnlyLockTestCase(SimpleTestCase):
+    def test_drops_the_disabled_attribute_and_the_hidden_input_of_a_read_only_control(self):
+        self.assertEqual(
+            strip_read_only_lock(
+                '<label class="Checkbox_wrapper" data-readonly="true">'
+                '<input type="checkbox" name="pets" value="cat" checked disabled aria-label="Pets, disabled for now"/>'
+                '<input type="hidden" name="pets" value="cat"/><span>Cat</span></label>'
+                '<label class="Checkbox_wrapper" data-readonly="true">'
+                '<input type="radio" name="colour" value="red" disabled/><span>Red</span></label>'
+            ),
+            '<label class="Checkbox_wrapper" data-readonly="true">'
+            '<input type="checkbox" name="pets" value="cat" checked aria-label="Pets, disabled for now"/>'
+            "<span>Cat</span></label>"
+            '<label class="Checkbox_wrapper" data-readonly="true">'
+            '<input type="radio" name="colour" value="red"/><span>Red</span></label>',
+        )
+
+    def test_leaves_a_control_that_is_disabled_or_not_read_only(self):
+        for html in [
+            '<label data-disabled="true" data-readonly="true"><input type="checkbox" disabled/></label>',
+            '<label data-disabled="true"><input type="checkbox" disabled/></label>',
+            '<label><input type="checkbox"/><input type="hidden" name="pets"/></label>',
+            '<input type="hidden" name="token" value="abc"/>',
+        ]:
+            with self.subTest(html=html):
+                self.assertEqual(strip_read_only_lock(html), html)
 
 
 class ParityHarnessTestCase(HtmlUIParityTestCase):

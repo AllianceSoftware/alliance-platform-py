@@ -96,6 +96,38 @@ class StaticChoiceWidgetForm(forms.Form):
     )
 
 
+class ReadOnlyChoiceWidgetForm(forms.Form):
+    subscribe = forms.BooleanField(
+        label="Subscribe", widget=forms.CheckboxInput(attrs={"readonly": True}), required=False
+    )
+    promotions = forms.BooleanField(
+        label="Promotions", widget=forms.CheckboxInput(attrs={"readonly": True}), required=False
+    )
+    colour = forms.ChoiceField(
+        label="Colour",
+        choices=[("red", "Red"), ("green", "Green")],
+        widget=forms.RadioSelect(attrs={"readonly": True}),
+    )
+    pets = forms.MultipleChoiceField(
+        label="Pets",
+        choices=[("cat", "Cat"), ("dog", "Dog"), ("fish", "Fish")],
+        widget=forms.CheckboxSelectMultiple(attrs={"readonly": True}),
+        required=False,
+    )
+
+
+def submitted_form_data(soup: BeautifulSoup) -> QueryDict:
+    """The data a browser submits for the inputs in ``soup``: the named inputs that are not
+    disabled, and of the checkboxes and radios only the checked ones."""
+    data = QueryDict(mutable=True)
+    for control in soup.select("input[name]:not([disabled])"):
+        is_choice = control.get("type") in ("checkbox", "radio")
+        if is_choice and not control.has_attr("checked"):
+            continue
+        data.appendlist(str(control["name"]), str(control.get("value", "on" if is_choice else "")))
+    return data
+
+
 class TermsForm(forms.Form):
     accept = forms.BooleanField(label="I accept the terms")
 
@@ -496,6 +528,21 @@ class StaticFormRendererTestCase(HtmlUIParityTestCase):
         root = soup.select_one('[data-apui="checkbox"]')
         assert root is not None
         self.assertEqual(root["data-invalid"], "true")
+
+    def test_read_only_choice_widgets_submit_the_values_they_show(self):
+        initial = {"subscribe": True, "promotions": False, "colour": "green", "pets": ["cat", "fish"]}
+        soup = BeautifulSoup(self.render_form(ReadOnlyChoiceWidgetForm(initial=initial)), "html.parser")
+
+        # HTML has no read only state for a checkbox or radio: the browser changes none that is
+        # disabled, and every one of these is
+        controls = soup.select('input[type="checkbox"], input[type="radio"]')
+        self.assertEqual(len(controls), 7)
+        for control in controls:
+            self.assertTrue(control.has_attr("disabled"), control)
+        # The form still submits what they show, which a disabled input alone would not
+        submitted = ReadOnlyChoiceWidgetForm(data=submitted_form_data(soup))
+        self.assertTrue(submitted.is_valid(), submitted.errors)
+        self.assertEqual(submitted.cleaned_data, initial)
 
     def test_choice_widgets_in_a_form_with_auto_focus(self):
         template = (
