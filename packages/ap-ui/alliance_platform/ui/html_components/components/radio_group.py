@@ -22,6 +22,7 @@ from .choice import UIChoiceGroupRendererBase
 from .choice import group_props_supported
 from .choice import group_react_only_reasons
 from .choice import joined_ids
+from .choice import lock_read_only_input
 from .choice import render_box
 from .choice import render_choice_label
 
@@ -55,6 +56,10 @@ class UIRadioGroupRenderer(UIChoiceGroupRendererBase):
         ),
         "name": "Generated when absent, as React generates one, so the radios form one group.",
         "defaultValue": "Same as ``value``: the browser changes the checked radio from there.",
+        "isReadOnly": (
+            "Makes the radios read only: their inputs render ``disabled`` and keep the look of enabled "
+            "radios, and a hidden input submits the checked radio's value."
+        ),
         "validationState": '``"invalid"`` sets ``is_invalid``, as react-aria reads it.',
         **GROUP_NOT_RENDERED_PROP_DOCS,
     }
@@ -89,7 +94,11 @@ class UIRadioGroupRenderer(UIChoiceGroupRendererBase):
 class UIRadioRenderer(BaseHtmlUIComponentRenderer):
     """Mirrors ``Radio`` in ``RadioGroup.tsx``: the native radio and the box the stylesheet draws over
     it, in a ``<label>`` holding the children as the label. It takes its name, size, checked state
-    and the group's disabled, read only and invalid states from its ``radio_group``."""
+    and the group's disabled, read only and invalid states from its ``radio_group``.
+
+    A radio in a read only group renders its input disabled, with a hidden input that submits the
+    checked radio's value: see :func:`~.choice.lock_read_only_input`.
+    """
 
     name = "radio"
     react_tag = 'component "@alliancesoftware/ui" "Radio"'
@@ -142,6 +151,9 @@ class UIRadioRenderer(BaseHtmlUIComponentRenderer):
             if key.startswith(("data-", "aria-")) and key not in input_attrs:
                 input_attrs[key] = attr_value
         input_attrs["className"] = self.get_style_class(styles, "input")
+        read_only_value_html = (
+            lock_read_only_input(input_attrs) if group.is_read_only and not is_disabled else ""
+        )
 
         box_html = render_box(
             self.get_style_class(styles, "radio"),
@@ -161,6 +173,6 @@ class UIRadioRenderer(BaseHtmlUIComponentRenderer):
         return self.render_tag(
             "label",
             root_attrs,
-            f"<input{self.build_attrs_string(input_attrs)}/>{box_html}"
+            f"<input{self.build_attrs_string(input_attrs)}/>{read_only_value_html}{box_html}"
             f"{render_choice_label(self.get_style_class(styles, 'label'), children_html)}",
         )

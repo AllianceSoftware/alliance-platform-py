@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from tests.parity.base import HtmlUIParityTestCase
+from tests.parity.base import HtmlUIChoiceParityTestCase
 
 
-class UICheckboxParityTestCase(HtmlUIParityTestCase):
+class UICheckboxParityTestCase(HtmlUIChoiceParityTestCase):
     fixture_component = "checkbox"
 
     def test_fixture_cases(self):

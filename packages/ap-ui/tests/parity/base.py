@@ -24,6 +24,7 @@ from tests.test_utils.bundler import bypass_frontend_resource_registry
 from .normalizers import normalize_class_attributes
 from .normalizers import normalize_css_var_hashes
 from .normalizers import normalize_html_fragment
+from .normalizers import strip_read_only_lock
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 #: Class mappings for every stylesheet a parity case module lists in ``stylesheets``, keyed by the
@@ -203,3 +204,11 @@ class HtmlUIParityTestCase(StaticComponentTestCase):
         self.assertEqual(actual_html, expected_html)
 
         self.assertEqual(diagnostics, case.get("expected_warnings", []))
+
+
+class HtmlUIChoiceParityTestCase(HtmlUIParityTestCase):
+    """Parity tests for the checkbox and radio components, whose static read only controls render
+    what React's do not: see :func:`~tests.parity.normalizers.strip_read_only_lock`."""
+
+    def normalize_static_html(self, html: str, fixture: dict[str, Any]) -> str:
+        return strip_read_only_lock(super().normalize_static_html(html, fixture))

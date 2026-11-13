@@ -12,6 +12,15 @@ _WHITESPACE_RE = re.compile(r"\s+")
 _CLASS_ATTR_RE = re.compile(r'\sclass="([^"]*)"')
 _STYLE_ATTR_RE = re.compile(r'\sstyle="([^"]*)"')
 _CSS_VAR_HASH_RE = re.compile(r"(--[\w-]+)__[a-z0-9]+\s*:\s*")
+# The root of a read only checkbox or radio that is not disabled, its input, and the hidden input
+# that follows a checked one
+_READ_ONLY_LOCK_RE = re.compile(
+    r'(<label\b(?=[^>]*\sdata-readonly="true")(?![^>]*\sdata-disabled=)[^>]*>)'
+    r"(<input\b[^>]*>)"
+    r'(?:<input\b(?=[^>]*\stype="hidden")[^>]*>)?'
+)
+# The bare attribute, outside any quoted value
+_DISABLED_ATTR_RE = re.compile(r'\sdisabled(?=[\s/>])(?=(?:[^"]*"[^"]*")*[^"]*$)')
 
 
 def _dedupe_tokens(tokens: list[str]) -> list[str]:
@@ -136,6 +145,22 @@ def normalize_css_var_hashes(html: str) -> str:
         return _STYLE_ATTR_RE.sub(_replace_attr, match.group(0))
 
     return _OPENING_TAG_RE.sub(_replace_tag, html)
+
+
+def strip_read_only_lock(html: str) -> str:
+    """Undo what the static checkbox and radio render to hold a read only value with no script.
+
+    HTML has no read only state for a checkbox or radio, so the static renderers disable the input
+    and follow a checked one with a hidden input that submits its value (``lock_read_only_input()``
+    in ``choice.py``). React renders neither: react-aria holds the value with a script. This drops
+    ``disabled`` from the input and removes the hidden input, in a root that is read only and not
+    disabled, so the rest of the markup is compared with React's.
+    """
+
+    def _replace(match: re.Match[str]) -> str:
+        return match.group(1) + _DISABLED_ATTR_RE.sub("", match.group(2))
+
+    return _READ_ONLY_LOCK_RE.sub(_replace, html)
 
 
 def normalize_html_fragment(

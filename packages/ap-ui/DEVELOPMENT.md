@@ -723,6 +723,18 @@ not render. `checkbox.mjs` uses `normalizeChoiceControls()`, which the group nor
   script sets `input.indeterminate`.
 - **Hover**: React also sets `data-hovered` on the root, from react-aria's hover state and
   `parentIsHovered`; the static markup relies on `:hover`, which the stylesheet matches as well.
+- **Read only**: HTML has no read only state for a checkbox or radio, and react-aria holds the value
+  with a script. The static controls render the input `disabled` instead (`lock_read_only_input()`
+  in `choice.py`), keeping the checkbox's `aria-readonly` and the root's `data-readonly`, and follow
+  a checked input that has a name with a hidden input carrying its name, its value (`on` when it has
+  none) and its `form`, as a disabled input is not submitted. `Checkbox.css` leaves a root with
+  `data-readonly` and no `data-disabled` out of its disabled rules, so it looks as React's read only
+  control does, unless a disabled fieldset disables it as well. The input leaves the tab order and
+  is announced as unavailable, where React's stays focusable and is announced as read only. A
+  control that is disabled as well renders as a disabled one: `data-disabled` on the root and no
+  hidden input. `HtmlUIChoiceParityTestCase` strips the lock from the static output before comparing
+  (`strip_read_only_lock()` in `tests/parity/normalizers.py`); the unit tests and the form round
+  trip in `tests/test_alliance_ui_form.py` cover it.
 - **Group ids**: react-aria generates the group label, help text and error message ids whatever the
   group's id; the static groups name them after a given id (see above), which `normalizeChoiceGroup()`
   renames to match.

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from tests.parity.base import HtmlUIParityTestCase
+from tests.parity.base import HtmlUIChoiceParityTestCase
 
 
-class UIRadioGroupParityTestCase(HtmlUIParityTestCase):
+class UIRadioGroupParityTestCase(HtmlUIChoiceParityTestCase):
     fixture_component = "radio_group"
 
     def test_fixture_cases(self):

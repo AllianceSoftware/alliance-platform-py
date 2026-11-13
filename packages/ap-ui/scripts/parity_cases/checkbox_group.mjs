@@ -116,6 +116,13 @@ export const cases = [
     props: { isDisabled: true, isReadOnly: true, isRequired: true },
   }),
   checkboxGroupCase({
+    // As the checkbox's read_only case: each static checkbox disables its input and a hidden input
+    // submits each checked value
+    name: "read_only",
+    templateProps: ' is_read_only=True value="cat"',
+    props: { isReadOnly: true, value: ["cat"] },
+  }),
+  checkboxGroupCase({
     name: "disabled_checkbox",
     checkboxes: [
       { value: "cat", label: "Cat" },
