@@ -157,11 +157,11 @@ class UISelectRenderer(UITextInputBaseRenderer):
         "addonAfter": UITextInputBaseRenderer.prop_docs["addonAfter"],
         "isMultiple": "``multiple`` is the attribute Django's ``SelectMultiple`` widget sets.",
         "value": (
-            "The value of the option to select, or a list of values for a multiple select: the options "
-            "it names are marked ``selected`` and the others are not, as React marks them. Without "
-            "``value`` or ``default_value`` the options' own ``selected`` attributes stand."
+            "The value of the option to select, or a list of values for a multiple select. Only the "
+            "options it names render ``selected``, as in React. Without ``value`` or ``default_value``, "
+            "the options keep their own ``selected`` attributes."
         ),
-        "defaultValue": "The same as ``value``: a server-rendered select has no controlled value.",
+        "defaultValue": "The same as ``value``, because a server-rendered select has no controlled value.",
     }
 
     def resolve_component_resources(self) -> list[FrontendResource]:

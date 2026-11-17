@@ -40,8 +40,8 @@ _CHECK_MARK_PATH = "M12 5L6.5 10.5L4 8"
 _INDETERMINATE_MARK_PATH = "M4.5 8H11.5"
 
 _LABEL_PROP_DOC = (
-    "Accepted, as ``{% form_input %}`` passes it, and not rendered: a checkbox's label is its children, "
-    "as in React."
+    "Accepted because ``{% form_input %}`` passes it, but not rendered. A checkbox's label is its "
+    "children, as in React."
 )
 
 
@@ -113,25 +113,25 @@ class UICheckboxRenderer(BaseHtmlUIComponentRenderer):
     event_handler_prop_reason = "event handlers are not supported by static checkboxes"
     prop_docs = {
         "defaultSelected": (
-            "Renders the input checked, as ``is_selected`` does; the browser toggles it from there. "
-            "``checked`` is the attribute Django's ``CheckboxInput`` sets."
+            "Renders the input checked, the same as ``is_selected``. The browser toggles it from "
+            "there. ``checked`` is the attribute that Django's ``CheckboxInput`` widget sets."
         ),
-        "isSelected": "Renders the input checked; the browser toggles it from there.",
+        "isSelected": "Renders the input checked. The browser toggles it from there.",
         "isIndeterminate": (
-            "Marks the root with ``data-indeterminate``, which shows the dash. The input's "
-            "``indeterminate`` state needs a script, so assistive technology announces the checkbox as "
-            "checked or not checked until one sets it."
+            "Shows a dash in place of the check, by marking the root with ``data-indeterminate``. "
+            "Only a script can set the input's own ``indeterminate`` state. Until one does, assistive "
+            "technology announces the checkbox as checked or not checked."
         ),
         "isReadOnly": (
-            "Renders the input ``disabled``, as HTML has no read only state for a checkbox, and keeps "
-            "the look of an enabled checkbox. A checked one with a ``name`` renders a hidden input "
-            "that submits its value, which a disabled input does not."
+            "HTML has no read-only state for a checkbox, so the input renders ``disabled`` and the box "
+            "keeps the look of an enabled checkbox. A checked checkbox with a ``name`` also renders a "
+            "hidden input that submits its value, because a browser doesn't submit a disabled input."
         ),
         "labelPosition": (
-            "The form layout the checkbox renders in on its own: ``side`` renders an empty label cell "
-            "before it, as React does in a side ``FormSection``."
+            "Sets the form layout row that a checkbox renders in outside a group. ``side`` renders an "
+            "empty label cell before the checkbox, as React does in a side ``FormSection``."
         ),
-        "validationState": '``"invalid"`` sets ``is_invalid``, as react-aria reads it.',
+        "validationState": 'As in react-aria, ``"invalid"`` has the same effect as ``is_invalid=True``.',
         "label": _LABEL_PROP_DOC,
     }
 
@@ -304,18 +304,19 @@ class UICheckboxGroupRenderer(UIChoiceGroupRendererBase):
     event_handler_prop_reason = "event handlers are not supported by static checkbox groups"
     prop_docs = {
         "id": (
-            "The group's id, which also names the label ``<id>_label``, the help text ``<id>_helptext`` "
-            "and the error message ``<id>_error``."
+            "The group element's id. The label, help text, and error message take ids made from it: "
+            "``<id>_label``, ``<id>_helptext``, and ``<id>_error``."
         ),
         "value": (
-            "The values of the checked checkboxes. A string checks that one value; React takes a list only."
+            "A list of the values of the checkboxes to check. A string checks the one checkbox with "
+            "that value. React accepts a list only."
         ),
-        "defaultValue": "Same as ``value``: the browser toggles the checkboxes from there.",
+        "defaultValue": "The same as ``value``. The browser toggles the checkboxes from there.",
         "isReadOnly": (
-            "Makes each checkbox read only: its input renders ``disabled`` and keeps the look of an "
-            "enabled checkbox, and a hidden input submits each checked value."
+            "Makes every checkbox in the group read-only. Each input renders ``disabled`` and keeps "
+            "the look of an enabled checkbox, and a hidden input submits each checked value."
         ),
-        "validationState": '``"invalid"`` sets ``is_invalid``, as react-aria reads it.',
+        "validationState": 'As in react-aria, ``"invalid"`` has the same effect as ``is_invalid=True``.',
         **GROUP_NOT_RENDERED_PROP_DOCS,
     }
 

@@ -51,16 +51,16 @@ class UIRadioGroupRenderer(UIChoiceGroupRendererBase):
     event_handler_prop_reason = "event handlers are not supported by static radio groups"
     prop_docs = {
         "id": (
-            "The group's id, which also names the label ``<id>_label``, the help text ``<id>_helptext`` "
-            "and the error message ``<id>_error``."
+            "The group element's id. The label, help text, and error message take ids made from it: "
+            "``<id>_label``, ``<id>_helptext``, and ``<id>_error``."
         ),
-        "name": "Generated when absent, as React generates one, so the radios form one group.",
-        "defaultValue": "Same as ``value``: the browser changes the checked radio from there.",
+        "name": "Generated when you don't pass one, as in React, so that the radios form one group.",
+        "defaultValue": "The same as ``value``. The browser changes the checked radio from there.",
         "isReadOnly": (
-            "Makes the radios read only: their inputs render ``disabled`` and keep the look of enabled "
-            "radios, and a hidden input submits the checked radio's value."
+            "Makes every radio in the group read-only. Each input renders ``disabled`` and keeps the "
+            "look of an enabled radio, and a hidden input submits the checked radio's value."
         ),
-        "validationState": '``"invalid"`` sets ``is_invalid``, as react-aria reads it.',
+        "validationState": 'As in react-aria, ``"invalid"`` has the same effect as ``is_invalid=True``.',
         **GROUP_NOT_RENDERED_PROP_DOCS,
     }
 

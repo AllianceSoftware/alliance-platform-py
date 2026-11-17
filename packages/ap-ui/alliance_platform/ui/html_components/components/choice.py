@@ -242,8 +242,8 @@ class UIChoiceGroupRendererBase(UILabeledInputRendererMixin, BaseHtmlUIComponent
 #: The ``prop_docs`` of the props both groups accept and do not render
 GROUP_NOT_RENDERED_PROP_DOCS = {
     "autoFocus": (
-        "Accepted, as ``{% form_input %}`` passes it in a ``{% form %}`` with ``auto_focus``, and not "
-        "rendered, as React's group ignores it."
+        "Accepted because ``{% form_input %}`` passes it in a ``{% form %}`` that has ``auto_focus``, "
+        "but not rendered. React's group ignores it too."
     ),
 }
 

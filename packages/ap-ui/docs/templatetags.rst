@@ -114,8 +114,9 @@ the suggested static renderer (or native element), and one of these statuses:
   HTML rather than a static UI renderer. Deferred ``url``/``url_with_perm`` values are marked
   ``REVIEW`` because native markup does not preserve automatic component omission.
 * ``NO-STATIC-EQUIVALENT`` — the Alliance UI component is recognised but has no static renderer
-  yet. For ``Select`` and ``MultipleSelect`` the finding suggests ``select`` instead, a
-  native select without their search, asynchronous loading or rendered options.
+  yet. For ``Select`` and ``MultipleSelect``, the finding suggests the static ``select`` as an
+  alternative. It's a native select, so it has no search, no asynchronous loading, and no
+  options rendered by components.
 
 The suggested tag shows ``{% endui %}`` only for components with children: a button is suggested as
 ``{% ui "button" %}...{% endui %}`` and an icon as ``{% ui "icon" %}``.
@@ -277,35 +278,55 @@ the auto-grow runtime.
 
 .. ui-component:: text_area
 
-Static selects
-~~~~~~~~~~~~~~~~~~~~~
+.. _static-selects:
 
-``select`` renders a native ``<select>`` with the label, help text, error message, sizes and
-states of the static text input, and a chevron. Its children are the ``<option>`` and
-``<optgroup>`` elements, which render as written:
+Static selects
+~~~~~~~~~~~~~~
+
+``{% ui "select" %}`` renders a native ``<select>`` styled like the static
+``text_input``. It takes the same label, help text, error message, sizes, and
+states, and adds a chevron. Write the ``<option>`` and ``<optgroup>`` elements
+as its children. They render as written:
 
 .. code-block:: html+django
 
-    {% ui "select" name="colour" label="Colour" value=profile.colour %}
-      <option value="">Choose a colour</option>
-      {% for value, label in colours %}
-        <option value="{{ value }}">{{ label }}</option>
+    {% ui "select" name="country" label="Country" value=profile.country %}
+      <option value="">Choose a country</option>
+      {% for code, name in countries %}
+        <option value="{{ code }}">{{ name }}</option>
       {% endfor %}
     {% endui %}
 
-``value`` (or ``default_value``) selects the options it names and no others, as React's ``value``
-does: the value of an option is its ``value`` attribute, or its text when it has none, and a value
-is compared with it as text. Without ``value`` the options keep their own ``selected`` attributes. A
-select has no placeholder: give it an option with an empty value, as above, which ``value=""``
-selects.
+``select`` is a native control. For search, options that load asynchronously,
+or options rendered by components, use the React ``Select`` instead.
 
-``is_multiple=True``, or ``multiple=True`` as Django's ``SelectMultiple`` widget writes it, makes a
-multiple select, whose ``value`` is a list. It shows as a list box, without the chevron, as does a
-select whose ``size`` is more than one. For search, options loaded asynchronously or options
-rendered by components, use the React ``Select``.
+``value`` sets which options are selected:
 
-:ref:`StaticFormRenderer <static-form-widgets>` renders Django's ``Select``, ``SelectMultiple`` and
-``NullBooleanSelect`` widgets as ``select``.
+* An option's value is its ``value`` attribute. An option without one uses its
+  text.
+* ``select`` compares values as text, so ``value=3`` selects
+  ``<option value="3">``.
+* When you pass ``value``, only the options it names are selected, as with
+  React's ``value``. Any other option loses a ``selected`` attribute you wrote
+  on it.
+* ``default_value`` does the same as ``value``. If you pass both, ``value``
+  applies.
+* Without either prop, the options keep their own ``selected`` attributes.
+  ``None`` counts as no value.
+
+Unlike a text input, a native select has no placeholder and no read-only
+state. ``select`` reports ``placeholder`` and ``is_read_only`` as
+:ref:`contract diagnostics <static-component-diagnostics>` and ignores them.
+To show a prompt, add an option with an empty value, as in the example.
+``value=""`` selects it.
+
+``is_multiple=True`` renders a multiple select, whose ``value`` is a list.
+``multiple=True`` does the same, because that's the attribute Django's
+``SelectMultiple`` widget sets. A multiple select shows as a list box, without
+the chevron. So does a select whose ``size`` is more than one.
+
+With :ref:`StaticFormRenderer <static-form-widgets>`, Django's ``Select``,
+``SelectMultiple``, and ``NullBooleanSelect`` widgets render as ``select``.
 
 .. ui-component:: select
 
@@ -688,35 +709,41 @@ Other notable behaviour:
 Static checkboxes
 ~~~~~~~~~~~~~~~~~
 
-``{% ui "checkbox" %}`` renders a native checkbox and the box Alliance UI draws over it, with its
-children as the label beside the box:
+``{% ui "checkbox" %}`` renders a native checkbox with the Alliance UI box
+drawn over it. The tag's children are the label, which renders beside the box:
 
 .. code-block:: html+django
 
     {% ui "checkbox" name="terms" is_required=True %}I accept the terms{% endui %}
 
-The browser checks and unchecks the input, and the stylesheet styles the box from the input's state,
-so the checkbox needs no script. ``is_selected`` and ``default_selected`` both render the input
-checked. ``is_indeterminate`` marks the root with ``data-indeterminate``, which shows a dash in place
-of the check; the input's own indeterminate state needs a script, so until one sets
-``input.indeterminate`` assistive technology announces the checkbox as checked or not checked.
-``is_invalid``, or ``validation_state="invalid"``, colours the box and the label.
+The checkbox needs no script. The browser checks and unchecks the native input,
+and the stylesheet styles the box from the input's state.
 
-``is_read_only`` shows the checkbox and stops it changing. HTML has no read only state for a
-checkbox, so the input renders ``disabled`` while the box keeps the look of an enabled checkbox. A
-disabled input leaves the tab order, and assistive technology announces it as unavailable rather
-than read only. It is not submitted either, so a checked read only checkbox with a ``name`` renders
-a hidden input after it with the same name and value, and the form submits what the checkbox shows.
-With ``is_disabled`` as well it renders as a disabled checkbox, which submits nothing. Read only
-stops the user changing the checkbox in the page; it does not stop a request submitting another
-value. To have Django keep a field's initial value whatever is submitted, set ``disabled=True`` on
-the form field.
+These props set the checkbox's state:
 
-On its own a checkbox renders in the row React's form layout gives it: a ``<div>`` marked with its
-``label_position``, which in the top layout pushes the checkbox down to line up with the inputs
-beside it, and ``label_position="side"`` puts an empty label cell before it. Its ``description``
-renders below it, and its ``error_message`` in place of the description while it is invalid, both in
-the help text style of the other inputs and coloured as invalid while it is:
+* ``is_selected`` and ``default_selected`` both render the input checked. The
+  browser toggles it from there.
+* ``is_indeterminate`` shows a dash in place of the check. Only a script can
+  set the input's own indeterminate state. Until one sets
+  ``input.indeterminate``, assistive technology announces the checkbox as
+  checked or not checked.
+* ``is_invalid``, or ``validation_state="invalid"``, styles the box and the
+  label as invalid.
+* ``is_read_only`` shows the value and stops the user changing it. See
+  :ref:`static-read-only-checkboxes-and-radios`.
+
+Outside a ``checkbox_group``, a checkbox renders inside a row ``<div>``, as it
+does in a React form layout. The row lines the checkbox up with the inputs
+around it:
+
+* With ``label_position="top"``, the default, the row moves the checkbox down
+  to line up with the inputs beside it.
+* With ``label_position="side"``, the row puts an empty label cell before the
+  checkbox.
+
+``description`` renders help text below the checkbox. While the checkbox is
+invalid, ``error_message`` renders in its place. Both use the help text style
+of the other inputs, which shows as invalid while the checkbox is invalid:
 
 .. code-block:: html+django
 
@@ -724,10 +751,18 @@ the help text style of the other inputs and coloured as invalid while it is:
       I accept the terms
     {% endui %}
 
-A given ``id`` names them ``<id>_helptext`` and ``<id>_error``, the ids Django gives a form field's,
-and the input is described by the one that renders. ``label`` is accepted, as :ttag:`form_input`
-passes it, and not rendered: a checkbox's label is its children. Inside a ``checkbox_group`` it
-renders no row or help text and takes its state from the group (see :ref:`static-checkbox-groups`).
+When you pass an ``id``, the help text takes the id ``<id>_helptext`` and the
+error message takes ``<id>_error``, the ids Django gives a form field's help
+text and errors. The input's ``aria-describedby`` names the one that renders.
+
+The checkbox accepts ``label``, because :ttag:`form_input` passes it, but
+doesn't render it. A checkbox's label is its children.
+
+Inside a ``checkbox_group``, a checkbox renders no row or help text, and takes
+its name and state from the group. See :ref:`static-checkbox-groups`.
+
+With :ref:`StaticFormRenderer <static-form-widgets>`, Django's
+``CheckboxInput`` widget renders as ``checkbox``.
 
 .. ui-component:: checkbox
 
@@ -736,10 +771,9 @@ renders no row or help text and takes its state from the group (see :ref:`static
 Static checkbox groups
 ~~~~~~~~~~~~~~~~~~~~~~
 
-``{% ui "checkbox_group" %}`` renders the label, help text and error message of
-:ttag:`LabeledInput` around a ``role="group"`` element holding ``checkbox`` components. Each checkbox
-takes the group's ``name``, is checked while its ``value`` is one of the group's ``value`` (or
-``default_value``), and takes the group's disabled, read only and invalid states:
+``{% ui "checkbox_group" %}`` renders a group of ``checkbox`` components under
+one label, with the help text and error message that :ttag:`LabeledInput`
+renders for an input:
 
 .. code-block:: html+django
 
@@ -748,54 +782,142 @@ takes the group's ``name``, is checked while its ``value`` is one of the group's
       {% ui "checkbox" value="dog" %}Dog{% endui %}
     {% endui %}
 
-``value`` is a list of values; a string checks that one value. The label is a ``<span>`` that labels
-the group element through ``aria-labelledby``, and the help text or the error message describes the
-group and each checkbox. A given ``id`` is the group element's, and names the label ``<id>_label``,
-the help text ``<id>_helptext`` and the error message ``<id>_error``; without one they get generated
-ids. ``has_invalid_children=True`` shows the error message while the group and its checkboxes stay
-valid. A checkbox in a group without a ``value``, or with an ``is_selected`` or ``default_selected``
-of its own, is reported as a :ref:`contract diagnostic <static-component-diagnostics>` with the
-warning React's ``Checkbox`` gives.
+Each checkbox takes its name and state from the group:
 
-``is_read_only`` on the group makes each checkbox read only, as it does on a checkbox of its own
-(see :ref:`static-checkboxes`): the inputs render ``disabled`` with the look of enabled checkboxes,
-and a hidden input submits each checked value.
+* It takes the group's ``name``.
+* It's checked when the group's ``value``, or ``default_value``, includes its
+  ``value``. Pass the group a list of values. A string checks the one checkbox
+  with that value.
+* It takes the group's disabled, read-only, and invalid states.
+
+A checkbox in a group must have a ``value``. It must not set ``is_selected``
+or ``default_selected``, because the group's ``value`` decides which
+checkboxes are checked. A checkbox that breaks either rule is reported as a
+:ref:`contract diagnostic <static-component-diagnostics>`, with the warning
+React's ``Checkbox`` gives.
+
+The group labels and describes its checkboxes for assistive technology:
+
+* The checkboxes render inside a ``role="group"`` element.
+* The label is a ``<span>`` that names the group element through
+  ``aria-labelledby``.
+* The help text, or the error message, describes the group and each checkbox.
+
+When you pass an ``id``, the group element takes it. The label, help text, and
+error message take ids made from it: ``<id>_label``, ``<id>_helptext``, and
+``<id>_error``. Without an ``id``, they take generated ids.
+
+``has_invalid_children=True`` shows the error message while the group and its
+checkboxes stay valid.
+
+``is_read_only`` on the group makes every checkbox in it read-only. See
+:ref:`static-read-only-checkboxes-and-radios`.
+
+With :ref:`StaticFormRenderer <static-form-widgets>`, Django's
+``CheckboxSelectMultiple`` widget renders as ``checkbox_group``.
 
 .. ui-component:: checkbox_group
+
+.. _static-radio-groups:
 
 Static radio groups
 ~~~~~~~~~~~~~~~~~~~
 
-``{% ui "radio_group" %}`` renders the same chrome around a ``role="radiogroup"`` element holding
-``radio`` components:
+``{% ui "radio_group" %}`` renders a group of ``radio`` components under one
+label, with help text and an error message, as a checkbox group does:
 
 .. code-block:: html+django
 
-    {% ui "radio_group" label="Colour" name="colour" default_value="green" %}
-      {% ui "radio" value="red" %}Red{% endui %}
-      {% ui "radio" value="green" %}Green{% endui %}
+    {% ui "radio_group" label="Delivery" name="delivery" default_value="standard" %}
+      {% ui "radio" value="standard" %}Standard{% endui %}
+      {% ui "radio" value="express" %}Express{% endui %}
     {% endui %}
 
-Each radio takes the group's ``name``, generated when there is none, so the browser checks one radio
-at a time and moves between them with the arrow keys. The radio whose ``value`` is the group's
-``value`` (or ``default_value``) is checked, and ``value=None`` checks none. The group's
-``input_size`` sizes the radios, and its ``id``, label, help text and error message work as a
-checkbox group's. A ``radio`` outside a ``radio_group`` is reported as a :ref:`contract diagnostic
-<static-component-diagnostics>` and renders nothing.
+The radios render inside a ``role="radiogroup"`` element. Each radio takes the
+group's ``name``, so the browser checks one radio at a time and moves between
+them with the arrow keys. If you don't pass a ``name``, the group generates
+one.
 
-``is_read_only`` stops the checked radio changing, as it does for a checkbox (see
-:ref:`static-checkboxes`): every radio's input renders ``disabled`` with the look of an enabled
-radio, and a hidden input submits the checked radio's value.
+The group's ``value``, or ``default_value``, checks the radio with the same
+``value``. ``value=None`` checks no radio, even when you also pass
+``default_value``.
+
+A ``radio`` has two requirements:
+
+* It must have a ``value``. A radio without one is reported as a
+  :ref:`contract diagnostic <static-component-diagnostics>`.
+* It must be inside a ``radio_group``. A radio outside one is reported as a
+  contract diagnostic and renders nothing.
+
+The group's ``input_size`` sets the size of its radios. Its ``id``, label, help
+text, and error message work as they do for a :ref:`checkbox group
+<static-checkbox-groups>`.
+
+``is_read_only`` on the group stops the user changing the checked radio. See
+:ref:`static-read-only-checkboxes-and-radios`.
+
+With :ref:`StaticFormRenderer <static-form-widgets>`, Django's ``RadioSelect``
+widget renders as ``radio_group``.
 
 ``{% ui "radio_group" %}``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``radio_group`` renders the label, help text, and error message, and passes
+its name and state to the radios inside it.
 
 .. ui-component:: radio_group
 
 ``{% ui "radio" %}``
 ^^^^^^^^^^^^^^^^^^^^
 
+``radio`` renders one option of a ``radio_group``.
+
 .. ui-component:: radio
+
+.. _static-read-only-checkboxes-and-radios:
+
+Read-only checkboxes and radios
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``is_read_only`` on a ``checkbox``, a ``checkbox_group``, or a ``radio_group``
+shows the value and stops the user changing it, with no script. HTML has no
+read-only state for a checkbox or a radio, so the components render one this
+way:
+
+* The input renders ``disabled``, which stops the browser changing it.
+* The box keeps the look of an enabled checkbox or radio.
+* A hidden input follows each checked input that has a ``name``, with the same
+  name and value. A browser doesn't submit a disabled input, so the hidden
+  input submits the value instead. For a checkbox without a ``value``, it
+  submits ``on``, as the browser does.
+
+The form therefore submits what the controls show.
+
+Because the input is disabled, a read-only control differs from the React
+component in two ways:
+
+* It leaves the tab order.
+* Assistive technology announces it as unavailable, not as read-only.
+
+A control that is both read-only and disabled renders as a disabled control
+and submits nothing.
+
+With :ref:`StaticFormRenderer <static-form-widgets>`, set ``readonly`` in a
+widget's ``attrs`` to make the widget read-only:
+
+.. code-block:: python
+
+    newsletter = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={"readonly": True}),
+    )
+
+.. warning::
+
+    ``is_read_only`` stops the user changing the control in the page. It
+    doesn't stop a request submitting a different value. To make Django keep a
+    field's initial value whatever the request submits, set ``disabled=True``
+    on the form field.
 
 .. templatetag:: Button
 
@@ -1151,8 +1273,7 @@ Usage:
         FORM_RENDERER = "alliance_platform.ui.forms.renderers.FormInputContextRenderer"
 
     or to :class:`~alliance_platform.ui.forms.renderers.StaticFormRenderer`, which also renders
-    Django's text, number and text area widgets as static ``{% ui %}`` components (see
-    :ref:`static-form-widgets`).
+    many of Django's widgets as static ``{% ui %}`` components (see :ref:`static-form-widgets`).
 
 .. templatetag:: form_input
 
@@ -1168,8 +1289,7 @@ Renders a form input with additional props supported by widgets from ``alliance_
         FORM_RENDERER = "alliance_platform.ui.forms.renderers.FormInputContextRenderer"
 
     or to :class:`~alliance_platform.ui.forms.renderers.StaticFormRenderer`, which also renders
-    Django's text, number and text area widgets as static ``{% ui %}`` components (see
-    :ref:`static-form-widgets`).
+    many of Django's widgets as static ``{% ui %}`` components (see :ref:`static-form-widgets`).
 
 This tag set's two extra template variables to be used by the widget template:
 
@@ -1240,8 +1360,8 @@ so ``html_attr_to_jsx`` is not needed):
 
     {% ui "text_input" props=widget.attrs|merge_props:extra_widget_props type=widget.type name=widget.name default_value=widget.value %}
 
-:class:`~alliance_platform.ui.forms.renderers.StaticFormRenderer` renders Django's text, number and text area
-widgets with templates like this one that ap-ui ships (see :ref:`static-form-widgets`).
+:class:`~alliance_platform.ui.forms.renderers.StaticFormRenderer` renders the Django widgets it supports
+with templates like this one that ap-ui ships (see :ref:`static-form-widgets`).
 
 HTML in ``help_text`` is supported by both widget styles - the React path receives it as nested React elements while
 static ``{% ui %}`` inputs render it directly as HTML (dropping any inline event handler attributes).
