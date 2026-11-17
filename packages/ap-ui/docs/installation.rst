@@ -39,74 +39,121 @@ This is used by the :ttag:`form` and :ttag:`form_input` tags.
 Static form widgets
 ~~~~~~~~~~~~~~~~~~~
 
-To render Django's text, number, text area, select, checkbox, radio and checkbox select multiple
-widgets as static ``{% ui %}`` components, set ``FORM_RENDERER`` to
+To render Django's text, number, text area, select, checkbox, radio, and
+checkbox select multiple widgets as static ``{% ui %}`` components, set
+``FORM_RENDERER`` to
 :class:`~alliance_platform.ui.forms.renderers.StaticFormRenderer` instead:
 
 .. code-block:: python
 
     FORM_RENDERER = "alliance_platform.ui.forms.renderers.StaticFormRenderer"
 
-It is a ``FormInputContextRenderer``, so the :ttag:`form` and :ttag:`form_input` tags work as before,
-and it renders these widgets with templates ap-ui ships, which take the label, help text and
-error message :ttag:`form_input` passes:
+``StaticFormRenderer`` is a ``FormInputContextRenderer``, so the :ttag:`form`
+and :ttag:`form_input` tags work as before. Like ``FormInputContextRenderer``,
+it loads templates through the ``TEMPLATES`` setting, so ``TEMPLATES`` must
+search the app directories that hold Django's form templates (``django.forms``
+in ``INSTALLED_APPS``) and ap-ui's.
+
+It renders the widgets that use the Django templates in this table. For each
+one, it uses a template that ap-ui ships, which gives the component the label,
+help text, and error message that :ttag:`form_input` passes. Django's templates
+are under ``django/forms/widgets/``, and the ap-ui templates are under
+``alliance_platform/ui/widgets/``:
 
 .. list-table::
     :header-rows: 1
-    :widths: 44 38 18
+    :widths: 34 34 32
 
-    * - Django widget template
+    * - Django template
       - ap-ui template
       - Component
-    * - ``django/forms/widgets/text.html``, ``email.html``, ``url.html``, ``password.html``,
-        ``tel.html`` and ``search.html``
-      - ``alliance_platform/ui/widgets/input.html``
+    * - ``text.html``
+      - ``input.html``
       - ``text_input``
-    * - ``django/forms/widgets/number.html``
-      - ``alliance_platform/ui/widgets/number.html``
+    * - ``email.html``
+      - ``input.html``
+      - ``text_input``
+    * - ``url.html``
+      - ``input.html``
+      - ``text_input``
+    * - ``password.html``
+      - ``input.html``
+      - ``text_input``
+    * - ``tel.html``
+      - ``input.html``
+      - ``text_input``
+    * - ``search.html``
+      - ``input.html``
+      - ``text_input``
+    * - ``number.html``
+      - ``number.html``
       - ``number_input``
-    * - ``django/forms/widgets/textarea.html``
-      - ``alliance_platform/ui/widgets/textarea.html``
+    * - ``textarea.html``
+      - ``textarea.html``
       - ``text_area``
-    * - ``django/forms/widgets/select.html``, which ``Select``, ``SelectMultiple`` and
-        ``NullBooleanSelect`` use
-      - ``alliance_platform/ui/widgets/select.html``
+    * - ``select.html``
+      - ``select.html``
       - ``select``
-    * - ``django/forms/widgets/checkbox.html``
-      - ``alliance_platform/ui/widgets/checkbox.html``
+    * - ``checkbox.html``
+      - ``checkbox.html``
       - ``checkbox``
-    * - ``django/forms/widgets/radio.html``
-      - ``alliance_platform/ui/widgets/radio.html``
+    * - ``radio.html``
+      - ``radio.html``
       - ``radio_group`` and ``radio``
-    * - ``django/forms/widgets/checkbox_select.html``
-      - ``alliance_platform/ui/widgets/checkbox_select.html``
+    * - ``checkbox_select.html``
+      - ``checkbox_select.html``
       - ``checkbox_group`` and ``checkbox``
 
-The checkbox's label is the field's, beside the box, as in a React ``Checkbox`` widget, with the
-field's help text, or its errors, below it. The radio and checkbox select widgets render a radio or a
-checkbox per choice inside a group with the field's label, help text and error message, and the
-choices of a named group (an optgroup) render in the one group, without its name.
+The select, checkbox, radio, and checkbox select widgets render as follows:
 
-It uses an ap-ui template only where Django's own template would render the widget. A template of
-your own for the widget, anywhere in ``TEMPLATES`` and whether it renders a React or a static
-component, renders as it would without this renderer, as does a template from a backend other than
-Django's. Django's templates for the input widgets above, the checkbox among them, are an
-``{% include %}`` of ``django/forms/widgets/input.html``, so your own ``input.html`` counts as a
-template for each of them; a project that wrote its own static ``input.html``, ``number.html`` and
-``textarea.html`` can delete them. Django's select template renders each option with
-``django/forms/widgets/select_option.html``, so your own ``select_option.html`` counts as a template
-for the select widgets; the ap-ui template writes the options itself, except those of a widget whose
-``option_template_name`` is a template of its own, which renders them. Django's radio and checkbox
-select templates render each choice through ``multiple_input.html``, ``radio_option.html`` or
-``checkbox_option.html``, ``input_option.html`` and ``input.html``, so your own version of any of
-these counts as a template for them. Every other widget, including the hidden, date, time and file
-inputs, renders as it would with ``FormInputContextRenderer``, so keep your templates for those. To
-give a control without a static component the same label, help text and error message, wrap it in
-``{% ui "labeled_input" %}`` (see :ref:`static-labeled-inputs`).
+* ``Select``, ``SelectMultiple``, and ``NullBooleanSelect`` all use
+  ``select.html``, so each one renders as a ``select``.
+* ``CheckboxInput`` renders the field's label beside the box, as the React
+  ``Checkbox`` widget does. The field's help text, or its errors, render below
+  the checkbox.
+* ``RadioSelect`` and ``CheckboxSelectMultiple`` render one radio or checkbox
+  for each choice, inside a group that has the field's label, help text, and
+  error message. The choices of a named group (an optgroup) render in that
+  same group, without the group's name.
 
-Like ``FormInputContextRenderer`` it loads templates through the ``TEMPLATES`` setting, so the app
-directories that hold Django's form templates (``django.forms`` in ``INSTALLED_APPS``) and ap-ui's must
-be searched.
+Every other widget renders as it does with ``FormInputContextRenderer``. That
+includes the hidden, date, time, and file inputs, so keep your templates for
+those. To give a control that has no static component the same label, help
+text, and error message, wrap it in ``{% ui "labeled_input" %}`` (see
+:ref:`static-labeled-inputs`).
+
+Your own widget templates
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``StaticFormRenderer`` uses an ap-ui template only where Django's own template
+would render the widget. A template of your own for the widget renders it, as
+it does without this renderer. That applies to a template anywhere in
+``TEMPLATES``, whether it renders a React or a static component, and to a
+template from a backend other than Django's.
+
+Django's widget templates render through other templates, so your own version
+of one of those counts as a template for the widget too. For each kind of
+widget, these are the templates that count. All of them are under
+``django/forms/widgets/``:
+
+* Text, email, URL, password, telephone, search, number, and checkbox inputs:
+  the widget's template, such as ``text.html``, or ``input.html``.
+* Text areas: ``textarea.html``.
+* Selects: ``select.html`` or ``select_option.html``.
+* Radio selects: ``radio.html``, ``multiple_input.html``,
+  ``radio_option.html``, ``input_option.html``, or ``input.html``.
+* Checkbox selects: ``checkbox_select.html``, ``multiple_input.html``,
+  ``checkbox_option.html``, ``input_option.html``, or ``input.html``.
+
+If your project has its own static ``input.html``, ``number.html``, and
+``textarea.html``, you can delete them and use the ap-ui templates.
+
+The ap-ui select template writes each ``<option>`` itself. If a widget class
+sets an ``option_template_name`` of its own, the ap-ui template renders each
+option with that template instead.
+
+Component props on widgets
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The ap-ui templates pass a widget's ``attrs`` to the component as props, as the React widget
 templates do, so a form sets component props on its widgets. A key takes either spelling, and a
@@ -169,10 +216,25 @@ System checks
 The static ``{% ui %}`` components emit markup for a DOM and CSS contract defined by the
 ``@alliancesoftware/ui`` and ``@alliancesoftware/icons`` npm packages. Each package records the
 version of its side of the contract as an integer ``version`` in a ``static-contract.json`` file at
-its root, and each release of ``alliance_platform_ui`` supports one version of each: this release
-supports version 2 for ``@alliancesoftware/ui``, which ships it from 0.0.68, and version 1 for
-``@alliancesoftware/icons``, which ships it from 0.0.14. A system check verifies the installed
-packages, resolving their files through the bundler as the components do:
+its root, and each release of ``alliance_platform_ui`` supports one version of each. This release
+supports these versions:
+
+.. list-table::
+    :header-rows: 1
+    :widths: 40 25 35
+
+    * - Package
+      - Contract version
+      - First release that ships it
+    * - ``@alliancesoftware/ui``
+      - 2
+      - 0.0.68
+    * - ``@alliancesoftware/icons``
+      - 1
+      - 0.0.14
+
+A system check verifies the installed packages, resolving their files through the bundler as the
+components do:
 
 .. list-table::
     :header-rows: 1

@@ -110,23 +110,29 @@ def _is_django_form_template(template: Any) -> bool:
 
 
 class StaticFormRenderer(FormInputContextRenderer):
-    """:class:`FormInputContextRenderer` that renders text, number, text area, select, checkbox,
-    radio and checkbox select multiple widgets as static ``{% ui %}`` components.
+    """A :class:`FormInputContextRenderer` that renders text, number, text area, select, checkbox,
+    radio, and checkbox select multiple widgets as static ``{% ui %}`` components.
 
     Where Django's own template would render one of the widgets in
-    :attr:`static_widget_templates`, this renders the ap-ui template it maps to instead: a
-    ``text_input``, ``number_input``, ``text_area``, ``select``, ``checkbox``,
-    ``radio_group`` or ``checkbox_group`` that takes the label, help text and error message
-    :ttag:`form_input` passes in ``extra_widget_props``. A template for the widget that the project
-    provides anywhere in ``TEMPLATES``, React or static, renders as it would without this renderer,
-    as does a template from a backend other than Django's. Django's templates for the input widgets,
-    the checkbox among them, are an ``{% include %}`` of ``django/forms/widgets/input.html``, so a
-    project's ``input.html`` counts as a template for each of them. Django's select template renders
-    each option with ``select_option.html``, and its radio and checkbox select templates render each
-    option through ``multiple_input.html``, the option template, ``input_option.html`` and
-    ``input.html``, so a project's version of any of those counts as a template for the widgets
-    that render through it. Every other widget renders as it would with
-    :class:`FormInputContextRenderer`.
+    :attr:`static_widget_templates`, this renderer uses the ap-ui template it maps to instead. That
+    template renders a ``text_input``, ``number_input``, ``text_area``, ``select``, ``checkbox``,
+    ``radio_group``, or ``checkbox_group`` with the label, help text, and error message that
+    :ttag:`form_input` passes in ``extra_widget_props``.
+
+    The renderer replaces only Django's own templates. A widget renders as it does with
+    :class:`FormInputContextRenderer` in each of these cases:
+
+    * The project provides a template for the widget anywhere in ``TEMPLATES``, whether that
+      template renders a React or a static component.
+    * The widget's template comes from a backend other than Django's.
+    * The project provides a template that Django's widget template renders through. Django's
+      templates for the input widgets, the checkbox among them, are an ``{% include %}`` of
+      ``django/forms/widgets/input.html``. Its select template renders each option with
+      ``select_option.html``. Its radio and checkbox select templates render each option through
+      ``multiple_input.html``, the option template, ``input_option.html``, and ``input.html``.
+    * The widget's template isn't in :attr:`static_widget_templates`.
+
+    :ref:`static-form-widgets` lists the widgets and the templates that count as a project's own.
 
     Enable it in place of :class:`FormInputContextRenderer`::
 
