@@ -1,5 +1,46 @@
 # alliance-platform-ui
 
+## 0.0.6
+
+### Patch Changes
+
+- 1b11e66: Add static checkboxes, checkbox groups, and radio groups. `{% ui "checkbox" %}`,
+  `{% ui "checkbox_group" %}`, `{% ui "radio_group" %}`, and `{% ui "radio" %}`
+  render the Alliance UI components as HTML that needs no React and no script. See
+  the [checkbox](https://alliance-platform.readthedocs.io/projects/ui/latest/templatetags.html#static-checkboxes),
+  [checkbox group](https://alliance-platform.readthedocs.io/projects/ui/latest/templatetags.html#static-checkbox-groups),
+  and [radio group](https://alliance-platform.readthedocs.io/projects/ui/latest/templatetags.html#static-radio-groups)
+  docs.
+
+  - Requires `@alliancesoftware/ui@0.0.68`. Upgrade the two packages together.
+    The [system check](https://alliance-platform.readthedocs.io/projects/ui/latest/installation.html#system-checks)
+    reports a version mismatch.
+  - If you use [`StaticFormRenderer`](https://alliance-platform.readthedocs.io/projects/ui/latest/installation.html#static-form-widgets),
+    Django's `CheckboxInput`, `RadioSelect`, and `CheckboxSelectMultiple` widgets
+    now render as these components. A widget that your project has its own
+    template for keeps that template.
+  - `is_read_only`, or `readonly` in a widget's `attrs`, makes a checkbox or radio
+    [read-only](https://alliance-platform.readthedocs.io/projects/ui/latest/templatetags.html#static-read-only-checkboxes-and-radios)
+    with no script. The form still submits the checked values.
+  - `ui_migration_check` suggests these components for `Checkbox`,
+    `CheckboxGroup`, `RadioGroup`, and `Radio`.
+
+- 1efe0e9: Add the static [`select`](https://alliance-platform.readthedocs.io/projects/ui/latest/templatetags.html#static-selects)
+  component. `{% ui "select" %}` renders a native `<select>` styled like the
+  static text input, with your `<option>` and `<optgroup>` elements as its
+  children. `value` selects options, and `is_multiple=True` makes a multiple
+  select.
+
+  - Requires `@alliancesoftware/ui@0.0.68`. Upgrade the two packages together.
+    The [system check](https://alliance-platform.readthedocs.io/projects/ui/latest/installation.html#system-checks)
+    reports a version mismatch.
+  - If you use [`StaticFormRenderer`](https://alliance-platform.readthedocs.io/projects/ui/latest/installation.html#static-form-widgets),
+    Django's `Select`, `SelectMultiple`, and `NullBooleanSelect` widgets now
+    render as `select`, unless your project has its own `select.html` or
+    `select_option.html` widget template.
+  - `ui_migration_check` suggests `select` in place of the React `Select` and
+    `MultipleSelect`.
+
 ## 0.0.5
 
 ### Patch Changes
